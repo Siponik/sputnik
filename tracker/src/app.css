@@ -170,8 +170,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .c { display: inline-block; width: 14px; height: 14px; border-radius: 3px; box-sizing: border-box; }
 .c.done { background: var(--gold); }
 .c.miss { background: var(--hairline); }
-.c.rest, .c.before { border: 1px dashed var(--hairline); }
-.c.before { opacity: .5; }
+.c.rest { border: 1px dashed var(--hairline); }
+/* До появления привычки — ровная бледная клетка (не пунктир: пунктир значит «не по расписанию»). */
+.c.before { background: color-mix(in srgb, var(--hairline) 40%, transparent); }
+/* Дни этой недели впереди, по расписанию, — контур. */
+.c.plan { border: 1.5px solid color-mix(in srgb, var(--ink-faint) 55%, transparent); }
 .c.today { border: 2px solid var(--clay); }
 .c.done.now { outline: 2px solid var(--clay); outline-offset: 1px; }
 .c.future { visibility: hidden; }

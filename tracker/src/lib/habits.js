@@ -62,17 +62,22 @@ export function stats(habit, log) {
       const s = ymd(d);
       const diff = Math.round((d - dayOffset(0)) / 864e5);
       let state;
-      if (diff > 0) state = 'future';
-      else if (!scheduled(d)) state = 'rest';
+      // future — дни этой недели впереди: по расписанию видны контуром (plan), остальные пустые.
+      // before — привычки ещё не было (до первого дня в Спутнике): ровная бледная клетка, не путать с «не по расписанию».
+      if (diff > 0) state = scheduled(d) ? 'plan' : 'future';
       else if (isDone(log, habit.id, s)) state = 'done';
+      else if (!scheduled(d)) state = 'rest';
+      else if (s < created) state = 'before';
       else if (isOff(log, habit.id, s)) state = 'off';
       else if (diff === 0) state = 'today';
-      else if (s < created) state = 'before';
       else state = 'miss';
       cells.push({ date: s, state, today: diff === 0, title: `${d.getDate()} ${MONTH_GEN[d.getMonth()]}` });
+      // Подпись месяца — над первой неделей, где есть 1-е число (и над первой колонкой, если до следующей ≥ 3 колонок).
       if (k === 0 && (w === 0 || d.getDate() <= 7)) months.push({ col: w, name: MONTH_SHORT[d.getMonth()] });
     }
   }
+  // Подписи шириной в 3 колонки не должны налезать: самая первая уступает, если следующая слишком близко.
+  if (months.length > 1 && months[1].col - months[0].col < 3) months.shift();
   return { streak, best, todayDone, cells, months };
 }
 

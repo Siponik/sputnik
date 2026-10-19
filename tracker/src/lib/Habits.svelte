@@ -78,7 +78,7 @@
   }
 
   function cellTitle(c) {
-    const what = { done: 'сделано', miss: 'пропуск', rest: 'не по расписанию', today: 'сегодня', before: 'до начала', off: 'выходной, серия сохранена', future: '' }[c.state];
+    const what = { done: 'сделано', miss: 'пропуск', rest: 'не по расписанию', today: 'сегодня', before: 'привычки ещё не было', plan: 'по плану', off: 'выходной, серия сохранена', future: '' }[c.state];
     return what ? `${c.title} · ${what}` : c.title;
   }
 </script>
@@ -229,6 +229,8 @@
     <span><i class="c done"></i>сделано</span>
     <span><i class="c miss"></i>пропуск</span>
     <span><i class="c rest"></i>не по расписанию</span>
+    <span><i class="c plan"></i>по плану</span>
+    <span><i class="c before"></i>привычки ещё не было</span>
     <span><i class="c today"></i>сегодня</span>
     <span><i class="dotg"></i>вехи 7 · 21 · 50 · 100 — енот празднует</span>
   </div>
