@@ -273,13 +273,6 @@ def build(src, dst):
     s = re.sub(r'@@COON ([^@]+)@@', rep, s)
     pathlib.Path(dst).write_text(s)
 
-if __name__ == '__main__':
-    src_dir, out_dir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
-    for f in sorted(src_dir.glob('*.dc.html')):
-        build(f, out_dir / f.name)
-        print('built', f.name)
-
-
 # ═════════════════ v3: белый винил с глазами-пуговками (выбран 19.10) ═════════════════
 # Координаты 240×260. Переопределяет CSS и pose_svg выше.
 CSS = """
@@ -454,3 +447,10 @@ def pose_svg(pose):
                  f"{_arm3('M88 198C80 208 84 220 96 222', (97, 222))}{_arm3('M154 196C168 188 176 176 176 164', (176, 160))}")
         return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>', '0 0 240 260'
     raise ValueError(pose)
+
+
+if __name__ == '__main__':
+    src_dir, out_dir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+    for f in sorted(src_dir.glob('*.dc.html')):
+        build(f, out_dir / f.name)
+        print('built', f.name)
