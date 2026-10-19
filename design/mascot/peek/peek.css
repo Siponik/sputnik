@@ -1,0 +1,16 @@
+.pk{display:block;overflow:visible}
+.pk-swing{animation:pk-swing 3.4s ease-in-out infinite;transform-origin:0 0}
+.pk-rise{animation:pk-rise 6s ease-in-out infinite}
+.pk-lean{animation:pk-lean 7s ease-in-out infinite}
+@keyframes pk-swing{0%,100%{transform:translate(0,-2px) rotate(0)}50%{transform:translate(0,-2px) rotate(7deg)}}
+@keyframes pk-rise{0%,70%,100%{transform:translate(45px,33px)}78%,92%{transform:translate(45px,50px)}}
+@keyframes pk-lean{0%,60%,100%{transform:translate(6px,36px) rotate(14deg)}70%,88%{transform:translate(-8px,36px) rotate(14deg)}}
+@media (prefers-reduced-motion:reduce){.pk *{animation:none!important}}
+.pk-z{animation:pk-z 3s ease-in-out infinite;opacity:.2}
+.pk-breathe{animation:pk-breathe 3.6s ease-in-out infinite}
+@keyframes pk-z{0%,100%{opacity:.15;transform:translateY(0)}50%{opacity:1;transform:translateY(-3px)}}
+@keyframes pk-breathe{0%,100%{transform:translate(24px,36px) rotate(-12deg) scale(.62)}50%{transform:translate(24px,35px) rotate(-12deg) scale(.63)}}
+@media (prefers-reduced-motion:reduce){.pk *{animation:none!important;opacity:1}}
+
+.pk-rise2{animation:pk-rise2 6s ease-in-out infinite}
+@keyframes pk-rise2{0%,70%,100%{transform:translate(50px,40px)}78%,92%{transform:translate(50px,52px)}}
