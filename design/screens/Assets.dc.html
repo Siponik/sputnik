@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Спутник · 3D-ассеты, конвейер</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/sputnik/components/bundle.css">
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.sp-app{--bg:#1C1B19;--wash:#22211E;--raised:#282723;--hairline:#34332E;--edge:#3A3934;--ink:#ECEAE3;--ink-soft:#A8A69D;--ink-faint:#7C7B72;--clay:#D9774F;--clay-soft:#30221B;--on-clay:#1C1B19;--gold:#E0A04A;--gold-soft:#3A2E1A;--signal-overdue:#F07A6A;--signal-soon:var(--gold);--signal-done:#6FB6CF;--type-work:#7FA6E8;--type-creative:var(--clay);--type-study:#B79BE6;--type-personal:#8FBF7F;--type-habit:var(--gold);--shadow-lift:0 6px 18px rgba(0,0,0,.45);color-scheme:dark;--font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--font-sans:-apple-system,"Segoe UI",system-ui,sans-serif;--font-mono:"Cascadia Mono",ui-monospace,Consolas,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;background:var(--bg);color:var(--ink);font-family:var(--font-sans)}
+.sp-app[data-theme="light"]{--bg:#FCFCFB;--wash:#F5F4F0;--raised:#FFFFFF;--hairline:#E4E3DC;--edge:#E1E1DF;--ink:#2E2C27;--ink-soft:#6B6A63;--ink-faint:#8A897F;--clay:#AD4F2C;--clay-soft:#FBEEE7;--on-clay:#FFFFFF;--gold:#8F5A00;--gold-soft:#FBF1DF;--signal-overdue:#B42318;--signal-done:#1F6A80;--type-work:#2F5DA8;--type-study:#6D4AA5;--type-personal:#3E6B31;--shadow-lift:0 6px 18px rgba(46,44,39,.14);color-scheme:light}
+a{color:inherit;text-decoration:none}
+.sp-app .sp-tab{text-decoration:none;display:inline-block}
+button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offset:2px}
+.tick{width:20px;height:20px;flex:none;border-radius:6px;box-sizing:border-box;border:1.5px solid var(--ink-faint);background:none;padding:0;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.tick[aria-pressed="true"]{background:var(--signal-done);border-color:var(--signal-done)}
+.ring{width:20px;height:20px;flex:none;border-radius:50%;box-sizing:border-box;padding:0;border:2px solid var(--clay);background:none;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.ring[aria-pressed="true"]{border-color:var(--gold);background:var(--gold)}
+.bubble{position:relative;padding:10px 14px;border-radius:14px;background:var(--raised);border:1px solid var(--edge);font-size:14px;line-height:20px;box-shadow:var(--shadow-lift)}
+.bubble::after{content:"";position:absolute;width:12px;height:12px;background:var(--raised);border:1px solid var(--edge);border-top:0;border-left:0;transform:rotate(45deg);right:-7px;top:50%;margin-top:-6px}
+.cap{margin:0 0 8px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.seg{display:flex;padding:3px;border-radius:999px;background:var(--wash);border:1px solid var(--edge)}
+.seg button{height:30px;padding:0 14px;border:0;border-radius:999px;background:none;color:var(--ink-soft);font:500 13px/1 var(--font-sans);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--raised);color:var(--ink);box-shadow:0 0 0 1px var(--edge)}
+.dist{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:6px}
+.dist button{display:flex;flex-direction:column;gap:6px;padding:10px 10px 9px;border-radius:10px;border:1px solid var(--edge);background:var(--raised);color:var(--ink-soft);font:500 12px/1 var(--font-sans);text-align:left;cursor:pointer}
+.dist button[aria-pressed="true"]{border-color:var(--clay);box-shadow:0 0 0 3px color-mix(in srgb,var(--clay) 15%,transparent);color:var(--ink)}
+.dist b{font:600 20px/1 var(--font-mono);color:var(--ink)}
+.dist i{display:block;height:4px;border-radius:4px;background:var(--hairline)}
+.dist i span{display:block;height:100%;border-radius:4px;background:var(--clay)}
+.grp{margin:0;font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint);display:flex;align-items:center;gap:8px}
+.grp::after{content:"";flex:1;height:1px;background:var(--hairline)}
+.row{display:grid;grid-template-columns:minmax(220px,1.1fr) minmax(420px,2.6fr) 118px 120px;align-items:center;gap:18px;padding:10px 14px;border-radius:12px;background:var(--raised);border:1px solid var(--edge)}
+.row.open{border-color:color-mix(in srgb,var(--clay) 55%,var(--edge))}
+.thumb{width:44px;height:44px;border-radius:10px;flex:none;display:grid;place-items:center;font:600 10px/1 var(--font-mono);color:var(--ink-faint);background:repeating-linear-gradient(135deg,var(--wash) 0 6px,color-mix(in srgb,var(--hairline) 70%,var(--wash)) 6px 12px);border:1px solid var(--edge)}
+.name{display:flex;align-items:center;gap:12px;min-width:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
+.name b{display:block;font-size:14.5px;line-height:19px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name small{display:block;font-size:12px;line-height:16px;color:var(--ink-faint)}
+.track{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.st{position:relative;height:30px;border:0;border-radius:6px;background:var(--wash);color:var(--ink-faint);font:500 11px/1 var(--font-sans);cursor:pointer;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st.done{background:color-mix(in srgb,var(--signal-done) 22%,var(--wash));color:var(--signal-done)}
+.st.now{background:var(--clay);color:var(--on-clay);font-weight:700}
+.st:hover{outline:1px solid var(--ink-faint)}
+.days{font:400 11.5px/1 var(--font-mono);color:var(--ink-faint);margin-top:5px}
+.days.slow{color:var(--gold)}
+.due{font:500 12.5px/1 var(--font-mono);color:var(--ink-soft)}
+.due.soon{color:var(--clay)}
+.adv{height:32px;border-radius:999px;border:1px solid var(--edge);background:none;color:var(--ink);font:500 12.5px/1 var(--font-sans);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 12px}
+.adv:hover{border-color:var(--clay);color:var(--clay)}
+.adv.ready{background:var(--clay);border-color:var(--clay);color:var(--on-clay)}
+.detail{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:22px;margin:-4px 0 0;padding:16px 18px;border-radius:0 0 12px 12px;background:var(--wash);border:1px solid color-mix(in srgb,var(--clay) 55%,var(--edge));border-top:0}
+.chk{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13.5px}
+.box{width:18px;height:18px;flex:none;border-radius:5px;box-sizing:border-box;border:1.5px solid var(--ink-faint);background:none;padding:0;display:grid;place-items:center;color:var(--bg);cursor:pointer}
+.box[aria-pressed="true"]{background:var(--signal-done);border-color:var(--signal-done)}
+.off{text-decoration:line-through;color:var(--ink-faint)}
+.tl{display:flex;flex-direction:column;gap:6px;font-size:12.5px;color:var(--ink-soft)}
+.tl div{display:flex;justify-content:space-between;gap:8px}
+.tl span:last-child{font-family:var(--font-mono);color:var(--ink-faint)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.gc{display:flex;flex-direction:column;border-radius:14px;overflow:hidden;background:var(--raised);border:1px solid var(--edge)}
+.gc .pv{height:150px;display:grid;place-items:center;font:500 12px/1 var(--font-mono);color:var(--ink-faint);background:repeating-linear-gradient(135deg,var(--wash) 0 8px,color-mix(in srgb,var(--hairline) 60%,var(--wash)) 8px 16px)}
+.mini{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.mini i{height:5px;border-radius:3px;background:var(--hairline)}
+.mini i.done{background:var(--signal-done)}.mini i.now{background:var(--clay)}
+.sp-app{--rim:#C9D6E2}.sp-app[data-theme="light"]{--rim:#A9BCCB}.coon{overflow:visible;display:block}.coon .c-float{animation:c-float 5.5s ease-in-out infinite;transform-box:view-box;transform-origin:120px 150px}.coon .c-wave{animation:c-wave 1.8s ease-in-out infinite;transform-box:view-box;transform-origin:154px 196px}.coon .c-tail{animation:c-tail 3.2s ease-in-out infinite;transform-box:view-box;transform-origin:150px 222px}.coon .c-ear{animation:c-ear 6s ease-in-out infinite;transform-box:view-box;transform-origin:146px 84px}.coon .c-eye{animation:c-blink 4.8s infinite;transform-box:fill-box;transform-origin:center}.coon .c-beacon{animation:c-beacon 1.6s ease-in-out infinite}.coon .c-star{animation:c-twinkle 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.coon .c-hop{animation:c-hop 1.1s cubic-bezier(.3,.6,.4,1) infinite;transform-box:view-box;transform-origin:120px 250px}.coon .c-z{animation:c-z 3s ease-in-out infinite;opacity:0}.coon .c-dot{animation:c-dot 1.4s ease-in-out infinite}.coon .c-orb{animation:c-orb 6s linear infinite;transform-box:view-box;transform-origin:120px 216px}.coon .c-flag{animation:c-flag 1.4s ease-in-out infinite;transform-box:view-box;transform-origin:190px 100px}@keyframes c-float{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-6px) rotate(1.5deg)}}@keyframes c-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}@keyframes c-tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}@keyframes c-ear{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(8deg)}94%{transform:rotate(-3deg)}}@keyframes c-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}@keyframes c-beacon{0%,100%{opacity:.35}50%{opacity:1}}@keyframes c-twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}@keyframes c-hop{0%,100%{transform:translateY(0) scaleY(1)}12%{transform:translateY(0) scaleY(.95)}45%{transform:translateY(-12px) scaleY(1.02)}}@keyframes c-z{0%{opacity:0;transform:translate(0,0)}25%{opacity:1}100%{opacity:0;transform:translate(10px,-22px)}}@keyframes c-dot{0%,100%{opacity:.25}50%{opacity:1}}@keyframes c-orb{to{transform:rotate(360deg)}}@keyframes c-flag{0%,100%{transform:skewY(0)}50%{transform:skewY(-6deg)}}@media (prefers-reduced-motion:reduce){.coon *{animation:none!important}.coon .c-z,.coon .c-dot{opacity:1}}
+</style>
+</helmet>
+<div class="sp-app" data-theme="{{theme}}" style="min-height: 1080px; display: flex; flex-direction: column">
+  <nav class="sp-tabs" aria-label="Разделы" style="flex-wrap: wrap; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px))">
+    <span class="sp-brand"><svg viewBox="0 0 512 512" aria-hidden="true"><path class="arc" d="M370.9 159.6 A150 150 0 1 0 370.9 352.4"></path><circle class="core" cx="256" cy="256" r="62"></circle><circle class="sat" cx="370.9" cy="159.6" r="42"></circle></svg>Спутник</span>
+    <a class="sp-tab" href="Today.dc.html" aria-selected="false">Сегодня <span class="n">· 5</span></a><a class="sp-tab" href="Calendar.dc.html" aria-selected="false">Календарь</a><a class="sp-tab" href="Main.dc.html" aria-selected="true">Доска</a><a class="sp-tab" href="Habits.dc.html" aria-selected="false">Привычки</a>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 14px; padding-bottom: 8px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--ink-soft)"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--signal-done)"></span>Синхронизировано · 13:52</span>
+      <a href="Today.dc.html" class="sp-btn sp-btn-ghost" style="min-height: 32px; padding: 0 10px" aria-label="Входящие от Claude, 2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"></path></svg><span style="font: 600 11px/1 var(--font-mono); color: var(--clay)">2</span></a>
+      <button class="sp-btn sp-btn-primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Новый ассет</button>
+    </div>
+  </nav>
+
+  <main style="flex: 1; width: 100%; max-width: 1360px; margin: 0 auto; box-sizing: border-box; padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 18px">
+    <header style="display: flex; flex-wrap: wrap; align-items: flex-end; gap: 16px">
+      <div style="flex: 1 1 360px; min-width: 0">
+        <p style="margin: 0 0 4px; font-size: 13px; color: var(--ink-soft)">Список Google Tasks · шаблон «3D-ассеты»</p>
+        <h1 style="margin: 0; font-family: var(--font-display); font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -.01em">3D-проекты</h1>
+        <p style="margin: 6px 0 0; font-size: 14px; color: var(--ink-soft)">{{summary}}</p>
+      </div>
+      <div class="seg" role="group" aria-label="Вид"><sc-for list="{{views}}" as="v" hint-placeholder-count="3"><button type="button" aria-pressed="{{v.on}}" onClick="{{v.pick}}">{{v.l}}</button></sc-for></div>
+    </header>
+
+    <section class="dist" aria-label="Сколько ассетов на каждом этапе — нажми, чтобы отфильтровать">
+      <sc-for list="{{dist}}" as="d" hint-placeholder-count="8">
+        <button type="button" aria-pressed="{{d.on}}" onClick="{{d.pick}}"><span>{{d.l}}</span><b>{{d.n}}</b><i><span style="width: {{d.pct}}%"></span></i></button>
+      </sc-for>
+    </section>
+
+    <sc-if value="{{isPipe}}" hint-placeholder-val="{{true}}">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: grid; grid-template-columns: minmax(220px,1.1fr) minmax(420px,2.6fr) 118px 120px; gap: 18px; padding: 0 15px; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-faint)"><span>Ассет</span><span>Этапы · клик — перейти на этап</span><span>Срок</span><span></span></div>
+        <sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+          <p class="grp">{{g.title}}</p>
+          <sc-for list="{{g.rows}}" as="r" hint-placeholder-count="2">
+            <div class="{{r.cls}}">
+              <button type="button" class="name" aria-expanded="{{r.openA}}" onClick="{{r.toggle}}"><span class="thumb">{{r.ini}}</span><span style="min-width: 0"><b>{{r.title}}</b><small>{{r.sub}}</small></span></button>
+              <div>
+                <div class="track" role="group" aria-label="{{r.trackAria}}">
+                  <sc-for list="{{r.stages}}" as="s" hint-placeholder-count="7"><button type="button" class="{{s.cls}}" title="{{s.title}}" onClick="{{s.pick}}">{{s.l}}</button></sc-for>
+                </div>
+                <div class="{{r.daysCls}}">{{r.days}}</div>
+              </div>
+              <span class="{{r.dueCls}}">{{r.due}}</span>
+              <sc-if value="{{r.canAdv}}" hint-placeholder-val="{{true}}"><button type="button" class="{{r.advCls}}" onClick="{{r.adv}}">{{r.advL}} →</button></sc-if>
+              <sc-if value="{{r.finished}}" hint-placeholder-val="{{false}}"><span style="font-size: 12.5px; color: var(--signal-done)">✓ готово</span></sc-if>
+            </div>
+            <sc-if value="{{r.isOpen}}" hint-placeholder-val="{{false}}">
+              <div class="detail">
+                <div>
+                  <p class="cap" style="margin: 0 0 4px">Этап «{{r.stageName}}» · подзадачи</p>
+                  <sc-for list="{{r.checks}}" as="k" hint-placeholder-count="3">
+                    <div class="chk"><button type="button" class="box" aria-pressed="{{k.on}}" aria-label="{{k.l}}" onClick="{{k.toggle}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button><span class="{{k.cls}}">{{k.l}}</span></div>
+                  </sc-for>
+                  <p style="margin: 6px 0 0; font-size: 12.5px; line-height: 17px; color: var(--ink-faint)">Подзадачи — это вложенные задачи в Google Tasks: видны и на телефоне. Когда все отмечены, «{{r.advL}} →» подсвечивается.</p>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px">
+                  <div><p class="cap" style="margin: 0 0 6px">Время по этапам</p><div class="tl"><sc-for list="{{r.time}}" as="t" hint-placeholder-count="3"><div><span>{{t.l}}</span><span>{{t.v}}</span></div></sc-for></div></div>
+                  <div style="display: flex; align-items: center; gap: 10px"><span class="thumb" style="width: 64px; height: 64px">рендер</span><span style="font-size: 12.5px; line-height: 17px; color: var(--ink-soft)">Превью — последний скрин или рендер: перетащи файл сюда, он сохранится в папке Спутника на Drive.</span></div>
+                </div>
+              </div>
+            </sc-if>
+          </sc-for>
+        </sc-for>
+        <sc-if value="{{emptyFilter}}" hint-placeholder-val="{{false}}"><p style="margin: 8px 0; font-size: 14px; color: var(--ink-soft)">На этом этапе сейчас ничего нет.</p></sc-if>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isGal}}" hint-placeholder-val="{{false}}">
+      <div class="gal">
+        <sc-for list="{{flat}}" as="r" hint-placeholder-count="6">
+          <article class="gc">
+            <div class="pv">[превью рендера]</div>
+            <div style="padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px">
+              <div style="display: flex; align-items: baseline; gap: 8px"><b style="flex: 1; min-width: 0; font-size: 14.5px">{{r.title}}</b><span class="{{r.dueCls}}">{{r.due}}</span></div>
+              <div class="mini" aria-label="{{r.trackAria}}"><sc-for list="{{r.stages}}" as="s" hint-placeholder-count="7"><i class="{{s.mini}}"></i></sc-for></div>
+              <span style="font-size: 12.5px; color: var(--ink-soft)">{{r.stageName}} · {{r.daysShort}}</span>
+            </div>
+          </article>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{isKanban}}" hint-placeholder-val="{{false}}">
+      <p style="margin: 0; padding: 22px; border-radius: 12px; border: 1.5px dashed var(--edge); font-size: 14px; line-height: 20px; color: var(--ink-soft)">Канбан по этапам остаётся как запасной вид — это текущая доска 0.2 с колонками «Референсы … Рендер · Готово».</p>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1080}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { view: 'pipe', filter: null, open: 'tower', stage: {}, checks: { 'tower|retopo|0': true } };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var ST = [['refs', 'Референсы'], ['blockout', 'Блокаут'], ['sculpt', 'Скульпт'], ['retopo', 'Ретопология'], ['uv', 'UV'], ['textures', 'Текстуры'], ['render', 'Рендер']];
+    var ASSETS = [
+      { id: 'tower', title: 'Башня lowpoly', proj: 'Башня', client: 'для клиента', stage: 3, days: 3, due: 'пт, 23 окт.', soon: true,
+        checks: { retopo: ['Основной объём', 'Окна и арки', 'Проверить нормали'] }, time: [['Блокаут', '4 ч'], ['Скульпт', '9 ч'], ['Ретопология', '2,5 ч · идёт']] },
+      { id: 'tower-props', title: 'Пропсы для башни', proj: 'Башня', client: 'бочки, факелы', stage: 1, days: 6, due: '30 окт.', soon: false,
+        checks: { blockout: ['Бочка', 'Факел', 'Ящик'] }, time: [['Референсы', '1 ч'], ['Блокаут', '1,5 ч · идёт']] },
+      { id: 'tavern', title: 'Таверна · экстерьер', proj: 'Таверна', client: 'личный проект', stage: 1, days: 1, due: '6 нояб.', soon: false,
+        checks: { blockout: ['Силуэт и пропорции', 'Крыша', 'Вывеска'] }, time: [['Референсы', '3 ч'], ['Блокаут', '2 ч · идёт']] },
+      { id: 'chest', title: 'Сундук с золотом', proj: 'Таверна', client: 'пропс', stage: 5, days: 2, due: '25 окт.', soon: true,
+        checks: { textures: ['Дерево', 'Металл', 'Золото, эмиссия'] }, time: [['Скульпт', '5 ч'], ['UV', '1 ч'], ['Текстуры', '3 ч · идёт']] },
+      { id: 'lantern', title: 'Фонарь', proj: 'Таверна', client: 'пропс', stage: 0, days: 0, due: 'без срока', soon: false,
+        checks: { refs: ['Собрать 10 рефов', 'Выбрать стиль'] }, time: [] },
+      { id: 'coon', title: 'Енот-космонавт · 3D', proj: 'Личное', client: 'маскот Спутника', stage: 2, days: 9, due: 'без срока', soon: false,
+        checks: { sculpt: ['Голова', 'Скафандр', 'Шлем'] }, time: [['Блокаут', '2 ч'], ['Скульпт', '6 ч · идёт']] }
+    ];
+    var stageOf = function (a) { return st.stage[a.id] != null ? st.stage[a.id] : a.stage; };
+    var setStage = function (a, n) { var o = Object.assign({}, self.state.stage); o[a.id] = n; self.setState({ stage: o }); };
+    var counts = [0, 0, 0, 0, 0, 0, 0, 0];
+    ASSETS.forEach(function (a) { counts[stageOf(a)]++; });
+    var max = Math.max.apply(null, counts) || 1;
+    var row = function (a) {
+      var cur = stageOf(a), fin = cur >= 7, key = ST[Math.min(cur, 6)][0];
+      var moved = st.stage[a.id] != null && st.stage[a.id] !== a.stage, days = moved ? 0 : a.days;
+      var list = (a.checks[key] || ['Сделать этап']);
+      var checks = list.map(function (l, i) {
+        var k = a.id + '|' + key + '|' + i, on = !!st.checks[k];
+        return { l: l, on: on ? 'true' : 'false', cls: on ? 'off' : '', toggle: function () { var o = Object.assign({}, self.state.checks); o[k] = !o[k]; self.setState({ checks: o }); } };
+      });
+      var allDone = checks.every(function (c) { return c.on === 'true'; });
+      return {
+        id: a.id, title: a.title, sub: a.proj + ' · ' + a.client, ini: a.title.slice(0, 2).toUpperCase(),
+        cls: 'row' + (st.open === a.id ? ' open' : ''), isOpen: st.open === a.id, openA: st.open === a.id ? 'true' : 'false',
+        toggle: function () { self.setState({ open: self.state.open === a.id ? null : a.id }); },
+        stages: ST.map(function (s, i) {
+          var cls = 'st' + (i < cur ? ' done' : i === cur ? ' now' : '');
+          return { l: s[1], cls: cls, mini: i < cur ? 'done' : i === cur ? 'now' : '', title: s[1] + (i < cur ? ' — пройден' : i === cur ? ' — сейчас' : ' — впереди'), pick: function () { setStage(a, i); } };
+        }),
+        trackAria: 'Этапы: ' + (fin ? 'всё готово' : 'сейчас ' + ST[cur][1]),
+        stageName: fin ? 'Готово' : ST[cur][1],
+        days: fin ? 'Все этапы пройдены' : (days === 0 ? 'Этап начат сегодня' : 'На этапе ' + days + ' ' + (days === 1 ? 'день' : days < 5 ? 'дня' : 'дней') + (days >= 7 ? ' — дольше обычного' : '')),
+        daysShort: fin ? 'готово' : (days === 0 ? 'сегодня' : days + ' дн.'),
+        daysCls: 'days' + (days >= 7 && !fin ? ' slow' : ''),
+        due: a.due, dueCls: 'due' + (a.soon ? ' soon' : ''),
+        canAdv: !fin, finished: fin, advL: cur >= 6 ? 'Готово' : ST[cur + 1][1],
+        adv: function () { setStage(a, cur + 1); },
+        checks: checks, time: a.time.map(function (t) { return { l: t[0], v: t[1] }; }).concat(a.time.length ? [] : [{ l: 'Учёт времени начнётся с первого этапа', v: '' }]),
+        proj: a.proj, stageIdx: cur, advCls: allDone ? 'adv ready' : 'adv'
+      };
+    };
+    var rows = ASSETS.map(row).filter(function (r) { return st.filter == null || r.stageIdx === st.filter; });
+    var projs = ['Башня', 'Таверна', 'Личное'];
+    var groups = projs.map(function (p) { return { title: p, rows: rows.filter(function (r) { return r.proj === p; }) }; }).filter(function (g) { return g.rows.length; });
+    var active = ASSETS.filter(function (a) { return stageOf(a) < 7; }).length;
+    var busiest = counts.slice(0, 7).indexOf(Math.max.apply(null, counts.slice(0, 7)));
+    var V = [['pipe', 'Конвейер'], ['gal', 'Галерея'], ['kanban', 'Канбан']];
+    var labels = ST.map(function (s) { return s[1]; }).concat(['Готово']);
+    return {
+      theme: this.props.theme ?? 'dark',
+      summary: active + ' ассетов в работе · больше всего на этапе «' + ST[busiest][1] + '» · 2 срока на этой неделе',
+      views: V.map(function (v) { return { l: v[1], on: st.view === v[0] ? 'true' : 'false', pick: function () { self.setState({ view: v[0] }); } }; }),
+      isPipe: st.view === 'pipe', isGal: st.view === 'gal', isKanban: st.view === 'kanban',
+      dist: labels.map(function (l, i) { return { l: l, n: counts[i], pct: Math.round(counts[i] / max * 100), on: st.filter === i ? 'true' : 'false', pick: function () { self.setState({ filter: self.state.filter === i ? null : i }); } }; }),
+      groups: groups, flat: rows, emptyFilter: rows.length === 0
+    };
+  }
+}
+</script>
+</body>
+</html>
