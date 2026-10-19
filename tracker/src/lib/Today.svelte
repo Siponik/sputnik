@@ -1,94 +1,330 @@
 <script>
+  import { onMount } from 'svelte';
   import { dueToYmd, ymd, humanDue } from './api.js';
+  import { stats, plural, isDone } from './habits.js';
+  import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
+  import { templateOf } from './templates.js';
+  import Coon from './Coon.svelte';
 
-  let { lists, tasksByList, events, statusOf, onopen, ontoggle } = $props();
+  let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
+    onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar } = $props();
 
-  const today = ymd(new Date());
+  let clock = $state(Date.now());
+  onMount(() => {
+    const t = setInterval(() => (clock = Date.now()), 30e3);
+    // Ctrl+N на этом экране — фокус в строку быстрого добавления.
+    onregister?.(() => { input?.focus(); return !!input; });
+    return () => { clearInterval(t); onregister?.(null); };
+  });
+  const today = $derived(ymd(new Date(clock)));
+  const now = $derived((clock, nowMin()));
+
   const WEEK = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
-  const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
-  const now = new Date();
-  const dateLine = `${WEEK[now.getDay()]} · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  const dateLine = $derived.by(() => { const d = new Date(clock); return `${WEEK[d.getDay()]} · ${d.getDate()} ${MONTH_GEN[d.getMonth()]} ${d.getFullYear()}`; });
+
+  // ---------- задачи ----------
+
+  const TYPE_LABEL = { work: 'Работа', creative: 'Ассет', study: 'Учёба', personal: 'Личное' };
+  let fresh = $state(new Set()); // созданные в этом сеансе — метка «новая»
 
   const all = $derived(lists.flatMap((l) => (tasksByList[l.id] ?? []).filter((t) => !t.parent).map((t) => ({ task: t, list: l }))));
-  const open = $derived(all.filter((x) => x.task.status !== 'completed'));
-  const overdue = $derived(open.filter((x) => x.task.due && dueToYmd(x.task.due) < today));
-  const dueToday = $derived(open.filter((x) => x.task.due && dueToYmd(x.task.due) === today));
-  const doing = $derived(open.filter((x) => !['inbox', 'refs', 'done'].includes(statusOf(x.task)) && !(x.task.due && dueToYmd(x.task.due) <= today)));
-  const doneToday = $derived(all.filter((x) => x.task.status === 'completed' && x.task.completed && ymd(new Date(x.task.completed)) === today));
+  const doneToday = (t) => t.status === 'completed' && t.completed && ymd(new Date(t.completed)) === today;
+  const overdue = $derived(all.filter((x) => x.task.due && dueToYmd(x.task.due) < today && (x.task.status !== 'completed' || doneToday(x.task))));
+  const dueToday = $derived(all.filter((x) => x.task.due && dueToYmd(x.task.due) === today && (x.task.status !== 'completed' || doneToday(x.task)))
+    .sort((a, b) => (layTasks?.[a.task.id]?.slot?.s ?? '99').localeCompare(layTasks?.[b.task.id]?.slot?.s ?? '99')));
+  const isOn = (x) => x.task.status === 'completed';
+  const lateLeft = $derived(overdue.filter((x) => !isOn(x)).length);
+  const total = $derived(overdue.length + dueToday.length);
+  const doneN = $derived([...overdue, ...dueToday].filter(isOn).length);
+  const left = $derived(total - doneN);
 
-  function plural(n, f) { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2]; }
-  const timed = $derived(events.filter((e) => e.start?.dateTime));
-  const headline = $derived.by(() => {
-    const n = overdue.length + dueToday.length;
-    const parts = [];
-    if (n) parts.push(`${n} ${plural(n, ['задача', 'задачи', 'задач'])} на сегодня`);
-    if (timed.length) parts.push(`${timed.length} ${plural(timed.length, ['событие', 'события', 'событий'])} в календаре`);
-    if (!parts.length) return 'День свободен — можно взяться за большое.';
-    const s = parts.join(' и ');
-    return s[0].toUpperCase() + s.slice(1) + '.';
+  function chip(x) {
+    const tags = layTasks?.[x.task.id]?.tags ?? [];
+    const type = typeOf(x.list.id, x.task.id);
+    return { cls: `sp-chip-${type}`, label: tags.includes('клиент') ? 'Клиент' : TYPE_LABEL[type] ?? 'Задача' };
+  }
+  function meta(x) {
+    const slot = layTasks?.[x.task.id]?.slot;
+    if (slot?.s) return slot.s;
+    if (dueToYmd(x.task.due) < today) return `с ${humanDue(x.task.due).replace(/^\S+, /, '')}`;
+    return '';
+  }
+
+  // ---------- «Дальше» ----------
+
+  const timed = $derived.by(() => {
+    const out = [];
+    for (const e of events) {
+      if (!e.start?.dateTime) continue;
+      const a = new Date(e.start.dateTime), b = new Date(e.end?.dateTime ?? e.start.dateTime);
+      if (ymd(a) !== today) continue;
+      out.push({ id: 'e' + e.id, kind: 'event', title: e.summary || 'Без названия', s: a.getHours() * 60 + a.getMinutes(), e: ymd(b) === today ? b.getHours() * 60 + b.getMinutes() : 1440 });
+    }
+    for (const x of dueToday) {
+      const slot = layTasks?.[x.task.id]?.slot;
+      if (!slot?.s) continue;
+      out.push({ id: x.task.id, kind: 'task', title: x.task.title || 'Без названия', s: toMin(slot.s), e: toMin(slot.e || slot.s), done: isOn(x), type: typeOf(x.list.id, x.task.id) });
+    }
+    return out.sort((a, b) => a.s - b.s);
+  });
+  const next = $derived(timed.find((t) => t.s > now && !t.done) ?? null);
+  const nextWhen = $derived.by(() => {
+    if (!next) return '';
+    const m = next.s - now;
+    return `через ${Math.floor(m / 60) ? Math.floor(m / 60) + ' ч ' : ''}${m % 60} мин`;
   });
 
-  const hm = (s) => new Date(s).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  function eventTime(e) {
-    if (!e.start?.dateTime) return 'весь день';
-    return `${hm(e.start.dateTime)}–${hm(e.end?.dateTime ?? e.start.dateTime)}`;
+  // ---------- привычки ----------
+
+  const todays = $derived(habits.filter((h) => habitDay(h, log, today, today).sched));
+  const hDone = $derived(todays.filter((h) => isDone(log, h.id, today)).length);
+
+  // ---------- заголовок и енот ----------
+
+  const allDone = $derived(total > 0 && left === 0);
+  const firstOpen = $derived([...dueToday, ...overdue].find((x) => !isOn(x)) ?? null);
+  const at = $derived(next ? `, ${next.title.charAt(0).toLowerCase() + next.title.slice(1)} в ${fromMin(next.s)}` : '');
+  const headline = $derived(
+    total === 0 ? 'День свободен — можно взяться за большое.'
+    : allDone ? 'Всё на сегодня сделано. Енот гордится.'
+    : doneN === 0 ? `${left} ${plural(left, ['дело', 'дела', 'дел'])} до вечера${at}.`
+    : `Осталось ${left} ${plural(left, ['дело', 'дела', 'дел'])}${at}.`);
+  const hLeft = $derived(todays.length - hDone);
+  const say = $derived(
+    total === 0 ? (todays.length && hLeft ? `Задач нет — самое время для привычек: осталось ${hLeft}.` : 'Привет! Задач на сегодня нет. Можно взять что-то с доски.')
+    : allDone ? (hLeft ? `Ура! Дела закрыты. Осталось ${hLeft} ${plural(hLeft, ['привычка', 'привычки', 'привычек'])} — и свободен.` : 'Идеальный день! Даже все привычки. Можно на орбиту — отдыхать.')
+    : !dueToday.some((x) => !isOn(x)) ? `Остались просроченные — «${firstOpen.task.title}». Может, перенести на завтра?`
+    : doneN === 0 ? `Привет! Начнём с малого: «${firstOpen.task.title}».`
+    : `Хороший темп. Дальше — «${firstOpen.task.title}».`);
+
+  // ---------- отметка и «Отменить» ----------
+
+  let last = $state(null);
+  let lastTimer;
+  async function tick(x) {
+    const done = !isOn(x);
+    const ok = await ontoggle(x.task, done, x.list.id, true);
+    if (!ok) return;
+    clearTimeout(lastTimer);
+    last = done ? x : null;
+    if (done) lastTimer = setTimeout(() => (last = null), 5000);
   }
-  function isNow(e) {
-    if (!e.start?.dateTime) return false;
-    const t = Date.now();
-    return new Date(e.start.dateTime).getTime() <= t && t < new Date(e.end?.dateTime ?? e.start.dateTime).getTime();
+  async function undo() {
+    const x = last;
+    last = null;
+    clearTimeout(lastTimer);
+    const cur = (tasksByList[x.list.id] ?? []).find((t) => t.id === x.task.id) ?? x.task;
+    await ontoggle(cur, false, x.list.id, true);
   }
+
+  // ---------- быстрое добавление ----------
+
+  let input = $state(null);
+  let draft = $state('');
+  let adding = $state(false);
+  // #тег → тип задачи и какой шаблон списка ей подходит.
+  const TAGS = {
+    'ассет': { type: 'creative', tpl: 'asset3d' }, 'работа': { type: 'work', tpl: 'work' }, 'клиент': { type: 'work', tpl: 'work', tag: 'клиент' },
+    'учёба': { type: 'study', tpl: 'study' }, 'учеба': { type: 'study', tpl: 'study' }, 'личное': { type: 'personal', tpl: 'personal' },
+  };
+
+  /** «скетч таверны 17:00 #ассет» → { title, time, kind } */
+  function parse(raw) {
+    let txt = ` ${raw} `;
+    let time = '';
+    const tm = txt.match(/\s([01]?\d|2[0-3])[:.]([0-5]\d)(?=\s)/);
+    if (tm) { time = `${tm[1].padStart(2, '0')}:${tm[2]}`; txt = txt.replace(tm[0], ' '); }
+    let kind = null;
+    const tg = txt.match(/#([^\s#]+)/);
+    if (tg) { kind = TAGS[tg[1].toLowerCase()] ?? null; txt = txt.replace(tg[0], ' '); }
+    txt = txt.replace(/\s+/g, ' ').trim();
+    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time, kind };
+  }
+  const preview = $derived(draft.trim() ? parse(draft) : null);
+
+  function listFor(kind) {
+    const byTpl = kind && lists.find((l) => (layLists?.[l.id]?.template ?? 'work') === kind.tpl);
+    return (byTpl ?? lists.find((l) => templateOf(layLists?.[l.id]?.template).id !== 'asset3d') ?? lists[0])?.id;
+  }
+
+  async function add() {
+    const p = parse(draft);
+    if (!p.title || adding || !lists.length) return;
+    adding = true;
+    const layer = {};
+    if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
+    const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer });
+    adding = false;
+    if (id) { draft = ''; fresh = new Set([...fresh, id]); input?.focus(); }
+  }
+
+  // ---------- расписание дня ----------
+
+  const allday = $derived(events.filter((e) => e.start?.date));
+  const range = $derived.by(() => {
+    const hNow = Math.floor(now / 60);
+    let a = Math.min(hNow, ...timed.map((t) => Math.floor(t.s / 60)));
+    let b = Math.max(hNow + 2, ...timed.map((t) => Math.ceil(t.e / 60)));
+    a = Math.max(0, Math.min(a, b - 6));
+    return { a, b: Math.min(24, Math.max(b, a + 6)) };
+  });
+  const HOUR = 48;
+  const ypx = (m) => ((m - range.a * 60) / 60) * HOUR;
+  const lastEnd = $derived(timed.length ? Math.max(...timed.map((t) => t.e)) : 0);
+  const freeEvening = $derived(!timed.some((t) => t.e > now && !t.done));
+
+  // «Входящие» — прокрутить к блоку, когда нажали значок в шапке.
+  let inboxEl = $state(null);
+  $effect(() => { if (inboxFocus && inboxEl) inboxEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
 </script>
 
-{#snippet row(x)}
-  <div class="row">
-    <input class="sp-check" type="checkbox" checked={x.task.status === 'completed'} aria-label="Выполнено" onchange={(e) => ontoggle(x.task, e.currentTarget.checked, x.list.id)} />
-    <button class="title" type="button" onclick={() => onopen(x.task, x.list.id)}>{x.task.title || 'Без названия'}</button>
-    {#if x.task.due && dueToYmd(x.task.due) < today}<span class="sp-chip sp-chip-overdue">просрочено · {humanDue(x.task.due)}</span>{/if}
-    <span class="list">{x.list.title}</span>
+{#snippet taskRow(x)}
+  {@const c = chip(x)}
+  {@const m = meta(x)}
+  <div class="trow">
+    <button type="button" class="tick" aria-pressed={isOn(x)} aria-label="{x.task.title}{isOn(x) ? ' — выполнено' : ' — отметить'}" onclick={() => tick(x)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+    </button>
+    <button type="button" class="ttl" class:off={isOn(x)} onclick={() => onopen(x.task, x.list.id)}>{x.task.title || 'Без названия'}</button>
+    {#if fresh.has(x.task.id)}<span class="new">новая</span>{/if}
+    <span class="sp-chip {c.cls}"><span class="dot"></span>{c.label}</span>
+    {#if m}<span class="meta" class:late={dueToYmd(x.task.due) < today && !isOn(x)}>{m}</span>{/if}
   </div>
 {/snippet}
 
-<section class="today-hero">
-  <p class="date">{dateLine}</p>
-  <h1>{headline}</h1>
-</section>
-
-<div class="today-grid">
-  <main>
-    {#if overdue.length}
-      <section class="group">
-        <h2 class="over">Просрочено · {overdue.length}</h2>
-        {#each overdue as x (x.task.id)}{@render row(x)}{/each}
-      </section>
-    {/if}
-    <section class="group">
-      <h2>Сегодня · {dueToday.length}</h2>
-      {#each dueToday as x (x.task.id)}{@render row(x)}{:else}<p class="empty">На сегодня задач со сроком нет.</p>{/each}
-    </section>
-    {#if doing.length}
-      <section class="group">
-        <h2>В работе · {doing.length}</h2>
-        {#each doing as x (x.task.id)}{@render row(x)}{/each}
-      </section>
-    {/if}
-    {#if doneToday.length}
-      <section class="group">
-        <h2>Сделано сегодня · {doneToday.length}</h2>
-        {#each doneToday as x (x.task.id)}{@render row(x)}{/each}
-      </section>
-    {/if}
-  </main>
-
-  <aside aria-label="Календарь на сегодня">
-    <div class="group"><h2>Календарь</h2></div>
-    {#each events as e (e.id + (e.calendar ?? ''))}
-      <div class="event" class:now={isNow(e)}>
-        <time>{eventTime(e)}</time>
-        <span><b>{e.summary || 'Без названия'}</b><br /><span style="color: var(--ink-soft)">{e.calendar}</span></span>
+<div class="today">
+  <section class="t-hero">
+    <div class="in">
+      <div class="t-head">
+        <p class="date">{dateLine}</p>
+        <h1>{headline}</h1>
+        <div class="meters">
+          <div>
+            <div class="ml"><span>Задачи</span><span>{doneN} из {total}</span></div>
+            <div class="meter"><span style="width: {total ? Math.round((doneN / total) * 100) : 0}%; background: var(--signal-done)"></span></div>
+          </div>
+          {#if todays.length}
+            <div>
+              <div class="ml"><span>Привычки</span><span>{hDone} из {todays.length}</span></div>
+              <div class="meter"><span style="width: {Math.round((hDone / todays.length) * 100)}%; background: var(--gold)"></span></div>
+            </div>
+          {/if}
+        </div>
+        <div class="next">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
+          {#if next}Дальше: <b>{next.title}</b> · {nextWhen}{:else}Дальше: <b>свободный вечер</b> · в расписании пусто{/if}
+        </div>
       </div>
-    {:else}
-      <p class="empty">Событий сегодня нет.</p>
-    {/each}
-  </aside>
+      <div class="t-coon">
+        <p class="bubble" aria-live="polite">{say}</p>
+        <Coon pose={allDone ? 'cheer' : 'hi'} size={140} />
+      </div>
+    </div>
+  </section>
+
+  <div class="t-body">
+    <main>
+      <div>
+        <form class="qa" onsubmit={(e) => { e.preventDefault(); add(); }}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          <input bind:this={input} bind:value={draft} type="text" aria-label="Новая задача на сегодня"
+            placeholder="Новая задача… например «скетч таверны 17:00 #ассет»" onkeydown={(e) => e.key === 'Escape' && (draft = '')} />
+          <button class="sp-btn sp-btn-primary" type="submit" disabled={!preview?.title || adding || !lists.length}>Добавить</button>
+        </form>
+        <p class="qa-hint">
+          {#if preview?.title}
+            Добавлю «{preview.title}» на сегодня{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}
+            → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
+          {:else}
+            Время и #тип распознаются сами: 17:00, #ассет #работа #клиент #учёба #личное. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+          {/if}
+        </p>
+      </div>
+
+      {#if overdue.length}
+        <section>
+          <h2 class:over={lateLeft}>{lateLeft ? `Просрочено · ${lateLeft}` : 'Просрочено · разобрано'}</h2>
+          <div class:box={lateLeft}>{#each overdue as x (x.task.id)}{@render taskRow(x)}{/each}</div>
+        </section>
+      {/if}
+      <section>
+        <h2>Сегодня · {dueToday.length}</h2>
+        {#each dueToday as x (x.task.id)}{@render taskRow(x)}{:else}<p class="empty">На сегодня задач со сроком нет. Добавь строкой выше или возьми с доски.</p>{/each}
+      </section>
+
+      {#if habits.length}
+        <section>
+          <h2><button type="button" class="h-link" onclick={onhabits}>Привычки →</button></h2>
+          {#each todays as h (h.id)}
+            {@const d = isDone(log, h.id, today)}
+            {@const s = stats(h, log).streak}
+            <div class="trow">
+              <button type="button" class="hring" aria-pressed={d} aria-label="{h.name}{d ? ' — сделано' : ' — отметить'}" onclick={() => ontogglehabit(h)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+              </button>
+              <span class="ttl" style="font-weight: 500">{h.name}</span>
+              <span class="meta" class:gold={s}>{s ? `✦ ${s} ${plural(s, ['день', 'дня', 'дней'])} подряд` : 'начни серию'}</span>
+            </div>
+          {:else}
+            <p class="empty">Сегодня привычек по расписанию нет.</p>
+          {/each}
+        </section>
+      {/if}
+
+      {#if inboxOn || inboxItems.length}
+        <section class="inbox" aria-label="Входящие от Claude" bind:this={inboxEl}>
+          <div class="ih">
+            <h2>Входящие от Claude · {inboxItems.length}</h2>
+            <span class="ih-r">
+              <span class="src">из чатов Claude</span>
+              {#if inboxItems.length > 1}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 28px" onclick={() => onaccept(inboxItems)}>Принять все</button>{/if}
+            </span>
+          </div>
+          {#each inboxItems as m (m.task.id)}
+            {@const c = chip({ task: m.task, list: { id: m.listId } })}
+            <div class="im">
+              <div class="im-t">
+                <button type="button" class="im-title" onclick={() => onopen(m.task, m.listId)}>{m.task.title || 'Без названия'}</button>
+                <div class="im-sub">{m.from ? `${m.from} · ` : ''}список «{m.list}»</div>
+              </div>
+              <span class="sp-chip {c.cls}"><span class="dot"></span>{c.label}</span>
+              <span class="sp-chip">{m.task.due ? humanDue(m.task.due) : 'без срока'}</span>
+              <button class="sp-btn" type="button" onclick={() => onaccept([m])}>Принять</button>
+              <button class="sp-btn sp-btn-ghost" type="button" onclick={() => onreject(m)}>Отклонить</button>
+            </div>
+          {:else}
+            <p class="empty" style="padding: 0">Всё разобрано. Принятое уже на доске во «Входящих».</p>
+          {/each}
+        </section>
+      {/if}
+    </main>
+
+    <aside aria-label="Календарь на сегодня">
+      <h2><button type="button" class="h-link" onclick={oncalendar}>Календарь →</button></h2>
+      {#each allday as e (e.id + (e.calendar ?? ''))}
+        <div class="t-allday">{e.summary || 'Без названия'} <span>· весь день</span></div>
+      {/each}
+      <div class="sched" style="height: {(range.b - range.a) * HOUR}px">
+        <div class="hrs">{#each Array.from({ length: range.b - range.a }, (_, i) => range.a + i) as h (h)}<span style="top: {(h - range.a) * HOUR}px">{String(h).padStart(2, '0')}:00</span>{/each}</div>
+        <div class="lane">
+          {#each timed as t (t.id)}
+            <div class="sb" class:task={t.kind === 'task'} class:done={t.done} style="top: {ypx(t.s) + 1}px; height: {Math.max(30, ypx(t.e) - ypx(t.s) - 2)}px; --c: var(--type-{t.type ?? 'work'})">
+              <span class="st">{t.title}</span> <span class="sw">{t.kind === 'task' ? 'задача · ' : ''}{fromMin(t.s)}–{fromMin(Math.min(t.e, 1439))}</span>
+            </div>
+          {/each}
+          <div class="nowl" style="top: {ypx(now)}px"></div>
+        </div>
+      </div>
+      {#if freeEvening}
+        <div class="t-free">
+          <Coon pose="sleep" size={80} />
+          <p>{timed.length && lastEnd > 0 ? `После ${fromMin(Math.min(lastEnd, 1439))} ничего нет.` : 'В расписании сегодня пусто.'} Енот советует отдохнуть — серии подождут до завтра.</p>
+        </div>
+      {/if}
+    </aside>
+  </div>
 </div>
+
+{#if last}
+  <div class="toast" role="status"><span>Готово: «{last.task.title}»</span><button type="button" onclick={undo}>Отменить</button></div>
+{/if}

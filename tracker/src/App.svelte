@@ -176,12 +176,13 @@
     tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
   }
 
-  async function toggle(task, done, listId = openRef?.listId ?? activeId) {
+  async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
     try {
       const r = await api.completeTask(listId, task.id, done);
       replace(listId, r);
-      if (done && !task.parent) say(`«${task.title}» выполнено`);
-    } catch (e) { say('Не удалось отметить: ' + e); }
+      if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
+      return true;
+    } catch (e) { say('Не удалось отметить: ' + e); return false; }
   }
 
   async function move(task, col, listId = activeId) {
@@ -285,13 +286,16 @@
     } catch (e) { say('Не удалось запланировать: ' + e); return false; }
   }
 
-  async function quickCreate({ title, listId, due, slot }) {
+  /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
+  async function quickCreate({ title, listId, due, slot, layer = null }, quiet = false) {
     try {
       const r = await api.createTask(listId, { title, ...(due ? { due: api.ymdToDue(due) } : {}) });
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      if (layer && Object.keys(layer).length) touch('tasks', r.id, layer);
       if (slot) setSlot(r.id, slot);
-      say(`«${title}» — добавлено${due ? '' : ' на доску'}`);
-      return true;
+      else if (layer && Object.keys(layer).length) saveLayer();
+      if (!quiet) say(`«${title}» — добавлено${due ? '' : ' на доску'}`);
+      return r.id;
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
   }
 
@@ -404,7 +408,14 @@
 
       <div class="main">
         {#if view === 'today'}
-          <Today lists={boardLists} tasksByList={tasks} {events} {statusOf} onopen={(t, listId) => (openRef = { listId, id: t.id })} ontoggle={(t, d, listId) => toggle(t, d, listId)} />
+          <Today lists={boardLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
+            {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
+            onopen={(t, listId) => (openRef = { listId, id: t.id })}
+            ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
+            oncreate={(p) => quickCreate(p, true)} ontogglehabit={toggleHabit}
+            onaccept={acceptInbox} onreject={rejectInbox}
+            onregister={(fn) => (quickLine = fn)}
+            onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} />
         {:else if view === 'calendar'}
           <Calendar lists={boardLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
             loadEvents={api.eventsRange} syncAt={sync.at}
