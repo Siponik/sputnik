@@ -240,8 +240,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
 </style>
 </helmet>"""
 
-TABS = [('today', 'Today2.dc.html', 'Сегодня <span class="n">· 5</span>'), ('cal', 'Calendar2.dc.html', 'Календарь'),
-        ('board', 'Main2.dc.html', 'Доска'), ('habits', 'Habits2.dc.html', 'Привычки')]
+TABS = [('today', 'Today3.dc.html', 'Сегодня <span class="n">· 5</span>'), ('cal', 'Calendar3.dc.html', 'Календарь'),
+        ('board', 'Main3.dc.html', 'Доска'), ('habits', 'Habits3.dc.html', 'Привычки')]
 
 def nav(active, cta):
     tabs = ''.join(f'<a class="sp-tab" href="{h}" aria-selected="{"true" if k == active else "false"}">{t}</a>' for k, h, t in TABS)
@@ -250,7 +250,7 @@ def nav(active, cta):
     {tabs}
     <div style="margin-left: auto; display: flex; align-items: center; gap: 14px; padding-bottom: 8px">
       <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--ink-soft)"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--signal-done)"></span>Синхронизировано · 13:52</span>
-      <a href="Today2.dc.html" class="sp-btn sp-btn-ghost" style="min-height: 32px; padding: 0 10px" aria-label="Входящие от Claude, 2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"></path></svg><span style="font: 600 11px/1 var(--font-mono); color: var(--clay)">2</span></a>
+      <a href="Today3.dc.html" class="sp-btn sp-btn-ghost" style="min-height: 32px; padding: 0 10px" aria-label="Входящие от Claude, 2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"></path></svg><span style="font: 600 11px/1 var(--font-mono); color: var(--clay)">2</span></a>
       <button class="sp-btn sp-btn-primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>{cta}</button>
     </div>
   </nav>"""
