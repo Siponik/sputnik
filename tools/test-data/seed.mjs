@@ -60,6 +60,7 @@ async function authorize(client) {
   const state = randomBytes(12).toString('hex');
 
   const { code, redirect } = await new Promise((ok, fail) => {
+    let port = 0;
     const srv = createServer((req, res) => {
       const u = new URL(req.url, 'http://127.0.0.1');
       if (u.pathname !== '/') { res.writeHead(404).end(); return; }
@@ -70,10 +71,10 @@ async function authorize(client) {
       srv.close();
       if (err) fail(new Error('Вход отменён: ' + err));
       else if (u.searchParams.get('state') !== state) fail(new Error('Ответ Google не совпал с запросом, попробуйте ещё раз.'));
-      else ok({ code: got, redirect: `http://127.0.0.1:${srv.address().port}` });
+      else ok({ code: got, redirect: `http://127.0.0.1:${port}` });
     });
     srv.listen(0, '127.0.0.1', () => {
-      const port = srv.address().port;
+      port = srv.address().port;
       const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       url.search = new URLSearchParams({
         client_id: client.client_id,
@@ -286,8 +287,8 @@ async function clean() {
 }
 
 const client = await loadClient();
-ACCESS = await authorize(client);
 try {
+  ACCESS = await authorize(client);
   if (process.argv.includes('--clean')) await clean(); else await seed();
 } catch (e) {
   console.error('\nОшибка: ' + e.message);
