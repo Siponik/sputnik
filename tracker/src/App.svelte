@@ -8,21 +8,27 @@
   import Habits from './lib/Habits.svelte';
   import NewList from './lib/NewList.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
+  import Calendar from './lib/Calendar.svelte';
+  import QuickAdd from './lib/QuickAdd.svelte';
   import * as api from './lib/api.js';
   import { templateOf, isHabitList, HABITS } from './lib/templates.js';
   import { isDone, logKey } from './lib/habits.js';
   import * as reminders from './lib/reminders.js';
+  import { typeOfTemplate } from './lib/calendar.js';
+  import * as inbox from './lib/inbox.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
-  let view = $state('today'); // today | board | archive | habits
+  let view = $state('today'); // today | calendar | board | archive | habits
   let lists = $state([]);
   let activeId = $state(null);
   let tasks = $state({}); // listId → задачи (вместе с подзадачами)
   let lay = $state(emptyLayer()); // слой Спутника: то, чего нет в Google
   let events = $state([]);
+  let inboxSt = $state(null); // статус «Входящих от Claude»
   let openRef = $state(null); // { listId, id }
   let newList = $state(false);
+  let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
   let sync = $state({ busy: false, err: '', at: null });
   let toast = $state('');
   let toastTimer;
@@ -46,6 +52,7 @@
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
         .map((t) => ({ id: t.id, name: t.title || 'Без названия', days: lay.habits?.[t.id]?.days ?? [], createdAt: lay.habits?.[t.id]?.createdAt }))
     : []);
+  const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
 
   function say(msg) {
@@ -120,6 +127,8 @@
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
       ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
+      inboxSt = await api.inboxStatus().catch(() => inboxSt);
+      pullInboxLayer();
       sync.at = new Date();
     } catch (e) {
       sync.err = String(e);
@@ -137,6 +146,23 @@
     lay = { ...emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
     await refresh();
   }
+
+  // ---------- быстрое добавление: кнопка «Создать» и Ctrl+N ----------
+
+  // Экран может сам принять быстрое добавление (на «Сегодня» — строка сверху), иначе открываем окно «Создать».
+  let quickLine = null;
+  function newTask() {
+    if (!boardLists.length || openRef || newList) return;
+    if (quickLine?.()) return;
+    quick = {};
+  }
+  function hotkey(e) {
+    if (phase !== 'ready') return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.code === 'KeyN')) { e.preventDefault(); newTask(); }
+  }
+
+  let inboxFocus = $state(0); // просьба «Сегодня» прокрутить к входящим
+  function openInbox() { view = 'today'; inboxFocus++; }
 
   onMount(() => {
     start();
@@ -215,6 +241,60 @@
     } catch (e) { say('Не удалось добавить подзадачу: ' + e); }
   }
 
+  // ---------- входящие от Claude ----------
+
+  // Поля Спутника (тип, проект, теги…), которые прислал чат, переносим в свой слой один раз.
+  function pullInboxLayer() {
+    const patches = inbox.layerPatches(inboxSt, lay.tasks);
+    for (const [id, patch] of patches) touch('tasks', id, patch);
+    if (patches.length) saveLayer();
+  }
+
+  function acceptInbox(items) {
+    for (const x of items) touch('tasks', x.task.id, { inbox: 'accepted' });
+    saveLayer();
+    say(items.length > 1 ? `Принято задач: ${items.length}` : `«${items[0].task.title}» — принято`);
+  }
+
+  async function rejectInbox(x) {
+    try {
+      await api.deleteTask(x.listId, x.task.id);
+      tasks[x.listId] = (tasks[x.listId] ?? []).filter((t) => t.id !== x.task.id && t.parent !== x.task.id);
+      touch('tasks', x.task.id, { inbox: 'rejected' });
+      saveLayer();
+      say(`«${x.task.title}» — отклонено и удалено`);
+    } catch (e) { say('Не удалось отклонить: ' + e); }
+  }
+
+  // ---------- календарь ----------
+
+  // Цвет задачи: свой тип из слоя (например, пришёл из чата), иначе — по шаблону списка.
+  const typeOf = (listId, taskId) => lay.tasks?.[taskId]?.type ?? typeOfTemplate(lay.lists?.[listId]?.template);
+
+  function setSlot(taskId, slot) {
+    touch('tasks', taskId, { slot });
+    saveLayer();
+  }
+
+  /** Ставит задаче день и время (или убирает их: day = null, slot = null). */
+  async function schedule(task, listId, day, slot) {
+    try {
+      if (api.dueToYmd(task.due) !== (day ?? '')) replace(listId, await api.patchTask(listId, task.id, { due: api.ymdToDue(day) }));
+      setSlot(task.id, slot);
+      return true;
+    } catch (e) { say('Не удалось запланировать: ' + e); return false; }
+  }
+
+  async function quickCreate({ title, listId, due, slot }) {
+    try {
+      const r = await api.createTask(listId, { title, ...(due ? { due: api.ymdToDue(due) } : {}) });
+      tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      if (slot) setSlot(r.id, slot);
+      say(`«${title}» — добавлено${due ? '' : ' на доску'}`);
+      return true;
+    } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
+  }
+
   // ---------- привычки ----------
 
   function toggleHabit(h) {
@@ -270,6 +350,8 @@
   const syncLabel = $derived(sync.busy ? 'Синхронизация…' : sync.err ? 'Нет связи с Google' : sync.at ? `Синхронизировано · ${sync.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Ещё не синхронизировано');
 </script>
 
+<svelte:window onkeydown={hotkey} />
+
 {#if phase === 'loading'}
   <div class="setup"><span class="spinner" aria-label="Загрузка"></span></div>
 {:else if phase === 'setup'}
@@ -279,16 +361,28 @@
     <nav class="sp-tabs" aria-label="Разделы">
       <Brand />
       <button class="sp-tab" role="tab" aria-selected={view === 'today'} onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} onclick={() => (view = 'calendar')}>Календарь</button>
       <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} onclick={() => (view = 'board')}>Доска</button>
       <button class="sp-tab" role="tab" aria-selected={view === 'habits'} onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
       <div class="right">
         <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
         </button>
+        {#if inboxItems.length}
+          <button class="sp-btn sp-btn-ghost inbox-btn" type="button" title="Входящие от Claude — разобрать на «Сегодня»"
+            aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg>
+            <span class="n">{inboxItems.length}</span>
+          </button>
+        {/if}
+        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача (Ctrl+N)' : 'Сначала создай список на доске'} onclick={newTask}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
+        </button>
       </div>
     </nav>
 
     <div class="body">
+      {#if view === 'board' || view === 'archive'}
       <aside class="side">
         <div>
           <h4>Списки</h4>
@@ -306,10 +400,19 @@
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
       </aside>
+      {/if}
 
       <div class="main">
         {#if view === 'today'}
           <Today lists={boardLists} tasksByList={tasks} {events} {statusOf} onopen={(t, listId) => (openRef = { listId, id: t.id })} ontoggle={(t, d, listId) => toggle(t, d, listId)} />
+        {:else if view === 'calendar'}
+          <Calendar lists={boardLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
+            loadEvents={api.eventsRange} syncAt={sync.at}
+            onopen={(t, listId) => (openRef = { listId, id: t.id })}
+            ontoggle={(t, d, listId) => toggle(t, d, listId)}
+            ontogglehabit={toggleHabit}
+            onschedule={schedule}
+            oncreate={(p) => (quick = p)} />
         {:else if view === 'habits'}
           <Habits {habits} log={lay.log} ontoggle={toggleHabit} oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'archive'}
@@ -335,12 +438,19 @@
     {@const cols = templateFor(openRef.listId).cols}
     <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={colOf(openTask, cols)} {cols}
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
+      slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       onclose={() => (openRef = null)}
       onsave={save}
       onstatus={(s) => move(openTask, s, openRef.listId)}
       ondelete={remove}
       ontoggle={(t, d) => toggle(t, d, openRef.listId)}
       onaddsub={addSub} />
+  {/if}
+
+  {#if quick}
+    <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
+      day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
+      oncreate={quickCreate} onclose={() => (quick = null)} />
   {/if}
 
   {#if newList}

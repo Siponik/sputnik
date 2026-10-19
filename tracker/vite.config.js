@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [svelte()],
   clearScreen: false,
   // src-tauri не отслеживаем: там Rust собирает .exe, и на Windows слежка за ними роняет сервер (EBUSY).
-  server: { port: 1420, strictPort: true, watch: { ignored: ['**/src-tauri/**'] } },
+  // fs.allow: енот берётся прямо из design/mascot — это выше папки tracker.
+  server: { port: 1420, strictPort: true, fs: { allow: ['..'] }, watch: { ignored: ['**/src-tauri/**'] } },
   build: { target: 'es2021', outDir: 'dist', emptyOutDir: true },
 });

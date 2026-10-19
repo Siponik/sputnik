@@ -2,7 +2,19 @@
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
 
-  let { task, list, subs, status, cols, remind = null, onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind } = $props();
+  let { task, list, subs, status, cols, remind = null, slot = null, onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind, onslot } = $props();
+
+  // Время задачи живёт в слое Спутника: в Google Tasks у срока нет часов.
+  const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
+  const fromMin = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+  function setSlotFrom(v) {
+    if (!v) return onslot(null);
+    const len = slot ? Math.max(15, toMin(slot.e) - toMin(slot.s)) : 60;
+    onslot({ s: v, e: fromMin(Math.min(toMin(v) + len, 23 * 60 + 59)) });
+  }
+  function setSlotTo(v) {
+    if (v && toMin(v) > toMin(slot.s)) onslot({ ...slot, e: v });
+  }
 
   const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : `b${remind.days ?? 0}`);
   const remindWhen = $derived(remindLabel(remind, task));
@@ -82,6 +94,16 @@
       <label for="f-due">Срок</label>
       <input id="f-due" type="date" bind:value={due} onchange={saveDue} />
     </div>
+    <div class="field">
+      <label for="f-from">Время</label>
+      <div class="time-row">
+        <input id="f-from" type="time" value={slot?.s ?? ''} disabled={!due} aria-label="Начало" onchange={(e) => setSlotFrom(e.currentTarget.value)} />
+        <span>–</span>
+        <input type="time" value={slot?.e ?? ''} disabled={!due || !slot} aria-label="Конец" onchange={(e) => setSlotTo(e.currentTarget.value)} />
+        {#if slot}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => onslot(null)}>Весь день</button>{/if}
+      </div>
+    </div>
+    {#if !due}<p class="remind-hint">Поставь срок — тогда можно выбрать время, и задача встанет в сетку календаря.</p>{/if}
     <div class="field">
       <label for="f-remind">Напоминание</label>
       <div class="remind">
