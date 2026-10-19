@@ -4,7 +4,8 @@
 //   node tools/test-data/seed.mjs          создать песочницу
 //   node tools/test-data/seed.mjs --clean  удалить всё, что создал скрипт
 //
-// Нужен ключ приложения: D:\Project\client_secret.json (OAuth client, тип Desktop app).
+// Нужен ключ приложения client_secret.json (OAuth client, тип Desktop app) в корне репозитория
+// или на уровень выше. В git он не попадает: см. .gitignore.
 // Путь можно переопределить переменной SPUTNIK_CLIENT_SECRET.
 // Без внешних зависимостей: Node 18+.
 
@@ -18,7 +19,9 @@ import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, '..', '..');
-const SECRET = process.env.SPUTNIK_CLIENT_SECRET || resolve(REPO, '..', 'client_secret.json');
+const SECRET = process.env.SPUTNIK_CLIENT_SECRET
+  || [resolve(REPO, 'client_secret.json'), resolve(REPO, '..', 'client_secret.json')].find((p) => existsSync(p))
+  || resolve(REPO, 'client_secret.json');
 const TOKEN = join(HERE, '.token.json');
 const STATE = join(HERE, '.state.json');
 const SCOPES = [
