@@ -1,0 +1,3 @@
+# Подсчёт языков на GitHub: макеты экранов (design/screens/*.dc.html) и генератор енота — материалы дизайна,
+# а не код приложения. Без этого GitHub показывает проект «на HTML».
+design/** linguist-documentation
