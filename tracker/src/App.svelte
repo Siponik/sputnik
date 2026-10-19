@@ -13,7 +13,8 @@
   import Coon from './lib/Coon.svelte';
   import * as api from './lib/api.js';
   import { templateOf, isHabitList, HABITS } from './lib/templates.js';
-  import { isDone, logKey } from './lib/habits.js';
+  import { isDone, logKey, stats, plural, canRest, MILESTONES } from './lib/habits.js';
+  import * as notify from '@tauri-apps/plugin-notification';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -93,7 +94,7 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = reminders.collect(boardLists, tasks, lay.tasks);
+    const items = reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers);
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       reminders.publish(items).catch((e) => {
@@ -328,9 +329,42 @@
 
   function toggleHabit(h) {
     const day = api.ymd(new Date());
-    touch('log', logKey(h.id, day), { done: !isDone(lay.log, h.id, day) });
+    const done = !isDone(lay.log, h.id, day);
+    touch('log', logKey(h.id, day), { done, rest: false });
+    if (done) {
+      const n = stats(h, lay.log).streak;
+      if (MILESTONES.includes(n) && lay.habits?.[h.id]?.cheer?.key !== `${n}|${day}`) celebrate(h, n, day);
+    } else if (cele?.id === h.id) cele = null;
     saveLayer();
   }
+
+  // «Взять выходной»: раз в 7 дней, серия не сгорает.
+  function restHabit(h) {
+    const day = api.ymd(new Date());
+    const on = !lay.log?.[logKey(h.id, day)]?.rest;
+    if (on && !canRest(h, lay.log)) { say('Выходной можно брать раз в неделю.'); return; }
+    touch('log', logKey(h.id, day), { rest: on });
+    saveLayer();
+  }
+
+  // Веха серии (7 · 21 · 50 · 100): праздник на экране, уведомление Windows и сообщение бота (через файл напоминаний).
+  let cele = $state(null); // { id, name, n }
+  async function celebrate(h, n, day) {
+    const forms = !h.days?.length || h.days.length === 7 ? ['день', 'дня', 'дней'] : ['занятие', 'занятия', 'занятий'];
+    const text = `${h.name} — ${n} ${plural(n, forms)} подряд!`;
+    cele = { id: h.id, name: h.name, n, text };
+    touch('habits', h.id, { cheer: { key: `${n}|${day}`, n, text, at: new Date().toISOString() } });
+    if (view !== 'habits') say(`🎉 Новая веха: ${text}`);
+    try {
+      let ok = await notify.isPermissionGranted();
+      if (!ok) ok = (await notify.requestPermission()) === 'granted';
+      if (ok) notify.sendNotification({ title: 'Спутник · новая веха', body: `🎉 ${text} Енот празднует.` });
+    } catch { /* уведомления недоступны — праздник на экране и в боте всё равно будет */ }
+  }
+  const cheers = $derived(habits.flatMap((h) => {
+    const c = lay.habits?.[h.id]?.cheer;
+    return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
+  }));
 
   async function createHabit(name, days) {
     try {
@@ -466,7 +500,8 @@
             onschedule={schedule}
             oncreate={(p) => (quick = p)} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} ontoggle={toggleHabit} oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
+          <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onrest={restHabit} onclosecele={() => (cele = null)}
+            oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'archive'}
           <Archive lists={boardLists} tasksByList={tasks} {activeId}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}

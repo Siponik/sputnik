@@ -31,6 +31,7 @@ fn layer_write(app: tauri::AppHandle, data: Value) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .manage(google::Google::default())
         .invoke_handler(tauri::generate_handler![
             google::auth_status,

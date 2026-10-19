@@ -81,7 +81,8 @@ function stillOpen_(item) {
 }
 
 function format_(item) {
-  const lines = ['🔔 <b>' + esc_(item.title) + '</b>'];
+  // Веха серии привычки (трекер кладёт её с kind: 'milestone') — без колокольчика, эмодзи уже в заголовке.
+  const lines = [(item.kind === 'milestone' ? '' : '🔔 ') + '<b>' + esc_(item.title) + '</b>'];
   if (item.due) {
     const p = item.due.split('-').map(Number);
     lines.push('Срок: ' + p[2] + ' ' + MONTHS[p[1] - 1]);

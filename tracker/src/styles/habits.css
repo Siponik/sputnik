@@ -1,0 +1,54 @@
+/* Экран «Привычки» (дизайн v2, design/screens/Habits.dc.html). Карточка и сетка — из app.css, здесь новое. */
+.h-hero { background: radial-gradient(80% 160% at 100% 0%, color-mix(in srgb, var(--gold) 10%, var(--wash)), var(--wash) 55%); border-bottom: 1px solid var(--edge); }
+.h-hero .in { max-width: 1240px; margin: 0 auto; box-sizing: border-box; padding: 22px 32px 20px; display: flex; flex-wrap: wrap; align-items: center; gap: 28px; }
+.h-hero .hh { flex: 1 1 520px; min-width: 0; }
+.h-hero .date { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
+.h-hero h1 { margin: 0; font-family: var(--font-display); font-size: 38px; line-height: 46px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.h-hero .stats { margin-top: 18px; }
+.habits-page { max-width: 1240px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+
+.h-today { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.pills { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.pills .cap { margin: 0 6px 0 0; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.pill { height: 40px; padding: 0 16px 0 8px; border-radius: var(--radius-pill); border: 1.5px solid var(--edge); background: var(--raised); color: var(--ink); font: 500 14px/1 var(--font-sans); display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+.pill .o { width: 24px; height: 24px; border-radius: 50%; box-sizing: border-box; border: 2px solid var(--clay); display: grid; place-items: center; color: var(--bg); }
+.pill .o svg, .hmark svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.pill .o svg { opacity: 0; }
+.pill[aria-pressed="true"] { border-color: color-mix(in srgb, var(--gold) 60%, var(--edge)); background: var(--gold-soft); }
+.pill[aria-pressed="true"] .o { background: var(--gold); border-color: var(--gold); }
+.pill[aria-pressed="true"] .o svg { opacity: 1; }
+.pill.rest .o { border: 2px dashed var(--signal-done); }
+.pill small { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
+.pill:hover { border-color: var(--ink-faint); }
+
+.hmark { height: 34px; padding: 0 14px; border-radius: var(--radius-pill); border: 1.5px solid var(--clay); background: none; color: var(--ink); font: 600 13px/1 var(--font-sans); display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+.hmark svg { opacity: .5; }
+.hmark[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--bg); }
+.hmark[aria-pressed="true"] svg { opacity: 1; }
+.restbtn { height: 34px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px dashed var(--edge); background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; }
+.restbtn:hover { color: var(--ink); border-color: var(--ink-faint); }
+.restbtn[aria-pressed="true"] { border-color: var(--signal-done); color: var(--signal-done); }
+.pill:focus-visible, .hmark:focus-visible, .restbtn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+.cele { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 14px 22px; border-radius: 14px; background: radial-gradient(120% 200% at 0% 50%, color-mix(in srgb, var(--gold) 22%, var(--raised)), var(--raised) 60%); border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--edge)); }
+.cele .ct { flex: 1 1 320px; min-width: 0; }
+.cele .k { margin: 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--gold); }
+.cele .tt { margin: 4px 0 0; font-family: var(--font-display); font-size: 26px; line-height: 32px; font-weight: 600; }
+.cele .sub { margin: 4px 0 0; font-size: 13.5px; line-height: 19px; color: var(--ink-soft); }
+@keyframes pop { 0% { transform: translateY(8px) scale(.97); opacity: 0; } 100% { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) { .cele { animation: pop .35s cubic-bezier(.2, .8, .3, 1.2); } }
+
+.habit .zero { display: flex; align-items: center; gap: 12px; }
+.habit .zero p { margin: 0; font-size: 13.5px; line-height: 19px; color: var(--ink-soft); }
+.ms-wrap { margin-top: 14px; }
+.ms { position: relative; height: 6px; border-radius: 6px; background: var(--hairline); margin: 0 5px; }
+.ms > span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; background: var(--gold); }
+.ms i { position: absolute; top: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; box-sizing: border-box; background: var(--raised); border: 2px solid var(--hairline); }
+.ms i.on { border-color: var(--gold); background: var(--gold); }
+.ms-l { position: relative; height: 16px; margin: 6px 5px 0; font: 400 11px/16px var(--font-mono); color: var(--ink-faint); }
+.ms-l span { position: absolute; transform: translateX(-50%); }
+.ms-l span.on { color: var(--gold); }
+.ms-wrap .note { margin: 4px 0 0; }
+
+.c.off { border: 2px dashed var(--signal-done); }
+.legend .dotg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }

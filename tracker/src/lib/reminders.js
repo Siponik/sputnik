@@ -39,8 +39,9 @@ export function remindLabel(remind, task) {
   return `${day}, ${time}`;
 }
 
-/** Список для облака: открытые задачи с напоминанием, которое ещё не прошло (или прошло меньше суток назад). */
-export function collect(lists, tasksByList, layTasks) {
+/** Список для облака: открытые задачи с напоминанием, которое ещё не прошло (или прошло меньше суток назад).
+ *  cheers — свежие вехи серий привычек: бот поздравит сразу (fireAt = момент вехи). */
+export function collect(lists, tasksByList, layTasks, habitList = null, cheers = []) {
   const now = Date.now();
   const items = [];
   for (const l of lists) {
@@ -57,6 +58,21 @@ export function collect(lists, tasksByList, layTasks) {
         note: (t.notes ?? '').split('\n')[0].slice(0, 200),
         due: dueToYmd(t.due),
         fireAt: at.toISOString(),
+      });
+    }
+  }
+  if (habitList) {
+    for (const c of cheers) {
+      items.push({
+        key: `cheer|${c.habit.id}|${c.key}`,
+        kind: 'milestone',
+        taskId: c.habit.id,
+        listId: habitList.id,
+        list: habitList.title,
+        title: `🎉 ${c.text}`,
+        note: 'Новая веха серии. Енот празднует!',
+        due: '',
+        fireAt: c.at,
       });
     }
   }

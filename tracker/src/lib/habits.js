@@ -1,13 +1,35 @@
-// Расчёт серий привычек. Отметки хранятся в слое: log["<habitId>|YYYY-MM-DD"] = { done, t }.
+// Расчёт серий привычек. Отметки хранятся в слое: log["<habitId>|YYYY-MM-DD"] = { done, rest, t }.
+// rest — «выходной»: день по расписанию пропущен, но серия не сгорает (не чаще раза в 7 дней).
 import { ymd } from './api.js';
 
 export const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-export const MILESTONES = [7, 14, 21, 30, 50, 100, 200, 365];
+export const MILESTONES = [7, 21, 50, 100]; // вехи серии: енот празднует, бот поздравляет
+export const REST_EVERY = 7;
 
 export const dayOffset = (n) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
 export const dow = (d) => (d.getDay() + 6) % 7; // пн = 0
 export const logKey = (habitId, date) => `${habitId}|${date}`;
 export const isDone = (log, habitId, date) => !!log?.[logKey(habitId, date)]?.done;
+export const isOff = (log, habitId, date) => !!log?.[logKey(habitId, date)]?.rest && !isDone(log, habitId, date);
+
+/** Можно ли взять выходной сегодня: привычка по расписанию, не отмечена и выходного не было 7 дней. */
+export function canRest(habit, log) {
+  const today = ymd(dayOffset(0));
+  const days = habit.days?.length ? habit.days : [0, 1, 2, 3, 4, 5, 6];
+  if (!days.includes(dow(dayOffset(0))) || isDone(log, habit.id, today)) return false;
+  for (let i = 1; i < REST_EVERY; i++) if (isOff(log, habit.id, ymd(dayOffset(-i)))) return false;
+  return true;
+}
+
+/** Ближайшая веха больше n (после последней — она же). */
+export const nextMilestone = (n) => MILESTONES.find((m) => m > n) ?? MILESTONES[MILESTONES.length - 1];
+
+/** Положение n на шкале вех в процентах: равные отрезки между 0 · 7 · 21 · 50 · 100. */
+export function milestonePos(n) {
+  const pts = [0, ...MILESTONES];
+  for (let q = 1; q < pts.length; q++) if (n <= pts[q]) return ((q - 1 + (n - pts[q - 1]) / (pts[q] - pts[q - 1])) / MILESTONES.length) * 100;
+  return 100;
+}
 
 export function plural(n, forms) {
   const a = n % 10, b = n % 100;
@@ -27,14 +49,14 @@ export function stats(habit, log) {
   for (let i = todayDone ? 0 : 1; i <= 730; i++) {
     const d = dayOffset(-i), s = ymd(d);
     if (s < created && !isDone(log, habit.id, s)) break;
-    if (!scheduled(d)) continue;
+    if (!scheduled(d) || isOff(log, habit.id, s)) continue;
     if (isDone(log, habit.id, s)) streak++; else break;
   }
 
   let best = 0, run = 0;
   for (let i = 730; i >= 0; i--) {
     const d = dayOffset(-i), s = ymd(d);
-    if (!scheduled(d)) continue;
+    if (!scheduled(d) || isOff(log, habit.id, s)) continue;
     if (isDone(log, habit.id, s)) { run++; if (run > best) best = run; }
     else if (i !== 0 && s >= created) run = 0;
   }
@@ -52,6 +74,7 @@ export function stats(habit, log) {
       if (diff > 0) state = 'future';
       else if (!scheduled(d)) state = 'rest';
       else if (isDone(log, habit.id, s)) state = 'done';
+      else if (isOff(log, habit.id, s)) state = 'off';
       else if (diff === 0) state = 'today';
       else if (s < created) state = 'before';
       else state = 'miss';

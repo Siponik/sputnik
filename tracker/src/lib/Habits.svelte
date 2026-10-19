@@ -1,13 +1,16 @@
 <script>
-  import { stats, plural, scheduleLabel, WEEKDAYS } from './habits.js';
+  import { stats, plural, scheduleLabel, WEEKDAYS, MILESTONES, nextMilestone, milestonePos, canRest, isOff } from './habits.js';
+  import { ymd } from './api.js';
+  import Coon from './Coon.svelte';
 
-  // habits: [{ id, name, days, createdAt }]; log — отметки из слоя.
-  let { habits, log, ontoggle, oncreate, onupdate, ondelete } = $props();
+  // habits: [{ id, name, days, createdAt }]; log — отметки из слоя; cele — свежая веха { id, text, n }.
+  let { habits, log, cele = null, ontoggle, onrest, onclosecele, oncreate, onupdate, ondelete } = $props();
 
   const WEEK = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
   const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   const now = new Date();
   const dateLine = `${WEEK[now.getDay()]} · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
+  const today = ymd(now);
   const ALL = [0, 1, 2, 3, 4, 5, 6];
   const WORKDAYS = [0, 1, 2, 3, 4];
 
@@ -15,11 +18,18 @@
     const s = stats(h, log);
     const daily = !h.days?.length || h.days.length === 7;
     const forms = daily ? ['день', 'дня', 'дней'] : ['занятие', 'занятия', 'занятий'];
+    const off = isOff(log, h.id, today);
+    const next = nextMilestone(s.streak);
     let note;
-    if (s.streak === 0 && s.best > 0) note = `Серия прервалась · лучшая ${s.best} ${plural(s.best, forms)}`;
-    else if (s.best > 0) note = `Лучшая серия: ${s.best} ${plural(s.best, forms)}`;
-    else note = 'Отметь сегодня — и серия начнётся';
-    return { h, s, unit: plural(s.streak, forms), note, record: s.streak > 0 && s.streak >= s.best && s.best >= 7 };
+    if (off) note = `Сегодня выходной — серия ${s.streak} сохранена. Следующий — через неделю.`;
+    else if (s.streak === 0) note = s.best ? `Лучшая серия: ${s.best} ${plural(s.best, forms)}` : 'Отметь сегодня — и серия начнётся.';
+    else if (s.streak >= MILESTONES[MILESTONES.length - 1]) note = `Все вехи взяты! Лучшая — ${s.best}.`;
+    else note = `До вехи ${next}: ${next - s.streak} ${plural(next - s.streak, forms)} · лучшая ${s.best}`;
+    return {
+      h, s, forms, off, unit: plural(s.streak, forms), note,
+      short: h.name.split(/[\s,]/)[0],
+      rest: !s.todayDone && (off || (s.streak > 0 && canRest(h, log))),
+    };
   }));
 
   const doneToday = $derived(rows.filter((r) => r.s.todayDone).length);
@@ -27,10 +37,20 @@
   const top = $derived(rows.slice().sort((a, b) => b.s.streak - a.s.streak)[0]);
   const headline = $derived.by(() => {
     if (!rows.length) return 'Начни с одной маленькой привычки.';
-    if (doneToday === rows.length) return 'Всё на сегодня отмечено — серии растут.';
-    if (top && top.s.streak >= 7) return `Серии растут: «${top.h.name}» идёт ${top.s.streak} ${top.unit} подряд.`;
+    if (doneToday === rows.length) return 'Сегодня всё отмечено — серии в безопасности.';
+    if (top && top.s.streak >= 7) return `Серии растут: «${top.h.name}» — ${top.s.streak} ${top.unit} подряд.`;
     const left = rows.length - doneToday;
     return `Осталось отметить ${left} ${plural(left, ['привычку', 'привычки', 'привычек'])}.`;
+  });
+  // Реплика енота: ближайшая веха, которую можно взять сегодня.
+  const say = $derived.by(() => {
+    if (cele) return 'Флажок поднят! Так держать.';
+    if (!rows.length) return 'Привет! Добавь первую привычку — я буду считать серии.';
+    if (doneToday === rows.length) return 'Все на сегодня. Енот гордится.';
+    const close = rows.filter((r) => !r.s.todayDone && MILESTONES.includes(r.s.streak + 1))[0];
+    if (close) return `«${close.short}» — ${close.s.streak} ${close.unit}. Отметь сегодня, и будет веха: ${close.s.streak + 1}!`;
+    const left = rows.length - doneToday;
+    return `Осталось ${left} на сегодня. Маленький шаг тоже считается.`;
   });
 
   // Форма новой привычки и редактирования
@@ -59,7 +79,7 @@
   }
 
   function cellTitle(c) {
-    const what = { done: 'сделано', miss: 'пропуск', rest: 'не по расписанию', today: 'сегодня', before: 'до начала', future: '' }[c.state];
+    const what = { done: 'сделано', miss: 'пропуск', rest: 'не по расписанию', today: 'сегодня', before: 'до начала', off: 'выходной, серия сохранена', future: '' }[c.state];
     return what ? `${c.title} · ${what}` : c.title;
   }
 </script>
@@ -89,26 +109,57 @@
   </form>
 {/snippet}
 
-<section class="today-hero habits-hero">
-  <div>
-    <p class="date">{dateLine}</p>
-    <h1>{headline}</h1>
+{#snippet check()}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{/snippet}
+
+<section class="h-hero">
+  <div class="in">
+    <div class="hh">
+      <p class="date">{dateLine}</p>
+      <h1>{headline}</h1>
+      <dl class="stats">
+        <div><dt>Сегодня отмечено</dt><dd>{doneToday} из {rows.length}</dd></div>
+        <div><dt>Серий идёт</dt><dd>{active}</dd></div>
+        {#if top && top.s.streak > 0}<div><dt>Самая длинная</dt><dd class="gold">✦ {top.s.streak} {top.unit}</dd></div>{/if}
+      </dl>
+    </div>
+    <div class="t-coon">
+      <p class="bubble" aria-live="polite">{say}</p>
+      <Coon pose={cele ? 'cheer' : 'flag'} size={130} />
+    </div>
   </div>
-  <dl class="stats">
-    <div><dt>Сегодня отмечено</dt><dd>{doneToday} из {rows.length}</dd></div>
-    <div><dt>Серий идёт</dt><dd>{active}</dd></div>
-    {#if top && top.s.streak > 0}
-      <div><dt>Самая длинная сейчас</dt><dd class="gold">✦ {top.s.streak} {top.unit} · {top.h.name}</dd></div>
-    {/if}
-  </dl>
 </section>
 
 <div class="habits-page">
-  <div class="habits-bar">
+  <div class="h-today">
+    {#if rows.length}
+      <section class="pills" aria-label="Отметить сегодня">
+        <span class="cap">Сегодня</span>
+        {#each rows as r (r.h.id)}
+          <button type="button" class="pill" class:rest={r.off} aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}
+            title="{r.h.name}{r.s.todayDone ? ' — сделано' : ' — отметить'}">
+            <span class="o">{@render check()}</span>{r.short}
+            <small>{r.s.todayDone ? `✦ ${r.s.streak}` : r.off ? 'выходной' : r.s.streak ? `${r.s.streak} →` : 'старт'}</small>
+          </button>
+        {/each}
+      </section>
+    {/if}
     <button class="sp-btn sp-btn-primary" type="button" onclick={() => openForm()}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Новая привычка
     </button>
   </div>
+
+  {#if cele}
+    <div class="cele" role="status">
+      <Coon pose="cheer" size={104} />
+      <div class="ct">
+        <p class="k">Новая веха</p>
+        <p class="tt">{cele.text}</p>
+        <p class="sub">Уведомление Windows и сообщение бота в Telegram уже в пути. Следующая веха — {nextMilestone(cele.n)}.</p>
+      </div>
+      <button class="sp-btn sp-btn-primary" type="button" onclick={onclosecele}>Ура!</button>
+    </div>
+  {/if}
+
   {#if editing === 'new'}<div class="habit">{@render form()}</div>{/if}
 
   <div class="habits-grid">
@@ -122,19 +173,39 @@
               <h2><button class="name" type="button" title="Изменить" onclick={() => openForm(r.h)}>{r.h.name}</button></h2>
               <p>{scheduleLabel(r.h.days)}</p>
             </div>
-            <button type="button" class="sp-mark" aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{r.s.todayDone ? 'Сделано сегодня' : 'Отметить сегодня'}
+            {#if r.rest}
+              <button type="button" class="restbtn" aria-pressed={r.off} onclick={() => onrest(r.h)} title="Один выходной в неделю — серия не сгорит">
+                {r.off ? 'Выходной · серия цела' : 'Взять выходной'}
+              </button>
+            {/if}
+            <button type="button" class="hmark" aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}>
+              {@render check()}{r.s.todayDone ? 'Сделано сегодня' : 'Отметить сегодня'}
             </button>
           </header>
 
           <div class="habit-body">
-            <div style="flex: 1 1 180px; min-width: 0">
-              <div class="streak">
-                <span class="num" class:zero={r.s.streak === 0} class:hot={r.s.streak >= 7}>{r.s.streak}</span>
-                <span class="unit">{r.unit} подряд</span>
+            <div style="flex: 1 1 200px; min-width: 0">
+              {#if r.s.streak === 0}
+                <div class="zero">
+                  <Coon pose="sleep" size={72} />
+                  <p>Серия на паузе. Отметь сегодня — и енот проснётся.</p>
+                </div>
+              {:else}
+                <div class="streak">
+                  <span class="num" class:hot={r.s.streak >= 7}>{r.s.streak}</span>
+                  <span class="unit">{r.unit} подряд</span>
+                </div>
+              {/if}
+              <div class="ms-wrap">
+                <div class="ms" aria-hidden="true">
+                  <span style="width: {milestonePos(r.s.streak)}%"></span>
+                  {#each MILESTONES as m (m)}<i class:on={r.s.streak >= m} style="left: {milestonePos(m)}%"></i>{/each}
+                </div>
+                <div class="ms-l" aria-hidden="true">
+                  {#each MILESTONES as m (m)}<span class:on={r.s.streak >= m} style="left: {milestonePos(m)}%">{m}</span>{/each}
+                </div>
+                <p class="note">{r.note}</p>
               </div>
-              {#if r.record}<p class="record">✦ Новый рекорд</p>{/if}
-              <p class="note">{r.note}</p>
             </div>
 
             <figure class="heat" aria-label="Отметки за 13 недель: {r.h.name}">
@@ -161,6 +232,7 @@
     <span><i class="c miss"></i>пропуск</span>
     <span><i class="c rest"></i>не по расписанию</span>
     <span><i class="c today"></i>сегодня</span>
-    <span class="tail">Привычки живут в Google Tasks, серии считает Спутник.</span>
+    <span><i class="c off"></i>выходной, серия сохранена</span>
+    <span><i class="dotg"></i>вехи 7 · 21 · 50 · 100 — енот празднует</span>
   </div>
 </div>
