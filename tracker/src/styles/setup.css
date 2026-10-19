@@ -1,0 +1,40 @@
+/* Первый запуск (дизайн v2, design/screens/Setup.dc.html) и полоса «нет связи». */
+.setup2 { min-height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(70% 90% at 78% 30%, color-mix(in srgb, var(--clay) 8%, var(--bg)), var(--bg) 70%); }
+.setup2 > header { padding: 22px 32px; display: flex; align-items: center; }
+.setup2 > main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: 20px 32px 48px; display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 48px; }
+.setup2 .steps { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.setup2 .pre { margin: 0 0 6px; font-size: 14px; color: var(--ink-soft); }
+.setup2 h1 { margin: 0; font-family: var(--font-display); font-size: 38px; line-height: 46px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.setup2 .step { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 12px; border: 1px solid var(--edge); background: var(--raised); }
+.setup2 .step.cur { border-color: color-mix(in srgb, var(--clay) 60%, var(--edge)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent); }
+.setup2 .step.wait { background: none; opacity: .7; }
+.setup2 .num { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font: 600 13px/1 var(--font-mono); border: 1.5px solid var(--edge); color: var(--ink-soft); }
+.setup2 .num.ok { background: var(--signal-done); border-color: var(--signal-done); color: var(--bg); }
+.setup2 .num.cur { border-color: var(--clay); color: var(--clay); }
+.setup2 .sbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.setup2 .st { font-weight: 600; }
+.setup2 .sd { display: flex; align-items: center; gap: 8px; font-size: 13.5px; line-height: 19px; color: var(--ink-soft); }
+.setup2 ol { margin: 0; padding-left: 20px; font-size: 13.5px; line-height: 21px; color: var(--ink-soft); }
+.setup2 .file { display: inline-flex; align-self: flex-start; }
+.setup2 .file input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.setup2 .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.perm { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.perm li { display: flex; gap: 8px; align-items: flex-start; }
+.perm b { color: var(--ink); font-weight: 600; }
+.perm .ok { color: var(--signal-done); }
+.perm .no { color: var(--ink-faint); }
+.setup2 .grp { margin: 6px 0 0; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.setup2 .lst { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
+.setup2 .lst .nm { flex: 1; min-width: 0; }
+.setup2 .lst .mt { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
+.side-coon { flex: 1 1 340px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.side-coon .bubble { max-width: 320px; text-align: center; }
+.side-coon .bubble::after { right: auto; left: 50%; top: auto; bottom: -7px; margin: 0 0 0 -6px; transform: rotate(45deg); }
+.side-coon .bubble.err { border-color: color-mix(in srgb, var(--signal-overdue) 50%, var(--edge)); }
+.tips { display: flex; flex-direction: column; gap: 8px; width: 100%; max-width: 340px; }
+.stip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--edge); font-size: 13.5px; line-height: 19px; }
+.kbd { font: 600 11.5px/1 var(--font-mono); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink); }
+
+.offline { flex: none; display: flex; align-items: center; gap: 12px; padding: 6px 24px; background: color-mix(in srgb, var(--signal-overdue) 10%, var(--wash)); border-bottom: 1px solid color-mix(in srgb, var(--signal-overdue) 35%, var(--edge)); }
+.offline p { margin: 0; flex: 1; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.offline b { color: var(--ink); }

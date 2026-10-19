@@ -61,7 +61,7 @@ export async function eventsForDay(day = new Date()) {
   const start = new Date(day); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
   const cals = await gapi('GET', `${CAL}/users/me/calendarList?minAccessRole=reader`);
-  const chosen = (cals?.items ?? []).filter((c) => c.selected !== false && !isQueue(c));
+  const chosen = (cals?.items ?? []).filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
   const lists = await Promise.all(chosen.map(async (c) => {
     try {
       const q = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });
@@ -84,10 +84,22 @@ async function calendarList() {
   calCache = { at: Date.now(), all: r?.items ?? [] };
   return calCache.all;
 }
+/** Все календари пользователя, кроме служебной очереди, — для выбора на первом запуске. */
+export async function calendarsAll() {
+  return (await calendarList()).filter((c) => !isQueue(c));
+}
+
+/** Ошибка похожа на отсутствие связи (а не на отказ Google)? */
+export const isOffline = (e) => /error sending request|dns|connect|timed? ?out|network|offline|failed to fetch|os error/i.test(String(e));
+
+// Календари, которые пользователь скрыл в Спутнике (слой cals[id].hidden). Ставит App.
+let hiddenCals = new Set();
+export function setHiddenCalendars(ids) { hiddenCals = new Set(ids); }
+
 async function calendars() {
   const all = await calendarList();
-  const items = all.filter((c) => c.selected !== false && !isQueue(c));
-  if (!all.some((c) => c.id === HOLIDAYS_RU)) items.push({ id: HOLIDAYS_RU, summary: 'Праздники России' });
+  const items = all.filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
+  if (!all.some((c) => c.id === HOLIDAYS_RU) && !hiddenCals.has(HOLIDAYS_RU)) items.push({ id: HOLIDAYS_RU, summary: 'Праздники России' });
   return items;
 }
 

@@ -35,9 +35,10 @@
   let toast = $state('');
   let toastTimer;
 
-  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {} }; }
+  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {}, cals: {}, settings: {} }; }
 
-  const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay)));
+  // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
+  const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
   const habitList = $derived(lists.find((l) => isHabitList(l, lay)) ?? null);
   const activeList = $derived(boardLists.find((l) => l.id === activeId));
   const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template);
@@ -135,19 +136,46 @@
     } catch (e) {
       sync.err = String(e);
       if (/войдите|sign in|invalid_grant/i.test(sync.err)) { phase = 'setup'; authInfo = await api.auth.status(); }
-      else say('Не удалось обновить: ' + e);
+      else if (!api.isOffline(e)) say('Не удалось обновить: ' + e);
     } finally {
       sync.busy = false;
     }
   }
 
   async function start() {
+    lay = { ...emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
+    api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
     phase = 'ready';
-    lay = { ...emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
     await refresh();
   }
+
+  // Первый запуск закончен: запоминаем, что показывать (choices = null — это был повторный вход).
+  async function setupDone(choices) {
+    if (choices) {
+      for (const [id, hide] of choices.lists) if (hide || lay.lists?.[id]?.hidden) touch('lists', id, { hidden: hide });
+      for (const [id, hide] of choices.cals) if (hide || lay.cals?.[id]?.hidden) touch('cals', id, { hidden: hide });
+      touch('settings', 'setup', { done: true });
+      await saveLayer();
+    }
+    choosing = false;
+    await start();
+  }
+  // «Что показывать» из левой колонки — тот же шаг 3 первого запуска.
+  let choosing = $state(false);
+  const hiddenNow = $derived({
+    lists: Object.keys(lay.lists ?? {}).filter((id) => lay.lists[id]?.hidden),
+    cals: Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden),
+  });
+
+  // Нет связи с Google — енот oops и повтор через минуту.
+  const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
+  let retryTimer;
+  $effect(() => {
+    clearTimeout(retryTimer);
+    if (offline) retryTimer = setTimeout(refresh, 60e3);
+  });
 
   // ---------- быстрое добавление: кнопка «Создать» и Ctrl+N ----------
 
@@ -427,7 +455,9 @@
 {#if phase === 'loading'}
   <div class="setup"><span class="spinner" aria-label="Загрузка"></span></div>
 {:else if phase === 'setup'}
-  <Setup status={authInfo} onready={start} onerror={say} />
+  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} onerror={say} />
+{:else if choosing}
+  <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
     <nav class="sp-tabs" aria-label="Разделы">
@@ -452,6 +482,14 @@
         </button>
       </div>
     </nav>
+
+    {#if offline}
+      <div class="offline" role="alert">
+        <Coon pose="oops" size={48} />
+        <p><b>Нет связи с Google.</b> Попробую снова через минуту — ничего не потеряется, отметки сохранены на этом компьютере.</p>
+        <button class="sp-btn" type="button" style="min-height: 30px" disabled={sync.busy} onclick={refresh}>Повторить сейчас</button>
+      </div>
+    {/if}
 
     <div class="body">
       {#if view === 'board' || view === 'archive'}
@@ -485,6 +523,7 @@
         {/if}
         <div class="foot">
           <span>Спутник 0.2</span>
+          <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
       </aside>
