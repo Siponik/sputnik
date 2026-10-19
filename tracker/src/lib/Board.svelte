@@ -1,7 +1,7 @@
 <script>
   import { tick } from 'svelte';
   import TaskCard from './TaskCard.svelte';
-  import Coon from './Coon.svelte';
+  import PeekCoon, { peekVariant } from './PeekCoon.svelte';
   import { ymd, dueToYmd } from './api.js';
   import { TEMPLATES, isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
   import { startOfWeek, addDays } from './calendar.js';
@@ -15,12 +15,12 @@
     { k: '', label: 'Все' }, { k: 'work', label: 'Работа' }, { k: 'creative', label: 'Ассет' },
     { k: 'study', label: 'Учёба' }, { k: 'personal', label: 'Личное' },
   ];
-  // Что говорит пустая колонка и какой енот там сидит.
+  // Что говорит пустая колонка. Скетч-енот меняет место от колонки к колонке: снизу, сбоку, хвост сверху.
   const EMPTY = {
-    inbox: ['cheer', 'Входящие разобраны. Енот доволен!'],
-    doing: ['sleep', 'Ничего в работе. Возьми задачу из входящих.'],
-    review: ['sleep', 'На ревью пусто — енот дремлет до новой работы.'],
-    done: ['sleep', 'Пока ничего не готово.'],
+    inbox: 'Входящие разобраны. Можно выдохнуть.',
+    doing: 'Ничего в работе. Возьми задачу из входящих.',
+    review: 'На ревью пусто. Енот ждёт новую работу.',
+    done: 'Пока ничего не готово.',
   };
 
   let over = $state('');
@@ -114,7 +114,8 @@
       {@const isDoneCol = col.id === 'done'}
       {@const shown = isDoneCol && !showDone ? items.slice(0, 2) : items}
       {@const next = nextOf(i)}
-      {@const empty = EMPTY[col.id] ?? ['sleep', `${col.name}: пусто — енот дремлет.`]}
+      {@const empty = EMPTY[col.id] ?? (i === 0 ? `${col.name}: всё разобрано. Можно выдохнуть.` : `${col.name}: пока пусто.`)}
+      {@const pk = peekVariant(`${list.id}|${col.id}`, i)}
       <section
         class="bcol"
         class:over={over === col.id}
@@ -137,7 +138,7 @@
         {/each}
 
         {#if !items.length && composing !== col.id}
-          <div class="bempty"><Coon pose={i === 0 ? 'cheer' : empty[0]} size={84} /><span>{i === 0 && col.id !== 'inbox' ? `${col.name}: всё разобрано. Енот доволен!` : empty[1]}</span></div>
+          <div class="bempty at-{pk.place}-{pk.edge}"><PeekCoon {...pk} /><span>{empty}</span></div>
         {/if}
         {#if isDoneCol && items.length > 2}
           <button class="more" type="button" onclick={() => (showDone = !showDone)}>{showDone ? 'Свернуть' : `Ещё ${items.length - 2} →`}</button>

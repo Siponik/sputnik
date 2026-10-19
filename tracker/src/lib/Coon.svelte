@@ -21,7 +21,8 @@
     return svg
       .replace(/<style>[\s\S]*?<\/style>/, '')
       .replace(/\bcn\d+-/g, `cn${n}-`)
-      .replace(/\s(width|height)="\d+"/g, '')
+      // размер — только у корневого <svg>: у деталей (нашивка «С» и т. п.) его не трогаем
+      .replace(/<svg\b[^>]*>/, (tag) => tag.replace(/\s(width|height)="\d+"/g, ''))
       .replace(/aria-label="[^"]*"/, `aria-label="${label.replace(/"/g, '&quot;')}"`);
   }
 </script>
