@@ -9,3 +9,6 @@ tracker/node_modules/
 tracker/dist/
 tracker/src-tauri/target/
 tracker/src-tauri/gen/
+
+# Архив навыка для загрузки в claude.ai
+skills/*.zip
