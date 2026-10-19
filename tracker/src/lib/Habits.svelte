@@ -1,10 +1,10 @@
 <script>
-  import { stats, plural, scheduleLabel, WEEKDAYS, MILESTONES, nextMilestone, milestonePos, canRest, isOff } from './habits.js';
+  import { stats, plural, scheduleLabel, WEEKDAYS, MILESTONES, nextMilestone, milestonePos } from './habits.js';
   import { ymd } from './api.js';
   import Coon from './Coon.svelte';
 
   // habits: [{ id, name, days, createdAt }]; log — отметки из слоя; cele — свежая веха { id, text, n }.
-  let { habits, log, cele = null, ontoggle, onrest, onclosecele, oncreate, onupdate, ondelete } = $props();
+  let { habits, log, cele = null, ontoggle, onclosecele, oncreate, onupdate, ondelete } = $props();
 
   const WEEK = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
   const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -18,17 +18,14 @@
     const s = stats(h, log);
     const daily = !h.days?.length || h.days.length === 7;
     const forms = daily ? ['день', 'дня', 'дней'] : ['занятие', 'занятия', 'занятий'];
-    const off = isOff(log, h.id, today);
     const next = nextMilestone(s.streak);
     let note;
-    if (off) note = `Сегодня выходной — серия ${s.streak} сохранена. Следующий — через неделю.`;
-    else if (s.streak === 0) note = s.best ? `Лучшая серия: ${s.best} ${plural(s.best, forms)}` : 'Отметь сегодня — и серия начнётся.';
+    if (s.streak === 0) note = s.best ? `Лучшая серия: ${s.best} ${plural(s.best, forms)}` : 'Отметь сегодня — и серия начнётся.';
     else if (s.streak >= MILESTONES[MILESTONES.length - 1]) note = `Все вехи взяты! Лучшая — ${s.best}.`;
     else note = `До вехи ${next}: ${next - s.streak} ${plural(next - s.streak, forms)} · лучшая ${s.best}`;
     return {
-      h, s, forms, off, unit: plural(s.streak, forms), note,
+      h, s, forms, unit: plural(s.streak, forms), note,
       short: h.name.split(/[\s,]/)[0],
-      rest: !s.todayDone && (off || (s.streak > 0 && canRest(h, log))),
     };
   }));
 
@@ -57,12 +54,14 @@
   let editing = $state(null); // null | 'new' | id
   let fName = $state('');
   let fDays = $state(ALL);
+  let fTime = $state(''); // время привычки, «ЧЧ:ММ» или пусто
   let confirmDelete = $state(false);
 
   function openForm(h = null) {
     editing = h ? h.id : 'new';
     fName = h?.name ?? '';
     fDays = h?.days?.length ? [...h.days] : ALL;
+    fTime = h?.time ?? '';
     confirmDelete = false;
   }
   function toggleDay(d) {
@@ -73,8 +72,8 @@
     const name = fName.trim();
     if (!name || !fDays.length) return;
     const days = fDays.length === 7 ? [] : fDays;
-    if (editing === 'new') await oncreate(name, days);
-    else await onupdate(editing, { name, days });
+    if (editing === 'new') await oncreate(name, days, fTime || null);
+    else await onupdate(editing, { name, days, time: fTime || null });
     editing = null;
   }
 
@@ -93,6 +92,10 @@
       {/each}
       <button type="button" class="sp-btn sp-btn-ghost" style="min-height: 30px" onclick={() => (fDays = ALL)}>Каждый день</button>
       <button type="button" class="sp-btn sp-btn-ghost" style="min-height: 30px" onclick={() => (fDays = WORKDAYS)}>По будням</button>
+    </div>
+    <div class="days">
+      <label class="h-time">Время <input type="time" bind:value={fTime} aria-label="Время привычки" /></label>
+      {#if fTime}<button type="button" class="sp-btn sp-btn-ghost" style="min-height: 30px" onclick={() => (fTime = '')}>Без времени</button>{:else}<span class="hint-t">необязательно — например, 20:00 для вечернего скетча</span>{/if}
     </div>
     <div class="actions">
       {#if editing !== 'new'}
@@ -135,10 +138,10 @@
       <section class="pills" aria-label="Отметить сегодня">
         <span class="cap">Сегодня</span>
         {#each rows as r (r.h.id)}
-          <button type="button" class="pill" class:rest={r.off} aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}
+          <button type="button" class="pill" aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}
             title="{r.h.name}{r.s.todayDone ? ' — сделано' : ' — отметить'}">
             <span class="o">{@render check()}</span>{r.short}
-            <small>{r.s.todayDone ? `✦ ${r.s.streak}` : r.off ? 'выходной' : r.s.streak ? `${r.s.streak} →` : 'старт'}</small>
+            <small>{r.s.todayDone ? `✦ ${r.s.streak}` : r.h.time ? r.h.time : r.s.streak ? `${r.s.streak} →` : 'старт'}</small>
           </button>
         {/each}
       </section>
@@ -171,13 +174,8 @@
           <header>
             <div style="flex: 1 1 200px; min-width: 0">
               <h2><button class="name" type="button" title="Изменить" onclick={() => openForm(r.h)}>{r.h.name}</button></h2>
-              <p>{scheduleLabel(r.h.days)}</p>
+              <p>{scheduleLabel(r.h.days)}{r.h.time ? ` · ${r.h.time}` : ''}</p>
             </div>
-            {#if r.rest}
-              <button type="button" class="restbtn" aria-pressed={r.off} onclick={() => onrest(r.h)} title="Один выходной в неделю — серия не сгорит">
-                {r.off ? 'Выходной · серия цела' : 'Взять выходной'}
-              </button>
-            {/if}
             <button type="button" class="hmark" aria-pressed={r.s.todayDone} onclick={() => ontoggle(r.h)}>
               {@render check()}{r.s.todayDone ? 'Сделано сегодня' : 'Отметить сегодня'}
             </button>
@@ -232,7 +230,6 @@
     <span><i class="c miss"></i>пропуск</span>
     <span><i class="c rest"></i>не по расписанию</span>
     <span><i class="c today"></i>сегодня</span>
-    <span><i class="c off"></i>выходной, серия сохранена</span>
     <span><i class="dotg"></i>вехи 7 · 21 · 50 · 100 — енот празднует</span>
   </div>
 </div>

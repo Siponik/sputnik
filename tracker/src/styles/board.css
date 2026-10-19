@@ -39,3 +39,7 @@
 .side-tip { margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 14px 16px; border-radius: 12px; background: var(--wash); border: 1px solid var(--edge); }
 .side-tip p { margin: 0; font-size: 13px; line-height: 18px; text-align: center; color: var(--ink); }
 .side .side-tip + .foot { margin-top: 0; }
+
+/* Замок у шаблона непустого списка. */
+.tpl select:disabled { opacity: .6; cursor: not-allowed; }
+.tpl .lock { width: 14px; height: 14px; fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linecap: round; }

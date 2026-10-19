@@ -5,7 +5,7 @@
   import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
   import { templateOf } from './templates.js';
   import Coon from './Coon.svelte';
-  import { priorityOf, priorityRank } from './meta.js';
+  import { priorityOf, priorityRank, pickNext } from './meta.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
     onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar } = $props();
@@ -43,7 +43,7 @@
   function chip(x) {
     const tags = layTasks?.[x.task.id]?.tags ?? [];
     const type = typeOf(x.list.id, x.task.id);
-    return { cls: `sp-chip-${type}`, label: tags.includes('клиент') ? 'Клиент' : TYPE_LABEL[type] ?? 'Задача' };
+    return { cls: `sp-chip-${type}`, label: tags.includes('client') || tags.includes('клиент') ? 'Клиент' : TYPE_LABEL[type] ?? 'Задача' };
   }
   function meta(x) {
     const slot = layTasks?.[x.task.id]?.slot;
@@ -84,7 +84,8 @@
   // ---------- заголовок и енот ----------
 
   const allDone = $derived(total > 0 && left === 0);
-  const firstOpen = $derived([...dueToday, ...overdue].find((x) => !isOn(x)) ?? null);
+  // С чего начать: просроченное → приоритет → срок (как совет енота на доске).
+  const firstOpen = $derived(pickNext([...dueToday, ...overdue].filter((x) => !isOn(x)), layTasks, today));
   const at = $derived(next ? `, ${next.title.charAt(0).toLowerCase() + next.title.slice(1)} в ${fromMin(next.s)}` : '');
   const headline = $derived(
     total === 0 ? 'День свободен — можно взяться за большое.'
@@ -124,13 +125,15 @@
   let input = $state(null);
   let draft = $state('');
   let adding = $state(false);
-  // #тег → тип задачи и какой шаблон списка ей подходит.
+  // #тег → тип задачи и какой шаблон списка ей подходит. Теги латиницей, строчными;
+  // старые русские (#ассет …) тоже понимаем, чтобы привычка писать их ничего не ломала.
   const TAGS = {
-    'ассет': { type: 'creative', tpl: 'asset3d' }, 'работа': { type: 'work', tpl: 'work' }, 'клиент': { type: 'work', tpl: 'work', tag: 'клиент' },
-    'учёба': { type: 'study', tpl: 'study' }, 'учеба': { type: 'study', tpl: 'study' }, 'личное': { type: 'personal', tpl: 'personal' },
+    asset: { type: 'creative', tpl: 'asset3d' }, work: { type: 'work', tpl: 'work' }, client: { type: 'work', tpl: 'work', tag: 'client' },
+    study: { type: 'study', tpl: 'study' }, personal: { type: 'personal', tpl: 'personal' },
   };
+  const OLD_TAGS = { 'ассет': 'asset', 'работа': 'work', 'клиент': 'client', 'учёба': 'study', 'учеба': 'study', 'личное': 'personal' };
 
-  /** «скетч таверны 17:00 #ассет» → { title, time, kind } */
+  /** «скетч таверны 17:00 #asset» → { title, time, kind } */
   function parse(raw) {
     let txt = ` ${raw} `;
     let time = '';
@@ -142,7 +145,7 @@
     if (pm) { priority = 4 - pm[1].length; txt = txt.replace(pm[0], ' '); }
     let kind = null;
     const tg = txt.match(/#([^\s#]+)/);
-    if (tg) { kind = TAGS[tg[1].toLowerCase()] ?? null; txt = txt.replace(tg[0], ' '); }
+    if (tg) { const k = tg[1].toLowerCase(); kind = TAGS[OLD_TAGS[k] ?? k] ?? null; txt = txt.replace(tg[0], ' '); }
     txt = txt.replace(/\s+/g, ' ').trim();
     return { title: txt && txt[0].toUpperCase() + txt.slice(1), time, kind, priority };
   }
@@ -236,7 +239,7 @@
         <form class="qa" onsubmit={(e) => { e.preventDefault(); add(); }}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           <input bind:this={input} bind:value={draft} type="text" aria-label="Новая задача на сегодня"
-            placeholder="Новая задача… например «скетч таверны 17:00 #ассет»" onkeydown={(e) => e.key === 'Escape' && (draft = '')} />
+            placeholder="Новая задача… например «скетч таверны 17:00 #asset»" onkeydown={(e) => e.key === 'Escape' && (draft = '')} />
           <button class="sp-btn sp-btn-primary" type="submit" disabled={!preview?.title || adding || !lists.length}>Добавить</button>
         </form>
         <p class="qa-hint">
@@ -244,7 +247,7 @@
             Добавлю «{preview.title}» на сегодня{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}
             → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
           {:else}
-            Время, #тип и приоритет распознаются сами: 17:00, #ассет #работа #клиент #учёба #личное, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+            Время, #тип и приоритет распознаются сами: 17:00, #asset #work #client #study #personal, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
           {/if}
         </p>
       </div>
@@ -270,7 +273,7 @@
               <button type="button" class="hring" aria-pressed={d} aria-label="{h.name}{d ? ' — сделано' : ' — отметить'}" onclick={() => ontogglehabit(h)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
               </button>
-              <span class="ttl" style="font-weight: 500">{h.name}</span>
+              <span class="ttl" style="font-weight: 500">{h.name}</span>{#if h.time}<span class="meta">{h.time}</span>{/if}
               <span class="meta" class:gold={s}>{s ? `✦ ${s} ${plural(s, ['день', 'дня', 'дней'])} подряд` : 'начни серию'}</span>
             </div>
           {:else}

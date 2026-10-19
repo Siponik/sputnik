@@ -15,9 +15,10 @@
   import Coon from './lib/Coon.svelte';
   import * as api from './lib/api.js';
   import { templateOf, isHabitList, HABITS } from './lib/templates.js';
-  import { isDone, logKey, stats, plural, canRest, MILESTONES } from './lib/habits.js';
+  import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
+  import * as meta from './lib/meta.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -56,7 +57,9 @@
   const habits = $derived(habitList
     ? (tasks[habitList.id] ?? []).filter((t) => !t.parent && t.status !== 'completed')
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
-        .map((t) => ({ id: t.id, name: t.title || 'Без названия', days: lay.habits?.[t.id]?.days ?? [], createdAt: lay.habits?.[t.id]?.createdAt }))
+        .map((t) => ({ id: t.id, name: t.title || 'Без названия', days: lay.habits?.[t.id]?.days ?? [], time: lay.habits?.[t.id]?.time ?? null, createdAt: lay.habits?.[t.id]?.createdAt }))
+        // привычки со временем — по времени, без времени — после них, в порядке списка
+        .sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
     : []);
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
@@ -208,9 +211,10 @@
 
   // Экран может сам принять быстрое добавление (на «Сегодня» — строка сверху), иначе открываем окно «Создать».
   let quickLine = null;
-  function newTask() {
+  // fromKey — нажали N / Ctrl+N: на «Сегодня» это строка быстрого добавления. Кнопка «Создать» всегда открывает окно.
+  function newTask(fromKey = false) {
     if (!boardLists.length || openRef || newList) return;
-    if (quickLine?.()) return;
+    if (fromKey && quickLine?.()) return;
     quick = {};
   }
   // Горячие клавиши (список — lib/keys.js и окно «?»).
@@ -228,7 +232,7 @@
   }
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
     if (keys.overlay()) return;
@@ -243,7 +247,7 @@
     switch (e.code) {
       case 'KeyQ': stepView(-1); break;
       case 'KeyE': stepView(1); break;
-      case 'KeyN': e.preventDefault(); newTask(); break;
+      case 'KeyN': e.preventDefault(); newTask(true); break;
       case 'KeyR': refresh(); break;
       case 'BracketLeft': if (view === 'board' || view === 'archive') stepList(-1); break;
       case 'BracketRight': if (view === 'board' || view === 'archive') stepList(1); break;
@@ -320,9 +324,12 @@
   const boardTip = $derived.by(() => {
     const open = (tasks[activeId] ?? []).filter((t) => !t.parent && t.status !== 'completed');
     if (!open.length) return 'Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке.';
-    const key = (t) => (t.due ? api.dueToYmd(t.due) : '9999');
-    const first = open.slice().sort((a, b) => key(a).localeCompare(key(b)) || (a.position || '').localeCompare(b.position || ''))[0];
-    return `Начни с «${first.title || 'Без названия'}»${first.due ? ` — срок ${api.humanDue(first.due)}` : ''}. Остальное подождёт.`;
+    // Сначала просроченное, потом приоритет, потом срок (meta.pickNext).
+    const today = api.ymd(new Date());
+    const first = meta.pickNext(open.map((task) => ({ task })), lay.tasks, today).task;
+    const why = meta.nextReason(first, lay.tasks, today, api.humanDue);
+    const head = `Начни с «${first.title || 'Без названия'}»${why ? ` — ${why}` : ''}`;
+    return `${head}${head.endsWith('.') ? '' : '.'} Остальное подождёт.`; // «18 окт.» уже с точкой
   });
 
   async function createList(title, template) {
@@ -365,6 +372,20 @@
       const r = await api.createTask(listId, { title }, id);
       tasks[listId] = [...(tasks[listId] ?? []), r];
     } catch (e) { say('Не удалось добавить подзадачу: ' + e); }
+  }
+
+  async function editSub(sub, title) {
+    const { listId } = openRef;
+    try { replace(listId, await api.patchTask(listId, sub.id, { title })); }
+    catch (e) { say('Не удалось переименовать подзадачу: ' + e); }
+  }
+
+  async function deleteSub(sub) {
+    const { listId } = openRef;
+    try {
+      await api.deleteTask(listId, sub.id);
+      tasks[listId] = (tasks[listId] ?? []).filter((t) => t.id !== sub.id);
+    } catch (e) { say('Не удалось удалить подзадачу: ' + e); }
   }
 
   // ---------- входящие от Claude ----------
@@ -432,9 +453,9 @@
   let calReload = $state(0); // календарю — перечитать события
 
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
-  async function quickCreate({ title, listId, due, slot, layer = null }, quiet = false) {
+  async function quickCreate({ title, listId, due, slot, layer = null, notes = '' }, quiet = false) {
     try {
-      const r = await api.createTask(listId, { title, ...(due ? { due: api.ymdToDue(due) } : {}) });
+      const r = await api.createTask(listId, { title, ...(notes ? { notes } : {}), ...(due ? { due: api.ymdToDue(due) } : {}) });
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
       if (layer && Object.keys(layer).length) touch('tasks', r.id, layer);
       if (slot) setSlot(r.id, slot);
@@ -457,15 +478,6 @@
     saveLayer();
   }
 
-  // «Взять выходной»: раз в 7 дней, серия не сгорает.
-  function restHabit(h) {
-    const day = api.ymd(new Date());
-    const on = !lay.log?.[logKey(h.id, day)]?.rest;
-    if (on && !canRest(h, lay.log)) { say('Выходной можно брать раз в неделю.'); return; }
-    touch('log', logKey(h.id, day), { rest: on });
-    saveLayer();
-  }
-
   // Веха серии (7 · 21 · 50 · 100): праздник на экране, уведомление Windows и сообщение бота (через файл напоминаний).
   let cele = $state(null); // { id, name, n }
   async function celebrate(h, n, day) {
@@ -485,7 +497,7 @@
     return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
   }));
 
-  async function createHabit(name, days) {
+  async function createHabit(name, days, time = null) {
     try {
       let l = habitList;
       if (!l) {
@@ -496,13 +508,13 @@
       }
       const t = await api.createTask(l.id, { title: name });
       tasks[l.id] = [...(tasks[l.id] ?? []), t];
-      touch('habits', t.id, { days, createdAt: api.ymd(new Date()) });
+      touch('habits', t.id, { days, time, createdAt: api.ymd(new Date()) });
       saveLayer();
     } catch (e) { say('Не удалось добавить привычку: ' + e); }
   }
 
-  async function updateHabit(id, { name, days }) {
-    touch('habits', id, { days });
+  async function updateHabit(id, { name, days, time = null }) {
+    touch('habits', id, { days, time });
     saveLayer();
     const t = (tasks[habitList.id] ?? []).find((x) => x.id === id);
     if (t && t.title !== name) {
@@ -560,7 +572,7 @@
           </button>
         {/if}
         <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши" onclick={() => (helpOpen = true)}>?</button>
-        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={newTask}>
+        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={() => newTask()}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
         </button>
       </div>
@@ -650,7 +662,7 @@
             oncreatetask={(p) => quickCreate(p)}
             oncreateevent={createEvent} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onrest={restHabit} onclosecele={() => (cele = null)}
+          <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'archive'}
           <Archive lists={boardLists} tasksByList={tasks} {activeId}
@@ -684,7 +696,7 @@
       onstatus={(s) => move(openTask, s, openRef.listId)}
       ondelete={remove}
       ontoggle={(t, d) => toggle(t, d, openRef.listId)}
-      onaddsub={addSub} />
+      onaddsub={addSub} onsubedit={editSub} onsubdelete={deleteSub} />
   {/if}
 
   {#if quick}

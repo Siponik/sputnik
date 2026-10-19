@@ -5,7 +5,7 @@
 
   // type / priority — из слоя (tasks[id]); onlayer(patch) пишет туда же.
   let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
-    onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind, onslot, onlayer } = $props();
+    onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
   // Время задачи живёт в слое Спутника: в Google Tasks у срока нет часов.
   const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
@@ -167,11 +167,20 @@
 
     <section class="subs">
       <h3><span>Подзадачи</span><span>{subs.filter((s) => s.status === 'completed').length}/{subs.length}</span></h3>
+      <!-- Подзадачу можно переименовать прямо в строке (Enter или уход из поля — сохранить, Esc — отменить) и удалить. -->
       {#each subs as s (s.id)}
-        <label class="sub" class:done={s.status === 'completed'}>
-          <input class="sp-check" type="checkbox" checked={s.status === 'completed'} onchange={(e) => ontoggle(s, e.currentTarget.checked)} />
-          <span>{s.title}</span>
-        </label>
+        <div class="sub" class:done={s.status === 'completed'}>
+          <input class="sp-check" type="checkbox" checked={s.status === 'completed'} aria-label="Выполнено" onchange={(e) => ontoggle(s, e.currentTarget.checked)} />
+          <input class="sub-title" value={s.title} aria-label="Подзадача"
+            onkeydown={(e) => {
+              if (e.key === 'Enter') e.currentTarget.blur();
+              else if (e.key === 'Escape') { e.stopPropagation(); e.currentTarget.value = s.title; e.currentTarget.blur(); }
+            }}
+            onblur={(e) => { const v = e.currentTarget.value.trim(); if (!v) e.currentTarget.value = s.title; else if (v !== s.title) onsubedit(s, v); }} />
+          <button class="sub-del" type="button" aria-label="Удалить подзадачу «{s.title}»" title="Удалить" onclick={() => onsubdelete(s)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
       {/each}
       <form class="add-row" style="margin-top: 6px" onsubmit={addSub}>
         <input bind:value={subDraft} placeholder="Добавить подзадачу" aria-label="Добавить подзадачу" />

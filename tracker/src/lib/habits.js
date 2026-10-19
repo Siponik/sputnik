@@ -1,25 +1,16 @@
 // Расчёт серий привычек. Отметки хранятся в слое: log["<habitId>|YYYY-MM-DD"] = { done, rest, t }.
-// rest — «выходной»: день по расписанию пропущен, но серия не сгорает (не чаще раза в 7 дней).
+// rest — «выходной» из прошлых версий: такие дни серию не рвут. Новые выходные взять нельзя (функцию убрали).
+// Время привычки — habits[id].time «ЧЧ:ММ» (необязательно).
 import { ymd } from './api.js';
 
 export const WEEKDAYS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 export const MILESTONES = [7, 21, 50, 100]; // вехи серии: енот празднует, бот поздравляет
-export const REST_EVERY = 7;
 
 export const dayOffset = (n) => { const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + n); return d; };
 export const dow = (d) => (d.getDay() + 6) % 7; // пн = 0
 export const logKey = (habitId, date) => `${habitId}|${date}`;
 export const isDone = (log, habitId, date) => !!log?.[logKey(habitId, date)]?.done;
 export const isOff = (log, habitId, date) => !!log?.[logKey(habitId, date)]?.rest && !isDone(log, habitId, date);
-
-/** Можно ли взять выходной сегодня: привычка по расписанию, не отмечена и выходного не было 7 дней. */
-export function canRest(habit, log) {
-  const today = ymd(dayOffset(0));
-  const days = habit.days?.length ? habit.days : [0, 1, 2, 3, 4, 5, 6];
-  if (!days.includes(dow(dayOffset(0))) || isDone(log, habit.id, today)) return false;
-  for (let i = 1; i < REST_EVERY; i++) if (isOff(log, habit.id, ymd(dayOffset(-i)))) return false;
-  return true;
-}
 
 /** Ближайшая веха больше n (после последней — она же). */
 export const nextMilestone = (n) => MILESTONES.find((m) => m > n) ?? MILESTONES[MILESTONES.length - 1];

@@ -52,3 +52,9 @@
 
 .c.off { border: 2px dashed var(--signal-done); }
 .legend .dotg { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
+
+/* Время привычки. */
+.habit-form .h-time { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.habit-form .h-time input { height: 32px; padding: 0 8px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); }
+.habit-form .hint-t { font-size: 12px; color: var(--ink-faint); }
+.hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); }

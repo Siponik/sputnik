@@ -1,6 +1,6 @@
 <script>
   import { untrack } from 'svelte';
-  import { TYPES, PRIORITIES } from './meta.js';
+  import { TYPES, PRIORITIES, autosize } from './meta.js';
 
   // Окно «Создать» (кнопка в шапке, N / Ctrl+N): задача в Google Tasks, событие или день рождения в Google Календаре.
   let { lists, listId = null, day = '', s = '', e = '', oncreate, oncreateevent, oncreatebirthday, onclose } = $props();
@@ -21,6 +21,7 @@
   let to = $state(init.e);
   let type = $state(null);
   let priority = $state(null);
+  let notes = $state('');
   let busy = $state(false);
 
   const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
@@ -48,8 +49,8 @@
       const layer = {};
       if (type) layer.type = type;
       if (priority) layer.priority = priority;
-      ok = await oncreate({ title: t, listId: list, due, slot, layer });
-    } else if (kind === 'event') ok = await oncreateevent({ title: t, day: due, slot });
+      ok = await oncreate({ title: t, listId: list, due, slot, layer, notes: notes.trim() });
+    } else if (kind === 'event') ok = await oncreateevent({ title: t, day: due, slot, notes: notes.trim() });
     else ok = await oncreatebirthday({ name: t, day: due });
     busy = false;
     if (ok) onclose();
@@ -77,6 +78,10 @@
   <!-- svelte-ignore a11y_autofocus -->
   <input class="title-input" bind:value={title} autofocus aria-label={kind === 'birthday' ? 'Чей день рождения' : 'Название'}
     placeholder={kind === 'birthday' ? 'Чей? Например «Аня»' : kind === 'event' ? 'Что за событие?' : 'Что сделать?'} />
+  {#if kind !== 'birthday'}
+    <textarea class="q-notes" bind:value={notes} use:autosize={notes} aria-label="Описание"
+      placeholder={kind === 'event' ? 'Описание: где, ссылка на созвон…' : 'Описание: подробности, ссылки, шаги…'}></textarea>
+  {/if}
 
   {#if kind === 'task'}
     <div class="field">

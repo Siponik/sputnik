@@ -4,6 +4,7 @@
   import { stats } from './habits.js';
   import * as cal from './calendar.js';
   import * as keys from './keys.js';
+  import { pickNext } from './meta.js';
   import CalWeek from './CalWeek.svelte';
   import CalMonth from './CalMonth.svelte';
   import Coon from './Coon.svelte';
@@ -103,8 +104,7 @@
     const open = lists.flatMap((l) => (tasksByList[l.id] ?? [])
       .filter((t) => !t.parent && t.status !== 'completed' && !layTasks?.[t.id]?.slot)
       .map((t) => ({ task: t, listId: l.id })));
-    const key = (x) => (x.task.due ? dueToYmd(x.task.due) : '9999');
-    return open.sort((a, b) => key(a).localeCompare(key(b)))[0] ?? null;
+    return pickNext(open, layTasks, today); // просроченное → приоритет → срок
   });
 
   const AT = ['в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу', 'в воскресенье'];
@@ -336,7 +336,7 @@
                     onclick={() => ontogglehabit(x.h)}>
                     {#if x.done}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{/if}
                   </button>
-                  <span class="hn" class:soft={!x.done && !x.isToday}>{x.h.name}</span>
+                  <span class="hn" class:soft={!x.done && !x.isToday}>{#if x.h.time}<span class="htime">{x.h.time}</span> {/if}{x.h.name}</span>
                   <span class="hmeta">{x.meta}</span>
                 </div>
               {/each}

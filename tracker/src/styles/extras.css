@@ -36,3 +36,17 @@
 .upd-bar { flex: 0 0 200px; height: 6px; border-radius: 6px; background: var(--hairline); overflow: hidden; }
 .upd-bar span { display: block; height: 100%; background: var(--signal-done); }
 .side .foot button:disabled { opacity: .5; cursor: default; }
+
+/* Описание в окне «Создать». */
+.dialog.quick .q-notes { width: 100%; min-height: 72px; padding: 9px 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); line-height: 1.5; resize: vertical; }
+.dialog.quick .q-notes:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+
+/* Подзадачи: правка прямо в строке, удаление крестиком (виден при наведении). */
+.sub .sub-title { flex: 1; min-width: 0; border: 0; background: none; padding: 3px 6px; margin-left: -6px; border-radius: var(--radius-sm); font-size: 14px; color: var(--ink); }
+.sub .sub-title:hover { background: var(--wash); }
+.sub .sub-title:focus { outline: 2px solid var(--clay); outline-offset: 0; background: var(--bg); }
+.sub.done .sub-title { color: var(--ink-soft); text-decoration: line-through; }
+.sub-del { flex: none; width: 26px; height: 26px; display: grid; place-items: center; border: 0; border-radius: var(--radius-sm); background: none; color: var(--ink-faint); cursor: pointer; opacity: 0; }
+.sub-del svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
+.sub:hover .sub-del, .sub:focus-within .sub-del { opacity: 1; }
+.sub-del:hover { color: var(--signal-overdue); background: var(--wash); }
