@@ -1,7 +1,20 @@
 <script>
-  import { dueToYmd, ymdToDue } from './api.js';
+  import { dueToYmd, ymdToDue, ymd } from './api.js';
+  import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
 
-  let { task, list, subs, status, onclose, onsave, onstatus, ondelete, ontoggle, onaddsub } = $props();
+  let { task, list, subs, status, cols, remind = null, onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind } = $props();
+
+  const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : `b${remind.days ?? 0}`);
+  const remindWhen = $derived(remindLabel(remind, task));
+
+  function pickRemind(v) {
+    if (!v) return onremind(null);
+    if (v === 'at') {
+      const day = dueToYmd(task.due) || ymd(new Date(Date.now() + 864e5));
+      return onremind({ kind: 'at', at: remind?.kind === 'at' ? remind.at : `${day}T${DEFAULT_TIME}` });
+    }
+    onremind({ kind: 'before', days: Number(v.slice(1)), time: remind?.time ?? DEFAULT_TIME });
+  }
 
   let title = $state('');
   let notes = $state('');
@@ -39,7 +52,7 @@
     await onaddsub(t);
   }
   function key(e) {
-    if (e.key === 'Escape') onclose();
+    if (e.key === 'Escape') { saveTitle(); saveNotes(); onclose(); }
   }
 </script>
 
@@ -56,23 +69,40 @@
     </div>
 
     <div style="display: flex; align-items: flex-start; gap: 12px">
-      <input class="sp-check" type="checkbox" style="margin-top: 9px" checked={task.status === 'completed'} aria-label="Выполнено" onchange={(e) => ontoggle(task, e.currentTarget.checked)} />
       <input class="title-input" bind:value={title} onblur={saveTitle} onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()} aria-label="Название" />
     </div>
 
     <div class="field">
-      <label for="f-status">Статус</label>
+      <label for="f-status">{cols.length > 4 ? 'Этап' : 'Статус'}</label>
       <select id="f-status" value={status} onchange={(e) => onstatus(e.currentTarget.value)}>
-        <option value="inbox">Входящие</option>
-        <option value="doing">В работе</option>
-        <option value="review">На ревью</option>
-        <option value="done">Готово</option>
+        {#each cols as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
       </select>
     </div>
     <div class="field">
       <label for="f-due">Срок</label>
       <input id="f-due" type="date" bind:value={due} onchange={saveDue} />
     </div>
+    <div class="field">
+      <label for="f-remind">Напоминание</label>
+      <div class="remind">
+        <select id="f-remind" value={remindKind} onchange={(e) => pickRemind(e.currentTarget.value)}>
+          <option value="">Нет</option>
+          {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name}</option>{/each}
+          <option value="at">Точная дата и время</option>
+        </select>
+        {#if remind?.kind === 'before'}
+          <input type="time" aria-label="Во сколько" value={remind.time ?? DEFAULT_TIME} onchange={(e) => e.currentTarget.value && onremind({ ...remind, time: e.currentTarget.value })} />
+        {:else if remind?.kind === 'at'}
+          <input type="datetime-local" aria-label="Когда напомнить" value={remind.at} onchange={(e) => e.currentTarget.value && onremind({ ...remind, at: e.currentTarget.value })} />
+        {/if}
+      </div>
+    </div>
+    {#if remind}
+      <p class="remind-hint">
+        {#if remind.kind === 'before' && !task.due}Поставь срок — без него напомнить «до срока» не выйдет.
+        {:else if remindWhen}Напомню в Telegram: {remindWhen}{/if}
+      </p>
+    {/if}
     <div class="field top">
       <label for="f-notes">Заметка</label>
       <textarea id="f-notes" bind:value={notes} onblur={saveNotes} placeholder="Подробности, ссылки"></textarea>

@@ -3,31 +3,50 @@
   import Brand from './lib/Brand.svelte';
   import Setup from './lib/Setup.svelte';
   import Board from './lib/Board.svelte';
+  import Archive from './lib/Archive.svelte';
   import Today from './lib/Today.svelte';
+  import Habits from './lib/Habits.svelte';
+  import NewList from './lib/NewList.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import * as api from './lib/api.js';
+  import { templateOf, isHabitList, HABITS } from './lib/templates.js';
+  import { isDone, logKey } from './lib/habits.js';
+  import * as reminders from './lib/reminders.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
-  let view = $state('today');
+  let view = $state('today'); // today | board | archive | habits
   let lists = $state([]);
   let activeId = $state(null);
   let tasks = $state({}); // listId → задачи (вместе с подзадачами)
-  let lay = $state({ tasks: {} }); // слой Спутника: то, чего нет в Google
+  let lay = $state(emptyLayer()); // слой Спутника: то, чего нет в Google
   let events = $state([]);
   let openRef = $state(null); // { listId, id }
+  let newList = $state(false);
   let sync = $state({ busy: false, err: '', at: null });
   let toast = $state('');
   let toastTimer;
 
-  const activeList = $derived(lists.find((l) => l.id === activeId));
+  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {} }; }
+
+  const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay)));
+  const habitList = $derived(lists.find((l) => isHabitList(l, lay)) ?? null);
+  const activeList = $derived(boardLists.find((l) => l.id === activeId));
+  const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template);
   const openTask = $derived(openRef ? (tasks[openRef.listId] ?? []).find((t) => t.id === openRef.id) : null);
   const openSubs = $derived(openTask ? (tasks[openRef.listId] ?? []).filter((t) => t.parent === openTask.id).sort((a, b) => (a.position || '').localeCompare(b.position || '')) : []);
   const openCount = (l) => (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
   const todayCount = $derived.by(() => {
     const t = api.ymd(new Date());
-    return lists.reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
+    return boardLists.reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
   });
+
+  const habits = $derived(habitList
+    ? (tasks[habitList.id] ?? []).filter((t) => !t.parent && t.status !== 'completed')
+        .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
+        .map((t) => ({ id: t.id, name: t.title || 'Без названия', days: lay.habits?.[t.id]?.days ?? [], createdAt: lay.habits?.[t.id]?.createdAt }))
+    : []);
+  const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
 
   function say(msg) {
     toast = msg;
@@ -35,14 +54,58 @@
     toastTimer = setTimeout(() => (toast = ''), 6000);
   }
 
-  function statusOf(task) {
-    if (task.status === 'completed') return 'done';
-    const s = lay.tasks?.[task.id]?.status;
-    return s && s !== 'done' ? s : 'inbox';
+  // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
+  function touch(section, key, patch) {
+    lay[section] ??= {};
+    lay[section][key] = { ...(lay[section][key] ?? {}), ...patch, t: Date.now() };
   }
 
+  /** Колонка задачи на доске с данными колонками. */
+  function colOf(task, cols) {
+    if (task.status === 'completed') return 'done';
+    const s = lay.tasks?.[task.id]?.status;
+    return s && s !== 'done' && cols.some((c) => c.id === s) ? s : cols[0].id;
+  }
+  function statusOf(task) {
+    if (task.status === 'completed') return 'done';
+    return lay.tasks?.[task.id]?.status || 'inbox';
+  }
+
+  // ---------- напоминания ----------
+
+  const remindOf = (task) => reminders.remindLabel(lay.tasks?.[task.id]?.remind, task);
+
+  function setRemind(r) {
+    touch('tasks', openRef.id, { remind: r });
+    saveLayer();
+  }
+
+  // Любое изменение задач или напоминаний — через 3 с обновляем файл для облака (если список поменялся).
+  let publishTimer;
+  let publishWarned = false;
+  $effect(() => {
+    if (phase !== 'ready' || !sync.at) return;
+    const items = reminders.collect(boardLists, tasks, lay.tasks);
+    clearTimeout(publishTimer);
+    publishTimer = setTimeout(() => {
+      reminders.publish(items).catch((e) => {
+        if (!publishWarned) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
+      });
+    }, 3000);
+  });
+
   async function saveLayer() {
-    try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить статусы: ' + e); }
+    try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить: ' + e); }
+  }
+
+  // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
+  function ensureHabitMeta() {
+    if (!habitList) return;
+    let changed = false;
+    for (const t of tasks[habitList.id] ?? []) {
+      if (!t.parent && !lay.habits?.[t.id]?.createdAt) { touch('habits', t.id, { createdAt: api.ymd(new Date()) }); changed = true; }
+    }
+    if (changed) saveLayer();
   }
 
   async function refresh() {
@@ -54,7 +117,8 @@
       const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
       lists = ls;
       tasks = Object.fromEntries(ls.map((l, i) => [l.id, all[i]]));
-      if (!activeId || !ls.some((l) => l.id === activeId)) activeId = ls[0]?.id ?? null;
+      if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+      ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
       sync.at = new Date();
     } catch (e) {
@@ -70,8 +134,7 @@
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
     phase = 'ready';
-    lay = await api.layer.read().catch(() => ({ tasks: {} }));
-    if (!lay.tasks) lay.tasks = {};
+    lay = { ...emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
     await refresh();
   }
 
@@ -96,8 +159,7 @@
   }
 
   async function move(task, col, listId = activeId) {
-    lay.tasks[task.id] = { ...(lay.tasks[task.id] ?? {}), status: col === 'done' ? 'inbox' : col };
-    saveLayer();
+    if (col !== 'done') { touch('tasks', task.id, { status: col }); saveLayer(); }
     const wasDone = task.status === 'completed';
     if (col === 'done' && !wasDone) await toggle(task, true, listId);
     else if (col !== 'done' && wasDone) await toggle(task, false, listId);
@@ -109,6 +171,24 @@
       const r = await api.createTask(activeId, { title });
       tasks[activeId] = [r, ...(tasks[activeId] ?? [])];
     } catch (e) { say('Не удалось создать задачу: ' + e); }
+  }
+
+  async function createList(title, template) {
+    try {
+      const l = await api.createList(title);
+      touch('lists', l.id, { template });
+      saveLayer();
+      lists = [...lists, l];
+      tasks[l.id] = [];
+      activeId = l.id;
+      view = 'board';
+      newList = false;
+    } catch (e) { say('Не удалось создать список: ' + e); }
+  }
+
+  function setTemplate(template) {
+    touch('lists', activeId, { template });
+    saveLayer();
   }
 
   async function save(patch) {
@@ -135,6 +215,51 @@
     } catch (e) { say('Не удалось добавить подзадачу: ' + e); }
   }
 
+  // ---------- привычки ----------
+
+  function toggleHabit(h) {
+    const day = api.ymd(new Date());
+    touch('log', logKey(h.id, day), { done: !isDone(lay.log, h.id, day) });
+    saveLayer();
+  }
+
+  async function createHabit(name, days) {
+    try {
+      let l = habitList;
+      if (!l) {
+        l = await api.createList('Привычки');
+        touch('lists', l.id, { template: HABITS });
+        lists = [...lists, l];
+        tasks[l.id] = [];
+      }
+      const t = await api.createTask(l.id, { title: name });
+      tasks[l.id] = [...(tasks[l.id] ?? []), t];
+      touch('habits', t.id, { days, createdAt: api.ymd(new Date()) });
+      saveLayer();
+    } catch (e) { say('Не удалось добавить привычку: ' + e); }
+  }
+
+  async function updateHabit(id, { name, days }) {
+    touch('habits', id, { days });
+    saveLayer();
+    const t = (tasks[habitList.id] ?? []).find((x) => x.id === id);
+    if (t && t.title !== name) {
+      try { replace(habitList.id, await api.patchTask(habitList.id, id, { title: name })); }
+      catch (e) { say('Не удалось переименовать: ' + e); }
+    }
+  }
+
+  async function deleteHabit(id) {
+    try {
+      await api.deleteTask(habitList.id, id);
+      tasks[habitList.id] = (tasks[habitList.id] ?? []).filter((t) => t.id !== id);
+      delete lay.habits[id];
+      for (const k of Object.keys(lay.log)) if (k.startsWith(id + '|')) delete lay.log[k];
+      saveLayer();
+      say('Привычка удалена');
+    } catch (e) { say('Не удалось удалить привычку: ' + e); }
+  }
+
   async function logout() {
     await api.auth.logout().catch(() => {});
     lists = []; tasks = {}; events = []; openRef = null;
@@ -154,8 +279,8 @@
     <nav class="sp-tabs" aria-label="Разделы">
       <Brand />
       <button class="sp-tab" role="tab" aria-selected={view === 'today'} onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'board'} onclick={() => (view = 'board')}>Доска</button>
-      <button class="sp-tab" role="tab" aria-selected={false} disabled title="Скоро" style="opacity: .5; cursor: default">Привычки</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} onclick={() => (view = 'board')}>Доска</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
       <div class="right">
         <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
@@ -167,42 +292,59 @@
       <aside class="side">
         <div>
           <h4>Списки</h4>
-          {#each lists as l (l.id)}
-            <button class="item" class:on={view === 'board' && l.id === activeId} type="button" onclick={() => { activeId = l.id; view = 'board'; }}>
+          {#each boardLists as l (l.id)}
+            <button class="item" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => { activeId = l.id; view = 'board'; }}>
               <span>{l.title}</span><span class="n">{openCount(l)}</span>
             </button>
           {:else}
             <p class="empty">Списков пока нет.</p>
           {/each}
+          <button class="item add" type="button" onclick={() => (newList = true)}><span>+ Новый список</span></button>
         </div>
         <div class="foot">
-          <span>Спутник 0.1</span>
+          <span>Спутник 0.2</span>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
       </aside>
 
       <div class="main">
         {#if view === 'today'}
-          <Today {lists} tasksByList={tasks} {events} {statusOf} onopen={(t, listId) => (openRef = { listId, id: t.id })} ontoggle={(t, d, listId) => toggle(t, d, listId)} />
+          <Today lists={boardLists} tasksByList={tasks} {events} {statusOf} onopen={(t, listId) => (openRef = { listId, id: t.id })} ontoggle={(t, d, listId) => toggle(t, d, listId)} />
+        {:else if view === 'habits'}
+          <Habits {habits} log={lay.log} ontoggle={toggleHabit} oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
+        {:else if view === 'archive'}
+          <Archive lists={boardLists} tasksByList={tasks} {activeId}
+            onopen={(t, listId) => (openRef = { listId, id: t.id })}
+            onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
+            onback={() => (view = 'board')} />
         {:else if activeList}
-          <Board list={activeList} tasks={tasks[activeId] ?? []} {statusOf}
+          <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf}
             onopen={(t) => (openRef = { listId: activeId, id: t.id })}
-            ontoggle={(t, d) => toggle(t, d, activeId)}
             onmove={(t, col) => move(t, col, activeId)}
-            oncreate={create} />
+            oncreate={create}
+            onarchive={() => (view = 'archive')}
+            ontemplate={setTemplate} />
+        {:else}
+          <div class="page"><p class="empty">Создай первый список — слева «+ Новый список».</p></div>
         {/if}
       </div>
     </div>
   </div>
 
   {#if openTask}
-    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={statusOf(openTask)}
+    {@const cols = templateFor(openRef.listId).cols}
+    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={colOf(openTask, cols)} {cols}
+      remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       onclose={() => (openRef = null)}
       onsave={save}
       onstatus={(s) => move(openTask, s, openRef.listId)}
       ondelete={remove}
       ontoggle={(t, d) => toggle(t, d, openRef.listId)}
       onaddsub={addSub} />
+  {/if}
+
+  {#if newList}
+    <NewList oncreate={createList} onclose={() => (newList = false)} />
   {/if}
 {/if}
 

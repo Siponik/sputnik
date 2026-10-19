@@ -55,9 +55,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           MSI=$(ls tracker/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          TAG="tracker-0.1.${{ github.run_number }}"
+          TAG="tracker-0.2.${{ github.run_number }}"
           gh release create "$TAG" "$MSI" \
-            --title "Спутник 0.1 · сборка ${{ github.run_number }}" \
+            --title "Спутник 0.2 · сборка ${{ github.run_number }}" \
             --notes "Установщик для Windows. Скачайте .msi ниже и запустите. Windows может предупредить, что издатель неизвестен: «Подробнее» → «Выполнить в любом случае»." \
             --prerelease
 

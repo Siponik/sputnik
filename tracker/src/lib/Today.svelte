@@ -13,7 +13,7 @@
   const open = $derived(all.filter((x) => x.task.status !== 'completed'));
   const overdue = $derived(open.filter((x) => x.task.due && dueToYmd(x.task.due) < today));
   const dueToday = $derived(open.filter((x) => x.task.due && dueToYmd(x.task.due) === today));
-  const doing = $derived(open.filter((x) => statusOf(x.task) === 'doing' && !(x.task.due && dueToYmd(x.task.due) <= today)));
+  const doing = $derived(open.filter((x) => !['inbox', 'refs', 'done'].includes(statusOf(x.task)) && !(x.task.due && dueToYmd(x.task.due) <= today)));
   const doneToday = $derived(all.filter((x) => x.task.status === 'completed' && x.task.completed && ymd(new Date(x.task.completed)) === today));
 
   function plural(n, f) { const a = n % 10, b = n % 100; return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2]; }

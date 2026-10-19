@@ -96,3 +96,100 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sp-card .t:hover { text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 3px; }
 .sp-card .t:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: 2px; }
 .sp-tab:disabled:hover { color: var(--ink-soft); }
+
+/* Логотип в шапке — крупнее, чем в дизайн-системе */
+.sp-tabs .sp-brand { font-weight: 650; letter-spacing: .005em; padding-bottom: 8px; margin-right: var(--space-4); }
+
+/* Карточка без галочки: всё в одну колонку */
+.sp-card.no-check { grid-template-columns: minmax(0, 1fr); user-select: none; }
+.sp-card.no-check:active { cursor: grabbing; }
+.sp-card.no-check .t { cursor: inherit; }
+.sp-card.no-check .d, .sp-card.no-check .meta { grid-column: 1; }
+.col-foot { background: none; border: 1px dashed var(--hairline); border-radius: var(--radius-md); padding: 8px 10px; font-size: 12px; line-height: 16px; color: var(--ink-soft); cursor: pointer; text-align: left; }
+.col-foot:hover { color: var(--ink); border-color: var(--ink-faint); }
+
+/* Шапка доски и архива */
+.head-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.tpl { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.tpl select { height: 36px; padding: 0 10px; border-radius: var(--radius-pill); border: 1px solid var(--hairline); background: var(--raised); }
+.seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: var(--radius-pill); background: var(--wash); border: 1px solid var(--hairline); }
+.seg button { border: 0; background: none; padding: 5px 12px; border-radius: var(--radius-pill); font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
+.search { height: 38px; max-width: 420px; padding: 0 14px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--raised); }
+.search:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+.row .title.done { color: var(--ink-soft); font-weight: 500; }
+
+/* Боковая панель: «+ Новый список» */
+.side .item.add { margin-top: 6px; color: var(--ink-faint); }
+.side .item.add:hover { color: var(--clay); background: var(--clay-soft); }
+
+/* Окно «Новый список» */
+.dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 11; width: min(640px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 26px 28px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shadow-lift); }
+.dialog h2 { margin: 0; font-family: var(--font-display); font-size: 26px; line-height: 32px; font-weight: 600; }
+.dialog .hint { margin: 0; font-size: 12px; color: var(--ink-faint); }
+.dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
+.tpls { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.tpl-card { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); text-align: left; cursor: pointer; }
+.tpl-card:hover { border-color: var(--ink-faint); }
+.tpl-card[aria-checked="true"] { border-color: var(--clay); background: var(--clay-soft); }
+.tpl-card b { font-size: 15px; line-height: 20px; }
+.tpl-card span { font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.tpl-card .cols { font-size: 11px; line-height: 16px; color: var(--ink-faint); }
+.sp-btn:disabled { opacity: .5; cursor: default; filter: none; }
+
+/* Привычки */
+.habits-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
+.habits-hero > div { flex: 1 1 480px; min-width: 0; }
+.stats { margin: 0; display: flex; flex-wrap: wrap; gap: 32px; }
+.stats dt { font-size: 12px; line-height: 16px; color: var(--ink-soft); }
+.stats dd { margin: 4px 0 0; font-family: var(--font-mono); font-size: 22px; line-height: 28px; font-variant-numeric: tabular-nums; }
+.stats dd.gold { color: var(--gold); }
+.habits-page { padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
+.habits-bar { display: flex; justify-content: flex-end; }
+.habits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr)); gap: 20px; align-content: start; }
+.habit { display: flex; flex-direction: column; gap: 18px; padding: 20px 22px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); }
+.habit header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.habit h2 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+.habit h2 .name { background: none; border: 0; padding: 0; font: inherit; text-align: left; cursor: pointer; }
+.habit h2 .name:hover { text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 3px; }
+.habit header p { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.habit .sp-mark[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--bg); }
+.habit-body { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.streak { display: flex; align-items: baseline; gap: 10px; }
+.streak .num { font-family: var(--font-display); font-size: 64px; line-height: 64px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.streak .num.zero { color: var(--ink-faint); }
+.streak .num.hot { color: var(--gold); }
+.streak .unit { font-size: 14px; line-height: 20px; color: var(--ink-soft); }
+.habit .record { margin: 8px 0 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--gold); }
+.habit .note { margin: 6px 0 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.heat { margin: 0; flex: none; display: flex; flex-direction: column; gap: 6px; }
+.heat .months { display: grid; grid-template-columns: 22px repeat(13, 14px); column-gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink-faint); }
+.heat .wd { width: 22px; display: grid; grid-template-rows: repeat(7, 14px); gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink-faint); }
+.hm { display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column; grid-auto-columns: 14px; gap: 4px; }
+.c { display: inline-block; width: 14px; height: 14px; border-radius: 3px; box-sizing: border-box; }
+.c.done { background: var(--gold); }
+.c.miss { background: var(--hairline); }
+.c.rest, .c.before { border: 1px dashed var(--hairline); }
+.c.before { opacity: .5; }
+.c.today { border: 2px solid var(--clay); }
+.c.done.now { outline: 2px solid var(--clay); outline-offset: 1px; }
+.c.future { visibility: hidden; }
+.legend { display: flex; flex-wrap: wrap; align-items: center; gap: 18px; font-size: 12px; line-height: 16px; color: var(--ink-soft); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend .c { width: 12px; height: 12px; }
+.legend .tail { margin-left: auto; color: var(--ink-faint); }
+.habit-form { display: flex; flex-direction: column; gap: 12px; }
+.habit-form > input { height: 38px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); }
+.habit-form > input:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+.habit-form .days { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.habit-form .day { width: 38px; height: 32px; border-radius: var(--radius-pill); border: 1px solid var(--hairline); background: none; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+.habit-form .day[aria-pressed="true"] { background: var(--gold-soft); border-color: var(--gold); color: var(--gold); }
+.habit-form .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+/* Напоминание в окне задачи и на карточке */
+.remind { display: flex; flex-wrap: wrap; gap: 8px; }
+.remind select { flex: 1 1 160px; width: auto; }
+.remind input { flex: 0 1 auto; width: auto; }
+.remind-hint { margin: -10px 0 0 124px; font-size: 12px; line-height: 16px; color: var(--ink-soft); }
+.sp-card .bell { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); }
+.sp-card .bell svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }

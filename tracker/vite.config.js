@@ -5,6 +5,7 @@ import { svelte } from '@sveltejs/vite-plugin-svelte';
 export default defineConfig({
   plugins: [svelte()],
   clearScreen: false,
-  server: { port: 1420, strictPort: true },
+  // src-tauri не отслеживаем: там Rust собирает .exe, и на Windows слежка за ними роняет сервер (EBUSY).
+  server: { port: 1420, strictPort: true, watch: { ignored: ['**/src-tauri/**'] } },
   build: { target: 'es2021', outDir: 'dist', emptyOutDir: true },
 });

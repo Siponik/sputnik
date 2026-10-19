@@ -25,6 +25,8 @@ export async function listLists() {
   return r?.items ?? [];
 }
 
+export const createList = (title) => gapi('POST', `${TASKS}/users/@me/lists`, { title });
+
 export async function listTasks(listId) {
   let items = [];
   let page = '';
