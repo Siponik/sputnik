@@ -10,6 +10,7 @@
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import Calendar from './lib/Calendar.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
+  import Coon from './lib/Coon.svelte';
   import * as api from './lib/api.js';
   import { templateOf, isHabitList, HABITS } from './lib/templates.js';
   import { isDone, logKey } from './lib/habits.js';
@@ -192,13 +193,37 @@
     else if (col !== 'done' && wasDone) await toggle(task, false, listId);
   }
 
-  async function create(title) {
+  /** Новая задача на доске — сразу в нужную колонку. */
+  async function create(title, col = null) {
     if (!activeId) return;
+    const listId = activeId;
     try {
-      const r = await api.createTask(activeId, { title });
-      tasks[activeId] = [r, ...(tasks[activeId] ?? [])];
+      const r = await api.createTask(listId, { title });
+      tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      if (col && col !== templateFor(listId).cols[0].id) { touch('tasks', r.id, { status: col }); saveLayer(); }
+      if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
     } catch (e) { say('Не удалось создать задачу: ' + e); }
   }
+
+  // ---------- доска: проекты и совет енота ----------
+
+  let boardProject = $state(null);
+  const projects = $derived.by(() => {
+    const n = {};
+    for (const t of tasks[activeId] ?? []) {
+      const p = !t.parent && t.status !== 'completed' && lay.tasks?.[t.id]?.project;
+      if (p) n[p] = (n[p] ?? 0) + 1;
+    }
+    return Object.entries(n).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
+  });
+  // «Начни с …» — первая открытая задача по сроку (без срока — в конце).
+  const boardTip = $derived.by(() => {
+    const open = (tasks[activeId] ?? []).filter((t) => !t.parent && t.status !== 'completed');
+    if (!open.length) return 'Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке.';
+    const key = (t) => (t.due ? api.dueToYmd(t.due) : '9999');
+    const first = open.slice().sort((a, b) => key(a).localeCompare(key(b)) || (a.position || '').localeCompare(b.position || ''))[0];
+    return `Начни с «${first.title || 'Без названия'}»${first.due ? ` — срок ${api.humanDue(first.due)}` : ''}. Остальное подождёт.`;
+  });
 
   async function createList(title, template) {
     try {
@@ -389,9 +414,9 @@
       {#if view === 'board' || view === 'archive'}
       <aside class="side">
         <div>
-          <h4>Списки</h4>
+          <h4>Сферы</h4>
           {#each boardLists as l (l.id)}
-            <button class="item" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => { activeId = l.id; view = 'board'; }}>
+            <button class="item" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => { activeId = l.id; boardProject = null; view = 'board'; }}>
               <span>{l.title}</span><span class="n">{openCount(l)}</span>
             </button>
           {:else}
@@ -399,6 +424,22 @@
           {/each}
           <button class="item add" type="button" onclick={() => (newList = true)}><span>+ Новый список</span></button>
         </div>
+        {#if projects.length && view === 'board'}
+          <div>
+            <h4>Проекты</h4>
+            {#each projects as [p, n] (p)}
+              <button class="item" class:on={boardProject === p} type="button" aria-pressed={boardProject === p} onclick={() => (boardProject = boardProject === p ? null : p)}>
+                <span>{p}</span><span class="n">{n}</span>
+              </button>
+            {/each}
+          </div>
+        {/if}
+        {#if view === 'board' && activeList}
+          <div class="side-tip">
+            <Coon pose="think" size={96} />
+            <p>{boardTip}</p>
+          </div>
+        {/if}
         <div class="foot">
           <span>Спутник 0.2</span>
           <button type="button" onclick={logout}>Выйти из Google</button>
@@ -432,7 +473,8 @@
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
         {:else if activeList}
-          <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf}
+          <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf} {typeOf}
+            layTasks={lay.tasks} project={boardProject}
             onopen={(t) => (openRef = { listId: activeId, id: t.id })}
             onmove={(t, col) => move(t, col, activeId)}
             oncreate={create}
