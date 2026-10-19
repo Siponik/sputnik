@@ -278,3 +278,179 @@ if __name__ == '__main__':
     for f in sorted(src_dir.glob('*.dc.html')):
         build(f, out_dir / f.name)
         print('built', f.name)
+
+
+# ═════════════════ v3: белый винил с глазами-пуговками (выбран 19.10) ═════════════════
+# Координаты 240×260. Переопределяет CSS и pose_svg выше.
+CSS = """
+.sp-app{--rim:#C9D6E2}
+.sp-app[data-theme="light"]{--rim:#A9BCCB}
+.coon{overflow:visible;display:block}
+.coon .c-float{animation:c-float 5.5s ease-in-out infinite;transform-box:view-box;transform-origin:120px 150px}
+.coon .c-wave{animation:c-wave 1.8s ease-in-out infinite;transform-box:view-box;transform-origin:154px 196px}
+.coon .c-tail{animation:c-tail 3.2s ease-in-out infinite;transform-box:view-box;transform-origin:150px 222px}
+.coon .c-ear{animation:c-ear 6s ease-in-out infinite;transform-box:view-box;transform-origin:146px 84px}
+.coon .c-eye{animation:c-blink 4.8s infinite;transform-box:fill-box;transform-origin:center}
+.coon .c-beacon{animation:c-beacon 1.6s ease-in-out infinite}
+.coon .c-star{animation:c-twinkle 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.coon .c-hop{animation:c-hop 1.1s cubic-bezier(.3,.6,.4,1) infinite;transform-box:view-box;transform-origin:120px 250px}
+.coon .c-z{animation:c-z 3s ease-in-out infinite;opacity:0}
+.coon .c-dot{animation:c-dot 1.4s ease-in-out infinite}
+.coon .c-orb{animation:c-orb 6s linear infinite;transform-box:view-box;transform-origin:120px 216px}
+.coon .c-flag{animation:c-flag 1.4s ease-in-out infinite;transform-box:view-box;transform-origin:190px 100px}
+@keyframes c-float{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-6px) rotate(1.5deg)}}
+@keyframes c-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}
+@keyframes c-tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}
+@keyframes c-ear{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(8deg)}94%{transform:rotate(-3deg)}}
+@keyframes c-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}
+@keyframes c-beacon{0%,100%{opacity:.35}50%{opacity:1}}
+@keyframes c-twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}
+@keyframes c-hop{0%,100%{transform:translateY(0) scaleY(1)}12%{transform:translateY(0) scaleY(.95)}45%{transform:translateY(-12px) scaleY(1.02)}}
+@keyframes c-z{0%{opacity:0;transform:translate(0,0)}25%{opacity:1}100%{opacity:0;transform:translate(10px,-22px)}}
+@keyframes c-dot{0%,100%{opacity:.25}50%{opacity:1}}
+@keyframes c-orb{to{transform:rotate(360deg)}}
+@keyframes c-flag{0%,100%{transform:skewY(0)}50%{transform:skewY(-6deg)}}
+@media (prefers-reduced-motion:reduce){.coon *{animation:none!important}.coon .c-z,.coon .c-dot{opacity:1}}
+"""
+
+def _rg(id, stops, cx=.38, cy=.3, r=.85):
+    s = ''.join(f'<stop offset="{o}" stop-color="{c}"></stop>' for o, c in stops)
+    return f'<radialGradient id="{id}" cx="{cx}" cy="{cy}" r="{r}">{s}</radialGradient>'
+
+def _mir(inner):
+    return f'<g transform="translate(240 0) scale(-1 1)">{inner}</g>'
+
+DEFS3 = ('<defs>'
+    + _rg('cn-fur', [(0, '#D3CEC4'), (.55, '#A39E94'), (1, '#6E6A62')]) + _rg('cn-mask', [(0, '#5A5650'), (1, '#2A2826')], .42, .3, .9)
+    + _rg('cn-cream', [(0, '#FFFDF8'), (1, '#D8D2C6')], .42, .22, .9) + _rg('cn-dark', [(0, '#6E6A62'), (1, '#2A2826')], .34, .28, .8)
+    + _rg('cn-clay', [(0, '#FFB48C'), (1, '#C85A30')], .34, .25, .95) + _rg('cn-gold', [(0, '#FFE0A0'), (1, '#D18F2C')], .34, .25, .95)
+    + _rg('cn-ear', [(0, '#F7CDBA'), (1, '#D8927C')], .5, .65, .7)
+    + _rg('cn-suit', [(0, '#FCFAF5'), (.6, '#E1DCD2'), (1, '#AFA89B')], .34, .2, .95)
+    + '<radialGradient id="cn-glass" cx=".5" cy=".5" r=".5"><stop offset=".7" stop-color="#C6DDF0" stop-opacity=".03"></stop><stop offset="1" stop-color="#C6DDF0" stop-opacity=".28"></stop></radialGradient>'
+    + '<radialGradient id="cn-spec"><stop offset="0" stop-color="#fff" stop-opacity=".65"></stop><stop offset="1" stop-color="#fff" stop-opacity="0"></stop></radialGradient>'
+    + '<linearGradient id="cn-metal" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F2EEE6"></stop><stop offset="1" stop-color="#9A948A"></stop></linearGradient>'
+    + '</defs>')
+
+def _button(dy=0):
+    y = 111 + dy
+    return (f'<g class="c-eye"><circle cx="97" cy="{y}" r="9.5" fill="#6E6A62" opacity=".55"></circle><circle cx="97" cy="{y}" r="8.2" fill="#141210"></circle>'
+            f'<circle cx="97" cy="{y}" r="8.2" fill="none" stroke="#3A3530" stroke-width="1.4"></circle>'
+            f'<path d="M94 {y-3}l6 6M100 {y-3}l-6 6" stroke="#4A4540" stroke-width="1.2" opacity=".85"></path>'
+            f'<circle cx="100.2" cy="{y-3.4}" r="2.4" fill="#fff" opacity=".92"></circle><circle cx="93.6" cy="{y+3.4}" r="1" fill="#fff" opacity=".5"></circle></g>')
+
+def _eyes3(kind):
+    if kind == 'closed':
+        e = '<path d="M88 111C92 117 102 117 106 111" fill="none" stroke="#F3EEE4" stroke-width="3.6" stroke-linecap="round"></path>'
+    elif kind == 'happy':
+        e = '<path d="M88 114C91 105 103 105 106 114" fill="none" stroke="#F3EEE4" stroke-width="3.6" stroke-linecap="round"></path>'
+    else:
+        e = _button(-2 if kind == 'up' else 0)
+    return e + _mir(e)
+
+def _mouth3(kind):
+    if kind == 'open':
+        return ('<path d="M112 140C113 151 127 151 128 140C123 142 117 142 112 140Z" fill="#6E2E24"></path>'
+                '<path d="M115.5 146.5C118 144.6 122 144.6 124.5 146.5C122.5 148.6 117.5 148.6 115.5 146.5Z" fill="#E88E7C"></path>')
+    if kind == 'o':
+        return '<ellipse cx="120" cy="143" rx="3" ry="3.6" fill="#6E2E24"></ellipse>'
+    if kind == 'flat':
+        return '<path d="M115 143C118 142 122 142 125 143" fill="none" stroke="#2E2C29" stroke-width="2.2" stroke-linecap="round"></path>'
+    return '<path d="M114 141C117 144.5 123 144.5 126 141" fill="none" stroke="#2E2C29" stroke-width="2.2" stroke-linecap="round"></path>'
+
+def _head3(eye='open', mth='smile'):
+    ear = ('<path d="M80 96C69 78 70 58 80 49C95 50 108 60 113 73Z" fill="url(#cn-fur)"></path>'
+           '<path d="M80 49C85 48 90 49 95 51C89 54 84 59 82 65C79 60 78 54 80 49Z" fill="#3A3733" opacity=".7"></path>'
+           '<path d="M85 87C81 75 82 63 86 58C94 61 101 67 105 74Z" fill="url(#cn-ear)"></path>')
+    brow = '<path d="M73 98C80 87 94 85 105 91C95 91 85 94 77 102Z" fill="url(#cn-cream)"></path>'
+    blush = '<ellipse cx="80" cy="131" rx="9" ry="5" fill="#F29A80" opacity=".5"></ellipse>'
+    return f"""<g>{ear}</g><g class="c-ear">{_mir(ear)}</g>
+<path d="M120 64C150 64 171 82 173 107C179 111 183 116 185 122C179 124 176 127 175 131C167 147 146 157 120 157C94 157 73 147 65 131C64 127 61 124 55 122C57 116 61 111 67 107C69 82 90 64 120 64Z" fill="url(#cn-fur)"></path>
+<path d="M120 72C124 80 125 90 123 100H117C115 90 116 80 120 72Z" fill="#3A3733" opacity=".3"></path>
+{brow}{_mir(brow)}
+<path d="M61 113C69 97 87 93 103 97C111 99 116 104 120 107C124 104 129 99 137 97C153 93 171 97 179 113C171 125 157 129 145 127C135 125 127 119 120 119C113 119 105 125 95 127C83 129 69 125 61 113Z" fill="url(#cn-mask)"></path>
+{_eyes3(eye)}
+<path d="M120 119C138 119 150 127 150 137C150 148 137 155 120 155C103 155 90 148 90 137C90 127 102 119 120 119Z" fill="url(#cn-cream)"></path>
+<path d="M65 131C73 147 94 157 120 157C146 157 167 147 175 131C162 143 142 149 120 149C98 149 78 143 65 131Z" fill="#000" opacity=".12"></path>
+<ellipse cx="100" cy="78" rx="24" ry="9" transform="rotate(-12 100 78)" fill="url(#cn-spec)"></ellipse>
+{blush}{_mir(blush)}
+<path d="M111 128C111 123 129 123 129 128C129 132 124 135.5 120 135.5C116 135.5 111 132 111 128Z" fill="url(#cn-dark)"></path>
+<ellipse cx="116" cy="126.5" rx="3" ry="1.3" fill="#fff" opacity=".5"></ellipse>
+{_mouth3(mth)}"""
+
+def _dome3(beacon=True):
+    tip = ('<circle class="c-beacon" cx="183" cy="13" r="11" fill="#E8875C" opacity=".25"></circle><circle cx="183" cy="13" r="6" fill="url(#cn-clay)"></circle>'
+           if beacon else '<circle cx="183" cy="13" r="6" fill="url(#cn-dark)"></circle>')
+    return ('<circle cx="120" cy="100" r="82" fill="url(#cn-glass)"></circle>'
+            '<circle cx="120" cy="100" r="82" fill="none" stroke="var(--rim)" stroke-width="2.6" opacity=".8"></circle>'
+            '<path d="M50 84C54 56 74 34 100 26" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" opacity=".42"></path>'
+            '<path d="M196 124C190 144 178 158 164 166" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" opacity=".16"></path>'
+            '<line x1="170" y1="40" x2="182" y2="16" stroke="#A9A398" stroke-width="3.2" stroke-linecap="round"></line>'
+            + tip + '<circle cx="181" cy="11" r="1.7" fill="#fff" opacity=".6"></circle>')
+
+_TAIL3 = 'M150 222C178 228 200 212 202 186C203 176 200 170 196 166'
+def _body3():
+    return f"""<g class="c-tail"><path d="{_TAIL3}" fill="none" stroke="url(#cn-fur)" stroke-width="22" stroke-linecap="round"></path>
+<path d="{_TAIL3}" fill="none" stroke="#3A3733" stroke-width="22" stroke-dasharray="8 9" stroke-dashoffset="-7"></path>
+<circle cx="196" cy="166" r="11" fill="url(#cn-mask)"></circle></g>
+<ellipse cx="102" cy="243" rx="17" ry="9.5" fill="url(#cn-dark)"></ellipse><ellipse cx="138" cy="243" rx="17" ry="9.5" fill="url(#cn-dark)"></ellipse>
+<ellipse cx="96" cy="239" rx="5" ry="2" fill="#fff" opacity=".2"></ellipse><ellipse cx="132" cy="239" rx="5" ry="2" fill="#fff" opacity=".2"></ellipse>
+<path d="M82 190C74 206 76 230 96 238C110 243 130 243 144 238C164 230 166 206 158 190C146 181 94 181 82 190Z" fill="url(#cn-suit)"></path>
+<path d="M96 238C110 243 130 243 144 238C154 234 160 226 162 216C152 230 136 234 120 234C104 234 90 230 80 222C84 230 89 235 96 238Z" fill="#000" opacity=".06"></path>
+<rect x="107" y="201" width="26" height="18" rx="6" fill="url(#cn-clay)"></rect>
+<path d="M126 205A6 6 0 1 0 126 214.5" fill="none" stroke="#FFF8EE" stroke-width="2.3" stroke-linecap="round"></path><circle cx="120.5" cy="210" r="2.1" fill="#FFF8EE"></circle><circle cx="126" cy="205" r="2" fill="#FFE0A0"></circle>
+<rect x="109" y="202.5" width="12" height="3" rx="1.5" fill="#fff" opacity=".25"></rect>
+<ellipse cx="120" cy="185" rx="46" ry="10" fill="url(#cn-metal)"></ellipse><ellipse cx="120" cy="182.5" rx="36" ry="3.6" fill="#fff" opacity=".4"></ellipse>"""
+
+def _arm3(d, paw, cls=''):
+    c = f' class="{cls}"' if cls else ''
+    x, y = paw
+    return (f'<g{c}><path d="{d}" fill="none" stroke="#B5AEA2" stroke-width="16" stroke-linecap="round"></path>'
+            f'<path d="{d}" fill="none" stroke="#F1EDE5" stroke-width="11" stroke-linecap="round" transform="translate(-1 -1.5)"></path>'
+            f'<circle cx="{x}" cy="{y}" r="10" fill="url(#cn-dark)"></circle><ellipse cx="{x-3}" cy="{y-3.5}" rx="3" ry="1.8" fill="#fff" opacity=".3"></ellipse></g>')
+
+_SH3 = '<ellipse cx="120" cy="251" rx="48" ry="6" fill="#000" opacity=".22"></ellipse>'
+_REST_L = ('M88 198C78 206 76 218 82 226', (82, 229))
+
+def _sparkle3(x, y, s, delay, color='var(--gold)'):
+    return sparkle(x, y, s, delay, color)
+
+def pose_svg(pose):
+    if pose == 'face':
+        return f'{DEFS3}{_head3()}{_dome3()}', '30 0 180 186'
+    if pose == 'hi':
+        inner = f"{_body3()}{_head3()}{_dome3()}{_arm3(*_REST_L)}{_arm3('M154 196C170 188 178 174 180 160', (180, 155), 'c-wave')}"
+        return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>', '0 0 240 260'
+    if pose == 'cheer':
+        inner = (f"{_body3()}{_head3('happy', 'open')}{_dome3()}"
+                 f"{_arm3('M86 196C70 188 62 174 60 160', (60, 155))}{_arm3('M154 196C170 188 178 174 180 160', (180, 155))}")
+        stars = _sparkle3(22, 130, 10, 0) + _sparkle3(220, 120, 9, .6) + _sparkle3(30, 46, 7, 1.1, 'var(--clay)') + _sparkle3(214, 60, 6, .3, 'var(--signal-done)') + _sparkle3(226, 196, 6, .9)
+        return f'{DEFS3}{_SH3}{stars}<g class="c-hop">{inner}</g>', '0 0 240 260'
+    if pose == 'think':
+        orb = ('<g class="c-orb"><ellipse cx="120" cy="216" rx="26" ry="8" fill="none" stroke="var(--gold)" stroke-width="2.2" opacity=".85"></ellipse><circle cx="146" cy="216" r="3.4" fill="var(--signal-done)"></circle></g>'
+               '<circle cx="120" cy="216" r="13" fill="url(#cn-gold)"></circle><ellipse cx="115.5" cy="211" rx="4" ry="2.4" fill="#fff" opacity=".5"></ellipse>')
+        inner = (f"{_body3()}{_head3('up', 'o')}{_dome3()}"
+                 f"{_arm3('M88 198C82 210 90 220 104 218', (105, 217))}{_arm3('M152 198C158 210 150 220 136 218', (135, 217))}{orb}")
+        dots = ''.join(f'<circle class="c-dot" style="animation-delay:{d}s" cx="{x}" cy="{y}" r="{r}" fill="var(--ink-soft)"></circle>'
+                       for x, y, r, d in ((206, 46, 3.6, 0), (218, 32, 4.6, .25), (230, 16, 5.6, .5)))
+        return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>{dots}', '0 0 240 260'
+    if pose == 'flag':
+        flag = ('<line x1="190" y1="200" x2="190" y2="96" stroke="#8D887F" stroke-width="4" stroke-linecap="round"></line>'
+                '<circle cx="190" cy="95" r="4" fill="url(#cn-gold)"></circle>'
+                '<g class="c-flag"><path d="M191.5 100C203 95 214 104 228 99V126C214 131 203 122 191.5 127Z" fill="url(#cn-clay)"></path>'
+                '<path d="M209 107.5l1.8 3.8 4.1.4-3.1 2.8.9 4.1-3.7-2.1-3.7 2.1.9-4.1-3.1-2.8 4.1-.4z" fill="#FFE0A0"></path></g>')
+        inner = (f"{_body3()}{_head3()}{_dome3()}{_arm3(*_REST_L)}{flag}"
+                 f"{_arm3('M154 196C168 194 180 184 186 172', (188, 168))}")
+        return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>', '0 0 240 260'
+    if pose == 'sleep':
+        inner = (f"{_body3()}<g transform=\"rotate(-8 120 160)\">{_head3('closed', 'o')}{_dome3(beacon=False)}</g>"
+                 f"{_arm3('M88 198C82 210 92 218 106 215', (107, 214))}{_arm3('M152 198C158 210 148 218 134 215', (133, 214))}")
+        z = ''.join(f'<text class="c-z" x="{x}" y="{y}" style="animation-delay:{d}s;font:700 {s}px/1 var(--font-sans)" fill="var(--ink-soft)">z</text>'
+                    for x, y, s, d in ((198, 64, 15, 0), (210, 44, 19, 1), (222, 22, 23, 2)))
+        return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>{z}', '0 0 250 260'
+    if pose == 'oops':
+        drop = ('<path d="M176 60C176 60 168 70 168 75C168 79.4 171.6 82 176 82C180.4 82 184 79.4 184 75C184 70 176 60 176 60Z" fill="#9FD0E2"></path>'
+                '<ellipse cx="173.6" cy="74" rx="1.8" ry="3" fill="#fff" opacity=".7"></ellipse>')
+        inner = (f"{_body3()}<g transform=\"rotate(5 120 160)\">{_head3('open', 'flat')}{_dome3()}{drop}</g>"
+                 f"{_arm3('M88 198C80 208 84 220 96 222', (97, 222))}{_arm3('M154 196C168 188 176 176 176 164', (176, 160))}")
+        return f'{DEFS3}{_SH3}<g class="c-float">{inner}</g>', '0 0 240 260'
+    raise ValueError(pose)
