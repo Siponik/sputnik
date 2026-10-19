@@ -1,0 +1,5 @@
+# Ключи и токены Google никогда не попадают в репозиторий
+client_secret*.json
+.token.json
+.state.json
+node_modules/
