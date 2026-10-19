@@ -1,0 +1,28 @@
+/* Спутник — токены из дизайн-системы «Спутник». Тёмная тема основная. */
+:root {
+  --bg: #1C1B19; --wash: #22211E; --raised: #282723; --hairline: #34332E; --edge: #3A3934;
+  --ink: #ECEAE3; --ink-soft: #A8A69D; --ink-faint: #7C7B72;
+  --clay: #D9774F; --clay-soft: #30221B; --on-clay: #1C1B19;
+  --gold: #E0A04A; --gold-soft: #3A2E1A;
+  --signal-overdue: #F07A6A; --signal-soon: var(--gold); --signal-done: #6FB6CF;
+  --type-work: #7FA6E8; --type-creative: var(--clay); --type-study: #B79BE6; --type-personal: #8FBF7F; --type-habit: var(--gold);
+  --shadow-lift: 0 6px 18px rgba(0, 0, 0, .45);
+  --font-display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  --font-sans: -apple-system, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Cascadia Mono", ui-monospace, Consolas, monospace;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #FCFCFB; --wash: #F5F4F0; --raised: #FFFFFF; --hairline: #E4E3DC; --edge: #E1E1DF;
+    --ink: #2E2C27; --ink-soft: #6B6A63; --ink-faint: #8A897F;
+    --clay: #AD4F2C; --clay-soft: #FBEEE7; --on-clay: #FFFFFF;
+    --gold: #8F5A00; --gold-soft: #FBF1DF;
+    --signal-overdue: #B42318; --signal-done: #1F6A80;
+    --type-work: #2F5DA8; --type-study: #6D4AA5; --type-personal: #3E6B31;
+    --shadow-lift: 0 6px 18px rgba(46, 44, 39, .14);
+    color-scheme: light;
+  }
+}

@@ -3,3 +3,9 @@ client_secret*.json
 .token.json
 .state.json
 node_modules/
+
+# Трекер
+tracker/node_modules/
+tracker/dist/
+tracker/src-tauri/target/
+tracker/src-tauri/gen/

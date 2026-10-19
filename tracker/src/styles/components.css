@@ -1,0 +1,84 @@
+/* Спутник — компоненты. Только классы sp-*, все цвета из tokens.css. */
+body { margin: 0; font-family: var(--font-sans); background: var(--bg); color: var(--ink); }
+.sp-stage { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; padding: var(--space-4); }
+.sp-stage-col { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+
+/* Brand — знак «С» + слово */
+.sp-brand { display: inline-flex; align-items: center; gap: var(--space-2); font: 600 14px/20px var(--font-sans); color: var(--ink); letter-spacing: .01em; }
+.sp-brand svg { width: 18px; height: 18px; display: block; flex: none; }
+.sp-brand .arc { fill: none; stroke: var(--clay); stroke-width: 46; stroke-linecap: round; }
+.sp-brand .core { fill: var(--ink); }
+.sp-brand .sat { fill: var(--ink); stroke: var(--sp-brand-ground, var(--wash)); stroke-width: 22; }
+
+/* Tabs — верхняя строка */
+.sp-tabs { display: flex; align-items: flex-end; gap: 28px; padding: 20px var(--space-6) 0; background: var(--wash); border-bottom: 1px solid var(--edge); }
+.sp-tabs .sp-brand { padding-bottom: 10px; margin-right: var(--space-2); }
+.sp-tab { background: none; border: 0; margin: 0; padding: 0 0 10px; font: 500 14px/20px var(--font-sans); color: var(--ink-soft); cursor: pointer; border-bottom: 2px solid transparent; }
+.sp-tab:hover { color: var(--ink); }
+.sp-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--ink); }
+.sp-tab .n { color: var(--ink-faint); font-weight: 400; }
+
+/* Button */
+.sp-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 var(--space-4); border-radius: var(--radius-pill); border: 1px solid var(--hairline); background: none; color: var(--ink); font: 500 13px/18px var(--font-sans); cursor: pointer; }
+.sp-btn:hover { border-color: var(--ink-faint); }
+.sp-btn-primary { background: var(--clay); border-color: var(--clay); color: var(--on-clay); }
+.sp-btn-primary:hover { border-color: var(--clay); filter: brightness(1.06); }
+.sp-btn-ghost { border-color: transparent; color: var(--ink-soft); }
+.sp-btn-ghost:hover { color: var(--ink); border-color: transparent; background: var(--wash); }
+.sp-btn svg, .sp-mark svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* MarkToggle — «Выполнено / Рассмотрено» */
+.sp-marks { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.sp-mark { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 13px; border: 1px solid var(--hairline); border-radius: var(--radius-pill); background: none; color: var(--ink-soft); font: 500 13px/18px var(--font-sans); cursor: pointer; }
+.sp-mark:hover { color: var(--ink); border-color: var(--ink-faint); }
+.sp-mark[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+.sp-marks .when { font: 400 12px/16px var(--font-sans); color: var(--ink-faint); }
+
+/* Focus — одно кольцо на всё */
+.sp-tab:focus-visible, .sp-btn:focus-visible, .sp-mark:focus-visible, .sp-check:focus-visible, .sp-card:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* Chip — тип, тег, срок */
+.sp-chip { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--radius-pill); border: 1px solid var(--hairline); color: var(--ink-soft); font: 500 12px/16px var(--font-sans); white-space: nowrap; }
+.sp-chip .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+.sp-chip-work { color: var(--type-work); }
+.sp-chip-creative { color: var(--type-creative); }
+.sp-chip-study { color: var(--type-study); }
+.sp-chip-personal { color: var(--type-personal); }
+.sp-chip-habit { color: var(--type-habit); }
+.sp-chip-overdue { color: var(--signal-overdue); border-color: currentColor; }
+.sp-chip-soon { color: var(--signal-soon); background: var(--gold-soft); border-color: transparent; }
+.sp-chip-done { color: var(--signal-done); }
+.sp-chip-tag { color: var(--clay); background: var(--clay-soft); border-color: transparent; }
+
+/* Checkbox — круглый, как в Google Tasks */
+.sp-check { appearance: none; -webkit-appearance: none; width: 20px; height: 20px; margin: 0; flex: none; border: 1.5px solid var(--ink-faint); border-radius: 50%; background: none; display: inline-grid; place-content: center; cursor: pointer; }
+.sp-check:hover { border-color: var(--ink-soft); }
+.sp-check::after { content: ""; width: 10px; height: 6px; border: solid var(--on-clay); border-width: 0 0 2px 2px; transform: rotate(-45deg) translate(1px, -1px); opacity: 0; }
+.sp-check:checked { background: var(--signal-done); border-color: var(--signal-done); }
+.sp-check:checked::after { opacity: 1; border-color: var(--bg); }
+
+/* TaskCard */
+.sp-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--space-2) 10px; padding: var(--space-3); background: var(--raised); border: 1px solid var(--edge); border-radius: var(--radius-md); }
+.sp-card .t { font: 600 15px/22px var(--font-sans); color: var(--ink); overflow-wrap: anywhere; }
+.sp-card .d { grid-column: 2; margin: -4px 0 0; font: 400 13px/19px var(--font-sans); color: var(--ink-soft); }
+.sp-card .meta { grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px var(--space-2); }
+.sp-card .data { font: 400 12px/16px var(--font-mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.sp-card.is-done .t { color: var(--ink-soft); text-decoration: line-through; text-decoration-color: var(--ink-faint); }
+.sp-card.is-dragging { box-shadow: var(--shadow-lift); transform: rotate(-1deg); }
+
+/* KanbanColumn */
+.sp-col { display: flex; flex-direction: column; gap: var(--space-3); width: 288px; max-width: 100%; padding: var(--space-3); background: var(--wash); border-radius: var(--radius-lg); }
+.sp-col-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: 2px 4px 0; }
+.sp-col-head h3 { margin: 0; font: 600 16px/22px var(--font-sans); color: var(--ink); }
+.sp-col-head .n { font: 400 12px/16px var(--font-mono); color: var(--ink-faint); }
+.sp-col-add { justify-content: flex-start; width: 100%; }
+
+/* PipelineStepper — этапы ассета */
+.sp-pipe { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; list-style: none; margin: 0; padding: 0; }
+.sp-pipe li { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/16px var(--font-sans); color: var(--ink-faint); }
+.sp-pipe li + li::before { content: ""; width: 14px; height: 1px; background: var(--hairline); }
+.sp-pipe li.done { color: var(--ink-soft); }
+.sp-pipe li.done::after { content: "✓"; color: var(--signal-done); }
+.sp-pipe li.now { color: var(--clay); background: var(--clay-soft); padding: 2px 8px; border-radius: var(--radius-pill); }
+
+@media (prefers-reduced-motion: reduce) { .sp-card.is-dragging { transform: none; } }
