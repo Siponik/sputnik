@@ -17,6 +17,7 @@
   import { templateOf, isHabitList, HABITS } from './lib/templates.js';
   import { isDone, logKey, stats, plural, canRest, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
+  import * as updater from './lib/updater.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -171,6 +172,30 @@
     cals: Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden),
   });
 
+  // ---------- обновление из приложения ----------
+
+  let version = $state('');
+  let upd = $state({ found: null, busy: false, progress: 0, err: '', note: '', later: false });
+  async function checkUpdate(manual = false) {
+    if (upd.busy) return;
+    upd.err = '';
+    upd.note = manual ? 'Проверяю…' : '';
+    try {
+      upd.found = await updater.findUpdate();
+      upd.later = false;
+      upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
+    } catch (e) {
+      upd.note = '';
+      if (manual) upd.err = 'Не удалось проверить обновления: ' + e;
+    }
+  }
+  async function installUpdate() {
+    upd.busy = true;
+    upd.err = '';
+    try { await updater.install(upd.found, (p) => (upd.progress = p)); }
+    catch (e) { upd.err = 'Не удалось обновиться: ' + e; upd.busy = false; }
+  }
+
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
   let retryTimer;
@@ -238,10 +263,14 @@
 
   onMount(() => {
     start();
+    updater.currentVersion().then((v) => (version = v));
+    // Обновления: через полминуты после запуска и дальше раз в 6 часов.
+    const updFirst = setTimeout(() => checkUpdate(), 30e3);
+    const updTimer = setInterval(() => checkUpdate(), 6 * 3600e3);
     const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
     const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
     window.addEventListener('focus', onFocus);
-    return () => { clearInterval(timer); window.removeEventListener('focus', onFocus); };
+    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); window.removeEventListener('focus', onFocus); };
   });
 
   function replace(listId, updated) {
@@ -537,6 +566,22 @@
       </div>
     </nav>
 
+    {#if (upd.found && !upd.later) || upd.err}
+      <div class="upd" role="status">
+        {#if upd.err}
+          <p class="err">{upd.err}</p>
+          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.err = '')}>Скрыть</button>
+        {:else if upd.busy}
+          <p><b>Ставлю Спутник {upd.found.version}…</b> Окно установки закроется само, приложение перезапустится.</p>
+          <span class="upd-bar"><span style="width: {Math.round(upd.progress * 100)}%"></span></span>
+        {:else}
+          <p><b>Вышла версия {upd.found.version}.</b> Обновление займёт меньше минуты, данные никуда не денутся.</p>
+          <button class="sp-btn sp-btn-primary" type="button" style="min-height: 30px" onclick={installUpdate}>Обновить</button>
+          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.later = true)}>Позже</button>
+        {/if}
+      </div>
+    {/if}
+
     {#if offline}
       <div class="offline" role="alert">
         <Coon pose="oops" size={48} />
@@ -576,7 +621,9 @@
           </div>
         {/if}
         <div class="foot">
-          <span>Спутник 0.2</span>
+          <span>Спутник {version}</span>
+          <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
+          {#if upd.note}<span>{upd.note}</span>{/if}
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>

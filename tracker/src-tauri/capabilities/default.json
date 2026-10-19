@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "Права главного окна Спутника",
   "windows": ["main"],
-  "permissions": ["core:default", "notification:default"]
+  "permissions": ["core:default", "notification:default", "updater:default", "process:allow-restart"]
 }

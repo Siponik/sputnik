@@ -27,3 +27,12 @@
 
 /* Поля окна задачи не сжимаются (иначе перенесённые кнопки приоритета и типа наезжают друг на друга). */
 .drawer .scroll > *, .dialog > * { flex-shrink: 0; }
+
+/* Полоса «Вышла версия … · Обновить». */
+.upd { flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 8px 24px; background: color-mix(in srgb, var(--signal-done) 12%, var(--wash)); border-bottom: 1px solid color-mix(in srgb, var(--signal-done) 35%, var(--edge)); }
+.upd p { margin: 0; flex: 1 1 320px; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.upd p b { color: var(--ink); }
+.upd p.err { color: var(--signal-overdue); }
+.upd-bar { flex: 0 0 200px; height: 6px; border-radius: 6px; background: var(--hairline); overflow: hidden; }
+.upd-bar span { display: block; height: 100%; background: var(--signal-done); }
+.side .foot button:disabled { opacity: .5; cursor: default; }
