@@ -14,7 +14,9 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
-const SCOPES: &str = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email";
+const SCOPES: &str = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email";
+/// Право, без которого вход считается устаревшим и Спутник просит войти заново.
+const REQUIRED_SCOPE: &str = "drive.appdata";
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SIGN_IN_AGAIN: &str = "Войдите в Google заново";
@@ -30,6 +32,8 @@ struct Token {
     access_token: String,
     refresh_token: Option<String>,
     expires_at: u64,
+    #[serde(default)]
+    scope: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -50,6 +54,7 @@ struct TokenResponse {
     access_token: String,
     expires_in: Option<u64>,
     refresh_token: Option<String>,
+    scope: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -125,7 +130,9 @@ async fn google_error(resp: reqwest::Response) -> String {
 #[tauri::command]
 pub fn auth_status(app: AppHandle) -> AuthStatus {
     let has_secret = read_secret(&app).is_ok();
-    let signed_in = load_token(&app).map(|t| t.refresh_token.is_some()).unwrap_or(false);
+    let signed_in = load_token(&app)
+        .map(|t| t.refresh_token.is_some() && t.scope.as_deref().unwrap_or("").contains(REQUIRED_SCOPE))
+        .unwrap_or(false);
     AuthStatus { has_secret, signed_in }
 }
 
@@ -192,6 +199,7 @@ pub async fn login(app: AppHandle, google: State<'_, Google>) -> Result<(), Stri
         access_token: tr.access_token,
         refresh_token: tr.refresh_token,
         expires_at: now() + tr.expires_in.unwrap_or(3600),
+        scope: tr.scope,
     };
     store_token(&app, &token)?;
     *google.token.lock().await = Some(token);
@@ -283,6 +291,7 @@ async fn access_token(app: &AppHandle, google: &Google) -> Result<String, String
         access_token: tr.access_token,
         refresh_token: tr.refresh_token.or(current.refresh_token),
         expires_at: now() + tr.expires_in.unwrap_or(3600),
+        scope: tr.scope.or(current.scope),
     };
     store_token(app, &token)?;
     let access = token.access_token.clone();
