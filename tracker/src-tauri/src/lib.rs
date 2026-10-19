@@ -32,7 +32,7 @@ fn layer_write(app: tauri::AppHandle, data: Value) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
-        // Обновления: latest.json и подписанный установщик в публичном Siponik/sputnik-releases.
+        // Обновления: latest.json и подписанный установщик — в релизах Siponik/sputnik.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(google::Google::default())

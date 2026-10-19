@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CONF = join(root, 'tracker', 'src-tauri', 'tauri.conf.json');
-const REPO = 'Siponik/sputnik-releases'; // публичный репозиторий только с установщиками
+const REPO = 'Siponik/sputnik'; // репозиторий публичный — приложение читает релизы без пароля
 const [cmd, run, ...rest] = process.argv.slice(2);
 if (!/^\d+$/.test(run ?? '')) throw new Error('Нужен номер сборки');
 const version = `0.3.${run}`;
@@ -32,7 +32,7 @@ if (cmd === 'prepare') {
     platforms: {
       'windows-x86_64': {
         signature: readFileSync(`${msi}.sig`, 'utf8').trim(),
-        url: `https://github.com/${REPO}/releases/download/v${version}/${encodeURIComponent(basename(msi))}`,
+        url: `https://github.com/${REPO}/releases/download/tracker-${version}/${encodeURIComponent(basename(msi))}`,
       },
     },
   };

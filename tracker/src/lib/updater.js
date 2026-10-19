@@ -1,4 +1,4 @@
-// Обновление из приложения: Tauri updater смотрит latest.json в публичном Siponik/sputnik-releases
+// Обновление из приложения: Tauri updater смотрит latest.json в последнем релизе Siponik/sputnik
 // (адрес и открытый ключ — tauri.conf.json → plugins.updater). Установщик подписан, чужой файл не встанет.
 import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
