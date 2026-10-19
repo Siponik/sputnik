@@ -1,0 +1,21 @@
+/* Календарь v2 (design/screens/Calendar.dc.html): сутки 0–24 со сжатием, черновик, форма в панели дня. */
+.wk-grid .col { position: relative; border-left: 1px solid var(--hairline); }
+.wk-grid .hours .lbl.small { font-size: 10px; opacity: .8; }
+.wk-grid .band { position: absolute; left: 0; right: 0; box-sizing: border-box; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--hairline) 55%, transparent) 0 1px, transparent 1px 7px); border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.wk-grid .hline { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--hairline) 70%, transparent); }
+.wk-grid .slot { position: absolute; left: 0; right: 0; width: 100%; border: 0; padding: 0; background: none; cursor: pointer; display: block; }
+.wk-grid .slot:hover { background: color-mix(in srgb, var(--clay) 8%, transparent); }
+.wk-grid .slot:hover::after { content: attr(data-t); position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font: 500 11px/1 var(--font-mono); color: var(--clay); }
+.wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 10%, transparent); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 1; }
+
+.cmp { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--wash); border: 1px solid var(--clay); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent); }
+.cmp input, .cmp .cmp-list { height: 36px; padding: 0 10px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: var(--raised); color: var(--ink); font: 500 14px/1 var(--font-sans); outline: none; }
+.cmp input:focus, .cmp .cmp-list:focus { border-color: var(--clay); }
+.cmp .cmp-hint { margin: 0; font-size: 12px; line-height: 16px; color: var(--ink-faint); }
+.seg2 { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg2 button { height: 28px; padding: 0 10px; border-radius: var(--radius-pill); border: 1px solid var(--edge); background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; }
+.seg2 button[aria-pressed="true"] { background: var(--raised); color: var(--ink); border-color: var(--ink-faint); }
+.addday { height: 38px; border-radius: 10px; border: 1.5px dashed var(--edge); background: none; color: var(--ink-soft); font: 500 13.5px/1 var(--font-sans); cursor: pointer; }
+.addday:hover { border-color: var(--clay); color: var(--clay); }
+.free-day { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
+.free-day p { margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }

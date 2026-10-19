@@ -130,6 +130,16 @@ export async function eventsRange(start, end) {
   return lists.flat();
 }
 
+/** Новое событие в основном календаре: на весь день (slot = null) или на время { s, e } «ЧЧ:ММ». */
+export function createEvent({ title, day, slot }) {
+  const next = (d) => { const [y, m, dd] = d.split('-').map(Number); return ymd(new Date(y, m - 1, dd + 1)); };
+  const local = (d, hhmm) => { const [y, m, dd] = d.split('-').map(Number); const [h, mi] = hhmm.split(':').map(Number); return new Date(y, m - 1, dd, h, mi).toISOString(); };
+  const body = slot
+    ? { summary: title, start: { dateTime: local(day, slot.s) }, end: { dateTime: local(day, slot.e) } }
+    : { summary: title, start: { date: day }, end: { date: next(day) } };
+  return gapi('POST', `${CAL}/calendars/primary/events`, body);
+}
+
 // ---------- даты ----------
 
 export const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

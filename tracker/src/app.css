@@ -4,6 +4,7 @@
 @import './styles/today.css';
 @import './styles/board.css';
 @import './styles/habits.css';
+@import './styles/calendar.css';
 
 /* Раскладка приложения */
 html, body, #app { height: 100%; }
@@ -293,9 +294,6 @@ svg.flip { transform: rotate(180deg); }
 
 .wk-grid .hours { position: relative; }
 .wk-grid .hours .lbl { position: absolute; right: 0; width: 84px; box-sizing: border-box; }
-.wk-grid .col { position: relative; border-left: 1px solid var(--hairline); background-image: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--hairline) 70%, transparent) 0 1px, transparent 1px 40px); }
-.wk-grid .slot { position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: none; cursor: copy; }
-.wk-grid .slot:hover { background: color-mix(in srgb, var(--wash) 50%, transparent); }
 .blk { position: absolute; box-sizing: border-box; overflow: hidden; border-radius: 7px; padding: 4px 7px; display: flex; flex-direction: column; gap: 1px; z-index: 1; }
 .blk.k-event { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
 .blk.k-task { background: color-mix(in srgb, var(--c) 14%, var(--bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }

@@ -312,6 +312,15 @@
     } catch (e) { say('Не удалось запланировать: ' + e); return false; }
   }
 
+  async function createEvent(p) {
+    try {
+      await api.createEvent(p);
+      say(`«${p.title}» — в Google Календаре`);
+      if (p.day === api.ymd(new Date())) events = await api.eventsForDay().catch(() => events);
+      return true;
+    } catch (e) { say('Не удалось создать событие: ' + e); return false; }
+  }
+
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
   async function quickCreate({ title, listId, due, slot, layer = null }, quiet = false) {
     try {
@@ -498,7 +507,8 @@
             ontoggle={(t, d, listId) => toggle(t, d, listId)}
             ontogglehabit={toggleHabit}
             onschedule={schedule}
-            oncreate={(p) => (quick = p)} />
+            oncreatetask={(p) => quickCreate(p)}
+            oncreateevent={createEvent} />
         {:else if view === 'habits'}
           <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onrest={restHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />

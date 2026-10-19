@@ -1,22 +1,14 @@
 <script>
-  import { GRID_START, GRID_END, HOUR_PX, fromMin, typeColor, nowMin } from './calendar.js';
+  import { fromMin, toMin, typeColor, nowMin } from './calendar.js';
 
-  let { days, habits, show, free, clock, stripOpen, ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncreate } = $props();
+  // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты; draft — черновик { day, time } из формы панели дня.
+  let { days, habits, show, free, clock, layout, draft = null, stripOpen, ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose } = $props();
 
-  const hours = Array.from({ length: (GRID_END - GRID_START) / 60 }, (_, i) => GRID_START / 60 + i);
-  const gridH = ((GRID_END - GRID_START) / 60) * HOUR_PX;
   const hasAllday = $derived(days.some((d) => d.allday.length));
-  const nowTop = $derived.by(() => { clock; const m = nowMin(); return m >= GRID_START && m <= GRID_END ? ((m - GRID_START) / 60) * HOUR_PX : null; });
+  const nowTop = $derived((clock, layout.yAt(nowMin())));
+  const slots = $derived(Array.from({ length: 24 }, (_, h) => ({ h, top: layout.Y[h], ht: layout.HT[h], t: String(h).padStart(2, '0') + ':00' })));
 
   const dotClass = (x) => (!x.sched ? 'off' : x.done ? 'done' : x.isToday ? 'now' : 'plan');
-
-  // Клик по пустому месту колонки — новая задача на этот час.
-  function slotClick(e, d) {
-    const r = e.currentTarget.getBoundingClientRect();
-    const min = GRID_START + Math.floor(((e.clientY - r.top) / HOUR_PX) * 2) * 30;
-    const s = Math.min(GRID_END - 60, Math.max(GRID_START, min));
-    oncreate({ day: d.ymd, s: fromMin(s), e: fromMin(s + 60) });
-  }
 </script>
 
 <div class="cal-week">
@@ -88,12 +80,17 @@
   {/if}
 
   <div class="wk wk-grid">
-    <div class="hours" style="height: {gridH}px">
-      {#each hours as h, i (h)}<span class="lbl" style="top: {i === 0 ? 2 : i * HOUR_PX - 7}px">{String(h).padStart(2, '0')}:00</span>{/each}
+    <div class="hours" style="height: {layout.height}px">
+      {#each layout.labels as l (l.key)}<span class="lbl" class:small={l.small} style="top: {l.top}px">{l.text}</span>{/each}
     </div>
     {#each days as d (d.ymd)}
-      <div class="col" class:sel={d.isSel} style="height: {gridH}px">
-        <button type="button" class="slot" tabindex="-1" aria-label="Новая задача на {d.title}" onclick={(e) => slotClick(e, d)}></button>
+      <div class="col" class:sel={d.isSel} style="height: {layout.height}px">
+        {#each layout.bands as bd (bd.top)}<div class="band" style="top: {bd.top}px; height: {bd.h}px"></div>{/each}
+        {#each layout.lines as y (y)}<div class="hline" style="top: {y}px"></div>{/each}
+        {#each slots as sl (sl.h)}
+          <button type="button" class="slot" data-t={sl.ht > 20 ? '+ ' + sl.t : ''} tabindex="-1" aria-label="Добавить на {d.title}, {sl.t}"
+            style="top: {sl.top}px; height: {sl.ht}px" onclick={() => oncompose(d.ymd, sl.t)}></button>
+        {/each}
         {#each d.blocks as b (b.id)}
           <div class="blk k-{b.kind}" class:done={b.done}
             style="top: {b.top}px; height: {b.height}px; left: calc({(b.col / b.cols) * 100}% + 3px); width: calc({100 / b.cols}% - 6px); --c: {b.type ? typeColor(b.type) : 'var(--ink-soft)'}">
@@ -105,14 +102,16 @@
                 <span class="tx" title="{b.title} · {b.cal}">{b.title}</span>
               {/if}
             </div>
-            {#if b.s < GRID_START || b.s >= GRID_END}<span class="tm">{fromMin(b.s)} — вне сетки</span>
-            {:else if b.height >= 34}<span class="tm">{fromMin(b.s)}–{fromMin(Math.min(b.e, 1440))}</span>{/if}
+            {#if b.height >= 34}<span class="tm">{fromMin(b.s)}–{fromMin(Math.min(b.e, 1440))}</span>{/if}
           </div>
         {/each}
         {#if free && free.day === d.ymd}
-          <div class="free" style="top: {((free.s - GRID_START) / 60) * HOUR_PX + 1}px; height: {((free.e - free.s) / 60) * HOUR_PX - 2}px">свободное окно</div>
+          <div class="free" style="top: {layout.yAt(free.s) + 1}px; height: {layout.yAt(free.e) - layout.yAt(free.s) - 2}px">свободное окно</div>
         {/if}
-        {#if d.isToday && nowTop != null}<div class="now" style="top: {nowTop}px"></div>{/if}
+        {#if draft && draft.day === d.ymd && draft.time}
+          <div class="ghost" style="top: {layout.yAt(toMin(draft.time)) + 1}px; height: 38px">{draft.title || 'Новое · ' + draft.time}</div>
+        {/if}
+        {#if d.isToday}<div class="now" style="top: {nowTop}px"></div>{/if}
       </div>
     {/each}
   </div>

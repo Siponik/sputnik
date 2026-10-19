@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { ymd, dueToYmd } from './api.js';
   import { stats } from './habits.js';
   import * as cal from './calendar.js';
@@ -8,7 +8,7 @@
   import Coon from './Coon.svelte';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
-    onopen, ontoggle, ontogglehabit, onschedule, oncreate } = $props();
+    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent } = $props();
 
   // Вид и фильтры запоминаем на этом компьютере — это удобство, не данные.
   const remember = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -25,6 +25,11 @@
   let evErr = $state('');
   let planned = $state(null);
   let planning = $state(false);
+  let reload = $state(0); // перечитать события после создания своего
+  // Форма «＋ Добавить на этот день» в панели дня.
+  let cmp = $state({ open: false, title: '', kind: 'task', time: 'all', listId: '' });
+  let cmpBusy = $state(false);
+  let cmpInput = $state(null);
 
   onMount(() => {
     const t = setInterval(() => (clock = Date.now()), 60e3);
@@ -39,7 +44,7 @@
 
   // События за видимый период; перезагружаем при смене периода и после каждой синхронизации.
   $effect(() => {
-    syncAt;
+    syncAt; reload;
     const start = cal.parseYmd(days[0]);
     const end = cal.addDays(cal.parseYmd(days[days.length - 1]), 1);
     let alive = true;
@@ -56,6 +61,16 @@
   const ORDER = { holiday: 0, birthday: 1, task: 2, event: 3 };
   const byTime = (a, b) => (a.s ?? -1) - (b.s ?? -1) || ORDER[a.kind] - ORDER[b.kind];
 
+  // Сутки 0–24: часы, где за неделю что-то есть (и текущий, черновик, свободное окно), — полные, остальные сжаты.
+  const timedWeek = $derived(days.flatMap((d) => (allItems[d] ?? []).filter((i) => visible(i) && i.s != null)));
+  const layout = $derived.by(() => {
+    const hot = [];
+    if (days.includes(today)) hot.push(Math.floor(cal.nowMin() / 60));
+    if (cmp.open && cmp.time !== 'all' && days.includes(sel)) hot.push(+cmp.time.slice(0, 2));
+    if (free) for (let h = Math.floor(free.s / 60); h < Math.ceil(free.e / 60); h++) hot.push(h);
+    return cal.hourLayout(timedWeek, hot);
+  });
+
   const dayObjs = $derived(days.map((day) => {
     const items = (allItems[day] ?? []).filter(visible).sort(byTime);
     const hs = habits.map((h) => ({ h, ...cal.habitDay(h, log, day, today) }));
@@ -66,7 +81,7 @@
       ymd: day, ...lbl, items, holiday,
       isToday: day === today, isSel: day === sel, future: day > today, weekend: cal.WD_SHORT.indexOf(lbl.short) >= 5,
       allday: items.filter((i) => i.s == null),
-      blocks: cal.layoutBlocks(items),
+      blocks: mode === 'week' ? cal.layoutBlocks(items, layout.yAt) : [],
       habits: hs, hSched: sched.length, hDone: sched.filter((x) => x.done).length,
     };
   }));
@@ -107,7 +122,7 @@
       return;
     }
     if (!free) return;
-    if (!candidate) return oncreate({ day: free.day, s: cal.fromMin(free.s), e: cal.fromMin(free.e) });
+    if (!candidate) return compose(free.day, cal.fromMin(free.s));
     const w = free, c = candidate;
     const prev = { due: c.task.due ?? null, slot: layTasks?.[c.task.id]?.slot ?? null };
     planning = true;
@@ -143,7 +158,41 @@
 
   // ---------- навигация ----------
 
-  function pick(day) { sel = day; }
+  function pick(day) { if (day !== sel) cmp.open = false; sel = day; }
+
+  // ---------- форма «＋ Добавить на этот день» ----------
+
+  const TIMES = ['all', '10:00', '14:00', '19:00'];
+  const cmpTimes = $derived(cmp.time !== 'all' && !TIMES.includes(cmp.time) ? [...TIMES, cmp.time] : TIMES);
+  const cmpList = $derived(cmp.listId && lists.some((l) => l.id === cmp.listId) ? cmp.listId : lists[0]?.id ?? '');
+  const shortDay = (day) => { const d = cal.parseYmd(day); return `${d.getDate()} ${cal.MONTH_GEN[d.getMonth()].slice(0, 3)}.`; };
+  const cmpHint = $derived(cmp.kind === 'event'
+    ? 'Событие попадёт в Google Календарь.'
+    : `Задача попадёт в Google Tasks, список «${lists.find((l) => l.id === cmpList)?.title ?? '—'}»${cmp.time === 'all' ? ', со сроком на этот день.' : ', и встанет в сетку на это время.'}`);
+
+  async function compose(day, time = 'all', title = '') {
+    sel = day;
+    cmp = { ...cmp, open: true, title, time, kind: cmp.kind };
+    await tick();
+    cmpInput?.focus();
+  }
+  async function createCmp() {
+    const title = cmp.title.trim();
+    if (!title || cmpBusy) return;
+    cmpBusy = true;
+    const slot = cmp.time === 'all' ? null : { s: cmp.time, e: cal.fromMin(Math.min(cal.toMin(cmp.time) + 60, 1439)) };
+    const ok = cmp.kind === 'event'
+      ? await oncreateevent({ title, day: sel, slot })
+      : await oncreatetask({ title, listId: cmpList, due: sel, slot });
+    cmpBusy = false;
+    if (!ok) return;
+    if (cmp.kind === 'event') reload++;
+    cmp = { ...cmp, open: false, title: '', time: 'all' };
+  }
+  function cmpKey(e) {
+    if (e.key === 'Enter') { e.preventDefault(); createCmp(); }
+    else if (e.key === 'Escape') { e.stopPropagation(); cmp.open = false; }
+  }
   function openHabits(day) { sel = day; habitsOpen = true; }
   const toggleItem = (it) => ontoggle(it.task, !it.done, it.listId);
   const openItem = (it) => onopen(it.task, it.listId);
@@ -195,10 +244,11 @@
   <div class="cal-body">
     <main class="cal-main">
       {#if mode === 'week'}
-        <CalWeek days={dayObjs} {habits} {show} {free} {clock} {stripOpen}
+        <CalWeek days={dayObjs} {habits} {show} {free} {clock} {layout} {stripOpen}
+          draft={cmp.open && cmp.time !== 'all' ? { day: sel, time: cmp.time, title: cmp.title } : null}
           ontogglestrip={() => (stripOpen = !stripOpen)}
           onpick={pick} onopenhabits={openHabits} onopen={openItem} ontoggle={toggleItem} {ontogglehabit}
-          oncreate={(p) => oncreate(p)} />
+          oncompose={(day, time) => compose(day, time)} />
 
         <section class="cal-over" aria-label="Обзор недели">
           <div class="card">
@@ -312,11 +362,42 @@
             {/if}
           </div>
         {:else}
-          <p class="note" style="margin: 4px 0 0">Свободный день.</p>
+          {#if selDay.items.length}
+            <p class="note" style="margin: 4px 0 0">По времени ничего нет.</p>
+          {:else}
+            <div class="free-day">
+              <Coon pose="sleep" size={76} />
+              <p>Свободный день. Енот советует не забивать его до отказа.</p>
+            </div>
+          {/if}
         {/each}
       </div>
 
-      <button type="button" class="col-foot" onclick={() => oncreate({ day: sel })}>+ Задача на {selDay.title}</button>
+      {#if cmp.open}
+        <div class="cmp" role="group" aria-label="Новая запись">
+          <p class="cap" style="margin: 0">Новое · {shortDay(sel)}, {cmp.time === 'all' ? 'весь день' : cmp.time}</p>
+          <input bind:this={cmpInput} bind:value={cmp.title} type="text" aria-label="Название" placeholder="Что запланировать?" onkeydown={cmpKey} />
+          <div class="seg2" role="group" aria-label="Тип">
+            <button type="button" aria-pressed={cmp.kind === 'task'} onclick={() => (cmp.kind = 'task')}>Задача</button>
+            <button type="button" aria-pressed={cmp.kind === 'event'} onclick={() => (cmp.kind = 'event')}>Событие</button>
+          </div>
+          <div class="seg2" role="group" aria-label="Время">
+            {#each cmpTimes as t (t)}<button type="button" aria-pressed={cmp.time === t} onclick={() => (cmp.time = t)}>{t === 'all' ? 'весь день' : t}</button>{/each}
+          </div>
+          {#if cmp.kind === 'task' && lists.length > 1}
+            <select class="cmp-list" aria-label="Список" value={cmpList} onchange={(e) => (cmp.listId = e.currentTarget.value)}>
+              {#each lists as l (l.id)}<option value={l.id}>{l.title}</option>{/each}
+            </select>
+          {/if}
+          <p class="cmp-hint">{cmpHint}</p>
+          <div style="display: flex; gap: 6px">
+            <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!cmp.title.trim() || cmpBusy || (cmp.kind === 'task' && !cmpList)} onclick={createCmp}>Создать</button>
+            <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 32px" onclick={() => (cmp.open = false)}>Отмена</button>
+          </div>
+        </div>
+      {:else}
+        <button type="button" class="addday" onclick={() => compose(sel)}>＋ Добавить на {shortDay(sel)}</button>
+      {/if}
     </aside>
   </div>
 </div>

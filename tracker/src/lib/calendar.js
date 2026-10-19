@@ -3,9 +3,38 @@
 import { ymd, dueToYmd } from './api.js';
 import { dow, isDone } from './habits.js';
 
+// Рабочие часы — для свободного окна и загрузки недели. Сетка недели — все сутки.
 export const GRID_START = 9 * 60;
 export const GRID_END = 21 * 60;
-export const HOUR_PX = 40;
+export const HOUR_PX = 40; // час, где за неделю что-то есть
+export const HOUR_EMPTY = 12; // пустой час — сжат
+
+/** Высоты часов сетки недели: занятые часы (и hot — текущий, черновик, свободное окно) — 40 px, пустые — 12 px.
+ *  Y[h] — верх часа h, yAt(минуты) — координата, bands — подряд идущие пустые часы, lines — линии между обычными часами. */
+export function hourLayout(timedItems, hot = []) {
+  const busyH = new Set(hot);
+  for (const it of timedItems) {
+    const a = Math.max(0, Math.floor(it.s / 60)), b = Math.min(24, Math.ceil(Math.max(it.e, it.s + 30) / 60));
+    for (let q = a; q < b; q++) busyH.add(q);
+  }
+  const HT = [], Y = [0];
+  for (let q = 0; q < 24; q++) { HT[q] = busyH.has(q) ? HOUR_PX : HOUR_EMPTY; Y[q + 1] = Y[q] + HT[q]; }
+  const yAt = (min) => { const m = Math.max(0, Math.min(1440, min)); const hh = Math.min(23, Math.floor(m / 60)); return Y[hh] + ((m - hh * 60) / 60) * HT[hh]; };
+  const labels = [], lines = [], bands = [];
+  for (let h = 0; h < 24;) {
+    if (HT[h] === HOUR_PX) {
+      labels.push({ key: `h${h}`, text: `${String(h).padStart(2, '0')}:00`, top: h === 0 ? 2 : Y[h] - 7, small: false });
+      if (h > 0 && HT[h - 1] === HOUR_PX) lines.push(Y[h]);
+      h++;
+      continue;
+    }
+    const a = h;
+    while (h < 24 && HT[h] === HOUR_EMPTY) h++;
+    bands.push({ top: Y[a], h: Y[h] - Y[a] });
+    labels.push({ key: `b${a}`, text: `${String(a).padStart(2, '0')}–${String(h === 24 ? 0 : h).padStart(2, '0')}`, top: Y[a] + (Y[h] - Y[a]) / 2 - 7, small: true });
+  }
+  return { HT, Y, yAt, height: Y[24], labels, lines, bands };
+}
 
 export const WD_SHORT = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 export const WD_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
@@ -99,8 +128,8 @@ export function tasksByDay(lists, tasksByList, layTasks, typeOf, days) {
 }
 
 /** Блоки сетки недели: позиция и колонка, если пересекаются по времени. */
-export function layoutBlocks(items) {
-  const clamp = (m) => Math.min(GRID_END, Math.max(GRID_START, m));
+export function layoutBlocks(items, yAt) {
+  const clamp = (m) => Math.min(1440, Math.max(0, m));
   const xs = items.filter((i) => i.s != null)
     .map((i) => ({ ...i, a: clamp(i.s), b: Math.max(clamp(i.e), clamp(i.s) + 30) }))
     .sort((x, y) => x.a - y.a || y.b - x.b);
@@ -126,8 +155,8 @@ export function layoutBlocks(items) {
   if (cluster.length) flush();
   return out.map((it) => ({
     ...it,
-    top: ((it.a - GRID_START) / 60) * HOUR_PX + 1,
-    height: Math.max(it.s < GRID_START || it.s >= GRID_END ? 36 : 20, ((Math.min(GRID_END, Math.max(clamp(it.e), it.a)) - it.a) / 60) * HOUR_PX - 2),
+    top: yAt(it.a) + 1,
+    height: Math.max(20, yAt(Math.max(clamp(it.e), it.a)) - yAt(it.a) - 2),
   }));
 }
 
