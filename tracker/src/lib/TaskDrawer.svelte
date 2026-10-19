@@ -1,8 +1,11 @@
 <script>
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
+  import { TYPES, PRIORITIES, autosize } from './meta.js';
 
-  let { task, list, subs, status, cols, remind = null, slot = null, onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind, onslot } = $props();
+  // type / priority — из слоя (tasks[id]); onlayer(patch) пишет туда же.
+  let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
+    onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onremind, onslot, onlayer } = $props();
 
   // Время задачи живёт в слое Спутника: в Google Tasks у срока нет часов.
   const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
@@ -63,19 +66,30 @@
     subDraft = '';
     await onaddsub(t);
   }
+  function close() { saveTitle(); saveNotes(); onclose(); }
+  // Esc / Ctrl+Enter — сохранить и закрыть; Alt+←/→ — соседний этап; Alt+1/2/3/0 — приоритет.
   function key(e) {
-    if (e.key === 'Escape') { saveTitle(); saveNotes(); onclose(); }
+    if (document.querySelector('.keyhelp')) return;
+    if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); close(); return; }
+    if (!e.altKey || e.ctrlKey || e.metaKey) return;
+    const i = cols.findIndex((c) => c.id === status);
+    if (e.key === 'ArrowRight' && i < cols.length - 1) { e.preventDefault(); onstatus(cols[i + 1].id); }
+    else if (e.key === 'ArrowLeft' && i > 0) { e.preventDefault(); onstatus(cols[i - 1].id); }
+    else {
+      const d = /^Digit([0-3])$/.exec(e.code);
+      if (d) { e.preventDefault(); onlayer({ priority: Number(d[1]) || null }); }
+    }
   }
 </script>
 
 <svelte:window onkeydown={key} />
 
-<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose}></button>
+<button class="drawer-back" type="button" aria-label="Закрыть" onclick={close}></button>
 <aside class="drawer" aria-label="Задача">
   <div class="scroll">
     <div class="top">
       <span>{list?.title}</span>
-      <button class="sp-btn sp-btn-ghost" type="button" aria-label="Закрыть" style="min-height: 32px; padding: 0 8px" onclick={onclose}>
+      <button class="sp-btn sp-btn-ghost" type="button" aria-label="Закрыть" style="min-height: 32px; padding: 0 8px" title="Закрыть (Esc)" onclick={close}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
       </button>
     </div>
@@ -89,6 +103,26 @@
       <select id="f-status" value={status} onchange={(e) => onstatus(e.currentTarget.value)}>
         {#each cols as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
       </select>
+    </div>
+    <div class="field">
+      <span>Приоритет</span>
+      <div class="seg2" role="group" aria-label="Приоритет">
+        <button type="button" aria-pressed={!priority} onclick={() => onlayer({ priority: null })}>Нет</button>
+        {#each PRIORITIES as p (p.id)}
+          <button type="button" class="pr {p.cls}" aria-pressed={priority === p.id} title="Alt+{p.id}" onclick={() => onlayer({ priority: p.id })}>
+            <b>{p.mark}</b> {p.label}
+          </button>
+        {/each}
+      </div>
+    </div>
+    <div class="field">
+      <span>Тип</span>
+      <div class="seg2" role="group" aria-label="Тип">
+        <button type="button" aria-pressed={!type} title="Цвет по шаблону списка" onclick={() => onlayer({ type: null })}>По списку</button>
+        {#each TYPES as t (t.id)}
+          <button type="button" aria-pressed={type === t.id} onclick={() => onlayer({ type: t.id })}><span class="tdot" style="background: var(--type-{t.id})"></span>{t.label}</button>
+        {/each}
+      </div>
     </div>
     <div class="field">
       <label for="f-due">Срок</label>
@@ -125,9 +159,10 @@
         {:else if remindWhen}Напомню в Telegram: {remindWhen}{/if}
       </p>
     {/if}
-    <div class="field top">
+    <!-- Заметка на всю ширину и растёт вместе с текстом. -->
+    <div class="notes">
       <label for="f-notes">Заметка</label>
-      <textarea id="f-notes" bind:value={notes} onblur={saveNotes} placeholder="Подробности, ссылки"></textarea>
+      <textarea id="f-notes" bind:value={notes} use:autosize={notes} onblur={saveNotes} placeholder="Подробности, ссылки, список шагов…"></textarea>
     </div>
 
     <section class="subs">
@@ -146,7 +181,7 @@
   </div>
 
   <div class="foot">
-    <span class="hint">Изменения сразу уходят в Google Tasks</span>
+    <span class="hint">Изменения сразу уходят в Google Tasks · Esc — закрыть</span>
     <div style="display: flex; gap: 8px">
       {#if confirmDelete}
         <button class="sp-btn sp-btn-ghost" type="button" onclick={() => (confirmDelete = false)}>Отмена</button>

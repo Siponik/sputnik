@@ -8,6 +8,17 @@
 .wk-grid .slot:hover::after { content: attr(data-t); position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font: 500 11px/1 var(--font-mono); color: var(--clay); }
 .wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 10%, transparent); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 1; }
 
+/* Неделя на широком окне — без прокрутки страницы: всё по высоте экрана, сетка забирает остаток
+   (часы подстраиваются в calendar.hourLayout). Если часов слишком много, прокручивается только сетка. */
+.cal.fit { height: 100%; min-height: 0; }
+.cal.fit .cal-body { flex: 1 1 0; min-height: 0; flex-wrap: nowrap; padding-bottom: 16px; }
+.cal.fit .cal-main { height: 100%; min-height: 0; gap: 12px; }
+.cal.fit .cal-week { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
+.wk-fit.on { flex: 1 1 0; min-height: 160px; overflow-y: auto; overflow-x: hidden; }
+.cal.fit .cal-over { flex: none; }
+.cal.fit .cal-over .card { padding: 10px 14px; }
+.cal.fit .cal-day { align-self: stretch; max-height: 100%; overflow-y: auto; position: static; }
+
 .cmp { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: 12px; background: var(--wash); border: 1px solid var(--clay); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent); }
 .cmp input, .cmp .cmp-list { height: 36px; padding: 0 10px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: var(--raised); color: var(--ink); font: 500 14px/1 var(--font-sans); outline: none; }
 .cmp input:focus, .cmp .cmp-list:focus { border-color: var(--clay); }

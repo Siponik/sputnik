@@ -2,7 +2,7 @@
   import { fromMin, toMin, typeColor, nowMin } from './calendar.js';
 
   // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты; draft — черновик { day, time } из формы панели дня.
-  let { days, habits, show, free, clock, layout, draft = null, stripOpen, ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose } = $props();
+  let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose } = $props();
 
   const hasAllday = $derived(days.some((d) => d.allday.length));
   const nowTop = $derived((clock, layout.yAt(nowMin())));
@@ -79,6 +79,8 @@
     </div>
   {/if}
 
+  <!-- В режиме fit обёртка занимает остаток высоты; её высоту календарь отдаёт в hourLayout. -->
+  <div class="wk-fit" class:on={fit} bind:clientHeight={avail}>
   <div class="wk wk-grid">
     <div class="hours" style="height: {layout.height}px">
       {#each layout.labels as l (l.key)}<span class="lbl" class:small={l.small} style="top: {l.top}px">{l.text}</span>{/each}
@@ -114,5 +116,6 @@
         {#if d.isToday}<div class="now" style="top: {nowTop}px"></div>{/if}
       </div>
     {/each}
+  </div>
   </div>
 </div>

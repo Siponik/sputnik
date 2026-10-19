@@ -135,7 +135,7 @@ export async function eventsRange(start, end) {
       return items.filter((e) => e.status !== 'cancelled').map((e) => ({
         ...e,
         calendar: c.summaryOverride || c.summary,
-        kind: e.eventType === 'birthday' ? 'birthday' : kind,
+        kind: isBirthday(e) ? 'birthday' : kind,
       }));
     } catch { return []; }
   }));
@@ -151,6 +151,21 @@ export function createEvent({ title, day, slot }) {
     : { summary: title, start: { date: day }, end: { date: next(day) } };
   return gapi('POST', `${CAL}/calendars/primary/events`, body);
 }
+
+/** День рождения: ежегодное событие на весь день в основном календаре с меткой Спутника (видно как день рождения). */
+export function createBirthday({ name, day }) {
+  const [y, m, d] = day.split('-').map(Number);
+  return gapi('POST', `${CAL}/calendars/primary/events`, {
+    summary: `🎂 ${name}`,
+    start: { date: day },
+    end: { date: ymd(new Date(y, m - 1, d + 1)) },
+    recurrence: ['RRULE:FREQ=YEARLY'],
+    transparency: 'transparent', // не занимает время
+    extendedProperties: { private: { sputnik: 'birthday' } },
+    reminders: { useDefault: false },
+  });
+}
+const isBirthday = (e) => e.eventType === 'birthday' || e.extendedProperties?.private?.sputnik === 'birthday';
 
 // ---------- даты ----------
 

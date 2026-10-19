@@ -1,5 +1,7 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
+  import * as keys from './lib/keys.js';
+  import KeyHelp from './lib/KeyHelp.svelte';
   import Brand from './lib/Brand.svelte';
   import Setup from './lib/Setup.svelte';
   import Board from './lib/Board.svelte';
@@ -186,9 +188,49 @@
     if (quickLine?.()) return;
     quick = {};
   }
-  function hotkey(e) {
-    if (phase !== 'ready') return;
-    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.code === 'KeyN')) { e.preventDefault(); newTask(); }
+  // Горячие клавиши (список — lib/keys.js и окно «?»).
+  const VIEWS = ['today', 'calendar', 'board', 'habits'];
+  let helpOpen = $state(false);
+  function stepView(dir) {
+    const i = VIEWS.indexOf(view === 'archive' ? 'board' : view);
+    view = VIEWS[(i + dir + VIEWS.length) % VIEWS.length];
+  }
+  function stepList(dir) {
+    const i = boardLists.findIndex((l) => l.id === activeId);
+    if (i < 0 || !boardLists.length) return;
+    activeId = boardLists[(i + dir + boardLists.length) % boardLists.length].id;
+    boardProject = null;
+  }
+  async function hotkey(e) {
+    if (phase !== 'ready' || choosing) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(); return; }
+    if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
+    if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
+    if (keys.overlay()) return;
+    if (e.shiftKey) {
+      // Shift+1…9 на «Привычках» — отметить привычку по порядку.
+      const n = /^Digit([1-9])$/.exec(e.code);
+      if (n && view === 'habits' && habits[n[1] - 1]) { e.preventDefault(); toggleHabit(habits[n[1] - 1]); }
+      return;
+    }
+    const digit = /^Digit([1-4])$/.exec(e.code);
+    if (digit) { view = VIEWS[digit[1] - 1]; return; }
+    switch (e.code) {
+      case 'KeyQ': stepView(-1); break;
+      case 'KeyE': stepView(1); break;
+      case 'KeyN': e.preventDefault(); newTask(); break;
+      case 'KeyR': refresh(); break;
+      case 'BracketLeft': if (view === 'board' || view === 'archive') stepList(-1); break;
+      case 'BracketRight': if (view === 'board' || view === 'archive') stepList(1); break;
+      case 'KeyF':
+        if (view === 'board' || view === 'archive') {
+          e.preventDefault();
+          view = 'archive';
+          await tick();
+          document.querySelector('.search')?.focus();
+        }
+        break;
+    }
   }
 
   let inboxFocus = $state(0); // просьба «Сегодня» прокрутить к входящим
@@ -344,10 +386,21 @@
     try {
       await api.createEvent(p);
       say(`«${p.title}» — в Google Календаре`);
+      calReload++;
       if (p.day === api.ymd(new Date())) events = await api.eventsForDay().catch(() => events);
       return true;
     } catch (e) { say('Не удалось создать событие: ' + e); return false; }
   }
+
+  async function createBirthday(p) {
+    try {
+      await api.createBirthday(p);
+      say(`🎂 ${p.name} — каждый год в Google Календаре`);
+      calReload++;
+      return true;
+    } catch (e) { say('Не удалось добавить день рождения: ' + e); return false; }
+  }
+  let calReload = $state(0); // календарю — перечитать события
 
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
   async function quickCreate({ title, listId, due, slot, layer = null }, quiet = false) {
@@ -462,10 +515,10 @@
   <div class="shell">
     <nav class="sp-tabs" aria-label="Разделы">
       <Brand />
-      <button class="sp-tab" role="tab" aria-selected={view === 'today'} onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} onclick={() => (view = 'calendar')}>Календарь</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} onclick={() => (view = 'board')}>Доска</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => (view = 'calendar')}>Календарь</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => (view = 'board')}>Доска</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
       <div class="right">
         <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
@@ -477,7 +530,8 @@
             <span class="n">{inboxItems.length}</span>
           </button>
         {/if}
-        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача (Ctrl+N)' : 'Сначала создай список на доске'} onclick={newTask}>
+        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши" onclick={() => (helpOpen = true)}>?</button>
+        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={newTask}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
         </button>
       </div>
@@ -541,7 +595,7 @@
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} />
         {:else if view === 'calendar'}
           <Calendar lists={boardLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
-            loadEvents={api.eventsRange} syncAt={sync.at}
+            loadEvents={api.eventsRange} syncAt={sync.at} reloadKey={calReload} oncreatebirthday={createBirthday}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId) => toggle(t, d, listId)}
             ontogglehabit={toggleHabit}
@@ -576,6 +630,8 @@
     <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={colOf(openTask, cols)} {cols}
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
+      type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
+      onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
       onclose={() => (openRef = null)}
       onsave={save}
       onstatus={(s) => move(openTask, s, openRef.listId)}
@@ -587,7 +643,11 @@
   {#if quick}
     <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
       day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
-      oncreate={quickCreate} onclose={() => (quick = null)} />
+      oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
+  {/if}
+
+  {#if helpOpen}
+    <KeyHelp onclose={() => (helpOpen = false)} />
   {/if}
 
   {#if newList}

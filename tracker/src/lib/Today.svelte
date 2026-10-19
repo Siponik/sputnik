@@ -5,6 +5,7 @@
   import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
   import { templateOf } from './templates.js';
   import Coon from './Coon.svelte';
+  import { priorityOf, priorityRank } from './meta.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
     onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar } = $props();
@@ -31,7 +32,8 @@
   const doneToday = (t) => t.status === 'completed' && t.completed && ymd(new Date(t.completed)) === today;
   const overdue = $derived(all.filter((x) => x.task.due && dueToYmd(x.task.due) < today && (x.task.status !== 'completed' || doneToday(x.task))));
   const dueToday = $derived(all.filter((x) => x.task.due && dueToYmd(x.task.due) === today && (x.task.status !== 'completed' || doneToday(x.task)))
-    .sort((a, b) => (layTasks?.[a.task.id]?.slot?.s ?? '99').localeCompare(layTasks?.[b.task.id]?.slot?.s ?? '99')));
+    .sort((a, b) => priorityRank(layTasks?.[a.task.id]?.priority) - priorityRank(layTasks?.[b.task.id]?.priority)
+      || (layTasks?.[a.task.id]?.slot?.s ?? '99').localeCompare(layTasks?.[b.task.id]?.slot?.s ?? '99')));
   const isOn = (x) => x.task.status === 'completed';
   const lateLeft = $derived(overdue.filter((x) => !isOn(x)).length);
   const total = $derived(overdue.length + dueToday.length);
@@ -134,11 +136,15 @@
     let time = '';
     const tm = txt.match(/\s([01]?\d|2[0-3])[:.]([0-5]\d)(?=\s)/);
     if (tm) { time = `${tm[1].padStart(2, '0')}:${tm[2]}`; txt = txt.replace(tm[0], ' '); }
+    // !!! — высокий приоритет, !! — средний, ! — низкий.
+    let priority = null;
+    const pm = txt.match(/s(!{1,3})(?=s)/);
+    if (pm) { priority = 4 - pm[1].length; txt = txt.replace(pm[0], ' '); }
     let kind = null;
     const tg = txt.match(/#([^\s#]+)/);
     if (tg) { kind = TAGS[tg[1].toLowerCase()] ?? null; txt = txt.replace(tg[0], ' '); }
     txt = txt.replace(/\s+/g, ' ').trim();
-    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time, kind };
+    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time, kind, priority };
   }
   const preview = $derived(draft.trim() ? parse(draft) : null);
 
@@ -153,6 +159,7 @@
     adding = true;
     const layer = {};
     if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
+    if (p.priority) layer.priority = p.priority;
     const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer });
     adding = false;
     if (id) { draft = ''; fresh = new Set([...fresh, id]); input?.focus(); }
@@ -187,12 +194,13 @@
     </button>
     <button type="button" class="ttl" class:off={isOn(x)} onclick={() => onopen(x.task, x.list.id)}>{x.task.title || 'Без названия'}</button>
     {#if fresh.has(x.task.id)}<span class="new">новая</span>{/if}
+    {#if priorityOf(layTasks?.[x.task.id]?.priority) && !isOn(x)}{@const pr = priorityOf(layTasks?.[x.task.id]?.priority)}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
     <span class="sp-chip {c.cls}"><span class="dot"></span>{c.label}</span>
     {#if m}<span class="meta" class:late={dueToYmd(x.task.due) < today && !isOn(x)}>{m}</span>{/if}
   </div>
 {/snippet}
 
-<div class="today">
+<div class="t-page">
   <section class="t-hero">
     <div class="in">
       <div class="t-head">
@@ -233,10 +241,10 @@
         </form>
         <p class="qa-hint">
           {#if preview?.title}
-            Добавлю «{preview.title}» на сегодня{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}
+            Добавлю «{preview.title}» на сегодня{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}
             → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
           {:else}
-            Время и #тип распознаются сами: 17:00, #ассет #работа #клиент #учёба #личное. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+            Время, #тип и приоритет распознаются сами: 17:00, #ассет #работа #клиент #учёба #личное, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
           {/if}
         </p>
       </div>

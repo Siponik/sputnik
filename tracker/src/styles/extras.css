@@ -1,0 +1,29 @@
+/* Приоритет, тип, заметка, подсказка по клавишам. */
+.prio { font: 700 12px/1 var(--font-mono); letter-spacing: -.05em; padding: 3px 6px; border-radius: var(--radius-pill); }
+.prio.p1 { color: var(--signal-overdue); background: color-mix(in srgb, var(--signal-overdue) 14%, transparent); }
+.prio.p2 { color: var(--gold); background: var(--gold-soft); }
+.prio.p3 { color: var(--ink-faint); background: var(--wash); }
+.seg2 .pr b { font-family: var(--font-mono); letter-spacing: -.05em; }
+.seg2 .pr.p1 b { color: var(--signal-overdue); }
+.seg2 .pr.p2 b { color: var(--gold); }
+.seg2 .pr.p3 b { color: var(--ink-faint); }
+.seg2 button { display: inline-flex; align-items: center; gap: 5px; }
+.tdot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+
+/* Заметка в окне задачи: на всю ширину, растёт вместе с текстом. */
+.drawer .notes { display: flex; flex-direction: column; gap: 6px; }
+.drawer .notes label { font-size: 13px; color: var(--ink-soft); }
+.drawer .notes textarea { width: 100%; min-height: 180px; padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); line-height: 1.55; resize: vertical; overflow-y: auto; }
+.drawer .notes textarea:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+
+.dialog.quick .kinds button { height: 32px; padding: 0 14px; font-size: 13.5px; }
+
+.keys-btn { min-height: 32px; width: 32px; padding: 0; font: 600 14px/1 var(--font-mono); }
+.keyhelp { width: min(760px, calc(100% - 32px)); }
+.kh-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px 28px; }
+.kh-grid h3 { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.kh-row { display: flex; align-items: baseline; gap: 10px; padding: 4px 0; font-size: 13.5px; line-height: 19px; }
+.kh-row .kbd { flex: none; min-width: 92px; text-align: center; }
+
+/* Поля окна задачи не сжимаются (иначе перенесённые кнопки приоритета и типа наезжают друг на друга). */
+.drawer .scroll > *, .dialog > * { flex-shrink: 0; }

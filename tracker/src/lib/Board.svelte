@@ -5,6 +5,7 @@
   import { ymd, dueToYmd } from './api.js';
   import { TEMPLATES, isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
   import { startOfWeek, addDays } from './calendar.js';
+  import { priorityRank } from './meta.js';
 
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '',
     onopen, onmove, oncreate, onarchive, ontemplate } = $props();
@@ -47,7 +48,7 @@
   function column(id) {
     const items = live.filter((t) => colOf(t, cols) === id && visible(t));
     if (id === 'done') return items.sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
-    return items.sort(byPos);
+    return items.sort((a, b) => priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority) || byPos(a, b));
   }
   const nextOf = (i) => (i < cols.length - 1 ? cols[i + 1] : null);
 
@@ -129,7 +130,7 @@
         {/if}
 
         {#each shown as task (task.id)}
-          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} {onopen}
+          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {onopen}
             next={isDoneCol ? null : next} onadvance={() => onmove(task, next.id)} />
         {/each}
 

@@ -3,12 +3,13 @@
   import { ymd, dueToYmd } from './api.js';
   import { stats } from './habits.js';
   import * as cal from './calendar.js';
+  import * as keys from './keys.js';
   import CalWeek from './CalWeek.svelte';
   import CalMonth from './CalMonth.svelte';
   import Coon from './Coon.svelte';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
-    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent } = $props();
+    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0 } = $props();
 
   // Вид и фильтры запоминаем на этом компьютере — это удобство, не данные.
   const remember = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -30,10 +31,18 @@
   let cmp = $state({ open: false, title: '', kind: 'task', time: 'all', listId: '' });
   let cmpBusy = $state(false);
   let cmpInput = $state(null);
+  // Неделя на широком окне укладывается в экран без прокрутки: сетка занимает оставшуюся высоту.
+  let wide = $state(true);
+  let gridAvail = $state(0);
+  const fit = $derived(mode === 'week' && wide);
 
   onMount(() => {
     const t = setInterval(() => (clock = Date.now()), 60e3);
-    return () => clearInterval(t);
+    const mq = matchMedia('(min-width: 1100px)');
+    const onMq = () => (wide = mq.matches);
+    onMq();
+    mq.addEventListener('change', onMq);
+    return () => { clearInterval(t); mq.removeEventListener('change', onMq); };
   });
 
   $effect(() => remember('cal.mode', mode));
@@ -44,7 +53,7 @@
 
   // События за видимый период; перезагружаем при смене периода и после каждой синхронизации.
   $effect(() => {
-    syncAt; reload;
+    syncAt; reload; reloadKey;
     const start = cal.parseYmd(days[0]);
     const end = cal.addDays(cal.parseYmd(days[days.length - 1]), 1);
     let alive = true;
@@ -68,7 +77,7 @@
     if (days.includes(today)) hot.push(Math.floor(cal.nowMin() / 60));
     if (cmp.open && cmp.time !== 'all' && days.includes(sel)) hot.push(+cmp.time.slice(0, 2));
     if (free) for (let h = Math.floor(free.s / 60); h < Math.ceil(free.e / 60); h++) hot.push(h);
-    return cal.hourLayout(timedWeek, hot);
+    return cal.hourLayout(timedWeek, hot, fit ? gridAvail : 0);
   });
 
   const dayObjs = $derived(days.map((day) => {
@@ -168,6 +177,7 @@
   const shortDay = (day) => { const d = cal.parseYmd(day); return `${d.getDate()} ${cal.MONTH_GEN[d.getMonth()].slice(0, 3)}.`; };
   const cmpHint = $derived(cmp.kind === 'event'
     ? 'Событие попадёт в Google Календарь.'
+    : cmp.kind === 'birthday' ? 'Каждый год в этот день — в Google Календаре, здесь золотом.'
     : `Задача попадёт в Google Tasks, список «${lists.find((l) => l.id === cmpList)?.title ?? '—'}»${cmp.time === 'all' ? ', со сроком на этот день.' : ', и встанет в сетку на это время.'}`);
 
   async function compose(day, time = 'all', title = '') {
@@ -181,12 +191,12 @@
     if (!title || cmpBusy) return;
     cmpBusy = true;
     const slot = cmp.time === 'all' ? null : { s: cmp.time, e: cal.fromMin(Math.min(cal.toMin(cmp.time) + 60, 1439)) };
-    const ok = cmp.kind === 'event'
-      ? await oncreateevent({ title, day: sel, slot })
+    const ok = cmp.kind === 'event' ? await oncreateevent({ title, day: sel, slot })
+      : cmp.kind === 'birthday' ? await oncreatebirthday({ name: title, day: sel })
       : await oncreatetask({ title, listId: cmpList, due: sel, slot });
     cmpBusy = false;
     if (!ok) return;
-    if (cmp.kind === 'event') reload++;
+    if (cmp.kind !== 'task') reload++;
     cmp = { ...cmp, open: false, title: '', time: 'all' };
   }
   function cmpKey(e) {
@@ -196,11 +206,15 @@
   function openHabits(day) { sel = day; habitsOpen = true; }
   const toggleItem = (it) => ontoggle(it.task, !it.done, it.listId);
   const openItem = (it) => onopen(it.task, it.listId);
+  // Клавиши календаря (по физической кнопке — работают и в русской раскладке).
   function key(e) {
-    if (e.target.closest('input, textarea, select, [contenteditable]') || e.ctrlKey || e.altKey || e.metaKey || document.querySelector('.drawer, .dialog')) return;
+    if (keys.typing(e) || !keys.plain(e) || e.shiftKey || keys.overlay()) return;
     if (e.key === 'ArrowLeft') sel = cal.shiftPeriod(sel, mode, -1);
     else if (e.key === 'ArrowRight') sel = cal.shiftPeriod(sel, mode, 1);
-    else if (e.key === 't' || e.key === 'е') sel = today;
+    else if (e.code === 'KeyT') sel = today;
+    else if (e.code === 'KeyW') mode = 'week';
+    else if (e.code === 'KeyM') mode = 'month';
+    else if (e.code === 'KeyA') { e.preventDefault(); compose(sel, cmp.time); }
   }
 
   const FILTERS = [
@@ -217,7 +231,7 @@
   <span class="mk k-{it.kind}" class:on={it.done} style="--c: {it.type ? cal.typeColor(it.type) : 'var(--ink-soft)'}"></span>
 {/snippet}
 
-<div class="cal">
+<div class="cal" class:fit>
   <header class="cal-bar">
     <div class="tb">
       <h1>{cal.periodTitle(sel, mode)}</h1>
@@ -244,7 +258,7 @@
   <div class="cal-body">
     <main class="cal-main">
       {#if mode === 'week'}
-        <CalWeek days={dayObjs} {habits} {show} {free} {clock} {layout} {stripOpen}
+        <CalWeek days={dayObjs} {habits} {show} {free} {clock} {layout} {stripOpen} {fit} bind:avail={gridAvail}
           draft={cmp.open && cmp.time !== 'all' ? { day: sel, time: cmp.time, title: cmp.title } : null}
           ontogglestrip={() => (stripOpen = !stripOpen)}
           onpick={pick} onopenhabits={openHabits} onopen={openItem} ontoggle={toggleItem} {ontogglehabit}
@@ -376,14 +390,15 @@
       {#if cmp.open}
         <div class="cmp" role="group" aria-label="Новая запись">
           <p class="cap" style="margin: 0">Новое · {shortDay(sel)}, {cmp.time === 'all' ? 'весь день' : cmp.time}</p>
-          <input bind:this={cmpInput} bind:value={cmp.title} type="text" aria-label="Название" placeholder="Что запланировать?" onkeydown={cmpKey} />
+          <input bind:this={cmpInput} bind:value={cmp.title} type="text" aria-label="Название" placeholder={cmp.kind === 'birthday' ? 'Чей день рождения?' : 'Что запланировать?'} onkeydown={cmpKey} />
           <div class="seg2" role="group" aria-label="Тип">
             <button type="button" aria-pressed={cmp.kind === 'task'} onclick={() => (cmp.kind = 'task')}>Задача</button>
             <button type="button" aria-pressed={cmp.kind === 'event'} onclick={() => (cmp.kind = 'event')}>Событие</button>
+            <button type="button" aria-pressed={cmp.kind === 'birthday'} onclick={() => (cmp.kind = 'birthday')}>День рождения</button>
           </div>
-          <div class="seg2" role="group" aria-label="Время">
+          {#if cmp.kind !== 'birthday'}<div class="seg2" role="group" aria-label="Время">
             {#each cmpTimes as t (t)}<button type="button" aria-pressed={cmp.time === t} onclick={() => (cmp.time = t)}>{t === 'all' ? 'весь день' : t}</button>{/each}
-          </div>
+          </div>{/if}
           {#if cmp.kind === 'task' && lists.length > 1}
             <select class="cmp-list" aria-label="Список" value={cmpList} onchange={(e) => (cmp.listId = e.currentTarget.value)}>
               {#each lists as l (l.id)}<option value={l.id}>{l.title}</option>{/each}

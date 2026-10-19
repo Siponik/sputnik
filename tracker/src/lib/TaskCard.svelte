@@ -3,8 +3,10 @@
 
   // Галочки на карточке нет: задача становится выполненной, только когда её переносят в «Готово».
   // Стрелка (видна при наведении и фокусе) переносит на следующий этап.
-  let { task, subs = [], listName = '', remind = '', type = '', draggable = true, next = null, onopen, onadvance } = $props();
-  const TYPE_LABEL = { work: 'Работа', creative: 'Ассет', study: 'Учёба', personal: 'Личное' };
+  import { typeLabel, priorityOf } from './meta.js';
+
+  let { task, subs = [], listName = '', remind = '', type = '', priority = null, draggable = true, next = null, onopen, onadvance } = $props();
+  const pr = $derived(priorityOf(priority));
   const done = $derived(task.status === 'completed');
   const subDone = $derived(subs.filter((s) => s.status === 'completed').length);
   const firstLine = $derived((task.notes ?? '').split('\n')[0]);
@@ -23,9 +25,10 @@
   <!-- Клик по любому месту карточки открывает задачу; кнопка — для клавиатуры, её клик всплывает сюда. -->
   <button class="t" type="button">{task.title || 'Без названия'}</button>
   {#if firstLine}<p class="d">{firstLine}</p>{/if}
-  {#if task.due || subs.length || listName || remind || type}
+  {#if task.due || subs.length || listName || remind || type || pr}
     <div class="meta">
-      {#if type && TYPE_LABEL[type]}<span class="sp-chip sp-chip-{type}"><span class="dot"></span>{TYPE_LABEL[type]}</span>{/if}
+      {#if pr && !done}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
+      {#if typeLabel(type)}<span class="sp-chip sp-chip-{type}"><span class="dot"></span>{typeLabel(type)}</span>{/if}
       {#if task.due}
         <span class="sp-chip" class:sp-chip-overdue={ds === 'overdue'} class:sp-chip-soon={ds === 'soon'}>
           {ds === 'overdue' ? 'просрочено · ' : ''}{humanDue(task.due)}

@@ -11,20 +11,23 @@ export const HOUR_EMPTY = 12; // пустой час — сжат
 
 /** Высоты часов сетки недели: занятые часы (и hot — текущий, черновик, свободное окно) — 40 px, пустые — 12 px.
  *  Y[h] — верх часа h, yAt(минуты) — координата, bands — подряд идущие пустые часы, lines — линии между обычными часами. */
-export function hourLayout(timedItems, hot = []) {
+export function hourLayout(timedItems, hot = [], fit = 0) {
   const busyH = new Set(hot);
   for (const it of timedItems) {
     const a = Math.max(0, Math.floor(it.s / 60)), b = Math.min(24, Math.ceil(Math.max(it.e, it.s + 30) / 60));
     for (let q = a; q < b; q++) busyH.add(q);
   }
+  // fit — высота, в которую надо уложить сутки (окно на весь экран): занятые часы растягиваются или сжимаются (26–72 px).
+  let full = HOUR_PX;
+  if (fit > 0 && busyH.size) full = Math.max(26, Math.min(72, Math.floor((fit - (24 - busyH.size) * HOUR_EMPTY) / busyH.size)));
   const HT = [], Y = [0];
-  for (let q = 0; q < 24; q++) { HT[q] = busyH.has(q) ? HOUR_PX : HOUR_EMPTY; Y[q + 1] = Y[q] + HT[q]; }
+  for (let q = 0; q < 24; q++) { HT[q] = busyH.has(q) ? full : HOUR_EMPTY; Y[q + 1] = Y[q] + HT[q]; }
   const yAt = (min) => { const m = Math.max(0, Math.min(1440, min)); const hh = Math.min(23, Math.floor(m / 60)); return Y[hh] + ((m - hh * 60) / 60) * HT[hh]; };
   const labels = [], lines = [], bands = [];
   for (let h = 0; h < 24;) {
-    if (HT[h] === HOUR_PX) {
+    if (HT[h] !== HOUR_EMPTY) {
       labels.push({ key: `h${h}`, text: `${String(h).padStart(2, '0')}:00`, top: h === 0 ? 2 : Y[h] - 7, small: false });
-      if (h > 0 && HT[h - 1] === HOUR_PX) lines.push(Y[h]);
+      if (h > 0 && HT[h - 1] !== HOUR_EMPTY) lines.push(Y[h]);
       h++;
       continue;
     }

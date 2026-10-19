@@ -49,7 +49,7 @@ Claude создаёт в нём событие с JSON-запросом в оп�
   - `task.create {list, title, notes?, due?, parent?, layer?}` — список создаётся сам, если его нет;
     `due` — `ГГГГ-ММ-ДД` или не указывать (время у срока в Google Tasks не хранится);
     `parent` — точное название открытой задачи в этом списке, чтобы сделать подзадачу;
-    `layer` — поля Спутника: `type` (`plain`, `work`, `creative`, `meeting`, `study`, `personal`), `project`, `tags[]`, `priority` (1–3), `stage`;
+    `layer` — поля Спутника: `type` (`plain`, `work`, `creative`, `meeting`, `study`, `personal`), `project`, `tags[]`, `priority` (1 — высокий, 2 — средний, 3 — низкий), `stage`;
   - `task.complete {list, title}` — отметить выполненной (точное название открытой задачи).
 - Ограничения: `title` до 250 символов, `notes` до 4000, не больше 30 операций в одном запросе.
   Несколько задач сразу — одним событием с несколькими `task.create`.
