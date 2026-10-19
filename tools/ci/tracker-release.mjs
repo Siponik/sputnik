@@ -4,6 +4,7 @@
 //       чтобы сборка не падала, пока секреты не заведены.
 //   node tools/ci/tracker-release.mjs latest <номер сборки> <путь к .msi> <заметка>
 //       пишет latest.json для обновления из приложения (рядом с .msi должен лежать .msi.sig).
+// Секрет читается при старте задания: сборка, начатая до того, как секрет завели, выйдет без подписи.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
