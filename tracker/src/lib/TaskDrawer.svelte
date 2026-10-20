@@ -2,7 +2,8 @@
   import { untrack } from 'svelte';
   import { fly, fade, pop } from './motion.js';
   import { dueToYmd, ymdToDue, ymd } from './api.js';
-  import { BEFORE, LEADS, DEFAULT_TIME, remindLabel } from './reminders.js';
+  import { BEFORE, DEFAULT_TIME, remindLabel, rulesOf } from './reminders.js';
+  import RemindChips from './RemindChips.svelte';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
@@ -15,17 +16,23 @@
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
-  const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : remind.kind === 'lead' ? `l${remind.min ?? 0}` : `b${remind.days ?? 0}`);
+  // Напоминания: несколько «до начала» (кнопки) и одно «в своё время» (за N дней в ЧЧ:ММ или точная дата).
+  const leads = $derived(rulesOf(remind).filter((r) => r.kind === 'lead').map((r) => r.min));
+  const custom = $derived(rulesOf(remind).find((r) => r.kind !== 'lead') ?? null);
+  const remindKind = $derived(!custom ? '' : custom.kind === 'at' ? 'at' : `b${custom.days ?? 0}`);
   const remindWhen = $derived(remindLabel(remind, task, slot));
 
+  function saveRemind(mins, own) {
+    const all = [...mins.map((min) => ({ kind: 'lead', min })), ...(own ? [own] : [])];
+    onremind(!all.length ? null : all.length === 1 ? all[0] : all);
+  }
   function pickRemind(v) {
-    if (!v) return onremind(null);
+    if (!v) return saveRemind(leads, null);
     if (v === 'at') {
       const day = dueToYmd(task.due) || ymd(new Date(Date.now() + 864e5));
-      return onremind({ kind: 'at', at: remind?.kind === 'at' ? remind.at : `${day}T${DEFAULT_TIME}` });
+      return saveRemind(leads, { kind: 'at', at: custom?.kind === 'at' ? custom.at : `${day}T${DEFAULT_TIME}` });
     }
-    if (v[0] === 'l') return onremind({ kind: 'lead', min: Number(v.slice(1)) });
-    onremind({ kind: 'before', days: Number(v.slice(1)), time: remind?.time ?? DEFAULT_TIME });
+    saveRemind(leads, { kind: 'before', days: Number(v.slice(1)), time: custom?.time ?? DEFAULT_TIME });
   }
 
   let title = $state('');
@@ -155,29 +162,28 @@
       {:else}Срок попадёт в Google Tasks, в календаре — строка «весь день».{/if}
     </p>
     <div class="field">
-      <label for="f-remind">Напоминание</label>
+      <span>Напомнить</span>
+      <RemindChips value={leads} onchange={(v) => saveRemind(v, custom)} />
+    </div>
+    <div class="field">
+      <label for="f-remind">Ещё в своё время</label>
       <div class="remind">
         <select id="f-remind" value={remindKind} onchange={(e) => pickRemind(e.currentTarget.value)}>
           <option value="">Нет</option>
-          <optgroup label="До начала задачи">
-            {#each LEADS as l (l.min)}<option value="l{l.min}">{l.name}</option>{/each}
-          </optgroup>
-          <optgroup label="В своё время">
-            {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name} в…</option>{/each}
-          </optgroup>
+          {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name} в…</option>{/each}
           <option value="at">Точная дата и время</option>
         </select>
-        {#if remind?.kind === 'before'}
-          <input type="time" aria-label="Во сколько" value={remind.time ?? DEFAULT_TIME} onchange={(e) => e.currentTarget.value && onremind({ ...remind, time: e.currentTarget.value })} />
-        {:else if remind?.kind === 'at'}
-          <input type="datetime-local" aria-label="Когда напомнить" value={remind.at} onchange={(e) => e.currentTarget.value && onremind({ ...remind, at: e.currentTarget.value })} />
+        {#if custom?.kind === 'before'}
+          <input type="time" aria-label="Во сколько" value={custom.time ?? DEFAULT_TIME} onchange={(e) => e.currentTarget.value && saveRemind(leads, { ...custom, time: e.currentTarget.value })} />
+        {:else if custom?.kind === 'at'}
+          <input type="datetime-local" aria-label="Когда напомнить" value={custom.at} onchange={(e) => e.currentTarget.value && saveRemind(leads, { ...custom, at: e.currentTarget.value })} />
         {/if}
       </div>
     </div>
     {#if remind}
       <p class="remind-hint">
-        {#if remind.kind !== 'at' && !task.due}Поставь срок — без него напомнить «до срока» не выйдет.
-        {:else if remindWhen}Напомню в Telegram: {remindWhen}{/if}
+        {#if !task.due && custom?.kind !== 'at'}Поставь срок — без него напомнить «до срока» не выйдет.
+        {:else if remindWhen}Ближайшее напоминание в Telegram: {remindWhen}{/if}
       </p>
     {/if}
     <!-- Заметка на всю ширину и растёт вместе с текстом. -->

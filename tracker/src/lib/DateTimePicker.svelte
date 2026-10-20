@@ -40,7 +40,7 @@
   let dur = $state(init.slot?.s && init.slot?.e ? Math.max(15, toMin(init.slot.e) - toMin(init.slot.s)) : 60);
   let allDay = $state(!init.allowTime || !init.slot?.s);
   let nl = $state('');
-  const remindKind = (r) => (!r ? 'none' : r.kind === 'before' && r.days === 1 && (r.time ?? DEFAULT_TIME) === '10:00' ? 'd1' : (r.kind === 'at' && r.hour1) || (r.kind === 'lead' && r.min === 60) ? 'h1' : 'keep');
+  const remindKind = (r) => (!r ? 'none' : Array.isArray(r) ? 'keep' : r.kind === 'before' && r.days === 1 && (r.time ?? DEFAULT_TIME) === '10:00' ? 'd1' : (r.kind === 'at' && r.hour1) || (r.kind === 'lead' && r.min === 60) ? 'h1' : 'keep');
   let rem = $state(init.remind === undefined ? 'keep' : remindKind(init.remind));
   const viewInit = parse(init.day || today);
   let vy = $state(viewInit.getFullYear());

@@ -53,7 +53,9 @@ function remindersTick_() {
     const at = Date.parse(item.fireAt);
     if (!at || at > now || sent[item.key]) continue;
     // Если Telegram не ответил, не отмечаем — попробуем через минуту.
-    if (now - at <= LATE_LIMIT_MS && stillOpen_(item)) {
+    // События и дни рождения выполненными не бывают — проверяем только задачи.
+    const isEvent = item.kind === 'event' || item.kind === 'birthday';
+    if (now - at <= LATE_LIMIT_MS && (isEvent || stillOpen_(item))) {
       try { send_(format_(item)); } catch (e) { console.error(e); continue; }
     }
     sent[item.key] = now;
@@ -86,6 +88,18 @@ function stillOpen_(item) {
 }
 
 function format_(item) {
+  if (item.kind === 'birthday') {
+    const p = item.due.split('-').map(Number);
+    return '🎂 <b>' + esc_(item.title) + '</b>\nДень рождения ' + p[2] + ' ' + MONTHS[p[1] - 1] + (item.lead ? ' · <i>' + esc_(item.lead.toLowerCase()) + '</i>' : '');
+  }
+  if (item.kind === 'event') {
+    const when = item.start
+      ? Utilities.formatDate(new Date(item.start), 'Europe/Moscow', 'd') + ' ' + MONTHS[+Utilities.formatDate(new Date(item.start), 'Europe/Moscow', 'M') - 1] + ', ' + Utilities.formatDate(new Date(item.start), 'Europe/Moscow', 'H:mm')
+      : (() => { const p = item.due.split('-').map(Number); return p[2] + ' ' + MONTHS[p[1] - 1] + ', весь день'; })();
+    const ev = ['📅 <b>' + esc_(item.title) + '</b>', when];
+    if (item.note) ev.push(esc_(item.note));
+    return ev.join('\n');
+  }
   // Веха серии привычки (трекер кладёт её с kind: 'milestone') — без колокольчика, эмодзи уже в заголовке.
   const lines = [(item.kind === 'milestone' ? '' : '🔔 ') + '<b>' + esc_(item.title) + '</b>'];
   if (item.due) {
