@@ -36,14 +36,10 @@
 .upd-bar { flex: 0 0 200px; height: 6px; border-radius: 6px; background: var(--hairline); overflow: hidden; }
 .upd-bar span { display: block; height: 100%; background: var(--signal-done); }
 .side .foot button:disabled { opacity: .5; cursor: default; }
-.side .foot .foot-sel { display: flex; align-items: center; gap: 6px; }
-.side .foot .foot-sel select { font: inherit; color: inherit; background: transparent; border: 1px solid var(--hairline); border-radius: var(--radius-sm, 6px); padding: 2px 4px; }
 
-/* Напоминание в окне «Создать». */
-.dialog.quick .q-remind { display: flex; align-items: center; gap: 10px; }
-.dialog.quick .q-remind select { flex: 1 1 auto; width: auto; min-width: 0; }
-.dialog.quick .q-remind > :not(select) { flex: none; }
-.dialog.quick .q-remind .muted { color: var(--ink-faint, var(--ink-soft)); font-size: 12px; }
+/* Напоминания в окне «Создать»: кнопки, можно несколько. */
+.dialog.quick .q-remind { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.dialog.quick .q-remind .muted { color: var(--ink-faint); font-size: 12px; }
 .dialog.quick .q-remind .linkish { background: none; border: 0; padding: 0; color: var(--clay); font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
 /* Описание в окне «Создать». */

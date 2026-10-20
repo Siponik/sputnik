@@ -116,13 +116,17 @@
 
   const remindOf = (task) => reminders.remindLabel(lay.tasks?.[task.id]?.remind, task, lay.tasks?.[task.id]?.slot);
 
-  // Напоминание по умолчанию для новых задач: settings.remind = { min: N | null }. Без срока оно молчит,
+  // Напоминания по умолчанию: settings.remind = { task, event, birthday } — минуты до начала. Без срока они молчат,
   // а когда срок появится — сработает за N минут до него (или до времени задачи).
   const remindDefault = $derived(reminders.defaultRule(lay.settings));
-  function setRemindDefault(min) {
-    touch('settings', 'remind', { min });
+  const remindDefaults = $derived({ task: reminders.defaultMins(lay.settings, 'task'), event: reminders.defaultMins(lay.settings, 'event'), birthday: reminders.defaultMins(lay.settings, 'birthday') });
+  function setRemindDefault(kind, mins) {
+    touch('settings', 'remind', { [kind]: mins });
     saveLayer();
   }
+  // События и дни рождения с напоминаниями Спутника — читаем при каждой синхронизации.
+  let remindEvents = $state([]);
+  const loadRemindEvents = async () => { remindEvents = await api.remindEvents().catch(() => remindEvents); };
 
   function setRemind(r) {
     touch('tasks', openRef.id, { remind: r });
@@ -134,7 +138,7 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers);
+    const items = reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents);
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       reminders.publish(items).catch((e) => {
@@ -170,6 +174,7 @@
       ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
       inboxSt = await api.inboxStatus().catch(() => inboxSt);
+      await loadRemindEvents();
       pullInboxLayer();
       sync.at = new Date();
     } catch (e) {
@@ -674,9 +679,11 @@
   }
 
   async function createEvent(p) {
+    if (p.remind === undefined) p = { ...p, remind: remindDefaults.event }; // форма календаря — напоминания по умолчанию
     try {
       await api.createEvent(p);
-      say(`«${p.title}» — в Google Календаре`);
+      say(`«${p.title}» — в Google Календаре${p.remind?.length && p.day ? ` · 🔔 ${reminders.leadsText(p.remind, 'event')}` : ''}`);
+      loadRemindEvents();
       calReload++;
       if (p.day === api.ymd(new Date())) events = await api.eventsForDay().catch(() => events);
       return true;
@@ -684,9 +691,11 @@
   }
 
   async function createBirthday(p) {
+    if (p.remind === undefined) p = { ...p, remind: remindDefaults.birthday };
     try {
       await api.createBirthday(p);
-      say(`🎂 ${p.name} — каждый год в Google Календаре`);
+      say(`🎂 ${p.name} — каждый год в Google Календаре${p.remind?.length ? ` · 🔔 ${reminders.leadsText(p.remind, 'birthday')}` : ''}`);
+      loadRemindEvents();
       calReload++;
       return true;
     } catch (e) { say('Не удалось добавить день рождения: ' + e); return false; }
@@ -705,7 +714,8 @@
       if (Object.keys(layer).length) touch('tasks', r.id, layer);
       if (slot) setSlot(r.id, slot);
       else if (layer && Object.keys(layer).length) saveLayer();
-      const bell = layer.remind?.kind === 'lead' && due ? ` · 🔔 ${reminders.leadName(layer.remind.min).toLowerCase()}` : '';
+      const leads = reminders.rulesOf(layer.remind).filter((r) => r.kind === 'lead').map((r) => r.min);
+      const bell = leads.length && due ? ` · 🔔 ${reminders.leadsText(leads)}` : '';
       if (!quiet) say(`«${title}» — добавлено${due ? ` на ${whenText(due, slot).date.toLowerCase()}${slot ? `, ${slot.s}` : ''}` : ' на доску'}${bell}`);
       return r.id;
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
@@ -909,12 +919,6 @@
           <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
           {#if upd.note}<span>{upd.note}</span>{/if}
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
-          <label class="foot-sel" title="Новые задачи получают это напоминание в Telegram (в окне «Создать» можно выбрать другое)">Напоминание:
-            <select value={remindDefault ? String(remindDefault.min) : ''} onchange={(e) => setRemindDefault(e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}>
-              <option value="">нет</option>
-              {#each reminders.LEADS as l (l.min)}<option value={String(l.min)}>{l.name.toLowerCase()}</option>{/each}
-            </select>
-          </label>
           <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
@@ -998,7 +1002,7 @@
     <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
       day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange}
-      {remindDefault} onremindDefault={setRemindDefault}
+      {remindDefaults} onremindDefault={setRemindDefault}
       oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
   {/if}
 
