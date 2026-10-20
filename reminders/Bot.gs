@@ -37,6 +37,11 @@ const HELP_ = [
 
 function botTick_() {
   const props = PropertiesService.getScriptProperties();
+  // Скрипт обновляется сам из GitHub — меню команд включаем при первом запуске новой версии.
+  if (props.getProperty('BOT_READY') !== '1') {
+    props.setProperty('BOT_READY', '1');
+    setupBot();
+  }
   const offset = +(props.getProperty('TG_OFFSET') || 0);
   const res = tg_('getUpdates', { offset: offset, timeout: 0, allowed_updates: ['message'] });
   if (!res || !res.ok || !res.result.length) return;
