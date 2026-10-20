@@ -68,7 +68,7 @@ workflow `.github/workflows/apps-script.yml` заливает `*.gs` и `appsscr
 
 Настройка (один раз):
 1. Открой https://script.google.com/home/usersettings и включи **Google Apps Script API**.
-2. В PowerShell: `npx @google/clasp@3.4.1 login` — откроется браузер, войди тем же аккаунтом Google и разреши.
+2. В PowerShell: `npx.cmd @google/clasp@3.4.1 login` (именно `npx.cmd` — `npx` PowerShell не даст запустить) — откроется браузер, войди тем же аккаунтом Google и разреши.
 3. `Get-Content "$env:USERPROFILE\.clasprc.json" | Set-Clipboard` — содержимое файла скопируется.
 4. GitHub → репозиторий → Settings → Secrets and variables → Actions → **New repository secret**: имя `CLASPRC_JSON`, значение — вставить.
 
