@@ -3,6 +3,7 @@
   // Галочки нет: выполнено = последняя колонка. Слева полоска приоритета, ряд чипов, справа сверху — → · срок · ⋯.
   // Клик по названию — открыть окно задачи, по остальной карточке — только выбрать. Двойной клик по названию или F2 — переименовать.
   import { humanDue, dueState } from './api.js';
+  import { spentMin, fmtMin } from './timer.js';
   import { typeLabel } from './meta.js';
 
   // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет, тип. Подзадачи «☑ 3 из 5» — всегда, если они есть (как на макете). extra — запись слоя (клиент, сумма).
@@ -10,6 +11,9 @@
     selected = false, editing = false, ghost = false,
     onopen, onadvance, ondue, onmenu, onselect, onrename, onstartedit, onendedit, ondragstart, ondragend } = $props();
   const show = (f) => (fields.length ? fields.includes(f) : ['due', 'prio', 'type', 'subtasks'].includes(f));
+  // Учёт времени: набранное (без идущего таймера — его часы на шапке), идёт ли таймер сейчас.
+  const worked = $derived(extra?.spent >= 1 ? fmtMin(spentMin({ spent: extra.spent })) : '');
+  const ticking = $derived(!!extra?.timer?.start);
   const money = $derived(extra?.money ? Number(extra.money).toLocaleString('ru-RU') + ' ₽' : '');
   const done = $derived(task.status === 'completed');
   const subDone = $derived(subs.filter((s) => s.status === 'completed').length);
@@ -88,6 +92,7 @@
       {task.title || 'Без названия'}</div>
   {/if}
   {#if firstLine && !done}<p class="d">{firstLine}</p>{/if}
+  {#if worked || ticking}<p class="d kc-time" class:on={ticking}>⏱ {ticking ? 'таймер идёт' : ''}{ticking && worked ? ' · ' : ''}{worked}</p>{/if}
   {#if (show('client') && extra?.client) || (show('money') && money)}
     <p class="d client">{show('client') && extra?.client ? extra.client : ''}{show('client') && extra?.client && show('money') && money ? ' · ' : ''}{show('money') ? money : ''}</p>
   {/if}

@@ -391,3 +391,20 @@ svg.flip { transform: rotate(180deg); }
 /* Шапка: «Входящие от Claude · N» */
 .inbox-btn { min-height: 32px; padding: 0 10px; }
 .inbox-btn .n { font: 600 11px/1 var(--font-mono); color: var(--clay); }
+/* Идущий таймер задачи (lib/timer.js): часы, название, «стоп». */
+.timer-pill { display: inline-flex; align-items: center; min-height: 32px; border: 1px solid var(--edge); border-radius: var(--radius-md); background: var(--raised); overflow: hidden; }
+.timer-pill button { border: 0; background: none; cursor: pointer; color: var(--ink); }
+.timer-pill .tp-open { display: inline-flex; align-items: center; gap: 8px; padding: 0 8px 0 10px; min-height: 30px; max-width: 260px; font-size: 13px; }
+.timer-pill .tp-open:hover, .timer-pill .tp-stop:hover { background: var(--wash); }
+.timer-pill b { font: 600 12px/1 var(--font-mono); font-variant-numeric: tabular-nums; color: var(--clay); }
+.timer-pill .tp-t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); }
+.timer-pill .tp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--clay); animation: tp-pulse 1.6s ease-in-out infinite; }
+.timer-pill .tp-stop { display: grid; place-items: center; width: 30px; min-height: 30px; border-left: 1px solid var(--edge); }
+.timer-pill .tp-stop svg { width: 14px; height: 14px; fill: currentColor; }
+@keyframes tp-pulse { 50% { opacity: .35; } }
+[data-motion="off"] .timer-pill .tp-dot { animation: none; }
+.timer-row { display: flex; align-items: center; gap: 10px; }
+.timer-row .muted { font-size: 13px; color: var(--ink-soft); }
+.kc .kc-time { font-family: var(--font-mono); font-size: 11px; }
+.kc .kc-time.on { color: var(--clay); }
+@media (prefers-reduced-motion: reduce) { .timer-pill .tp-dot { animation: none; } }

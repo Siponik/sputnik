@@ -28,6 +28,7 @@
   import * as updater from './lib/updater.js';
   import * as meta from './lib/meta.js';
   import { whenText } from './lib/when.js';
+  import * as worktime from './lib/timer.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -336,10 +337,30 @@
     tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
   }
 
+  // ---------- учёт времени: один таймер на задачу, в слое (tasks[id].timer / spent) ----------
+  const runId = $derived(worktime.runningId(lay.tasks));
+  const runRef = $derived.by(() => {
+    if (!runId) return null;
+    for (const l of lists) { const t = (tasks[l.id] ?? []).find((x) => x.id === runId); if (t) return { task: t, listId: l.id }; }
+    return null;
+  });
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    if (!runId) return;
+    nowTick = Date.now();
+    const id = setInterval(() => (nowTick = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
+  function toggleTimer(id) {
+    for (const [tid, patch] of worktime.toggle(lay.tasks, id)) touch('tasks', tid, patch);
+    saveLayer();
+  }
+
   async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
     try {
       const r = await api.completeTask(listId, task.id, done);
       replace(listId, r);
+      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
       if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
       return true;
     } catch (e) { say('Не удалось отметить: ' + e); return false; }
@@ -821,6 +842,16 @@
         <button class="sync" class:busy={sync.busy} class:flash={syncFlash} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
         </button>
+        {#if runRef}
+          <span class="timer-pill" role="status">
+            <button type="button" class="tp-open" title="Открыть задачу" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
+              <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
+            </button>
+            <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
+            </button>
+          </span>
+        {/if}
         {#if inboxItems.length}
           <button class="sp-btn sp-btn-ghost inbox-btn" type="button" title="Входящие от Claude — разобрать на «Сегодня»"
             aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
@@ -989,6 +1020,7 @@
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
       pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
+      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
       onsave={save}

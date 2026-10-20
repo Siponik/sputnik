@@ -4,6 +4,7 @@
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel, rulesOf } from './reminders.js';
   import RemindChips from './RemindChips.svelte';
+  import { fmtMin } from './timer.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
@@ -12,6 +13,7 @@
   // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
   let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
     dueDays = new Set(), loadEvents = null,
+    spent = 0, running = false, ontimer = null, // учёт времени: минут набрано, идёт ли таймер
     pick = false, // сразу открыть окно «Когда» (клавиша D, кнопка срока на карточке)
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
@@ -185,6 +187,17 @@
         {#if !task.due && custom?.kind !== 'at'}Поставь срок — без него напомнить «до срока» не выйдет.
         {:else if remindWhen}Ближайшее напоминание в Telegram: {remindWhen}{/if}
       </p>
+    {/if}
+    {#if ontimer}
+      <div class="field">
+        <span>Время</span>
+        <div class="timer-row">
+          <button type="button" class="sp-btn" class:sp-btn-primary={!running} style="min-height: 32px" onclick={ontimer}>
+            {#if running}■ Остановить{:else}▶ Засечь{/if}
+          </button>
+          <span class="muted">{spent >= 1 ? `набрано ${fmtMin(spent)}` : running ? 'идёт…' : 'ещё не засекали'}</span>
+        </div>
+      </div>
     {/if}
     <!-- Заметка на всю ширину и растёт вместе с текстом. -->
     <div class="notes">
