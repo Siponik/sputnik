@@ -15,6 +15,7 @@
   import Calendar from './lib/Calendar.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
   import Coon from './lib/Coon.svelte';
+  import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
   import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
@@ -28,7 +29,6 @@
   import * as updater from './lib/updater.js';
   import * as meta from './lib/meta.js';
   import { whenText } from './lib/when.js';
-  import * as worktime from './lib/timer.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -337,31 +337,12 @@
     tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
   }
 
-  // ---------- учёт времени: один таймер на задачу, в слое (tasks[id].timer / spent) ----------
-  const runId = $derived(worktime.runningId(lay.tasks));
-  const runRef = $derived.by(() => {
-    if (!runId) return null;
-    for (const l of lists) { const t = (tasks[l.id] ?? []).find((x) => x.id === runId); if (t) return { task: t, listId: l.id }; }
-    return null;
-  });
-  let nowTick = $state(Date.now());
-  $effect(() => {
-    if (!runId) return;
-    nowTick = Date.now();
-    const id = setInterval(() => (nowTick = Date.now()), 1000);
-    return () => clearInterval(id);
-  });
-  function toggleTimer(id) {
-    for (const [tid, patch] of worktime.toggle(lay.tasks, id)) touch('tasks', tid, patch);
-    saveLayer();
-  }
-
   async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
     try {
       const r = await api.completeTask(listId, task.id, done);
       replace(listId, r);
-      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
       if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
+      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
       return true;
     } catch (e) { say('Не удалось отметить: ' + e); return false; }
   }
@@ -389,6 +370,25 @@
       if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
       if (ord != null) { touch('tasks', r.id, { ord }); saveLayer(); }
     } catch (e) { say('Не удалось создать задачу: ' + e); }
+  }
+
+  // ---------- учёт времени: один таймер на задачу, в слое (tasks[id].timer / spent) ----------
+  const runId = $derived(worktime.runningId(lay.tasks));
+  const runRef = $derived.by(() => {
+    if (!runId) return null;
+    for (const l of lists) { const t = (tasks[l.id] ?? []).find((x) => x.id === runId); if (t) return { task: t, listId: l.id }; }
+    return null;
+  });
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    if (!runId) return;
+    nowTick = Date.now();
+    const id = setInterval(() => (nowTick = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
+  function toggleTimer(id) {
+    for (const [tid, patch] of worktime.toggle(lay.tasks, id)) touch('tasks', tid, patch);
+    saveLayer();
   }
 
   // ---------- анимации: settings.motion = full | min | off ----------
