@@ -1,0 +1,35 @@
+name: Apps Script
+
+# После слияния в main заливает reminders/*.gs в проект Google Apps Script «SputnikNotification».
+# Нужен секрет CLASPRC_JSON — содержимое %USERPROFILE%\.clasprc.json после `npx @google/clasp@3.4.1 login`.
+# Только push и ручной запуск: из чужих PR секрет недоступен.
+on:
+  push:
+    branches: [main]
+    paths: ["reminders/**"]
+  workflow_dispatch: {}
+
+concurrency: apps-script
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Залить скрипт
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ]; then
+            echo "::warning::Нет секрета CLASPRC_JSON — скрипт не обновлён (настройка в reminders/README.md)."
+            exit 0
+          fi
+          printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
+          cd reminders
+          npx --yes @google/clasp@3.4.1 push --force
