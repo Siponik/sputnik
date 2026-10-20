@@ -93,6 +93,19 @@ export function remindLabel(remind, task, slot = null) {
   return `${day}, ${time}`;
 }
 
+// Прошедшее «до начала» не добавляем в файл (иначе бот пришлёт его сразу после создания задачи),
+// но и не выкидываем, если оно уже там: скрипт может заглянуть в файл на пару минут позже срабатывания.
+let publishedFrom = '';
+let published = new Set();
+function wasPublished(key) {
+  if (publishedFrom !== lastBody) {
+    publishedFrom = lastBody;
+    const b = lastBody ? JSON.parse(lastBody) : [];
+    published = new Set((Array.isArray(b) ? b : b.items ?? []).map((x) => x.key));
+  }
+  return published.has(key);
+}
+
 /** Список для облака: открытые задачи с напоминанием, которое ещё не прошло (или прошло меньше суток назад).
  *  cheers — свежие вехи серий привычек: бот поздравит сразу (fireAt = момент вехи). */
 export function collect(lists, tasksByList, layTasks, habitList = null, cheers = [], events = []) {
@@ -104,10 +117,11 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
       for (const r of rulesOf(layTasks?.[t.id]?.remind)) {
         const at = fireAt(r, t, layTasks?.[t.id]?.slot);
         if (!at || at.getTime() < now - 864e5) continue;
+        const key = `${t.id}|${at.toISOString()}`;
         // «За день» у задачи на сегодня уже в прошлом — не шлём сразу после создания или переноса.
-        if (r.kind === 'lead' && at.getTime() < now - 120e3) continue;
+        if (r.kind === 'lead' && at.getTime() < now - 120e3 && !wasPublished(key)) continue;
         items.push({
-          key: `${t.id}|${at.toISOString()}`,
+          key,
           taskId: t.id,
           listId: l.id,
           list: l.title,
@@ -128,9 +142,10 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
     for (const min of mins) {
       if (!Number.isFinite(min)) continue;
       const at = new Date(startAt.getTime() - min * 60e3);
-      if (at.getTime() < now - 120e3) continue;
+      const key = `ev|${e.id}|${at.toISOString()}`;
+      if (at.getTime() < now - 120e3 && !(wasPublished(key) && at.getTime() > now - 864e5)) continue;
       items.push({
-        key: `ev|${e.id}|${at.toISOString()}`,
+        key,
         kind: birthday ? 'birthday' : 'event',
         title: birthday ? String(e.summary ?? '').replace(/^🎂\s*/, '') : e.summary || 'Событие',
         note: (e.description ?? '').split('\n')[0].slice(0, 200),
