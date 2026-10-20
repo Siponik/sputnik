@@ -3,6 +3,7 @@
   import * as motion from './lib/motion.js';
   import * as keys from './lib/keys.js';
   import KeyHelp from './lib/KeyHelp.svelte';
+  import Search from './lib/Search.svelte';
   import WinControls from './lib/WinControls.svelte';
   import Brand from './lib/Brand.svelte';
   import Setup from './lib/Setup.svelte';
@@ -259,6 +260,22 @@
   // Горячие клавиши (список — lib/keys.js и окно «?»).
   const VIEWS = ['today', 'calendar', 'board', 'habits'];
   let helpOpen = $state(false);
+  // Поиск Ctrl+K: задачи всех списков и быстрый переход по разделам и спискам.
+  let searchOpen = $state(false);
+  const searchPlaces = $derived([
+    { id: 'today', kind: 'Раздел', name: 'Сегодня', view: 'today', alias: ['today'] },
+    { id: 'calendar', kind: 'Раздел', name: 'Календарь', view: 'calendar', alias: ['calendar', 'неделя', 'месяц'] },
+    { id: 'board', kind: 'Раздел', name: 'Доска', view: 'board', alias: ['board', 'канбан'] },
+    { id: 'habits', kind: 'Раздел', name: 'Привычки', view: 'habits', alias: ['habits'] },
+    { id: 'archive', kind: 'Раздел', name: 'Архив', view: 'archive' },
+    { id: 'templates', kind: 'Раздел', name: 'Шаблоны досок', view: 'templates' },
+    ...boardLists.map((l) => ({ id: l.id, kind: 'Список', name: l.title, listId: l.id, n: (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length })),
+  ]);
+  function searchGo(p) {
+    searchOpen = false;
+    if (p.listId) { activeId = p.listId; boardProject = null; go('board'); } else go(p.view);
+  }
+  function searchOpenTask(listId, id) { searchOpen = false; openRef = { listId, id }; }
   const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
   /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
   function go(v) {
@@ -288,9 +305,11 @@
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') { e.preventDefault(); if (!keys.overlay() && !helpOpen) searchOpen = true; return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
     if (keys.overlay()) return;
+    if (e.code === 'Slash' && !e.shiftKey) { e.preventDefault(); searchOpen = true; return; }
     if (e.shiftKey) {
       // Shift+1…9 на «Привычках» — отметить привычку по порядку.
       const n = /^Digit([1-9])$/.exec(e.code);
@@ -828,6 +847,7 @@
             <span class="n">{inboxItems.length}</span>
           </button>
         {/if}
+        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Поиск по задачам (Ctrl+K)" aria-label="Поиск" onclick={() => (searchOpen = true)}><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></button>
         <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши" onclick={() => (helpOpen = true)}>?</button>
         <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={() => newTask()}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
@@ -1006,6 +1026,9 @@
       oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
   {/if}
 
+  {#if searchOpen}
+    <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />
+  {/if}
   {#if helpOpen}
     <KeyHelp onclose={() => (helpOpen = false)} />
   {/if}
