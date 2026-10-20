@@ -214,6 +214,14 @@ function onCallback_(q) {
         text = '↩ Вернул в работу: <b>' + esc_(t.title) + '</b>';
       }
       tg_('editMessageText', { chat_id: msg.chat.id, message_id: msg.message_id, text: text, parse_mode: 'HTML' });
+    } else if (op === 'z') {
+      // «⏰ Через час» под напоминанием (Code.gs).
+      const at = snoozeRemind_(id);
+      note = at ? 'Напомню в ' + at : 'Это напоминание уже не найти';
+      if (at) {
+        const kb = msg.reply_markup.inline_keyboard.map((row) => row.map((b) => (b.callback_data === data ? { text: '⏰ Напомню в ' + at, callback_data: data } : b)));
+        tg_('editMessageReplyMarkup', { chat_id: msg.chat.id, message_id: msg.message_id, reply_markup: { inline_keyboard: kb } });
+      }
     } else if (op === 'l') {
       const l = taskLists_().find((x) => x.id === id);
       if (!l) note = 'Такого списка уже нет';
