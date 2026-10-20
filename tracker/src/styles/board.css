@@ -26,7 +26,7 @@
 .kc.lift { transform: rotate(-2deg) scale(1.02); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); border-color: var(--clay); }
 .kc.ghost { opacity: .35; }
 .ph { flex: none; height: 74px; border-radius: 11px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 8%, transparent); }
-.kc .t { cursor: pointer; font-size: 14px; line-height: 19px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.kc .t { cursor: pointer; font-size: 14px; line-height: 19px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; min-height: 24px; }
 .kc .d { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .kc .t:hover { color: var(--clay); }
 .kc.done .t { color: var(--ink-faint); text-decoration: line-through; font-weight: 500; }
@@ -43,8 +43,10 @@
 .kc .segs b.on { background: var(--signal-done); }
 .kc .chip.sub.all { color: var(--signal-done); border-color: color-mix(in srgb, var(--signal-done) 45%, var(--edge)); }
 /* Кнопки плавают справа в первой строке названия и всегда занимают место (только прозрачные): текст обтекает их,
-   не уходит под них и не прыгает при наведении. Отрицательный нижний отступ — чтобы вторая строка шла на всю ширину. */
-.kc .kc-qa { float: right; display: flex; gap: 2px; margin: -3px -4px -6px 6px; opacity: 0; color: var(--ink-soft); font-weight: 400; }
+   не уходит под них и не прыгает при наведении. Название обрезает всё, что выходит за его рамку (overflow для двух строк),
+   поэтому кнопки целиком внутри: без отрицательных отступов сверху и справа, а название не ниже кнопок (min-height 24px).
+   Отрицательный нижний отступ — чтобы вторая строка шла на всю ширину. */
+.kc .kc-qa { float: right; display: flex; gap: 2px; margin: 0 0 -6px 6px; opacity: 0; color: var(--ink-soft); font-weight: 400; }
 .kc:hover .kc-qa, .kc.sel .kc-qa, .kc:focus-within .kc-qa { opacity: 1; }
 .kc .kc-qa button { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; padding: 0; }
 .kc .kc-qa button:hover { color: var(--clay); border-color: var(--clay); }
