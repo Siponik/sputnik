@@ -6,8 +6,6 @@
 .seg3 button { height: 30px; padding: 0 14px; border: 0; border-radius: var(--radius-pill); background: none; color: var(--ink-soft); font: 500 13px/1 var(--font-sans); cursor: pointer; }
 .seg3 button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
 .seg3 button:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
-.colh { border-bottom-color: color-mix(in srgb, var(--cc, var(--hairline)) 55%, var(--hairline)); }
-.sp-card .d.client { color: var(--ink-soft); font-size: 12.5px; }
 
 /* ---------- Конвейер ---------- */
 .bd .dist { display: grid; gap: 6px; }

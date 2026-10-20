@@ -65,8 +65,7 @@ export const completeTask = (listId, taskId, done) =>
 export async function eventsForDay(day = new Date()) {
   const start = new Date(day); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
-  const cals = await gapi('GET', `${CAL}/users/me/calendarList?minAccessRole=reader`);
-  const chosen = (cals?.items ?? []).filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
+  const chosen = (await calendarList()).filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
   const lists = await Promise.all(chosen.map(async (c) => {
     try {
       const q = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });

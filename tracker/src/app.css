@@ -48,18 +48,10 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .page-head p { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
 
 .board { display: flex; gap: var(--space-5); align-items: flex-start; overflow-x: auto; padding-bottom: 8px; }
-.sp-col { flex: none; min-height: 120px; transition: background .15s; }
-.sp-col.over { background: var(--clay-soft); }
-.sp-card { cursor: pointer; text-align: left; color: inherit; font: inherit; width: 100%; }
-.sp-card:hover { border-color: var(--ink-faint); }
-.sp-card[draggable="true"] { cursor: grab; }
 .add-row { display: flex; gap: 6px; }
 .add-row input { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--raised); }
 .add-row input:focus, .field input:focus, .field textarea:focus, .field select:focus, .title-input:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
 
-.today-hero { background: var(--wash); border-bottom: 1px solid var(--edge); padding: 28px 32px; }
-.today-hero .date { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); }
-.today-hero h1 { margin: 0; max-width: 760px; font-family: var(--font-display); font-size: 36px; line-height: 44px; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
 .group h2 { margin: 0 0 6px; font-size: 16px; line-height: 22px; font-weight: 600; }
 .group h2.over { color: var(--signal-overdue); }
 .row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-md); border-bottom: 1px solid var(--hairline); }
@@ -97,21 +89,14 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .toast button { background: none; border: 0; color: inherit; cursor: pointer; text-decoration: underline; }
 .spinner { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--hairline); border-top-color: var(--clay); animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } .sp-col { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
 
-.sp-card .t { background: none; border: 0; padding: 0; text-align: left; cursor: pointer; color: inherit; }
-.sp-card .t:hover { text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: 3px; }
-.sp-card .t:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: 2px; }
 .sp-tab:disabled:hover { color: var(--ink-soft); }
 
 /* Логотип в шапке — крупнее, чем в дизайн-системе */
 .sp-tabs .sp-brand { font-weight: 650; letter-spacing: .005em; padding-bottom: 8px; margin-right: var(--space-4); }
 
 /* Карточка без галочки: всё в одну колонку */
-.sp-card.no-check { grid-template-columns: minmax(0, 1fr); user-select: none; }
-.sp-card.no-check:active { cursor: grabbing; }
-.sp-card.no-check .t { cursor: inherit; }
-.sp-card.no-check .d, .sp-card.no-check .meta { grid-column: 1; }
 .col-foot { background: none; border: 1px dashed var(--hairline); border-radius: var(--radius-md); padding: 8px 10px; font-size: 12px; line-height: 16px; color: var(--ink-soft); cursor: pointer; text-align: left; }
 .col-foot:hover { color: var(--ink); border-color: var(--ink-faint); }
 
@@ -145,14 +130,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sp-btn:disabled { opacity: .5; cursor: default; filter: none; }
 
 /* Привычки */
-.habits-hero { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 24px; }
-.habits-hero > div { flex: 1 1 480px; min-width: 0; }
 .stats { margin: 0; display: flex; flex-wrap: wrap; gap: 32px; }
 .stats dt { font-size: 12px; line-height: 16px; color: var(--ink-soft); }
 .stats dd { margin: 4px 0 0; font-family: var(--font-mono); font-size: 22px; line-height: 28px; font-variant-numeric: tabular-nums; }
 .stats dd.gold { color: var(--gold); }
 .habits-page { padding: 24px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
-.habits-bar { display: flex; justify-content: flex-end; }
 .habits-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 540px), 1fr)); gap: 20px; align-content: start; }
 .habit { display: flex; flex-direction: column; gap: 18px; padding: 20px 22px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); }
 .habit header { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
@@ -167,11 +149,7 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .streak .num.zero { color: var(--ink-faint); }
 .streak .num.hot { color: var(--gold); }
 .streak .unit { font-size: 14px; line-height: 20px; color: var(--ink-soft); }
-.habit .record { margin: 8px 0 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--gold); }
 .habit .note { margin: 6px 0 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
-.heat { margin: 0; flex: none; display: flex; flex-direction: column; gap: 6px; }
-.heat .months { display: grid; grid-template-columns: 22px repeat(13, 14px); column-gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink-faint); }
-.heat .wd { width: 22px; display: grid; grid-template-rows: repeat(7, 14px); gap: 4px; font-size: 11px; line-height: 14px; color: var(--ink-faint); }
 .hm { display: grid; grid-template-rows: repeat(7, 14px); grid-auto-flow: column; grid-auto-columns: 14px; gap: 4px; }
 .c { display: inline-block; width: 14px; height: 14px; border-radius: 3px; box-sizing: border-box; }
 .c.done { background: var(--gold); }
@@ -201,16 +179,11 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .remind select { flex: 1 1 160px; width: auto; }
 .remind input { flex: 0 1 auto; width: auto; }
 .remind-hint { margin: -10px 0 0 124px; font-size: 12px; line-height: 16px; color: var(--ink-soft); }
-.sp-card .bell { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); }
-.sp-card .bell svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
 /* Шапка: кнопка «Создать» */
 .sp-tabs .right .sp-btn-primary svg { width: 14px; height: 14px; }
 
 /* Время задачи — в окне задачи и в «Создать» */
-.time-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.time-row input { width: auto; flex: 0 1 120px; }
-.time-row > span { color: var(--ink-faint); }
 .dialog.quick { width: min(520px, calc(100% - 32px)); gap: 14px; }
 .dialog.quick .title-input { font-size: 22px; line-height: 28px; border: 1px solid var(--hairline); background: var(--bg); padding: 8px 12px; margin: 0; border-radius: var(--radius-md); }
 
