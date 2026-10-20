@@ -10,6 +10,8 @@ const STATUS_TITLE = 'Спутник · статус';
 const STATUS_DATE = new Date(2030, 0, 1);
 const KEEP_PROCESSED_MS = 14 * 24 * 3600 * 1000;
 const KEEP_PROCESSED_MAX = 40; // описание события — до ~8 тыс. символов
+const KEEP_LAYER_MS = 30 * 24 * 3600 * 1000;
+const KEEP_LAYER_MAX = 25; // вместе с processed описание события не должно вырасти за ~8 тыс. символов
 const DEDUP_MS = 2 * 24 * 3600 * 1000;
 const OPS = ['list.ensure', 'task.create', 'task.complete'];
 
@@ -165,7 +167,7 @@ function runOp_(op, getLists, status) {
   if (op.due) body.due = op.due + 'T00:00:00.000Z';
   const t = Tasks.Tasks.insert(body, list.id, opts);
   // Поля слоя Спутника ждут здесь, пока трекер не заберёт их в свой слой.
-  if (op.layer && typeof op.layer === 'object') status.pendingLayer[t.id] = Object.assign({ listId: list.id }, op.layer);
+  if (op.layer && typeof op.layer === 'object') status.pendingLayer[t.id] = Object.assign({ listId: list.id, at: new Date().toISOString() }, op.layer);
   return { op: op.op, list: list.title, title: title, taskId: t.id };
 }
 
@@ -200,6 +202,15 @@ function writeStatus_(s) {
   // Только последние KEEP_PROCESSED_MAX запросов: описание события не резиновое.
   const keys = Object.keys(s.processed).sort((a, b) => Date.parse(s.processed[b].at) - Date.parse(s.processed[a].at));
   for (const k of keys.slice(KEEP_PROCESSED_MAX)) delete s.processed[k];
+  // pendingLayer ждёт трекер не дольше KEEP_LAYER_MS (задачи из Telegram копят его быстрее, чем чаты Claude).
+  const now = Date.now();
+  for (const k of Object.keys(s.pendingLayer)) {
+    const p = s.pendingLayer[k];
+    if (!p.at) p.at = new Date(now).toISOString();
+    if (now - Date.parse(p.at) > KEEP_LAYER_MS) delete s.pendingLayer[k];
+  }
+  const pend = Object.keys(s.pendingLayer).sort((a, b) => Date.parse(s.pendingLayer[b].at) - Date.parse(s.pendingLayer[a].at));
+  for (const k of pend.slice(KEEP_LAYER_MAX)) delete s.pendingLayer[k];
   s.version = 1;
   s.updatedAt = new Date().toISOString();
   s.calendarId = inboxCalendar_(true).getId();
