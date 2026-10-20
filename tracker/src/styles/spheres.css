@@ -1,0 +1,94 @@
+/* Сферы (design/screens/Spheres.dc.html): левая колонка, обзор сферы, поповер «Изменить сферу», чипы. */
+.sph-ico { display: inline-grid; place-items: center; flex: none; }
+.sph-ico svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.sph-side { display: flex; flex-direction: column; gap: 2px; }
+.sph-side .sph-row { display: flex; align-items: center; gap: 2px; margin-top: 6px; }
+.sph-side .chev { width: 20px; height: 26px; flex: none; display: grid; place-items: center; border: 0; padding: 0; background: none; color: var(--ink-faint); cursor: pointer; border-radius: 6px; }
+.sph-side .chev:hover { color: var(--ink); background: var(--wash); }
+.sph-side .chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .15s; }
+.sph-side .chev svg.closed { transform: rotate(-90deg); }
+.sph-side .sph { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 4px 8px 4px 4px; border: 0; border-radius: var(--radius-md); background: none; color: var(--ink); font-size: 14px; font-weight: 600; cursor: pointer; text-align: left; }
+.sph-side .sph:hover { background: var(--wash); }
+.sph-side .sph[aria-current="true"] { background: var(--clay-soft); color: var(--clay); }
+.sph-side .sn { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sph-side .n { font-family: var(--font-mono); font-size: 12px; font-weight: 400; color: var(--ink-faint); }
+.side .lst { width: 100%; display: flex; align-items: center; gap: 6px; padding: 6px 10px 6px 30px; border: 0; border-radius: var(--radius-md); background: none; font-size: 13.5px; color: var(--ink-soft); cursor: pointer; text-align: left; }
+.side .side-nav .lst { padding-left: 10px; }
+.side .lst:hover { background: var(--wash); color: var(--ink); }
+.side .lst.on { background: var(--clay-soft); color: var(--clay); font-weight: 600; }
+.side .lst .lt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.side .lst .tg { flex: none; font-size: 10.5px; line-height: 16px; padding: 0 6px; border-radius: 999px; background: var(--wash); color: var(--ink-faint); font-weight: 500; }
+.side .lst .n { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
+.side .lst.on .n, .side .lst.on .tg { color: var(--clay); }
+.sph-side .nos { margin: 10px 0 2px; padding: 0 10px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.sph-side .side-add { display: flex; flex-direction: column; }
+.sph-side .side-add .item.add { margin-top: 2px; }
+.side-nav { display: flex; flex-direction: column; gap: 2px; padding-top: 10px; border-top: 1px solid var(--edge); }
+
+/* Обзор сферы */
+.sph-view .sv-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+.sph-view .sv-t { flex: 1; min-width: 200px; }
+.sph-view .sv-t h1 { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 600; }
+.sph-view .sv-t p { margin: 2px 0 0; font-size: 13px; color: var(--ink-faint); }
+.sph-view .sv-body { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .sph-view .sv-body { grid-template-columns: 1fr; } }
+.sph-view .sv-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.sph-view .lc { display: flex; flex-direction: column; gap: 12px; padding: 16px 18px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); border-top: 3px solid var(--sc); }
+.sph-view .lc-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.sph-view .lc-h h3 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+.sph-view .lc-h span { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.sph-view .lc-cols { display: flex; flex-wrap: wrap; gap: 4px; }
+.sph-view .lc-cols i { font-style: normal; font-size: 11px; line-height: 18px; padding: 0 7px; border-radius: 999px; background: var(--wash); color: var(--ink-faint); }
+.sph-view .lc-cols i.on { background: color-mix(in srgb, var(--sc) 18%, transparent); color: var(--ink); }
+.sph-view .stat { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.sph-view .stat span { display: flex; flex-direction: column; font-size: 11.5px; color: var(--ink-faint); }
+.sph-view .stat b { font-family: var(--font-mono); font-size: 20px; line-height: 26px; font-weight: 500; color: var(--ink); }
+.sph-view .nx { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.sph-view .link2 { border: 0; padding: 0; background: none; color: var(--ink); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.sph-view .muted { color: var(--ink-faint); }
+.sph-view .empty { grid-column: 1 / -1; }
+.sv-urg { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); }
+.sv-urg .cap { margin: 0 0 6px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.sv-urg .urg { display: flex; align-items: center; gap: 10px; padding: 7px 8px; border: 0; border-radius: var(--radius-md); background: none; color: var(--ink); cursor: pointer; text-align: left; font-size: 13.5px; }
+.sv-urg .urg:hover { background: var(--wash); }
+.sv-urg .dt { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.sv-urg .ut { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sv-urg .ut small { font-size: 11.5px; color: var(--ink-faint); }
+.sv-urg .uw { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.sv-urg .uw.now { color: var(--clay); }
+.sv-urg .uw.over { color: var(--signal-overdue); }
+.sv-urg .hint { margin: 6px 0 0; font-size: 12px; line-height: 17px; color: var(--ink-faint); }
+
+/* Поповер «Изменить сферу» */
+.drawer-back.light { background: rgba(0, 0, 0, .18); }
+.dialog.sph-pop { width: min(420px, calc(100% - 32px)); gap: 16px; padding: 20px 22px; }
+.sph-pop .cap { margin: 0 0 8px; font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.sph-pop .sp-row { display: flex; align-items: center; gap: 12px; }
+.sph-pop .sp-row input { flex: 1; min-width: 0; height: 38px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); color: var(--ink); font-size: 16px; font-weight: 600; }
+.sph-pop .sp-row input:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+.sph-pop .sw-row, .sph-pop .ib-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.sph-pop .sw2 { width: 28px; height: 28px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; box-shadow: inset 0 0 0 2px var(--raised); }
+.sph-pop .sw2[aria-pressed="true"] { border-color: var(--ink); }
+.sph-pop .ib { width: 36px; height: 36px; display: grid; place-items: center; border-radius: 10px; border: 1px solid var(--edge); background: none; color: var(--ink-soft); cursor: pointer; }
+.sph-pop .ib:hover { background: var(--wash); color: var(--ink); }
+.sph-pop .ib[aria-pressed="true"] { border-color: var(--clay); color: var(--clay); background: var(--clay-soft); }
+.sph-pop .ib svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.sph-pop .sl-row { display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 14px; }
+.sph-pop .sl-row .nm { flex: 1; min-width: 0; }
+.sph-pop .sl-row .where { font-size: 12px; color: var(--ink-faint); }
+.sph-pop .tick2 { width: 20px; height: 20px; flex: none; display: grid; place-items: center; padding: 0; border-radius: 6px; border: 1.5px solid var(--hairline); background: none; cursor: pointer; color: transparent; }
+.sph-pop .tick2[aria-pressed="true"] { background: var(--clay); border-color: var(--clay); color: #fff; }
+.sph-pop .tick2 svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.sph-pop .hint { margin: 8px 0 0; font-size: 12px; line-height: 17px; color: var(--ink-faint); }
+.sph-pop .sp-foot { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--edge); padding-top: 14px; }
+.sph-pop .sp-foot .hint { margin: 0; }
+.sph-pop .danger { color: var(--signal-overdue); }
+.sph-pop .sp-btn.danger:not(.sp-btn-ghost) { border-color: currentColor; }
+
+/* Чипы сфер над «Сегодня» и «Календарём» */
+.sph-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 24px 0; }
+.sph-chips button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 6px; border-radius: 999px; border: 1px solid var(--edge); background: none; color: var(--ink-soft); font-size: 12.5px; cursor: pointer; }
+.sph-chips button:first-child { padding-left: 10px; }
+.sph-chips button:hover { color: var(--ink); background: var(--wash); }
+.sph-chips button[aria-pressed="true"] { border-color: var(--clay); color: var(--clay); background: var(--clay-soft); }

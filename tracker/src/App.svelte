@@ -15,8 +15,12 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import Coon from './lib/Coon.svelte';
   import * as api from './lib/api.js';
-  import { templateOf, templatesFrom, isBuiltin, blankTemplate, isHabitList, HABITS } from './lib/templates.js';
+  import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
+  import { spheresFrom, sphereOf, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
+  import SphereIcon from './lib/SphereIcon.svelte';
+  import SphereView from './lib/SphereView.svelte';
+  import SphereEdit from './lib/SphereEdit.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
@@ -387,10 +391,51 @@
     say('Шаблон удалён');
   }
 
+  // ---------- сферы ----------
+
+  let activeSphere = $state(null);
+  let sphereEditOpen = $state(false);
+  let newListSphere = $state(null); // «＋ Список в сферу» — какую сферу поставить новому списку
+  let sphereFilter = $state(''); // чип над «Сегодня» и «Календарём»: '' — все сферы
+  const spheres = $derived(spheresFrom(lay));
+  const noSphereLists = $derived(boardLists.filter((l) => !sphereOf(l.id, lay)));
+  const curSphere = $derived(spheres.find((s) => s.id === activeSphere) ?? null);
+  const sphereLists = (sid) => boardLists.filter((l) => sphereOf(l.id, lay) === sid);
+  // Списки для «Сегодня» и «Календаря» с учётом чипа сферы.
+  const shownLists = $derived(sphereFilter && spheres.some((s) => s.id === sphereFilter) ? sphereLists(sphereFilter) : boardLists);
+
+  function openList(id) { activeId = id; boardProject = null; view = 'board'; }
+  function openSphere(id) { activeSphere = id; view = 'sphere'; }
+  function foldSphere(id, folded) { touch('settings', 'sphereFold', { ...(lay.settings?.sphereFold ?? {}), [id]: folded }); saveLayer(); }
+  function createSphere() {
+    const id = 'sph' + Date.now().toString(36);
+    const n = spheres.length;
+    const icons = Object.keys(SPHERE_ICONS);
+    touch('spheres', id, { name: 'Новая сфера', color: SPHERE_COLORS[n % SPHERE_COLORS.length].id, icon: icons[(n + 7) % icons.length], order: Math.max(0, ...spheres.map((s) => s.order ?? 0)) + 1, removed: false });
+    saveLayer();
+    activeSphere = id;
+    view = 'sphere';
+    sphereEditOpen = true;
+  }
+  function updateSphere(patch) { if (!activeSphere) return; touch('spheres', activeSphere, patch); saveLayer(); }
+  function toggleListSphere(listId, on) { touch('lists', listId, { sphere: on ? activeSphere : null }); saveLayer(); }
+  function deleteSphere() {
+    const id = activeSphere;
+    for (const l of sphereLists(id)) touch('lists', l.id, { sphere: null });
+    touch('spheres', id, { removed: true });
+    saveLayer();
+    sphereEditOpen = false;
+    if (sphereFilter === id) sphereFilter = '';
+    view = 'board';
+    say('Сфера удалена, списки — в «Без сферы»');
+  }
+  function newListIn(sid) { newListSphere = sid; newList = true; }
+
   async function createList(title, template) {
     try {
       const l = await api.createList(title);
-      touch('lists', l.id, { template });
+      touch('lists', l.id, newListSphere ? { template, sphere: newListSphere } : { template });
+      newListSphere = null;
       saveLayer();
       lists = [...lists, l];
       tasks[l.id] = [];
@@ -672,18 +717,38 @@
     {/if}
 
     <div class="body">
-      {#if view === 'board' || view === 'archive'}
+      {#if view === 'board' || view === 'archive' || view === 'sphere'}
       <aside class="side">
-        <div>
+        <!-- Сферы: значок, название, открытых задач; внутри — списки с меткой шаблона. Без сферы — внизу. -->
+        <div class="sph-side">
           <h4>Сферы</h4>
-          {#each boardLists as l (l.id)}
-            <button class="item" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => { activeId = l.id; boardProject = null; view = 'board'; }}>
-              <span>{l.title}</span><span class="n">{openCount(l)}</span>
+          {#snippet listRow(l)}
+            <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}>
+              <span class="lt">{l.title}</span><span class="tg">{shortName(templateFor(l.id))}</span><span class="n">{openCount(l)}</span>
             </button>
-          {:else}
-            <p class="empty">Списков пока нет.</p>
+          {/snippet}
+          {#each spheres as sp (sp.id)}
+            {@const folded = !!lay.settings?.sphereFold?.[sp.id]}
+            {@const sl = boardLists.filter((l) => sphereOf(l.id, lay) === sp.id)}
+            <div class="sph-row">
+              <button type="button" class="chev" aria-label={folded ? 'Развернуть сферу' : 'Свернуть сферу'} aria-expanded={!folded} onclick={() => foldSphere(sp.id, !folded)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true" class:closed={folded}><path d="M6 9l6 6 6-6" /></svg>
+              </button>
+              <button type="button" class="sph" aria-current={view === 'sphere' && activeSphere === sp.id} onclick={() => openSphere(sp.id)}>
+                <SphereIcon sphere={sp} size={26} /><span class="sn">{sp.name}</span><span class="n">{sl.reduce((n, l) => n + openCount(l), 0)}</span>
+              </button>
+            </div>
+            {#if !folded}{#each sl as l (l.id)}{@render listRow(l)}{/each}{/if}
           {/each}
-          <button class="item add" type="button" onclick={() => (newList = true)}><span>+ Новый список</span></button>
+          {#if noSphereLists.length}
+            {#if spheres.length}<p class="nos">Без сферы</p>{/if}
+            {#each noSphereLists as l (l.id)}{@render listRow(l)}{/each}
+          {/if}
+          {#if !boardLists.length}<p class="empty">Списков пока нет.</p>{/if}
+          <div class="side-add">
+            <button class="item add" type="button" onclick={() => newListIn(null)}><span>+ Новый список</span></button>
+            <button class="item add" type="button" onclick={createSphere}><span>＋ Сфера</span></button>
+          </div>
         </div>
         {#if projects.length && view === 'board'}
           <div>
@@ -695,6 +760,10 @@
             {/each}
           </div>
         {/if}
+        <div class="side-nav">
+          <button type="button" class="lst" onclick={() => (view = 'templates')}>Шаблоны досок →</button>
+          <button type="button" class="lst" class:on={view === 'archive'} onclick={() => (view = 'archive')}>Архив</button>
+        </div>
         {#if view === 'board' && activeList}
           <div class="side-tip">
             <Coon pose="think" size={96} />
@@ -705,7 +774,6 @@
           <span>Спутник {version}</span>
           <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
           {#if upd.note}<span>{upd.note}</span>{/if}
-          <button type="button" onclick={() => (view = 'templates')}>Шаблоны досок →</button>
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
@@ -713,8 +781,16 @@
       {/if}
 
       <div class="main">
+        {#if (view === 'today' || view === 'calendar') && spheres.length}
+          <div class="sph-chips" role="group" aria-label="Сфера">
+            <button type="button" aria-pressed={!sphereFilter} onclick={() => (sphereFilter = '')}>Все сферы</button>
+            {#each spheres as sp (sp.id)}
+              <button type="button" aria-pressed={sphereFilter === sp.id} onclick={() => (sphereFilter = sphereFilter === sp.id ? '' : sp.id)}><SphereIcon sphere={sp} size={18} />{sp.name}</button>
+            {/each}
+          </div>
+        {/if}
         {#if view === 'today'}
-          <Today lists={boardLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
+          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
@@ -723,7 +799,7 @@
             onregister={(fn) => (quickLine = fn)}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} />
         {:else if view === 'calendar'}
-          <Calendar lists={boardLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
+          <Calendar lists={shownLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
             loadEvents={api.eventsRange} syncAt={sync.at} reloadKey={calReload} oncreatebirthday={createBirthday}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId) => toggle(t, d, listId)}
@@ -737,6 +813,10 @@
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
             onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
+        {:else if view === 'sphere' && curSphere}
+          <SphereView sphere={curSphere} lists={sphereLists(curSphere.id)} tasksByList={tasks} {templateFor} {colOf}
+            onedit={() => (sphereEditOpen = true)} onaddlist={() => newListIn(curSphere.id)}
+            onopenlist={openList} onopentask={(t, listId) => (openRef = { listId, id: t.id })} />
         {:else if view === 'archive'}
           <Archive lists={boardLists} tasksByList={tasks} {activeId}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
@@ -788,8 +868,14 @@
     <KeyHelp onclose={() => (helpOpen = false)} />
   {/if}
 
+  {#if sphereEditOpen && curSphere && view === 'sphere'}
+    <SphereEdit sphere={curSphere} lists={boardLists} inSphere={(id) => sphereOf(id, lay) === curSphere.id}
+      whereOf={(id) => spheres.find((s) => s.id === sphereOf(id, lay))?.name ?? ''}
+      onchange={updateSphere} ontogglelist={toggleListSphere} ondelete={deleteSphere} onclose={() => (sphereEditOpen = false)} />
+  {/if}
+
   {#if newList}
-    <NewList templates={allTemplates} oncreate={createList} onclose={() => (newList = false)} />
+    <NewList templates={allTemplates} oncreate={createList} onclose={() => { newList = false; newListSphere = null; }} />
   {/if}
 {/if}
 

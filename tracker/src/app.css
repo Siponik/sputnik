@@ -10,6 +10,7 @@
 @import './styles/extras.css';
 @import './styles/datetime.css';
 @import './styles/views.css';
+@import './styles/spheres.css';
 
 /* Раскладка приложения */
 html, body, #app { height: 100%; }
