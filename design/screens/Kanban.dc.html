@@ -54,9 +54,12 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
 .chip.late{border-color:color-mix(in srgb,var(--signal-overdue) 50%,var(--edge));color:var(--signal-overdue)}
 .chip.soon{border-color:color-mix(in srgb,var(--clay) 45%,var(--edge));color:var(--clay)}
 .chip i{width:7px;height:7px;border-radius:50%;background:currentColor}
-.prog{display:flex;align-items:center;gap:6px;font:400 11px/1 var(--font-mono);color:var(--ink-faint)}
-.prog span{flex:1;height:3px;border-radius:3px;background:var(--hairline);overflow:hidden}
-.prog span i{display:block;height:100%;background:var(--signal-done)}
+.chip.sub{gap:6px;padding:0 8px 0 7px;font-family:var(--font-mono)}
+.chip.sub svg{width:12px;height:12px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.segs{display:inline-flex;gap:2px}
+.segs b{width:6px;height:6px;border-radius:2px;background:var(--hairline)}
+.segs b.on{background:var(--signal-done)}
+.chip.sub.all{color:var(--signal-done);border-color:color-mix(in srgb,var(--signal-done) 45%,var(--edge))}
 .qa{position:absolute;top:8px;right:8px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
 .kc:hover .qa,.kc.sel .qa,.kc:focus-within .qa{opacity:1}
 .qa button{width:26px;height:26px;border-radius:7px;border:1px solid var(--edge);background:var(--wash);color:var(--ink-soft);cursor:pointer;display:grid;place-items:center}
@@ -121,9 +124,9 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
                   <div class="mt">
                     <sc-if value="{{k.hasDue}}" hint-placeholder-val="{{true}}"><span class="{{k.dueCls}}">{{k.due}}</span></sc-if>
                     <sc-if value="{{k.hasType}}" hint-placeholder-val="{{false}}"><span class="chip" style="color: {{k.typeColor}}"><i></i>{{k.type}}</span></sc-if>
+                    <sc-if value="{{k.hasSubs}}" hint-placeholder-val="{{false}}"><span class="{{k.subCls}}" title="Подзадачи: {{k.subs}}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"></rect><path d="M8.5 12.5l2.5 2.5 4.5-5"></path></svg>{{k.subs}}<span class="segs" aria-hidden="true"><sc-for list="{{k.segs}}" as="g" hint-placeholder-count="5"><b class="{{g.c}}"></b></sc-for></span></span></sc-if>
                     <sc-if value="{{k.bell}}" hint-placeholder-val="{{false}}"><span class="chip" title="Напоминание">🔔 {{k.bellText}}</span></sc-if>
                   </div>
-                  <sc-if value="{{k.hasSubs}}" hint-placeholder-val="{{false}}"><div class="prog" aria-label="Подзадачи {{k.subs}}"><span><i style="width: {{k.subPct}}%"></i></span>{{k.subs}}</div></sc-if>
                   <div class="qa">
                     <sc-if value="{{k.canAdv}}" hint-placeholder-val="{{true}}"><button type="button" aria-label="{{k.advAria}}" title="{{k.advAria}} · Alt+→" onClick="{{k.adv}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"></path></svg></button></sc-if>
                     <button type="button" aria-label="Срок" title="Срок · D"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg></button>
@@ -195,7 +198,8 @@ class Component extends DCLogic {
           due: c.ds === 'late' ? 'просрочено · ' + c.due : c.due, hasDue: !!c.due, dueCls: 'chip' + (c.ds === 'late' ? ' late' : c.ds === 'soon' ? ' soon' : ''),
           type: c.type || '', hasType: !!c.type, typeColor: c.tc || '',
           bell: !!c.bell && !c.done, bellText: c.bell || '',
-          hasSubs: !!c.subs, subs: c.subs ? c.subs[0] + '/' + c.subs[1] : '', subPct: c.subs ? Math.round(c.subs[0] / c.subs[1] * 100) : 0,
+          hasSubs: !!c.subs && !c.done, subs: c.subs ? c.subs[0] + ' из ' + c.subs[1] : '', subCls: 'chip sub' + (c.subs && c.subs[0] === c.subs[1] ? ' all' : ''),
+          segs: c.subs ? Array.from({ length: Math.min(8, c.subs[1]) }, function (_, i) { return { c: i < Math.round(c.subs[0] / c.subs[1] * Math.min(8, c.subs[1])) ? 'on' : '' }; }) : [],
           canAdv: !!next && !c.done, advAria: next ? 'Перенести в «' + nextName + '»' : '',
           adv: function () { var m = Object.assign({}, self.state.col); m[c.id] = next; self.setState({ col: m, menu: null }); },
           select: function () { if (self.state.sel !== c.id) self.setState({ sel: c.id, menu: null }); },
