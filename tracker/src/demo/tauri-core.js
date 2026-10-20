@@ -56,6 +56,22 @@ function calApi(method, path, q, body) {
   return { items: [] };
 }
 
+// Google Drive в памяти: файл напоминаний и копия слоя в appDataFolder (lib/layer.js).
+const drive = {};
+if (typeof window !== 'undefined') window.__demoDrive = drive; // для проверки синхронизации из Playwright
+function driveApi(method, path, q, body) {
+  const id = path.match(/\/files\/([^/?]+)/)?.[1];
+  if (method === 'GET' && !id) {
+    const name = /name='([^']+)'/.exec(q.get('q') ?? '')?.[1];
+    const prop = /value='([^']+)'/.exec(q.get('q') ?? '')?.[1];
+    return { files: Object.entries(drive).filter(([, f]) => (name ? f.name === name : f.props?.sputnik === prop)).map(([fid]) => ({ id: fid })) };
+  }
+  if (method === 'GET') return structuredClone(drive[id]?.data ?? null);
+  if (method === 'POST') { const fid = 'F' + n++; drive[fid] = { name: body?.name, props: body?.appProperties, data: null }; return { id: fid }; }
+  if (method === 'PATCH' && id) { drive[id] = { ...drive[id], data: structuredClone(body) }; return { id }; }
+  return {};
+}
+
 export async function invoke(cmd, args = {}) {
   await new Promise((r) => setTimeout(r, 40));
   switch (cmd) {
@@ -67,6 +83,7 @@ export async function invoke(cmd, args = {}) {
       const u = new URL(args.url);
       const q = u.searchParams;
       if (u.host === 'tasks.googleapis.com') return tasksApi(args.method, u.pathname.replace('/tasks/v1/', ''), q, args.body);
+      if (u.pathname.includes('/drive/v3/')) return driveApi(args.method, u.pathname, q, args.body);
       return calApi(args.method, u.pathname.replace('/calendar/v3/', ''), q, args.body);
     }
   }
