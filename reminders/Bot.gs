@@ -10,7 +10,7 @@
 //   /now           — прислать ссылку на сводку сейчас
 //   /help          — список команд
 
-const BRIEF_READY_AT = 7 * 60 + 45; // сводка обновляется в 7:45 МСК (задача Claude «Утренняя сводка»)
+const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
 function setupBot() {
@@ -75,7 +75,7 @@ function handle_(text) {
     props.setProperty('BRIEF_AT', String(t));
     props.deleteProperty('BRIEF_OFF');
     let msg = '✅ Сводка будет приходить в ' + hhmm_(t) + ' (' + daysText_() + ').';
-    if (t < BRIEF_READY_AT) msg += '\n⚠ Сама сводка обновляется в 7:45 — до этого по ссылке будет вчерашняя.';
+    if (t < BRIEF_READY_AT) msg += '\nСводка собирается около 6:00 — если к ' + hhmm_(t) + ' она не будет готова, пришлю, как только соберётся.';
     return msg;
   }
   if (cmd === '/days') {
