@@ -5,7 +5,7 @@
   import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
   import { templateOf } from './templates.js';
   import Coon from './Coon.svelte';
-  import { priorityOf, priorityRank, pickNext } from './meta.js';
+  import { priorityOf, priorityRank, pickNext, TYPES } from './meta.js';
   import { parseWhen, whenText } from './when.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
@@ -26,7 +26,7 @@
 
   // ---------- задачи ----------
 
-  const TYPE_LABEL = { work: 'Работа', creative: 'Ассет', study: 'Учёба', personal: 'Личное' };
+  const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.id, t.label])); // work, asset, study, personal
   let fresh = $state(new Set()); // созданные в этом сеансе — метка «новая»
 
   const all = $derived(lists.flatMap((l) => (tasksByList[l.id] ?? []).filter((t) => !t.parent).map((t) => ({ task: t, list: l }))));
@@ -44,7 +44,7 @@
   function chip(x) {
     const tags = layTasks?.[x.task.id]?.tags ?? [];
     const type = typeOf(x.list.id, x.task.id);
-    return { cls: `sp-chip-${type}`, label: tags.includes('client') || tags.includes('клиент') ? 'Клиент' : TYPE_LABEL[type] ?? 'Задача' };
+    return { cls: `sp-chip-${type}`, label: tags.includes('client') || tags.includes('клиент') ? 'client' : TYPE_LABEL[type] ?? 'task' };
   }
   function meta(x) {
     const slot = layTasks?.[x.task.id]?.slot;

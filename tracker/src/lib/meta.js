@@ -1,11 +1,12 @@
 // Тип и приоритет задачи — поля слоя Спутника (tasks[id].type, tasks[id].priority), в Google Tasks их нет.
 
-// Тип: цвет и подпись. Без своего типа задача берёт цвет по шаблону списка.
+// Тип: цвет и подпись. Подписи — латиницей строчными, как теги в строке «Сегодня» (#work, #asset…).
+// Без своего типа задача берёт цвет по шаблону списка.
 export const TYPES = [
-  { id: 'work', label: 'Работа' },
-  { id: 'creative', label: 'Ассет' },
-  { id: 'study', label: 'Учёба' },
-  { id: 'personal', label: 'Личное' },
+  { id: 'work', label: 'work' },
+  { id: 'creative', label: 'asset' },
+  { id: 'study', label: 'study' },
+  { id: 'personal', label: 'personal' },
 ];
 export const typeLabel = (id) => TYPES.find((t) => t.id === id)?.label ?? '';
 

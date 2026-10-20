@@ -20,26 +20,27 @@
 @media (prefers-reduced-motion: no-preference) { .adv { transition: opacity .15s; } }
 
 /* Пустая колонка: пунктирная рамка, текст и маленький скетч-енот у края (design/mascot/peek, docs/design-v2.md). */
-.bempty { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; min-height: 112px; padding: 16px 14px; border-radius: 12px; border: 1.5px dashed var(--edge); text-align: center; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+/* Все пустые колонки одной высоты (150 px) — разной высоты рамки рябили; енот меняет только место, не размер. */
+.bempty { position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center; height: 150px; padding: 16px 14px; border-radius: 12px; border: 1.5px dashed var(--edge); text-align: center; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
 .bempty .peek { position: absolute; color: var(--ink-faint); pointer-events: none; }
 .bempty .peek svg { display: block; width: 100%; height: 100%; }
 /* Выглядывает из-за нижнего края (или свешивается головой вниз сверху), ×1.25, сдвиг вдоль края — left: N%. */
 .bempty .peek-bottom { width: 125px; height: 63px; }
 .bempty .peek-bottom.on-bottom { bottom: -2px; transform: translateX(-50%); }
 .bempty .peek-bottom.on-top { top: -2px; transform: translateX(-50%) rotate(180deg); }
-.bempty.at-bottom-bottom { justify-content: flex-start; min-height: 150px; padding-bottom: 92px; }
-.bempty.at-bottom-top { justify-content: flex-end; min-height: 150px; padding-top: 92px; }
+.bempty.at-bottom-bottom { justify-content: flex-start; padding-bottom: 92px; }
+.bempty.at-bottom-top { justify-content: flex-end; padding-top: 92px; }
 /* Подглядывает сбоку, ×1.3, по высоте — top: N%. Спрайт смотрит вправо, у правого края отражён. */
 .bempty .peek-side { width: 60px; height: 99px; }
 .bempty .peek-side.on-right { right: -2px; transform: translateY(-50%) scaleX(-1); }
 .bempty .peek-side.on-left { left: -2px; transform: translateY(-50%); }
-.bempty.at-side-right { min-height: 130px; padding-right: 92px; text-align: left; }
-.bempty.at-side-left { min-height: 130px; padding-left: 92px; text-align: right; }
+.bempty.at-side-right { padding-right: 92px; text-align: left; }
+.bempty.at-side-left { padding-left: 92px; text-align: right; }
 /* Хвост свисает из-под верхнего края, ×1.3, у левого или правого края — left/right: N px. */
 .bempty .peek-tail { top: -2px; width: 52px; height: 101px; }
 .bempty .peek-tail.on-right { transform: scaleX(-1); }
-.bempty.at-tail-left { min-height: 120px; padding-left: 116px; text-align: left; }
-.bempty.at-tail-right { min-height: 120px; padding-right: 116px; text-align: right; }
+.bempty.at-tail-left { padding-left: 116px; text-align: left; }
+.bempty.at-tail-right { padding-right: 116px; text-align: right; }
 .bcol .add { height: 34px; border-radius: var(--radius-md); border: 0; background: none; color: var(--ink-faint); font: 500 13px/1 var(--font-sans); text-align: left; padding: 0 10px; cursor: pointer; }
 .bcol .add:hover { background: var(--wash); color: var(--ink); }
 .bcol .more { height: 30px; border: 0; background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; border-radius: var(--radius-md); text-align: left; padding: 0 10px; }

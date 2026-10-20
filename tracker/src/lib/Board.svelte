@@ -5,15 +5,14 @@
   import { ymd, dueToYmd } from './api.js';
   import { TEMPLATES, isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
   import { startOfWeek, addDays } from './calendar.js';
-  import { priorityRank } from './meta.js';
+  import { priorityRank, TYPES as META_TYPES } from './meta.js';
 
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '',
     onopen, onmove, oncreate, onarchive, ontemplate } = $props();
 
   const WIP = 3; // лимит «В работе»
   const TYPES = [
-    { k: '', label: 'Все' }, { k: 'work', label: 'Работа' }, { k: 'creative', label: 'Ассет' },
-    { k: 'study', label: 'Учёба' }, { k: 'personal', label: 'Личное' },
+    { k: '', label: 'Все' }, ...META_TYPES.map((t) => ({ k: t.id, label: t.label })),
   ];
   // Что говорит пустая колонка. Скетч-енот меняет место от колонки к колонке: снизу, сбоку, хвост сверху.
   const EMPTY = {
