@@ -111,3 +111,21 @@
 
 .kw { display: flex; flex-direction: column; gap: 8px; }
 .board-swap { min-width: 0; }
+
+/* Шапка доски (Kanban.dc.html) */
+.page.bd { padding: 22px 28px 26px; gap: 16px; }
+.bd-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px; }
+.bd-title { flex: 1 1 320px; min-width: 0; }
+.bd-title p { margin: 0 0 3px; font-size: 13px; color: var(--ink-soft); }
+.bd-title h1 { margin: 0; font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 600; }
+.bd-title .link { border: 0; padding: 0; background: none; color: var(--ink-faint); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.bd-title .link:hover { color: var(--clay); }
+.bd-head .tb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bd-head .tb-sep { width: 1px; height: 20px; background: var(--hairline); }
+.fb { height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--edge); background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.fb:hover { color: var(--ink); }
+.fb[aria-pressed="true"] { background: var(--raised); color: var(--ink); border-color: var(--ink-faint); }
+.fb:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.bd-head .seg3 button { height: 28px; padding: 0 12px; font-size: 12.5px; }
+/* Колонки сжимаются до 230 px, чтобы четыре помещались рядом с левой колонкой сфер. */
+.bd .bcol { flex: 1 1 240px; min-width: 230px; max-width: 300px; width: auto; }

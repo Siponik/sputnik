@@ -23,7 +23,7 @@
   // duplicate, remove (с «Отменить»). fold — свёрнутые колонки этого списка { colId: true }, onfold(colId, v).
   // lists — другие списки (для «В другой список»).
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '', view = 'kanban',
-    act, lists = [], fold = {}, onfold,
+    act, lists = [], fold = {}, onfold, sphereName = '',
     oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
 
   const VIEW_TABS = $derived([
@@ -255,23 +255,22 @@
 {/snippet}
 
 <div class="page bd">
-  <header class="page-head">
-    <div>
+  <!-- Шапка по design/screens/Kanban.dc.html: сфера · шаблон над названием, справа фильтры и вид. -->
+  <header class="bd-head">
+    <div class="bd-title">
+      <p>{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
+        · <button type="button" class="link" title="Колонки, цвета, лимиты и поля шаблона" onclick={onedittemplate}>настроить</button></p>
       <h1>{list?.title ?? 'Задачи'}</h1>
-      <p>Список Google Tasks · {template.name} · {open.length} открытых{weekDue ? ` · ${weekDue} со сроком на этой неделе` : ''}{project ? ` · проект «${project}»` : ''}</p>
     </div>
-    <div class="head-tools">
-      <div class="types" role="group" aria-label="Фильтр">
-        {#each FILTERS as f (f.k)}
-          <button type="button" class="tf" aria-pressed={filter === f.k} onclick={() => (filter = f.k)}>{f.label}</button>
-        {/each}
-      </div>
+    <div class="tb" role="group" aria-label="Фильтры">
+      {#each FILTERS as f (f.k)}
+        <button type="button" class="fb" aria-pressed={filter === f.k} onclick={() => (filter = f.k)}>{f.label}</button>
+      {/each}
+      <span class="tb-sep" aria-hidden="true"></span>
       <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. Вид — меняется. -->
       <div class="seg3" role="group" aria-label="Вид доски">
         {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
       </div>
-      <button class="sp-btn" type="button" title="Колонки, цвета, лимиты и поля шаблона «{template.name}»" onclick={onedittemplate}>Настроить шаблон</button>
-      <button class="sp-btn" type="button" onclick={onarchive}>Архив · {archived}</button>
     </div>
   </header>
 

@@ -931,7 +931,7 @@
             view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
             onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
-            act={boardAct} lists={boardLists.filter((l) => l.id !== activeId)} fold={boardFold} onfold={foldCol}
+            act={boardAct} lists={boardLists.filter((l) => l.id !== activeId)} sphereName={spheres.find((s) => s.id === sphereOf(activeId, lay))?.name ?? ''} fold={boardFold} onfold={foldCol}
             onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}
