@@ -100,6 +100,12 @@
     for (let s = ps; s + dur <= 24 * 60; s += 30) if (!dayBusy.some((b) => b.s < s + dur && s < b.e)) return fromMin(s);
     return null;
   });
+  // «Весь день» включили — время очищается; выключили — ждём, пока выберут время в расписании.
+  function toggleAllDay() {
+    allDay = !allDay;
+    if (allDay) time = '';
+    else scrollToTime();
+  }
   function pickTime(min) { time = fromMin(min); allDay = false; if (!sel) sel = today; }
   function setMinutes(mm) { const h = time ? time.split(':')[0] : '10'; time = `${h}:${mm}`; allDay = false; if (!sel) sel = today; }
 
@@ -193,11 +199,12 @@
         <span>{dayTitle}</span>
         {#if allowTime}
           <span class="lbl2">Весь день</span>
-          <button type="button" class="sw" aria-label="Весь день, без времени" aria-pressed={allDay} onclick={() => { allDay = !allDay; if (!allDay) { if (!time) time = '10:00'; scrollToTime(); } }}></button>
+          <button type="button" class="sw" aria-label="Весь день, без времени" aria-pressed={allDay} onclick={toggleAllDay}></button>
         {/if}
       </div>
-      {#if allowTime && !allDay}
-        <div class="tl" bind:this={lane} aria-label="Расписание дня — выбери свободное время">
+      {#if allowTime}
+        <!-- Расписание видно всегда; при «Весь день» приглушено, клик по времени выключает «Весь день». -->
+        <div class="tl" class:dim={allDay || ps == null} bind:this={lane} aria-label="Расписание дня — выбери свободное время">
           <div class="tl-in" style="height: {yAt(END)}px">
             {#each rows as m (m)}
               <button type="button" class="tr" class:hour={m % 60 === 0} data-t={fromMin(m)} aria-label="Выбрать {fromMin(m)}" style="top: {yAt(m)}px" onclick={() => pickTime(m)}>
@@ -212,19 +219,18 @@
             {/if}
           </div>
         </div>
-        <div class="mins" role="group" aria-label="Минуты">
+        <div class="mins" class:dim={allDay || ps == null} role="group" aria-label="Минуты">
           {#each ['00', '15', '30', '45'] as mm (mm)}<button type="button" aria-pressed={time.endsWith(':' + mm)} onclick={() => setMinutes(mm)}>:{mm}</button>{/each}
         </div>
-        <div class="durs">
+        <div class="durs" class:dim={allDay || ps == null}>
           <span>Длится</span>
           {#each DURS as [m, l] (m)}<button type="button" class="qb" aria-pressed={dur === m} onclick={() => (dur = m)}>{l}</button>{/each}
         </div>
+        {#if allDay || ps == null}<p class="time-hint">{!sel ? 'Срок не выбран — задача останется на доске без даты. Нажми на день или время.' : 'Весь день, без времени. Нажми на время в расписании, чтобы назначить его.'}</p>{/if}
         {#if clash}<p class="clash-t">Пересекается с «{clash.title}»{freeAfter ? `. Свободно с ${freeAfter}.` : '.'}</p>{/if}
       {:else}
         <div class="allday-note">
-          {#if !sel}Срок не выбран — задача останется на доске без даты.
-          {:else if allowTime}Срок на весь день — задача будет в «Сегодня» и в строке «весь день» календаря. Время можно выбрать, выключив «Весь день».
-          {:else}Выбери день в календаре слева.{/if}
+          {#if !sel}Дата не выбрана — выбери день в календаре слева.{:else}Каждый год в этот день.{/if}
         </div>
       {/if}
     </div>
