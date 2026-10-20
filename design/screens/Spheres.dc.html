@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Спутник · Сферы</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/sputnik/components/bundle.css">
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.sp-app{--bg:#1C1B19;--wash:#22211E;--raised:#282723;--hairline:#34332E;--edge:#3A3934;--ink:#ECEAE3;--ink-soft:#A8A69D;--ink-faint:#7C7B72;--clay:#D9774F;--clay-soft:#30221B;--on-clay:#1C1B19;--gold:#E0A04A;--gold-soft:#3A2E1A;--signal-overdue:#F07A6A;--signal-soon:var(--gold);--signal-done:#6FB6CF;--type-work:#7FA6E8;--type-creative:var(--clay);--type-study:#B79BE6;--type-personal:#8FBF7F;--type-habit:var(--gold);--shadow-lift:0 6px 18px rgba(0,0,0,.45);color-scheme:dark;--font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--font-sans:-apple-system,"Segoe UI",system-ui,sans-serif;--font-mono:"Cascadia Mono",ui-monospace,Consolas,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;background:var(--bg);color:var(--ink);font-family:var(--font-sans)}
+.sp-app[data-theme="light"]{--bg:#FCFCFB;--wash:#F5F4F0;--raised:#FFFFFF;--hairline:#E4E3DC;--edge:#E1E1DF;--ink:#2E2C27;--ink-soft:#6B6A63;--ink-faint:#8A897F;--clay:#AD4F2C;--clay-soft:#FBEEE7;--on-clay:#FFFFFF;--gold:#8F5A00;--gold-soft:#FBF1DF;--signal-overdue:#B42318;--signal-done:#1F6A80;--type-work:#2F5DA8;--type-study:#6D4AA5;--type-personal:#3E6B31;--shadow-lift:0 6px 18px rgba(46,44,39,.14);color-scheme:light}
+a{color:inherit;text-decoration:none}
+.sp-app .sp-tab{text-decoration:none;display:inline-block}
+button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offset:2px}
+.tick{width:20px;height:20px;flex:none;border-radius:6px;box-sizing:border-box;border:1.5px solid var(--ink-faint);background:none;padding:0;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.tick[aria-pressed="true"]{background:var(--signal-done);border-color:var(--signal-done)}
+.ring{width:20px;height:20px;flex:none;border-radius:50%;box-sizing:border-box;padding:0;border:2px solid var(--clay);background:none;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.ring[aria-pressed="true"]{border-color:var(--gold);background:var(--gold)}
+.bubble{position:relative;padding:10px 14px;border-radius:14px;background:var(--raised);border:1px solid var(--edge);font-size:14px;line-height:20px;box-shadow:var(--shadow-lift)}
+.bubble::after{content:"";position:absolute;width:12px;height:12px;background:var(--raised);border:1px solid var(--edge);border-top:0;border-left:0;transform:rotate(45deg);right:-7px;top:50%;margin-top:-6px}
+.cap{margin:0 0 8px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.side{flex:none;width:272px;box-sizing:border-box;padding:20px 14px;border-right:1px solid var(--edge);display:flex;flex-direction:column;gap:6px}
+.sph{display:flex;align-items:center;gap:10px;width:100%;padding:7px 8px;border:0;border-radius:10px;background:none;color:var(--ink);font:600 14px/1 var(--font-sans);cursor:pointer;text-align:left}
+.sph:hover{background:var(--wash)}
+.sph[aria-current="true"]{background:var(--raised);box-shadow:inset 0 0 0 1px var(--edge)}
+.ico{width:26px;height:26px;flex:none;border-radius:8px;display:grid;place-items:center}
+.ico svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.cnt{margin-left:auto;font:400 12px/1 var(--font-mono);color:var(--ink-faint)}
+.chev{width:22px;height:22px;flex:none;border:0;border-radius:6px;background:none;color:var(--ink-faint);cursor:pointer;display:grid;place-items:center}
+.chev:hover{background:var(--wash);color:var(--ink)}
+.lst{display:flex;align-items:center;gap:8px;padding:6px 8px 6px 44px;border-radius:8px;font-size:13.5px;color:var(--ink-soft)}
+.lst:hover{background:var(--wash);color:var(--ink)}
+.lst .tg{font:500 10.5px/1 var(--font-mono);color:var(--ink-faint);padding:3px 5px;border-radius:5px;background:var(--wash)}
+.lc{display:flex;flex-direction:column;gap:12px;padding:16px;border-radius:14px;background:var(--raised);border:1px solid var(--edge)}
+.lc h3{margin:0;font-size:16px;line-height:21px;font-weight:600}
+.cols{display:flex;gap:3px}
+.cols i{flex:1;height:22px;border-radius:5px;background:var(--wash);font:500 9.5px/22px var(--font-sans);font-style:normal;color:var(--ink-faint);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 3px}
+.cols i.on{color:var(--ink);background:color-mix(in srgb,var(--sc) 22%,var(--wash))}
+.stat{display:flex;gap:16px;font-size:12.5px;color:var(--ink-soft)}
+.stat b{font:600 15px/1 var(--font-mono);color:var(--ink);margin-right:4px}
+.pop{position:absolute;z-index:5;top:86px;right:32px;width:380px;padding:18px;border-radius:16px;background:var(--raised);border:1px solid var(--edge);box-shadow:0 18px 50px rgba(0,0,0,.45);display:flex;flex-direction:column;gap:14px}
+.sp-app[data-theme="light"] .pop{box-shadow:0 18px 50px rgba(46,44,39,.18)}
+.pop input{height:38px;padding:0 12px;border-radius:9px;border:1px solid var(--edge);background:var(--wash);color:var(--ink);font:500 15px/1 var(--font-sans);outline:none}
+.pop input:focus{border-color:var(--clay)}
+.sw{width:30px;height:30px;border-radius:50%;border:0;cursor:pointer;box-shadow:inset 0 0 0 2px rgba(0,0,0,.15)}
+.sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--raised),0 0 0 4px var(--ink)}
+.ib{width:38px;height:38px;border-radius:10px;border:1px solid var(--edge);background:var(--wash);color:var(--ink-soft);cursor:pointer;display:grid;place-items:center}
+.ib svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ib[aria-pressed="true"]{border-color:var(--clay);color:var(--clay);background:var(--clay-soft)}
+.tick2{width:18px;height:18px;flex:none;border-radius:5px;box-sizing:border-box;border:1.5px solid var(--ink-faint);background:none;padding:0;display:grid;place-items:center;color:var(--bg);cursor:pointer}
+.tick2[aria-pressed="true"]{background:var(--clay);border-color:var(--clay)}
+.urg{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--hairline);font-size:13.5px}
+.sp-app{--rim:#C9D6E2}.sp-app[data-theme="light"]{--rim:#A9BCCB}.coon{overflow:visible;display:block}.coon .c-float{animation:c-float 5.5s ease-in-out infinite;transform-box:view-box;transform-origin:120px 150px}.coon .c-wave{animation:c-wave 1.8s ease-in-out infinite;transform-box:view-box;transform-origin:154px 196px}.coon .c-tail{animation:c-tail 3.2s ease-in-out infinite;transform-box:view-box;transform-origin:150px 222px}.coon .c-ear{animation:c-ear 6s ease-in-out infinite;transform-box:view-box;transform-origin:146px 84px}.coon .c-eye{animation:c-blink 4.8s infinite;transform-box:fill-box;transform-origin:center}.coon .c-beacon{animation:c-beacon 1.6s ease-in-out infinite}.coon .c-star{animation:c-twinkle 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.coon .c-hop{animation:c-hop 1.1s cubic-bezier(.3,.6,.4,1) infinite;transform-box:view-box;transform-origin:120px 250px}.coon .c-z{animation:c-z 3s ease-in-out infinite;opacity:0}.coon .c-dot{animation:c-dot 1.4s ease-in-out infinite}.coon .c-orb{animation:c-orb 6s linear infinite;transform-box:view-box;transform-origin:120px 216px}.coon .c-flag{animation:c-flag 1.4s ease-in-out infinite;transform-box:view-box;transform-origin:190px 100px}@keyframes c-float{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-6px) rotate(1.5deg)}}@keyframes c-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}@keyframes c-tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}@keyframes c-ear{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(8deg)}94%{transform:rotate(-3deg)}}@keyframes c-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}@keyframes c-beacon{0%,100%{opacity:.35}50%{opacity:1}}@keyframes c-twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}@keyframes c-hop{0%,100%{transform:translateY(0) scaleY(1)}12%{transform:translateY(0) scaleY(.95)}45%{transform:translateY(-12px) scaleY(1.02)}}@keyframes c-z{0%{opacity:0;transform:translate(0,0)}25%{opacity:1}100%{opacity:0;transform:translate(10px,-22px)}}@keyframes c-dot{0%,100%{opacity:.25}50%{opacity:1}}@keyframes c-orb{to{transform:rotate(360deg)}}@keyframes c-flag{0%,100%{transform:skewY(0)}50%{transform:skewY(-6deg)}}@media (prefers-reduced-motion:reduce){.coon *{animation:none!important}.coon .c-z,.coon .c-dot{opacity:1}}
+</style>
+</helmet>
+<div class="sp-app" data-theme="{{theme}}" style="min-height: 900px; display: flex; flex-direction: column">
+  <nav class="sp-tabs" aria-label="Разделы" style="flex-wrap: wrap; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px))">
+    <span class="sp-brand"><svg viewBox="0 0 512 512" aria-hidden="true"><path class="arc" d="M370.9 159.6 A150 150 0 1 0 370.9 352.4"></path><circle class="core" cx="256" cy="256" r="62"></circle><circle class="sat" cx="370.9" cy="159.6" r="42"></circle></svg>Спутник</span>
+    <a class="sp-tab" href="Today.dc.html" aria-selected="false">Сегодня <span class="n">· 5</span></a><a class="sp-tab" href="Calendar.dc.html" aria-selected="false">Календарь</a><a class="sp-tab" href="Main.dc.html" aria-selected="true">Доска</a><a class="sp-tab" href="Habits.dc.html" aria-selected="false">Привычки</a>
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 14px; padding-bottom: 8px">
+      <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 12px; line-height: 16px; color: var(--ink-soft)"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--signal-done)"></span>Синхронизировано · 13:52</span>
+      <a href="Today.dc.html" class="sp-btn sp-btn-ghost" style="min-height: 32px; padding: 0 10px" aria-label="Входящие от Claude, 2"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z"></path></svg><span style="font: 600 11px/1 var(--font-mono); color: var(--clay)">2</span></a>
+      <button class="sp-btn sp-btn-primary" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>Новая задача</button>
+    </div>
+  </nav>
+  <div style="flex: 1; display: flex; min-height: 0; position: relative">
+    <aside class="side" aria-label="Сферы и списки">
+      <p class="cap" style="padding: 0 8px; margin: 0 0 4px">Сферы</p>
+      <sc-for list="{{spheres}}" as="s" hint-placeholder-count="4">
+        <div>
+          <div style="display: flex; align-items: center; gap: 2px">
+            <button type="button" class="chev" aria-label="{{s.chevAria}}" aria-expanded="{{s.openA}}" onClick="{{s.fold}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; {{s.chevStyle}}"><path d="M9 6l6 6-6 6"></path></svg></button>
+            <button type="button" class="sph" aria-current="{{s.cur}}" onClick="{{s.pick}}"><span class="ico" style="{{s.icoStyle}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{s.path}}"></path></svg></span>{{s.name}}<span class="cnt">{{s.open}}</span></button>
+          </div>
+          <sc-if value="{{s.isOpen}}" hint-placeholder-val="{{true}}">
+            <sc-for list="{{s.lists}}" as="l" hint-placeholder-count="2"><a href="Main.dc.html" class="lst"><span style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{l.t}}</span><span class="tg">{{l.tplShort}}</span><span class="cnt" style="margin-left: 0">{{l.open}}</span></a></sc-for>
+          </sc-if>
+        </div>
+      </sc-for>
+      <button type="button" class="sp-btn sp-btn-ghost" style="justify-content: flex-start; min-height: 34px; padding: 0 10px; margin-top: 4px" onClick="{{newSphere}}">＋ Сфера</button>
+      <div style="margin-top: auto; padding: 10px 8px 0; border-top: 1px solid var(--hairline); display: flex; flex-direction: column; gap: 4px">
+        <a href="Templates.dc.html" class="lst" style="padding-left: 8px">Шаблоны досок →</a>
+        <a href="Main.dc.html" class="lst" style="padding-left: 8px">Архив</a>
+      </div>
+    </aside>
+
+    <main style="flex: 1; min-width: 0; box-sizing: border-box; padding: 26px 32px 36px; display: flex; flex-direction: column; gap: 20px">
+      <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px">
+        <span class="ico" style="width: 48px; height: 48px; border-radius: 14px; {{cur.icoStyle}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 24px; height: 24px"><path d="{{cur.path}}"></path></svg></span>
+        <div style="flex: 1 1 300px; min-width: 0">
+          <h1 style="margin: 0; font-family: var(--font-display); font-size: 30px; line-height: 36px; font-weight: 600; letter-spacing: -.01em">{{cur.name}}</h1>
+          <p style="margin: 2px 0 0; font-size: 14px; color: var(--ink-soft)">{{cur.sub}}</p>
+        </div>
+        <button type="button" class="sp-btn" onClick="{{openEdit}}">Изменить сферу</button>
+        <button type="button" class="sp-btn sp-btn-primary">＋ Список в сферу</button>
+      </header>
+
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <section aria-label="Списки сферы" style="flex: 999 1 560px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px">
+          <sc-for list="{{cur.lists}}" as="l" hint-placeholder-count="2">
+            <article class="lc" style="--sc: {{cur.color}}">
+              <div style="display: flex; align-items: baseline; gap: 8px"><h3 style="flex: 1; min-width: 0">{{l.t}}</h3><span style="font-size: 12px; color: var(--ink-faint)">{{l.tplName}}</span></div>
+              <div class="cols" aria-label="Колонки шаблона"><sc-for list="{{l.cols}}" as="c" hint-placeholder-count="4"><i class="{{c.cls}}" title="{{c.title}}">{{c.l}}</i></sc-for></div>
+              <div class="stat"><span><b>{{l.open}}</b>открыто</span><span><b>{{l.week}}</b>на неделе</span><span><b>{{l.done}}</b>за месяц</span></div>
+              <p style="margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft)">Ближайшее: <span style="color: var(--ink)">{{l.next}}</span></p>
+              <a href="Main.dc.html" class="sp-btn" style="align-self: flex-start; min-height: 30px">Открыть доску →</a>
+            </article>
+          </sc-for>
+          <sc-if value="{{cur.empty}}" hint-placeholder-val="{{false}}"><p style="margin: 0; font-size: 14px; color: var(--ink-soft)">В сфере пока нет списков. Добавь существующий через «Изменить сферу» или создай новый.</p></sc-if>
+        </section>
+
+        <aside aria-label="Срочное в сфере" style="flex: 1 1 280px; max-width: 340px; min-width: 0; padding: 16px 18px; border-radius: 14px; background: var(--wash); border: 1px solid var(--edge)">
+          <p class="cap" style="margin: 0 0 6px">Срочное в сфере</p>
+          <sc-for list="{{cur.urgent}}" as="u" hint-placeholder-count="3">
+            <div class="urg"><span style="width: 8px; height: 8px; flex: none; border-radius: 50%; background: {{cur.color}}"></span><span style="flex: 1; min-width: 0">{{u.t}}<br><small style="color: var(--ink-faint)">{{u.list}}</small></span><span style="font: 500 12px/1 var(--font-mono); {{u.style}}">{{u.when}}</span></div>
+          </sc-for>
+          <p style="margin: 10px 0 0; font-size: 12.5px; line-height: 17px; color: var(--ink-faint)">Клик по сфере в «Сегодня» и «Календаре» показывает только её задачи.</p>
+        </aside>
+      </div>
+    </main>
+
+    <sc-if value="{{editOpen}}" hint-placeholder-val="{{false}}">
+      <div class="pop" role="dialog" aria-label="Изменить сферу">
+        <div style="display: flex; align-items: center; gap: 10px"><span class="ico" style="width: 38px; height: 38px; border-radius: 11px; {{cur.icoStyle}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><path d="{{cur.path}}"></path></svg></span><input type="text" aria-label="Название сферы" value="{{cur.name}}" onInput="{{rename}}" style="flex: 1; min-width: 0"></div>
+        <div><p class="cap" style="margin: 0 0 8px">Цвет</p><div style="display: flex; gap: 10px"><sc-for list="{{colors}}" as="c" hint-placeholder-count="6"><button type="button" class="sw" aria-label="{{c.l}}" aria-pressed="{{c.on}}" onClick="{{c.pick}}" style="background: {{c.v}}"></button></sc-for></div></div>
+        <div><p class="cap" style="margin: 0 0 8px">Значок</p><div style="display: flex; flex-wrap: wrap; gap: 6px"><sc-for list="{{icons}}" as="i" hint-placeholder-count="8"><button type="button" class="ib" aria-label="{{i.l}}" aria-pressed="{{i.on}}" onClick="{{i.pick}}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{i.path}}"></path></svg></button></sc-for></div></div>
+        <div><p class="cap" style="margin: 0 0 4px">Списки в сфере</p>
+          <sc-for list="{{allLists}}" as="l" hint-placeholder-count="6"><div style="display: flex; align-items: center; gap: 10px; padding: 5px 0; font-size: 13.5px"><button type="button" class="tick2" aria-pressed="{{l.on}}" aria-label="{{l.t}}" onClick="{{l.toggle}}"><svg viewBox="0 0 24 24" aria-hidden="true" style="width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></button><span style="flex: 1">{{l.t}}</span><span style="font-size: 11.5px; color: var(--ink-faint)">{{l.where}}</span></div></sc-for>
+          <p style="margin: 6px 0 0; font-size: 12px; line-height: 16px; color: var(--ink-faint)">Список живёт в одной сфере. Сферы — только в Спутнике, Google Tasks их не видит.</p>
+        </div>
+        <div style="display: flex; gap: 8px"><button type="button" class="sp-btn sp-btn-ghost" style="color: var(--signal-overdue)">Удалить сферу</button><span style="flex: 1"></span><button type="button" class="sp-btn sp-btn-primary" onClick="{{closeEdit}}">Готово</button></div>
+      </div>
+    </sc-if>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { sel: 'create', fold: { life: true }, editOpen: true, names: {}, color: {}, icon: {}, member: {}, extra: [] };
+  }
+  renderVals() {
+    var self = this, st = this.state;
+    var ICONS = {
+      cube: ['Куб', 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5'],
+      case: ['Портфель', 'M4 8h16v11H4zM9 8V5h6v3M4 13h16'],
+      book: ['Книга', 'M5 4h10a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3zM5 17a3 3 0 0 1 3-3h10'],
+      home: ['Дом', 'M4 11l8-7 8 7M6 10v10h12V10M10 20v-6h4v6'],
+      users: ['Люди', 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2 .8 3 3 3 6'],
+      heart: ['Сердце', 'M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z'],
+      brush: ['Кисть', 'M18 3l3 3-9.5 9.5-3-3zM8.5 12.5C6 12.5 4 14.5 4 17c0 1.5-1 2.5-2 3 4 1 8-1 8-4.5'],
+      star: ['Звезда', 'M12 3l2.7 5.6 6.1.8-4.4 4.3 1 6.1L12 17l-5.4 2.8 1-6.1-4.4-4.3 6.1-.8z']
+    };
+    var COLORS = [['clay', 'Глина', 'var(--clay)'], ['gold', 'Золото', 'var(--gold)'], ['work', 'Синий', 'var(--type-work)'], ['study', 'Фиолетовый', 'var(--type-study)'], ['personal', 'Зелёный', 'var(--type-personal)'], ['done', 'Бирюзовый', 'var(--signal-done)']];
+    var colorV = function (k) { return COLORS.filter(function (c) { return c[0] === k; })[0][2]; };
+    var TPL = {
+      asset3d: ['3D-ассеты', '3D', ['Референсы', 'Блокаут', 'Скульпт', 'Ретопо', 'UV', 'Текстуры', 'Рендер', 'Готово'], 3],
+      work: ['Работа', 'раб', ['Входящие', 'В работе', 'Ревью', 'Готово'], 1],
+      orders: ['Заказы', 'зак', ['Заявка', 'Смета', 'В работе', 'Правки', 'Сдано', 'Оплачено'], 2],
+      personal: ['Личное', 'лич', ['Надо', 'Делаю', 'Готово'], 1],
+      study: ['Учёба', 'уч', ['В планах', 'Прохожу', 'Пройдено'], 1]
+    };
+    var LISTS = [
+      { id: 'l3d', t: '3D-проекты', tpl: 'asset3d', sph: 'create', open: 6, week: 2, done: 3, next: 'Башня lowpoly · ретопология, пт' },
+      { id: 'lsk', t: 'Скетчи и этюды', tpl: 'personal', sph: 'create', open: 4, week: 0, done: 9, next: 'Этюд «Таверна ночью»' },
+      { id: 'lord', t: 'Заказы', tpl: 'orders', sph: 'work', open: 3, week: 2, done: 2, next: 'Смета по иконкам, пт' },
+      { id: 'lic', t: 'Иконки для клиента', tpl: 'work', sph: 'work', open: 5, week: 1, done: 6, next: 'Правки по иконкам, сегодня 18:00' },
+      { id: 'lbl', t: 'Курсы Blender', tpl: 'study', sph: 'study', open: 3, week: 1, done: 4, next: 'Geometry Nodes, урок 3' },
+      { id: 'lhome', t: 'Дом и дела', tpl: 'personal', sph: 'life', open: 7, week: 2, done: 11, next: 'Продлить домен портфолио' },
+      { id: 'lbuy', t: 'Покупки', tpl: 'personal', sph: 'life', open: 2, week: 0, done: 5, next: 'Новый графический планшет' }
+    ];
+    var URG = {
+      create: [['Башня lowpoly · ретопология', '3D-проекты', 'пт', 1], ['Сундук · текстуры', '3D-проекты', 'вс', 0]],
+      work: [['Правки по иконкам', 'Иконки для клиента', '18:00', 1], ['Смета по иконкам', 'Заказы', 'пт', 0], ['Счёт за сентябрь', 'Заказы', 'просрочено', 2]],
+      study: [['Geometry Nodes, урок 3', 'Курсы Blender', 'просрочено', 2]],
+      life: [['Продлить домен портфолио', 'Дом и дела', 'чт', 0]]
+    };
+    var BASE = [{ id: 'create', name: 'Творчество', color: 'clay', icon: 'cube' }, { id: 'work', name: 'Работа', color: 'work', icon: 'case' }, { id: 'study', name: 'Учёба', color: 'study', icon: 'book' }, { id: 'life', name: 'Личное', color: 'personal', icon: 'home' }].concat(st.extra);
+    var sphOf = function (l) { return st.member[l.id] != null ? st.member[l.id] : l.sph; };
+    var full = BASE.map(function (s) {
+      var name = st.names[s.id] || s.name, color = st.color[s.id] || s.color, icon = st.icon[s.id] || s.icon;
+      var lists = LISTS.filter(function (l) { return sphOf(l) === s.id; });
+      var open = lists.reduce(function (a, l) { return a + l.open; }, 0), week = lists.reduce(function (a, l) { return a + l.week; }, 0);
+      var cv = colorV(color);
+      return {
+        id: s.id, name: name, color: cv, path: ICONS[icon][1], icoStyle: 'color: ' + cv + '; background: color-mix(in srgb, ' + cv + ' 16%, transparent)',
+        open: open, isOpen: !st.fold[s.id], openA: st.fold[s.id] ? 'false' : 'true', chevStyle: st.fold[s.id] ? '' : 'transform: rotate(90deg)',
+        chevAria: (st.fold[s.id] ? 'Развернуть ' : 'Свернуть ') + name, cur: st.sel === s.id ? 'true' : 'false',
+        fold: function () { var f = Object.assign({}, self.state.fold); f[s.id] = !f[s.id]; self.setState({ fold: f }); },
+        pick: function () { self.setState({ sel: s.id }); },
+        sub: lists.length + ' ' + (lists.length === 1 ? 'список' : lists.length >= 2 && lists.length < 5 ? 'списка' : 'списков') + ' · ' + open + ' открытых · ' + week + ' на этой неделе',
+        empty: lists.length === 0,
+        lists: lists.map(function (l) {
+          var T = TPL[l.tpl];
+          return { t: l.t, open: l.open, week: l.week, done: l.done, next: l.next, tplName: T[0], tplShort: T[1],
+            cols: T[2].map(function (c, i) { return { l: c, cls: i === T[3] ? 'on' : '', title: c }; }) };
+        }),
+        urgent: (URG[s.id] || []).map(function (u) { return { t: u[0], list: u[1], when: u[2], style: u[3] === 2 ? 'color: var(--signal-overdue)' : u[3] === 1 ? 'color: var(--clay)' : 'color: var(--ink-soft)' }; }),
+        rawColor: color, rawIcon: icon
+      };
+    });
+    var cur = full.filter(function (s) { return s.id === st.sel; })[0] || full[0];
+    return {
+      theme: this.props.theme ?? 'dark', spheres: full, cur: cur, editOpen: st.editOpen,
+      openEdit: function () { self.setState({ editOpen: true }); }, closeEdit: function () { self.setState({ editOpen: false }); },
+      rename: function (e) { var n = Object.assign({}, self.state.names); n[cur.id] = e && e.target ? e.target.value : cur.name; self.setState({ names: n }); },
+      colors: COLORS.map(function (c) { return { l: c[1], v: c[2], on: cur.rawColor === c[0] ? 'true' : 'false', pick: function () { var o = Object.assign({}, self.state.color); o[cur.id] = c[0]; self.setState({ color: o }); } }; }),
+      icons: Object.keys(ICONS).map(function (k) { return { l: ICONS[k][0], path: ICONS[k][1], on: cur.rawIcon === k ? 'true' : 'false', pick: function () { var o = Object.assign({}, self.state.icon); o[cur.id] = k; self.setState({ icon: o }); } }; }),
+      allLists: LISTS.map(function (l) {
+        var mine = sphOf(l) === cur.id, other = full.filter(function (s) { return s.id === sphOf(l); })[0];
+        return { t: l.t, on: mine ? 'true' : 'false', where: mine ? '' : (other ? other.name : 'без сферы'),
+          toggle: function () { var m = Object.assign({}, self.state.member); m[l.id] = mine ? '' : cur.id; self.setState({ member: m }); } };
+      }),
+      newSphere: function () { var id = 's' + Date.now(); self.setState({ extra: self.state.extra.concat([{ id: id, name: 'Новая сфера', color: 'gold', icon: 'star' }]), sel: id, editOpen: true }); }
+    };
+  }
+}
+</script>
+</body>
+</html>
