@@ -2,7 +2,7 @@
 // Слой (статусы на доске, типы, время задач, привычки, сферы, настройки…) лежит локально в layer.json,
 // а копия — в скрытой папке приложения на Google Drive (appDataFolder): её видит только Спутник, место почти не занимает.
 // Каждая запись раздела несёт t — время изменения (ставит touch в App). При слиянии по каждой записи
-// побеждает более свежая. Удалённая запись — «надгробие» { gone: true, t }, чтобы другой компьютер не вернул её.
+// побеждают поля более свежей (см. combine). Удалённая запись — «надгробие» { gone: true, t }, чтобы другой компьютер не вернул её.
 import { gapi } from './api.js';
 
 const DRIVE = 'https://www.googleapis.com/drive/v3';
@@ -30,15 +30,23 @@ export function merge(local, remote) {
     const out = {};
     for (const k of new Set([...Object.keys(L), ...Object.keys(R)])) {
       const l = L[k], r = R[k];
-      if (r === undefined) { out[k] = l; remoteChanged = true; }
-      else if (l === undefined) { out[k] = r; localChanged = true; }
-      else if (same(l, r)) out[k] = l;
-      else if (newer(r, l)) { out[k] = r; localChanged = true; }
-      else { out[k] = l; remoteChanged = true; }
+      const m = r === undefined ? l : l === undefined ? r : same(l, r) ? l : combine(l, r);
+      if (l === undefined || !same(m, l)) localChanged = true;
+      if (r === undefined || !same(m, r)) remoteChanged = true;
+      out[k] = m;
     }
     merged[s] = out;
   }
   return { merged, localChanged, remoteChanged };
+}
+
+// Две версии одной записи: поля более свежей главнее, а поля, которых в ней нет, берём из старой.
+// Трекер пишет записи только через touch (новое поверх старого), поэтому «поля нет» значит «этот компьютер
+// о нём не знал», а не «удалили»: так второй компьютер, дописавший к задаче одно поле, не сотрёт остальные.
+// Надгробие { gone } заменяет запись целиком.
+function combine(l, r) {
+  const [n, o] = newer(r, l) ? [r, l] : [l, r];
+  return isObj(n) && isObj(o) && !n.gone ? { ...o, ...n } : n;
 }
 
 // Свежее по t; при равном t (старые записи без t) — одинаково на всех компьютерах, иначе они перетягивали бы запись друг у друга.

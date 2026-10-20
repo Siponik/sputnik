@@ -219,6 +219,9 @@
       lists = ls;
       tasks = Object.fromEntries(ls.map((l, i) => [l.id, all[i]]));
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+      // Первый обмен слоем — до того, как трекер сам что-то в него допишет (дата начала привычек, поля из «Входящих»):
+      // иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
+      if (!cloud.at) await syncLayer();
       ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
       inboxSt = await api.inboxStatus().catch(() => inboxSt);

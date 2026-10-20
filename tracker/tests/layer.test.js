@@ -72,3 +72,21 @@ test('same и needsLogin', () => {
   assert.ok(needsLogin('Google ответил 403: Request had insufficient authentication scopes.'));
   assert.ok(!needsLogin('Нет связи с Google: dns error'));
 });
+
+test('второй компьютер дописал к записи одно поле — остальные поля с первого не теряются', () => {
+  const remote = { habits: { h: { days: [1, 3, 5], time: '08:00', createdAt: '2026-09-01', t: 10 } },
+    tasks: { a: { status: 'review', slot: { s: '10:00', e: '11:00' }, priority: 1, t: 10 } } };
+  const local = { habits: {}, tasks: { a: { pulled: true, type: 'creative', t: 20 } } };
+  const r = merge(local, remote);
+  assert.deepEqual(r.merged.tasks.a, { status: 'review', slot: { s: '10:00', e: '11:00' }, priority: 1, pulled: true, type: 'creative', t: 20 });
+  assert.deepEqual(r.merged.habits.h, remote.habits.h);
+  assert.equal(r.localChanged && r.remoteChanged, true);
+  // Обмен сошёлся: второй раз ничего не пишем ни туда, ни сюда.
+  const again = merge(r.merged, r.merged);
+  assert.equal(again.localChanged || again.remoteChanged, false);
+});
+
+test('сброс поля — через null, и он побеждает', () => {
+  const r = merge({ tasks: { a: { slot: null, t: 20 } } }, { tasks: { a: { slot: { s: '10:00', e: '11:00' }, status: 'doing', t: 10 } } });
+  assert.deepEqual(r.merged.tasks.a, { slot: null, status: 'doing', t: 20 });
+});
