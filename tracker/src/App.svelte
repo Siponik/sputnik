@@ -114,7 +114,15 @@
 
   // ---------- напоминания ----------
 
-  const remindOf = (task) => reminders.remindLabel(lay.tasks?.[task.id]?.remind, task);
+  const remindOf = (task) => reminders.remindLabel(lay.tasks?.[task.id]?.remind, task, lay.tasks?.[task.id]?.slot);
+
+  // Напоминание по умолчанию для новых задач: settings.remind = { min: N | null }. Без срока оно молчит,
+  // а когда срок появится — сработает за N минут до него (или до времени задачи).
+  const remindDefault = $derived(reminders.defaultRule(lay.settings));
+  function setRemindDefault(min) {
+    touch('settings', 'remind', { min });
+    saveLayer();
+  }
 
   function setRemind(r) {
     touch('tasks', openRef.id, { remind: r });
@@ -350,6 +358,7 @@
     try {
       const r = await api.createTask(listId, { title });
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      if (remindDefault) { touch('tasks', r.id, { remind: remindDefault }); saveLayer(); }
       if (col && col !== templateFor(listId).cols[0].id) { touch('tasks', r.id, { status: col }); saveLayer(); }
       if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
       if (ord != null) { touch('tasks', r.id, { ord }); saveLayer(); }
@@ -614,7 +623,11 @@
   // Поля Спутника (тип, проект, теги…), которые прислал чат, переносим в свой слой один раз.
   function pullInboxLayer() {
     const patches = inbox.layerPatches(inboxSt, lay.tasks);
-    for (const [id, patch] of patches) touch('tasks', id, patch);
+    for (const [id, patch] of patches) {
+      // Задачи из бота и чатов Claude тоже получают напоминание по умолчанию.
+      if (remindDefault && !lay.tasks?.[id]?.remind) patch.remind = remindDefault;
+      touch('tasks', id, patch);
+    }
     if (patches.length) saveLayer();
   }
 
@@ -685,10 +698,15 @@
     try {
       const r = await api.createTask(listId, { title, ...(notes ? { notes } : {}), ...(due ? { due: api.ymdToDue(due) } : {}) });
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
-      if (layer && Object.keys(layer).length) touch('tasks', r.id, layer);
+      // remind в layer — выбор в окне «Создать» (null — без напоминания); нет поля — напоминание по умолчанию.
+      layer = { ...(layer ?? {}) };
+      if (layer.remind === undefined) layer.remind = remindDefault;
+      if (!layer.remind) delete layer.remind;
+      if (Object.keys(layer).length) touch('tasks', r.id, layer);
       if (slot) setSlot(r.id, slot);
       else if (layer && Object.keys(layer).length) saveLayer();
-      if (!quiet) say(`«${title}» — добавлено${due ? ` на ${whenText(due, slot).date.toLowerCase()}${slot ? `, ${slot.s}` : ''}` : ' на доску'}`);
+      const bell = layer.remind?.kind === 'lead' && due ? ` · 🔔 ${reminders.leadName(layer.remind.min).toLowerCase()}` : '';
+      if (!quiet) say(`«${title}» — добавлено${due ? ` на ${whenText(due, slot).date.toLowerCase()}${slot ? `, ${slot.s}` : ''}` : ' на доску'}${bell}`);
       return r.id;
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
   }
@@ -891,6 +909,12 @@
           <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
           {#if upd.note}<span>{upd.note}</span>{/if}
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
+          <label class="foot-sel" title="Новые задачи получают это напоминание в Telegram (в окне «Создать» можно выбрать другое)">Напоминание:
+            <select value={remindDefault ? String(remindDefault.min) : ''} onchange={(e) => setRemindDefault(e.currentTarget.value === '' ? null : Number(e.currentTarget.value))}>
+              <option value="">нет</option>
+              {#each reminders.LEADS as l (l.min)}<option value={String(l.min)}>{l.name.toLowerCase()}</option>{/each}
+            </select>
+          </label>
           <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
@@ -974,6 +998,7 @@
     <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
       day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange}
+      {remindDefault} onremindDefault={setRemindDefault}
       oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
   {/if}
 

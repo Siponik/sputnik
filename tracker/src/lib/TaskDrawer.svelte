@@ -2,7 +2,7 @@
   import { untrack } from 'svelte';
   import { fly, fade, pop } from './motion.js';
   import { dueToYmd, ymdToDue, ymd } from './api.js';
-  import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
+  import { BEFORE, LEADS, DEFAULT_TIME, remindLabel } from './reminders.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
@@ -15,8 +15,8 @@
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
-  const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : `b${remind.days ?? 0}`);
-  const remindWhen = $derived(remindLabel(remind, task));
+  const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : remind.kind === 'lead' ? `l${remind.min ?? 0}` : `b${remind.days ?? 0}`);
+  const remindWhen = $derived(remindLabel(remind, task, slot));
 
   function pickRemind(v) {
     if (!v) return onremind(null);
@@ -24,6 +24,7 @@
       const day = dueToYmd(task.due) || ymd(new Date(Date.now() + 864e5));
       return onremind({ kind: 'at', at: remind?.kind === 'at' ? remind.at : `${day}T${DEFAULT_TIME}` });
     }
+    if (v[0] === 'l') return onremind({ kind: 'lead', min: Number(v.slice(1)) });
     onremind({ kind: 'before', days: Number(v.slice(1)), time: remind?.time ?? DEFAULT_TIME });
   }
 
@@ -158,7 +159,12 @@
       <div class="remind">
         <select id="f-remind" value={remindKind} onchange={(e) => pickRemind(e.currentTarget.value)}>
           <option value="">Нет</option>
-          {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name}</option>{/each}
+          <optgroup label="До начала задачи">
+            {#each LEADS as l (l.min)}<option value="l{l.min}">{l.name}</option>{/each}
+          </optgroup>
+          <optgroup label="В своё время">
+            {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name} в…</option>{/each}
+          </optgroup>
           <option value="at">Точная дата и время</option>
         </select>
         {#if remind?.kind === 'before'}
@@ -170,7 +176,7 @@
     </div>
     {#if remind}
       <p class="remind-hint">
-        {#if remind.kind === 'before' && !task.due}Поставь срок — без него напомнить «до срока» не выйдет.
+        {#if remind.kind !== 'at' && !task.due}Поставь срок — без него напомнить «до срока» не выйдет.
         {:else if remindWhen}Напомню в Telegram: {remindWhen}{/if}
       </p>
     {/if}

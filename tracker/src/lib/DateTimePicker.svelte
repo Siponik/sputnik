@@ -40,7 +40,7 @@
   let dur = $state(init.slot?.s && init.slot?.e ? Math.max(15, toMin(init.slot.e) - toMin(init.slot.s)) : 60);
   let allDay = $state(!init.allowTime || !init.slot?.s);
   let nl = $state('');
-  const remindKind = (r) => (!r ? 'none' : r.kind === 'before' && r.days === 1 && (r.time ?? DEFAULT_TIME) === '10:00' ? 'd1' : r.kind === 'at' && r.hour1 ? 'h1' : 'keep');
+  const remindKind = (r) => (!r ? 'none' : r.kind === 'before' && r.days === 1 && (r.time ?? DEFAULT_TIME) === '10:00' ? 'd1' : (r.kind === 'at' && r.hour1) || (r.kind === 'lead' && r.min === 60) ? 'h1' : 'keep');
   let rem = $state(init.remind === undefined ? 'keep' : remindKind(init.remind));
   const viewInit = parse(init.day || today);
   let vy = $state(viewInit.getFullYear());
@@ -147,7 +147,7 @@
     if (remind !== undefined && rem !== 'keep') {
       out.remind = rem === 'none' || !sel ? null
         : rem === 'd1' ? { kind: 'before', days: 1, time: '10:00' }
-        : out.slot ? { kind: 'at', at: `${sel}T${fromMin(Math.max(0, toMin(out.slot.s) - 60))}`, hour1: true } : null;
+        : out.slot ? { kind: 'lead', min: 60 } : null; // «за час» следует за временем задачи, если его перенесут
     }
     onapply(out);
   }
