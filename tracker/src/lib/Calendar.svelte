@@ -1,4 +1,5 @@
 <script>
+  import * as motion from './motion.js';
   import { onMount, tick } from 'svelte';
   import { ymd, dueToYmd } from './api.js';
   import { stats } from './habits.js';
@@ -217,8 +218,8 @@
   // Клавиши календаря (по физической кнопке — работают и в русской раскладке).
   function key(e) {
     if (keys.typing(e) || !keys.plain(e) || e.shiftKey || keys.overlay()) return;
-    if (e.key === 'ArrowLeft') sel = cal.shiftPeriod(sel, mode, -1);
-    else if (e.key === 'ArrowRight') sel = cal.shiftPeriod(sel, mode, 1);
+    if (e.key === 'ArrowLeft') shift(-1);
+    else if (e.key === 'ArrowRight') shift(1);
     else if (e.code === 'KeyT') sel = today;
     else if (e.code === 'KeyW') mode = 'week';
     else if (e.code === 'KeyM') mode = 'month';
@@ -231,6 +232,25 @@
     { key: 'habits', label: 'Привычки' },
     { key: 'birthdays', label: 'Дни рождения' },
   ];
+
+  // Анимация сетки (docs/design-v2.md — «Анимации», п. 3): ← → — сетка приезжает на 24 px по направлению, 200 мс;
+  // «Неделя ↔ Месяц» — затухание и масштаб .98 → 1. Через Web Animations, чтобы не трогать раскладку сетки.
+  let mainEl = $state(null);
+  let shiftDir = 0;
+  function shift(dir) { shiftDir = dir; sel = cal.shiftPeriod(sel, mode, dir); }
+  let lastKey = '', lastMode = '';
+  $effect(() => {
+    const key = cal.periodTitle(sel, mode), m = mode;
+    if (!mainEl || !lastKey) { lastKey = key; lastMode = m; return; }
+    if (key === lastKey && m === lastMode) return;
+    const lv = motion.level();
+    const modeChanged = m !== lastMode;
+    lastKey = key; lastMode = m;
+    if (lv === 'off') return;
+    const from = lv === 'min' ? { opacity: 0 } : modeChanged ? { opacity: 0, transform: 'scale(.98)' } : { opacity: 0, transform: `translateX(${24 * (shiftDir || 1)}px)` };
+    mainEl.animate([from, { opacity: 1, transform: 'none' }], { duration: lv === 'min' ? 120 : 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    shiftDir = 0;
+  });
 </script>
 
 <svelte:window onkeydown={key} />
@@ -244,8 +264,8 @@
     <div class="tb">
       <h1>{cal.periodTitle(sel, mode)}</h1>
       <span class="arrows">
-        <button class="sp-btn sp-btn-ghost" type="button" aria-label="Назад" title="Назад (←)" onclick={() => (sel = cal.shiftPeriod(sel, mode, -1))}>‹</button>
-        <button class="sp-btn sp-btn-ghost" type="button" aria-label="Вперёд" title="Вперёд (→)" onclick={() => (sel = cal.shiftPeriod(sel, mode, 1))}>›</button>
+        <button class="sp-btn sp-btn-ghost" type="button" aria-label="Назад" title="Назад (←)" onclick={() => shift(-1)}>‹</button>
+        <button class="sp-btn sp-btn-ghost" type="button" aria-label="Вперёд" title="Вперёд (→)" onclick={() => shift(1)}>›</button>
       </span>
       <button class="sp-btn" type="button" style="min-height: 30px" onclick={() => (sel = today)}>Сегодня</button>
       {@render filter?.()}
@@ -265,7 +285,7 @@
   </header>
 
   <div class="cal-body">
-    <main class="cal-main">
+    <main class="cal-main" bind:this={mainEl}>
       {#if mode === 'week'}
         <CalWeek days={dayObjs} {habits} {show} {free} {clock} {layout} {stripOpen} {fit} bind:avail={gridAvail}
           draft={cmp.open && cmp.time !== 'all' ? { day: sel, time: cmp.time, title: cmp.title } : null}

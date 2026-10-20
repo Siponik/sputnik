@@ -1,4 +1,5 @@
 <script>
+  import { fade, pop } from './motion.js';
   // Поповер «Изменить сферу»: название, цвет, значок, списки сферы, «Удалить сферу». Изменения сразу в слое.
   import { SPHERE_COLORS, SPHERE_ICONS } from './spheres.js';
   import SphereIcon from './SphereIcon.svelte';
@@ -12,8 +13,8 @@
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape' && !document.querySelector('.keyhelp')) { e.stopPropagation(); onclose(); } }} />
 
-<button class="drawer-back light" type="button" aria-label="Закрыть" onclick={onclose}></button>
-<div class="sph-pop dialog" role="dialog" aria-label="Изменить сферу">
+<button class="drawer-back light" type="button" aria-label="Закрыть" onclick={onclose} transition:fade={{ duration: 180 }}></button>
+<div transition:pop class="sph-pop dialog" role="dialog" aria-label="Изменить сферу">
   <div class="sp-row">
     <SphereIcon {sphere} size={38} />
     <input bind:this={nameInput} type="text" aria-label="Название сферы" value={sphere.name} oninput={(e) => onchange({ name: e.currentTarget.value })}

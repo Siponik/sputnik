@@ -108,3 +108,6 @@
 .side-tip p { margin: 0; font-size: 13px; line-height: 18px; text-align: center; color: var(--ink); }
 .side .side-tip + .foot { margin-top: 0; }
 
+
+.kw { display: flex; flex-direction: column; gap: 8px; }
+.board-swap { min-width: 0; }

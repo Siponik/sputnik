@@ -1,4 +1,5 @@
 <script>
+  import { fade, pop } from './motion.js';
   import { BUILTIN, VIEWS } from './templates.js';
 
   // templates — встроенные (с правками) и свои шаблоны (templatesFrom).
@@ -29,8 +30,8 @@
 
 <svelte:window onkeydown={(e) => e.key === 'Escape' && onclose()} />
 
-<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose}></button>
-<form class="dialog" aria-label="Новый список" onsubmit={submit}>
+<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose} transition:fade={{ duration: 180 }}></button>
+<form transition:pop class="dialog" aria-label="Новый список" onsubmit={submit}>
   <h2>Новый список</h2>
   <div class="field">
     <label for="nl-title">Название</label>

@@ -1,12 +1,13 @@
 <script>
+  import { fade, pop } from './motion.js';
   import { HOTKEYS } from './keys.js';
   let { onclose } = $props();
 </script>
 
 <svelte:window onkeydown={(e) => { if (e.key === 'Escape' || e.key === '?') { e.preventDefault(); onclose(); } }} />
 
-<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose}></button>
-<div class="dialog keyhelp" role="dialog" aria-label="Горячие клавиши">
+<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose} transition:fade={{ duration: 180 }}></button>
+<div transition:pop class="dialog keyhelp" role="dialog" aria-label="Горячие клавиши">
   <h2>Горячие клавиши</h2>
   <p class="hint">Работают и в русской раскладке. Одиночные клавиши не срабатывают, пока курсор стоит в поле ввода.</p>
   <div class="kh-grid">

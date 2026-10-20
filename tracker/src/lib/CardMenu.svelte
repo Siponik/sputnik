@@ -1,4 +1,5 @@
 <script>
+  import { fade, pop } from './motion.js';
   // Меню задачи (⋯, правый клик, Shift+F10): те же действия, что клавиши, с подписанными клавишами.
   // Общее для Канбана, Конвейера и Списка. Подменю (приоритет, этап, список) раскрываются внутри меню.
   import { untrack } from 'svelte';
@@ -35,7 +36,7 @@
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
 <div class="cm-back" onclick={onclose} oncontextmenu={(e) => { e.preventDefault(); onclose(); }}></div>
-<div class="cmenu" role="menu" aria-label="Действия с задачей" bind:this={el} style="left: {pos.x}px; top: {pos.y}px">
+<div transition:pop class="cmenu" role="menu" aria-label="Действия с задачей" bind:this={el} style="left: {pos.x}px; top: {pos.y}px; transform-origin: top right">
   <button type="button" role="menuitem" onclick={() => act('open')}>Открыть<kbd>Enter</kbd></button>
   <button type="button" role="menuitem" onclick={() => act('rename')}>Переименовать<kbd>F2</kbd></button>
   <button type="button" role="menuitem" onclick={() => act('due')}>Срок и время<kbd>D</kbd></button>

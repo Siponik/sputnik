@@ -1,4 +1,5 @@
 <script>
+  import { fade, pop } from './motion.js';
   // Окно «Когда» (design/screens/DateTime.dc.html, docs/design-v2.md — «Выбор даты и времени»):
   // строка словами, быстрые кнопки, месяц с точками занятости, время по расписанию дня, длительность, «Весь день»,
   // напоминание, «Без срока». Время задачи — слой tasks[id].slot = { s, e }; длительность = e − s.
@@ -157,7 +158,7 @@
 <svelte:window onkeydown={key} />
 
 <button class="dtp-back" type="button" aria-label="Закрыть выбор даты" onclick={onclose}></button>
-<div class="dtp dtp-{place}" role="dialog" aria-label="Когда">
+<div transition:pop class="dtp dtp-{place}" role="dialog" aria-label="Когда">
   <div class="nl">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4 4" /></svg>
     <input bind:this={input} value={nl} oninput={(e) => onNl(e.currentTarget.value)} aria-label="Когда, словами"

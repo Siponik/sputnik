@@ -1,5 +1,6 @@
 <script>
   import { untrack } from 'svelte';
+  import { fly, fade, pop } from './motion.js';
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
@@ -87,8 +88,8 @@
 
 <svelte:window onkeydown={key} />
 
-<button class="drawer-back" type="button" aria-label="Закрыть" onclick={close}></button>
-<aside class="drawer" aria-label="Задача">
+<button class="drawer-back" type="button" aria-label="Закрыть" onclick={close} in:fade={{ duration: 180 }} out:fade={{ duration: 180, out: true }}></button>
+<aside class="drawer" aria-label="Задача" in:fly={{ x: 24, duration: 260 }} out:fly={{ x: 24, duration: 260, out: true }}>
   <div class="scroll">
     <div class="top">
       <span>{list?.title}</span>

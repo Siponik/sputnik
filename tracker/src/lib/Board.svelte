@@ -12,6 +12,11 @@
   import { startOfWeek, addDays } from './calendar.js';
   import { priorityRank } from './meta.js';
   import * as keys from './keys.js';
+  import { flip } from 'svelte/animate';
+  import { cardCrossfade, flipMs } from './motion.js';
+
+  // Перенос в соседнюю колонку — карточка «перелетает» (send/receive), остальные съезжают на места (flip).
+  const [send, receive] = cardCrossfade();
 
   // view — kanban | pipe | gallery | list (свой вид списка или вид шаблона); onview — сменить вид этого списка.
   // act — действия над задачей из App: open(t, pick), rename, stage (с «Отменить»), priority, order(ids), moveList,
@@ -300,7 +305,7 @@
         ondrop={(e) => dropOn(e, col.id)}
       >
         <header class="ch">
-          <h3>{col.name}</h3><span class="n">{n}</span>
+          <h3>{col.name}</h3>{#key n}<span class="n num-roll">{n}</span>{/key}
           {#if col.limit}<span class="lim" class:full={n === col.limit} class:over={n > col.limit} title="Лимит колонки (из шаблона)">{n} / {col.limit}</span>{/if}
           <span style="flex: 1"></span>
           {#if !isDoneCol}
@@ -318,6 +323,7 @@
         {#if composing === col.id && composeTop}{@render compose()}{/if}
 
         {#each shown as task, k (task.id)}
+          <div class="kw" animate:flip={{ duration: flipMs() }} in:receive={{ key: task.id }} out:send={{ key: task.id }}>
           {#if drop?.col === col.id && drop.index === k && dragId !== task.id}<div class="ph" aria-hidden="true"></div>{/if}
           <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {fields} extra={layTasks?.[task.id]}
             next={isDoneCol ? null : next} selected={sel === task.id} editing={editing === task.id} ghost={dragId === task.id}
@@ -325,6 +331,7 @@
             onmenu={(t, el) => openMenu(t, el)} onselect={(t) => (sel = t.id)}
             onstartedit={(t) => (editing = t.id)} onendedit={() => (editing = '')} onrename={(t, title) => act.rename(t, title)}
             ondragstart={dragStart} ondragend={dragEnd} />
+          </div>
         {/each}
         {#if drop?.col === col.id && drop.index >= shown.filter((t) => t.id !== dragId).length}<div class="ph" aria-hidden="true"></div>{/if}
 

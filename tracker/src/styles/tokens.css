@@ -12,6 +12,9 @@
   --font-mono: "Cascadia Mono", ui-monospace, Consolas, monospace;
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 24px; --space-6: 32px; --space-7: 48px;
   --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px; --radius-pill: 999px;
+  /* Движение (docs/design-v2.md — «Анимации интерфейса»): наведение · меню и плашки · окна и экраны · праздник. */
+  --dur-1: 120ms; --dur-2: 180ms; --dur-3: 260ms; --dur-4: 420ms;
+  --ease-out: cubic-bezier(.2, .8, .2, 1); --ease-in: cubic-bezier(.4, 0, 1, 1); --ease-pop: cubic-bezier(.3, 1.4, .5, 1);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: light) {

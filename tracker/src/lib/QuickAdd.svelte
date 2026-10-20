@@ -1,4 +1,5 @@
 <script>
+  import { fade, pop } from './motion.js';
   import { untrack } from 'svelte';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
@@ -61,8 +62,8 @@
 
 <svelte:window onkeydown={key} />
 
-<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose}></button>
-<form class="dialog quick" aria-label="Создать" onsubmit={submit}>
+<button class="drawer-back" type="button" aria-label="Закрыть" onclick={onclose} transition:fade={{ duration: 180 }}></button>
+<form transition:pop class="dialog quick" aria-label="Создать" onsubmit={submit}>
   <h2>Создать</h2>
   <div class="seg2 kinds" role="group" aria-label="Что создаём">
     {#each KINDS as k (k.id)}

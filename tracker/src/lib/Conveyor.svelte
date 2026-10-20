@@ -9,6 +9,7 @@
   import { startOfWeek, addDays } from './calendar.js';
   import { PRIORITIES, priorityOf } from './meta.js';
   import * as keys from './keys.js';
+  import { expand } from './motion.js';
 
   // act — действия из App (как на канбане); onmenu(t, anchor, expand, rename) — меню задачи доски.
   let { list, tasks, cols, colOf, layTasks, visible = () => true, gallery = false, remindOf = () => '',
@@ -254,7 +255,7 @@
         </div>
         {#if isOpen}
           {@const tl = timeline(t)}
-          <div class="pn" role="region" aria-label="Подробности: {t.title}">
+          <div class="pn" role="region" in:expand out:expand={{ out: true }} aria-label="Подробности: {t.title}">
             <section>
               <div class="pn-h"><h4>{done ? 'Подзадачи' : `Этап «${stages[si]?.name ?? endCol.name}»`}</h4>{#if ch.stage.length}<span>{chDone} из {ch.stage.length}</span>{/if}</div>
               {#if ch.stage.length}<div class="bar" aria-hidden="true"><i style="width: {Math.round((chDone / ch.stage.length) * 100)}%"></i></div>{/if}

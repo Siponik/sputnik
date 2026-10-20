@@ -1,5 +1,6 @@
 <script>
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, flushSync } from 'svelte';
+  import * as motion from './lib/motion.js';
   import * as keys from './lib/keys.js';
   import KeyHelp from './lib/KeyHelp.svelte';
   import WinControls from './lib/WinControls.svelte';
@@ -45,6 +46,7 @@
   let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
   let sync = $state({ busy: false, err: '', at: null });
   let toast = $state('');
+  let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
   let toastTimer;
 
   function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {}, cals: {}, settings: {}, templates: {}, templatesEdit: {}, spheres: {} }; }
@@ -76,14 +78,21 @@
 
   // Плашка внизу; undo — кнопка «Отменить» (перенос этапа, удаление). Таймер 6 с, на наведении — пауза.
   let toastUndo = $state(null);
-  let toastHover = false;
+  let toastN = $state(0); // номер плашки — заново запускает полоску-таймер
+  let toastLeft = 0, toastStart = 0;
   function say(msg, undo = null) {
     toast = msg;
     toastUndo = undo;
-    clearTimeout(toastTimer);
-    const tick6 = () => { toastTimer = setTimeout(() => { if (toastHover) tick6(); else { toast = ''; toastUndo = null; } }, 6000); };
-    tick6();
+    toastN++;
+    toastLeft = 6000;
+    resumeToast();
   }
+  function resumeToast() {
+    clearTimeout(toastTimer);
+    toastStart = Date.now();
+    toastTimer = setTimeout(() => { toast = ''; toastUndo = null; }, toastLeft);
+  }
+  function pauseToast() { clearTimeout(toastTimer); toastLeft = Math.max(800, toastLeft - (Date.now() - toastStart)); }
   function undoToast() { const fn = toastUndo; toast = ''; toastUndo = null; fn?.(); }
 
   // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
@@ -161,6 +170,7 @@
       else if (!api.isOffline(e)) say('Не удалось обновить: ' + e);
     } finally {
       sync.busy = false;
+      if (!sync.err) { syncFlash = true; setTimeout(() => (syncFlash = false), 650); }
     }
   }
 
@@ -236,9 +246,17 @@
   // Горячие клавиши (список — lib/keys.js и окно «?»).
   const VIEWS = ['today', 'calendar', 'board', 'habits'];
   let helpOpen = $state(false);
+  const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
+  /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
+  function go(v) {
+    if (v === view) return;
+    const d = VIEWS.indexOf(section(v)) - VIEWS.indexOf(section(view));
+    if (!d) { view = v; return; }
+    motion.viewTransition(() => flushSync(() => (view = v)), d);
+  }
   function stepView(dir) {
-    const i = VIEWS.indexOf(['archive', 'templates', 'sphere'].includes(view) ? 'board' : view);
-    view = VIEWS[(i + dir + VIEWS.length) % VIEWS.length];
+    const i = VIEWS.indexOf(section(view));
+    go(VIEWS[(i + dir + VIEWS.length) % VIEWS.length]);
   }
   function stepList(dir) {
     const i = boardLists.findIndex((l) => l.id === activeId);
@@ -259,7 +277,7 @@
       return;
     }
     const digit = /^Digit([1-4])$/.exec(e.code);
-    if (digit) { view = VIEWS[digit[1] - 1]; return; }
+    if (digit) { go(VIEWS[digit[1] - 1]); return; }
     switch (e.code) {
       case 'KeyQ': stepView(-1); break;
       case 'KeyE': stepView(1); break;
@@ -328,6 +346,15 @@
       if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
       if (ord != null) { touch('tasks', r.id, { ord }); saveLayer(); }
     } catch (e) { say('Не удалось создать задачу: ' + e); }
+  }
+
+  // ---------- анимации: settings.motion = full | min | off ----------
+  const motionPref = $derived(lay.settings?.motion?.v ?? 'full');
+  $effect(() => motion.setMotion(motionPref));
+  function cycleMotion() {
+    const i = motion.LEVELS.findIndex((l) => l.id === motionPref);
+    touch('settings', 'motion', { v: motion.LEVELS[(i + 1) % motion.LEVELS.length].id });
+    saveLayer();
   }
 
   // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
@@ -750,12 +777,12 @@
     <!-- Шапка — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. -->
     <nav class="sp-tabs" aria-label="Разделы" data-tauri-drag-region>
       <Brand />
-      <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => (view = 'calendar')}>Календарь</button>
-      <button class="sp-tab" role="tab" aria-selected={['board', 'archive', 'templates', 'sphere'].includes(view)} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => (view = 'board')}>Доска</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня <span class="n">· {todayCount}</span>{#if view === 'today'}<span class="ink"></span>{/if}</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь{#if view === 'calendar'}<span class="ink"></span>{/if}</button>
+      <button class="sp-tab" role="tab" aria-selected={['board', 'archive', 'templates', 'sphere'].includes(view)} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска{#if section(view) === 'board'}<span class="ink"></span>{/if}</button>
+      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}{#if view === 'habits'}<span class="ink"></span>{/if}</button>
       <div class="right" data-tauri-drag-region>
-        <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
+        <button class="sync" class:busy={sync.busy} class:flash={syncFlash} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
         </button>
         {#if inboxItems.length}
@@ -856,6 +883,7 @@
           <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
           {#if upd.note}<span>{upd.note}</span>{/if}
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
+          <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
       </aside>
@@ -897,6 +925,8 @@
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
         {:else if activeList}
+          {#key activeId}
+          <div class="board-swap" in:motion.fade={{ duration: 160 }}>
           <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf} {typeOf}
             view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
@@ -906,6 +936,8 @@
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}
             onarchive={() => (view = 'archive')} />
+          </div>
+          {/key}
         {:else}
           <div class="page"><p class="empty">Создай первый список — слева «+ Новый список».</p></div>
         {/if}
@@ -953,7 +985,8 @@
 {/if}
 
 {#if toast}
-  <div class="toast" role="status" onmouseenter={() => (toastHover = true)} onmouseleave={() => (toastHover = false)}>
+  <div class="toast" role="status" onmouseenter={pauseToast} onmouseleave={resumeToast}>
+    {#key toastN}<span class="timer" aria-hidden="true"></span>{/key}
     <span>{toast}</span>
     {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>Отменить</button>{/if}
     <button type="button" onclick={() => { toast = ''; toastUndo = null; }}>Скрыть</button>
