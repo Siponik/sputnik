@@ -52,6 +52,11 @@ export function deleteTask(listId, taskId) {
   return gapi('DELETE', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`);
 }
 
+/** Перенести задачу (с подзадачами) в другой список Google Tasks. */
+export function moveTask(listId, taskId, destList) {
+  return gapi('POST', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/move?destinationTasklist=${encodeURIComponent(destList)}`, {});
+}
+
 export const completeTask = (listId, taskId, done) =>
   patchTask(listId, taskId, done ? { status: 'completed' } : { status: 'needsAction', completed: null });
 

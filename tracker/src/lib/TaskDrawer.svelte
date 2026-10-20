@@ -1,4 +1,5 @@
 <script>
+  import { untrack } from 'svelte';
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
@@ -9,6 +10,7 @@
   // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
   let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
     dueDays = new Set(), loadEvents = null,
+    pick = false, // сразу открыть окно «Когда» (клавиша D, кнопка срока на карточке)
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
@@ -57,7 +59,7 @@
   function close() { saveTitle(); saveNotes(); onclose(); }
   // Esc / Ctrl+Enter — сохранить и закрыть; Alt+←/→ — соседний этап; Alt+1/2/3/0 — приоритет.
   // ---------- срок и время: окно «Когда» ----------
-  let picking = $state(false);
+  let picking = $state(untrack(() => pick));
   const due = $derived(dueToYmd(task.due));
   const wt = $derived(whenText(due, due ? slot : null));
   function applyWhen(r) {

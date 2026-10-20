@@ -1,17 +1,25 @@
 <script>
+  // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
+  // Одна выбранная карточка (обводка clay): клик — окно задачи, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
   import TaskCard from './TaskCard.svelte';
+  import CardMenu from './CardMenu.svelte';
   import PeekCoon, { peekVariant } from './PeekCoon.svelte';
-  import { ymd, dueToYmd } from './api.js';
+  import { ymd, dueToYmd, dueState } from './api.js';
   import { isArchived, ARCHIVE_AFTER_DAYS, colColor } from './templates.js';
   import Conveyor from './Conveyor.svelte';
   import ListView from './ListView.svelte';
   import { startOfWeek, addDays } from './calendar.js';
-  import { priorityRank, TYPES as META_TYPES } from './meta.js';
+  import { priorityRank } from './meta.js';
+  import * as keys from './keys.js';
 
   // view — kanban | pipe | gallery | list (свой вид списка или вид шаблона); onview — сменить вид этого списка.
+  // act — действия над задачей из App: open(t, pick), rename, stage (с «Отменить»), priority, order(ids), moveList,
+  // duplicate, remove (с «Отменить»). fold — свёрнутые колонки этого списка { colId: true }, onfold(colId, v).
+  // lists — другие списки (для «В другой список»).
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '', view = 'kanban',
-    onopen, onmove, oncreate, onarchive, onview, ontoggle, onaddsub, onsetstage, onrename, onedittemplate } = $props();
+    act, lists = [], fold = {}, onfold,
+    oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
 
   const VIEW_TABS = $derived([
     { id: 'kanban', name: 'Канбан' }, { id: 'pipe', name: 'Конвейер' },
@@ -19,8 +27,8 @@
     { id: 'list', name: 'Список' },
   ]);
   const fields = $derived(template.fields ?? []);
-  const TYPES = [
-    { k: '', label: 'Все' }, ...META_TYPES.map((t) => ({ k: t.id, label: t.label })),
+  const FILTERS = [
+    { k: '', label: 'Все' }, { k: 'prio', label: '!!! Важное' }, { k: 'week', label: 'На этой неделе' }, { k: 'late', label: 'Просрочено' },
   ];
   // Что говорит пустая колонка. Скетч-енот меняет место от колонки к колонке: снизу, сбоку, хвост сверху.
   const EMPTY = {
@@ -30,45 +38,184 @@
     done: 'Пока ничего не готово.',
   };
 
-  let over = $state('');
-  let type = $state('');
+  let filter = $state('');
   let showDone = $state(false);
   let composing = $state(''); // id колонки, где открыта форма
+  let composeTop = $state(false); // форма из «＋» в шапке — задача встанет в начало колонки
   let draft = $state('');
   let composeInput = $state(null);
 
   const cols = $derived(template.cols);
+  const endId = $derived(cols[cols.length - 1].id);
   const top = $derived(tasks.filter((t) => !t.parent));
   const live = $derived(top.filter((t) => !isArchived(t)));
   const archived = $derived(top.length - live.length);
   const open = $derived(top.filter((t) => t.status !== 'completed'));
-  const weekDue = $derived.by(() => {
-    const a = ymd(startOfWeek(new Date())), b = ymd(addDays(startOfWeek(new Date()), 6));
-    return open.filter((t) => t.due && dueToYmd(t.due) >= a && dueToYmd(t.due) <= b).length;
-  });
-  const present = $derived(new Set(top.map((t) => typeOf(list.id, t.id))));
-  const types = $derived(TYPES.filter((f) => !f.k || present.has(f.k)));
-  const visible = (t) => (!type || typeOf(list.id, t.id) === type) && (!project || layTasks?.[t.id]?.project === project);
+  const weekA = ymd(startOfWeek(new Date())), weekB = ymd(addDays(startOfWeek(new Date()), 6));
+  const weekDue = $derived(open.filter((t) => t.due && dueToYmd(t.due) >= weekA && dueToYmd(t.due) <= weekB).length);
+  function passes(t) {
+    if (project && layTasks?.[t.id]?.project !== project) return false;
+    if (filter === 'prio') return layTasks?.[t.id]?.priority === 1;
+    if (filter === 'week') return !!t.due && dueToYmd(t.due) <= weekB && t.status !== 'completed';
+    if (filter === 'late') return dueState(t) === 'overdue' && t.status !== 'completed';
+    return true;
+  }
+  const visible = (t) => passes(t);
 
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
   const byPos = (a, b) => (a.position || '').localeCompare(b.position || '');
+  // Порядок в колонке: свой (tasks[id].ord, Alt+↑↓ и перетаскивание), иначе — приоритет, потом порядок Google.
   function column(id) {
-    const items = live.filter((t) => colOf(t, cols) === id && visible(t));
-    if (id === 'done') return items.sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
-    return items.sort((a, b) => priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority) || byPos(a, b));
+    const items = live.filter((t) => colOf(t, cols) === id && passes(t));
+    if (id === endId) return items.sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
+    const base = items.sort((a, b) => priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority) || byPos(a, b));
+    const key = new Map(base.map((t, i) => [t.id, layTasks?.[t.id]?.ord ?? i - 0.5]));
+    return [...base].sort((a, b) => key.get(a.id) - key.get(b.id));
   }
-  const nextOf = (i) => (i < cols.length - 1 ? cols[i + 1] : null);
+  const columns = $derived(Object.fromEntries(cols.map((c) => [c.id, column(c.id)])));
+  const nextOf = (colId) => { const i = cols.findIndex((c) => c.id === colId); return i >= 0 && i < cols.length - 1 ? cols[i + 1] : null; };
+  const prevOf = (colId) => { const i = cols.findIndex((c) => c.id === colId); return i > 0 ? cols[i - 1] : null; };
+  const shownIn = (colId) => { const it = columns[colId] ?? []; return colId === endId && !showDone ? it.slice(0, 2) : it; };
 
-  function drop(e, col) {
+  // ---------- выбор, переименование, меню ----------
+  let sel = $state('');
+  let editing = $state('');
+  let menu = $state(null); // { task, at: {x,y}, expand }
+  const selTask = $derived(top.find((t) => t.id === sel) ?? null);
+  async function focusCard(id) {
+    sel = id;
+    await tick();
+    document.querySelector(`.kc[data-id="${id}"]`)?.focus({ preventScroll: false });
+  }
+  function openMenu(t, anchor, expand = '') {
+    sel = t.id;
+    const r = anchor?.getBoundingClientRect?.();
+    menu = { task: t, at: r ? { x: r.right - 236, y: r.top + 34 } : { x: innerWidth / 2 - 118, y: innerHeight / 3 }, expand };
+  }
+  function menuAction(name, arg) {
+    const t = menu?.task;
+    if (!t) return;
+    if (name === 'open') act.open(t);
+    else if (name === 'rename') { editing = t.id; }
+    else if (name === 'due') act.open(t, true);
+    else if (name === 'priority') act.priority(t, arg);
+    else if (name === 'stage') act.stage(t, arg);
+    else if (name === 'list') act.moveList(t, arg);
+    else if (name === 'duplicate') act.duplicate(t);
+    else if (name === 'delete') act.remove(t);
+  }
+  /** Сдвинуть задачу на позицию в колонке (Alt+↑↓, перетаскивание): записываем ord всей колонке. */
+  function reorder(t, colId, index) {
+    const ids = (columns[colId] ?? []).map((x) => x.id).filter((id) => id !== t.id);
+    ids.splice(Math.max(0, Math.min(index, ids.length)), 0, t.id);
+    act.order(ids);
+  }
+
+  // Клавиши доски (канбан): стрелки, Enter, F2, Alt+…, D, M, Ctrl+D, Del, Esc, Shift+F10.
+  // Ловим на фазе погружения, чтобы цифры и стрелки не уходили в общие клавиши приложения.
+  function onKey(e) {
+    if (view !== 'kanban' || menu || editing || keys.typing(e) || keys.overlay()) return;
+    const handled = () => { e.preventDefault(); e.stopPropagation(); };
+    const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+    if (!selTask) {
+      if (arrows.includes(e.key) && !e.altKey && !e.ctrlKey) {
+        const first = cols.map((c) => shownIn(c.id)[0]).find(Boolean);
+        if (first) { handled(); focusCard(first.id); }
+      }
+      return;
+    }
+    const t = selTask;
+    const cid = colOf(t, cols);
+    const colItems = shownIn(cid);
+    const idx = colItems.findIndex((x) => x.id === t.id);
+    if (e.altKey && !e.ctrlKey) {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+        const to = e.key === 'ArrowRight' ? nextOf(cid) : prevOf(cid);
+        handled();
+        if (to) { act.stage(t, to.id); tick().then(() => focusCard(t.id)); }
+        return;
+      }
+      if ((e.key === 'ArrowUp' || e.key === 'ArrowDown') && cid !== endId) {
+        handled();
+        reorder(t, cid, idx + (e.key === 'ArrowUp' ? -1 : 1));
+        tick().then(() => focusCard(t.id));
+        return;
+      }
+      const d = /^Digit([0-3])$/.exec(e.code);
+      if (d) { handled(); act.priority(t, d[1] === '0' ? null : Number(d[1])); return; }
+      return;
+    }
+    if (e.ctrlKey && !e.altKey && e.code === 'KeyD') { handled(); act.duplicate(t); return; }
+    if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') { handled(); openMenu(t, document.querySelector(`.kc[data-id="${t.id}"]`)); return; }
+    if (!keys.plain(e)) return;
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      handled();
+      const n = colItems[idx + (e.key === 'ArrowUp' ? -1 : 1)];
+      if (n) focusCard(n.id);
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+      handled();
+      let ci = cols.findIndex((c) => c.id === cid);
+      for (;;) {
+        ci += e.key === 'ArrowRight' ? 1 : -1;
+        if (ci < 0 || ci >= cols.length) break;
+        if (fold[cols[ci].id]) continue;
+        const items = shownIn(cols[ci].id);
+        if (items.length) { focusCard(items[Math.min(idx, items.length - 1)].id); break; }
+      }
+    } else if (e.key === 'Enter') { handled(); act.open(t); }
+    else if (e.key === 'F2') { handled(); editing = t.id; }
+    else if (e.code === 'KeyD' && !e.shiftKey) { handled(); act.open(t, true); }
+    else if (e.code === 'KeyM' && !e.shiftKey) { handled(); openMenu(t, document.querySelector(`.kc[data-id="${t.id}"]`), 'list'); }
+    else if (e.key === 'Delete') {
+      handled();
+      const n = colItems[idx + 1] ?? colItems[idx - 1];
+      act.remove(t);
+      if (n) focusCard(n.id); else sel = '';
+    } else if (e.key === 'Escape') { handled(); sel = ''; document.activeElement?.blur?.(); }
+  }
+
+  // ---------- перетаскивание: место вставки, порядок внутри колонки ----------
+  let dragId = $state('');
+  let drop = $state(null); // { col, index }
+  function dragStart(e, t) {
+    dragId = t.id;
+    sel = t.id;
+    e.dataTransfer.setData('text/plain', t.id);
+    e.dataTransfer.effectAllowed = 'move';
+    const el = e.currentTarget;
+    el.classList.add('lift'); // «поднятая» карточка попадает в картинку перетаскивания
+    setTimeout(() => el.classList.remove('lift'), 0);
+  }
+  function dragEnd() { dragId = ''; drop = null; }
+  function dragOver(e, colId) {
+    if (!dragId) return;
     e.preventDefault();
-    over = '';
-    const id = e.dataTransfer.getData('text/plain');
-    const task = tasks.find((t) => t.id === id);
-    if (task && colOf(task, cols) !== col) onmove(task, col);
+    const cards = [...e.currentTarget.querySelectorAll('.kc:not(.ghost)')];
+    let index = cards.length;
+    for (let i = 0; i < cards.length; i++) {
+      const r = cards[i].getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { index = i; break; }
+    }
+    if (drop?.col !== colId || drop?.index !== index) drop = { col: colId, index };
+  }
+  function dropOn(e, colId) {
+    e.preventDefault();
+    const t = top.find((x) => x.id === dragId);
+    const index = drop?.index ?? 0;
+    dragEnd();
+    if (!t) return;
+    if (colOf(t, cols) !== colId) act.stage(t, colId);
+    if (colId !== endId) reorder(t, colId, index);
+  }
+  function dragLeave(e, colId) {
+    if (drop?.col === colId && !e.currentTarget.contains(e.relatedTarget)) drop = null;
   }
 
-  async function startAdd(colId) {
+  // ---------- новая задача в колонке ----------
+  async function startAdd(colId, atTop = false) {
+    if (fold[colId]) onfold(colId, false);
     composing = colId;
+    composeTop = atTop;
     draft = '';
     await tick();
     composeInput?.focus();
@@ -77,8 +224,11 @@
     const title = draft.trim();
     if (!title) return;
     const col = composing;
+    const items = columns[col] ?? [];
+    const ords = items.map((t, i) => layTasks?.[t.id]?.ord ?? i);
+    const ord = composeTop ? Math.min(0, ...ords) - 1 : Math.max(0, ...ords) + 1;
     draft = '';
-    await oncreate(title, col);
+    await oncreate(title, col, ord);
     composeInput?.focus();
   }
   function composeKey(e) {
@@ -87,6 +237,18 @@
   }
 </script>
 
+<svelte:window onkeydowncapture={onKey} />
+
+{#snippet compose()}
+  <div class="compose">
+    <input bind:this={composeInput} bind:value={draft} type="text" aria-label="Название задачи" placeholder="Что сделать?" onkeydown={composeKey} />
+    <div class="ca">
+      <button class="sp-btn sp-btn-primary" type="button" style="min-height: 30px" disabled={!draft.trim()} onclick={commit}>Добавить</button>
+      <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => { composing = ''; draft = ''; }}>Отмена</button>
+    </div>
+  </div>
+{/snippet}
+
 <div class="page bd">
   <header class="page-head">
     <div>
@@ -94,15 +256,11 @@
       <p>Список Google Tasks · {template.name} · {open.length} открытых{weekDue ? ` · ${weekDue} со сроком на этой неделе` : ''}{project ? ` · проект «${project}»` : ''}</p>
     </div>
     <div class="head-tools">
-      {#if types.length > 2}
-        <div class="types" role="group" aria-label="Тип">
-          {#each types as f (f.k)}
-            <button type="button" class="tf" aria-pressed={type === f.k} onclick={() => (type = f.k)}>
-              {#if f.k}<span class="dot" style="background: var(--type-{f.k})"></span>{/if}{f.label}
-            </button>
-          {/each}
-        </div>
-      {/if}
+      <div class="types" role="group" aria-label="Фильтр">
+        {#each FILTERS as f (f.k)}
+          <button type="button" class="tf" aria-pressed={filter === f.k} onclick={() => (filter = f.k)}>{f.label}</button>
+        {/each}
+      </div>
       <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. Вид — меняется. -->
       <div class="seg3" role="group" aria-label="Вид доски">
         {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
@@ -113,40 +271,64 @@
   </header>
 
   {#if view === 'pipe' || view === 'gallery'}
-    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {onopen} {onmove} {ontoggle} {onaddsub} {onsetstage} {onrename} />
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub}
+      onmenu={openMenu} />
   {:else if view === 'list'}
-    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {onopen} {onmove} />
+    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} />
   {:else}
-  <div class="board">
+  <div class="board kb">
     {#each cols as col, i (col.id)}
-      {@const items = column(col.id)}
-      {@const isDoneCol = col.id === 'done'}
-      {@const shown = isDoneCol && !showDone ? items.slice(0, 2) : items}
-      {@const next = nextOf(i)}
+      {@const items = columns[col.id] ?? []}
+      {@const isDoneCol = col.id === endId}
+      {@const shown = shownIn(col.id)}
+      {@const next = nextOf(col.id)}
+      {@const n = items.length}
       {@const empty = EMPTY[col.id] ?? (i === 0 ? `${col.name}: всё разобрано. Можно выдохнуть.` : `${col.name}: пока пусто.`)}
       {@const pk = peekVariant(`${list.id}|${col.id}`, i)}
+      {#if fold[col.id]}
+        <button type="button" class="colz" style="--cc: {colColor(col)}" aria-label="Развернуть колонку {col.name}" title="Развернуть"
+          ondragover={(e) => { if (dragId) { e.preventDefault(); } }} ondrop={(e) => { drop = { col: col.id, index: 0 }; dropOn(e, col.id); }}
+          onclick={() => onfold(col.id, false)}><b>{n}</b><span>{col.name}</span></button>
+      {:else}
       <section
         class="bcol"
-        class:over={over === col.id}
+        class:drop={drop?.col === col.id}
         aria-label={col.name}
-        ondragover={(e) => { e.preventDefault(); over = col.id; }}
-        ondragleave={() => { if (over === col.id) over = ''; }}
-        ondrop={(e) => drop(e, col.id)}
+        style="--cc: {colColor(col)}"
+        ondragover={(e) => dragOver(e, col.id)}
+        ondragleave={(e) => dragLeave(e, col.id)}
+        ondrop={(e) => dropOn(e, col.id)}
       >
-        <header class="colh" class:donecol={isDoneCol} style="--cc: {colColor(col)}">
-          <h3>{col.name}</h3><span class="n">{items.length}</span>
-          {#if col.limit}<span class="wip" class:hot={items.length > col.limit} title="Лимит колонки (из шаблона)">{items.length} / {col.limit}</span>{/if}
+        <header class="ch">
+          <h3>{col.name}</h3><span class="n">{n}</span>
+          {#if col.limit}<span class="lim" class:full={n === col.limit} class:over={n > col.limit} title="Лимит колонки (из шаблона)">{n} / {col.limit}</span>{/if}
+          <span style="flex: 1"></span>
+          {#if !isDoneCol}
+            <button type="button" class="hb" aria-label="Новая задача в начало колонки {col.name}" title="Новая задача сверху" onclick={() => startAdd(col.id, true)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          {/if}
+          <button type="button" class="hb" aria-label="Свернуть колонку {col.name}" title="Свернуть" onclick={() => onfold(col.id, true)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+          </button>
         </header>
-        {#if col.limit && items.length > col.limit}
-          <p class="wip-warn">В «{col.name}» больше {col.limit}. Закончи одну, прежде чем брать новую.</p>
+        {#if col.limit && n > col.limit}
+          <p class="wip-warn">Больше лимита: закончи одну задачу, прежде чем брать новую.</p>
         {/if}
+        {#if composing === col.id && composeTop}{@render compose()}{/if}
 
-        {#each shown as task (task.id)}
-          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {fields} extra={layTasks?.[task.id]} {onopen}
-            next={isDoneCol ? null : next} onadvance={() => onmove(task, next.id)} />
+        {#each shown as task, k (task.id)}
+          {#if drop?.col === col.id && drop.index === k && dragId !== task.id}<div class="ph" aria-hidden="true"></div>{/if}
+          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {fields} extra={layTasks?.[task.id]}
+            next={isDoneCol ? null : next} selected={sel === task.id} editing={editing === task.id} ghost={dragId === task.id}
+            onopen={(t) => act.open(t)} onadvance={(t) => act.stage(t, next.id)} ondue={(t) => act.open(t, true)}
+            onmenu={(t, el) => openMenu(t, el)} onselect={(t) => (sel = t.id)}
+            onstartedit={(t) => (editing = t.id)} onendedit={() => (editing = '')} onrename={(t, title) => act.rename(t, title)}
+            ondragstart={dragStart} ondragend={dragEnd} />
         {/each}
+        {#if drop?.col === col.id && drop.index >= shown.filter((t) => t.id !== dragId).length}<div class="ph" aria-hidden="true"></div>{/if}
 
-        {#if !items.length && composing !== col.id}
+        {#if !items.length && composing !== col.id && drop?.col !== col.id}
           <div class="bempty at-{pk.place}-{pk.edge}"><PeekCoon {...pk} /><span>{empty}</span></div>
         {/if}
         {#if isDoneCol && items.length > 2}
@@ -157,21 +339,24 @@
         {/if}
 
         {#if !isDoneCol}
-          {#if composing === col.id}
-            <div class="compose">
-              <input bind:this={composeInput} bind:value={draft} type="text" aria-label="Название задачи" placeholder="Что сделать?" onkeydown={composeKey} />
-              <div class="ca">
-                <button class="sp-btn sp-btn-primary" type="button" style="min-height: 30px" disabled={!draft.trim()} onclick={commit}>Добавить</button>
-                <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => { composing = ''; draft = ''; }}>Отмена</button>
-              </div>
-            </div>
+          {#if composing === col.id && !composeTop}
+            {@render compose()}
           {:else}
-            <button class="add" type="button" onclick={() => startAdd(col.id)}>+ Добавить задачу</button>
+            <button class="add" type="button" onclick={() => startAdd(col.id)}>＋ Добавить задачу</button>
           {/if}
         {/if}
       </section>
+      {/if}
     {/each}
   </div>
-  <p class="bd-hint">Наведи на карточку — стрелка переносит её на следующий этап. Можно и перетаскивать.</p>
+  <footer class="kb-hint" aria-label="Подсказка по клавишам">
+    <span><kbd>клик</kbd>открыть задачу</span><span><kbd>2×клик</kbd>по названию — переименовать</span><span><kbd>↑↓←→</kbd>ходить по карточкам</span><span><kbd>Alt+←→</kbd>этап</span><span><kbd>Alt+↑↓</kbd>порядок</span><span><kbd>Alt+1/2/3</kbd>приоритет</span><span><kbd>D</kbd>срок</span><span><kbd>?</kbd>все клавиши</span>
+  </footer>
   {/if}
 </div>
+
+{#if menu}
+  {@const mt = top.find((t) => t.id === menu.task.id) ?? menu.task}
+  <CardMenu at={menu.at} {cols} cur={colOf(mt, cols)} priority={layTasks?.[mt.id]?.priority ?? null} {lists} expand={menu.expand}
+    onaction={menuAction} onclose={() => { const id = menu?.task.id; menu = null; if (id && view === 'kanban') focusCard(id); }} />
+{/if}

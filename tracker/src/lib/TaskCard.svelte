@@ -1,56 +1,94 @@
 <script>
+  // Карточка канбана (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер»).
+  // Галочки нет: выполнено = последняя колонка. Слева полоска приоритета, ряд чипов, справа сверху — → · срок · ⋯.
+  // Клик — открыть окно задачи, двойной клик по названию или F2 — переименовать на месте.
   import { humanDue, dueState } from './api.js';
+  import { typeLabel } from './meta.js';
 
-  // Галочки на карточке нет: задача становится выполненной, только когда её переносят в «Готово».
-  // Стрелка (видна при наведении и фокусе) переносит на следующий этап.
-  import { typeLabel, priorityOf } from './meta.js';
-
-  // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет и тип, как раньше. extra — запись слоя (клиент, сумма).
-  let { task, subs = [], listName = '', remind = '', type = '', priority = null, fields = [], extra = null, draggable = true, next = null, onopen, onadvance } = $props();
+  // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет, тип, подзадачи. extra — запись слоя (клиент, сумма).
+  let { task, subs = [], remind = '', type = '', priority = null, fields = [], extra = null, next = null,
+    selected = false, editing = false, ghost = false,
+    onopen, onadvance, ondue, onmenu, onselect, onrename, onstartedit, onendedit, ondragstart, ondragend } = $props();
   const show = (f) => (fields.length ? fields.includes(f) : ['due', 'prio', 'type', 'subtasks'].includes(f));
   const money = $derived(extra?.money ? Number(extra.money).toLocaleString('ru-RU') + ' ₽' : '');
-  const pr = $derived(priorityOf(priority));
   const done = $derived(task.status === 'completed');
   const subDone = $derived(subs.filter((s) => s.status === 'completed').length);
+  const segN = $derived(Math.min(8, subs.length));
+  const segOn = $derived(subs.length ? Math.round((subDone / subs.length) * segN) : 0);
   const firstLine = $derived((task.notes ?? '').split('\n')[0]);
   const ds = $derived(dueState(task));
+  const PC = { 1: 'var(--clay)', 2: 'var(--gold)', 3: 'var(--ink-faint)' };
+  const pc = $derived(!done && show('prio') ? PC[priority] ?? 'transparent' : 'transparent');
+
+  let draft = $state('');
+  const focusSel = (el) => { draft = task.title || ''; el.focus(); el.select(); };
+  function finish(keep) {
+    const t = draft.trim();
+    onendedit?.();
+    if (keep && t && t !== task.title) onrename?.(task, t);
+  }
+  const stop = (fn) => (e) => { e.stopPropagation(); fn(e); };
 </script>
 
-<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
 <article
-  class="sp-card no-check"
-  class:is-done={done}
-  class:has-adv={!!next}
-  {draggable}
-  ondragstart={(e) => { e.dataTransfer.setData('text/plain', task.id); e.dataTransfer.effectAllowed = 'move'; }}
-  onclick={() => onopen(task)}
+  class="kc"
+  class:done
+  class:sel={selected}
+  class:ghost
+  data-id={task.id}
+  tabindex="0"
+  style="--pc: {pc}"
+  aria-label="{task.title || 'Без названия'}{task.due ? `, срок ${humanDue(task.due)}` : ''}{priority === 1 ? ', высокий приоритет' : ''}"
+  draggable={!editing}
+  ondragstart={(e) => ondragstart?.(e, task)}
+  ondragend={() => ondragend?.()}
+  onfocus={() => onselect?.(task)}
+  onclick={() => { if (!editing) onopen(task); }}
+  oncontextmenu={(e) => { e.preventDefault(); onselect?.(task); onmenu?.(task, e.currentTarget); }}
+  onkeydown={() => {}}
 >
-  <!-- Клик по любому месту карточки открывает задачу; кнопка — для клавиатуры, её клик всплывает сюда. -->
-  <button class="t" type="button">{task.title || 'Без названия'}</button>
-  {#if firstLine}<p class="d">{firstLine}</p>{/if}
+  {#if editing}
+    <input class="kc-ren" use:focusSel bind:value={draft} aria-label="Название задачи"
+      onclick={(e) => e.stopPropagation()}
+      onkeydown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } }}
+      onblur={() => finish(true)} />
+  {:else}
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="t" ondblclick={stop(() => onstartedit?.(task))}>{task.title || 'Без названия'}</div>
+  {/if}
+  {#if firstLine && !done}<p class="d">{firstLine}</p>{/if}
   {#if (show('client') && extra?.client) || (show('money') && money)}
     <p class="d client">{show('client') && extra?.client ? extra.client : ''}{show('client') && extra?.client && show('money') && money ? ' · ' : ''}{show('money') ? money : ''}</p>
   {/if}
-  {#if task.due || subs.length || listName || remind || type || pr}
-    <div class="meta">
-      {#if show('prio') && pr && !done}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
-      {#if show('type') && typeLabel(type)}<span class="sp-chip sp-chip-{type}"><span class="dot"></span>{typeLabel(type)}</span>{/if}
+  {#if (show('due') && task.due) || (show('type') && typeLabel(type)) || (subs.length && !done) || (remind && !done)}
+    <div class="mt">
       {#if show('due') && task.due}
-        <span class="sp-chip" class:sp-chip-overdue={ds === 'overdue'} class:sp-chip-soon={ds === 'soon'}>
-          {ds === 'overdue' ? 'просрочено · ' : ''}{humanDue(task.due)}
+        <span class="chip" class:late={ds === 'overdue' && !done} class:soon={ds === 'soon' && !done}>{done ? '✓ ' : ds === 'overdue' ? 'просрочено · ' : ''}{humanDue(task.due)}</span>
+      {/if}
+      {#if show('type') && typeLabel(type)}<span class="chip" style="color: var(--type-{type})"><i></i>{typeLabel(type)}</span>{/if}
+      {#if (show('subtasks') || show('progress')) && subs.length && !done}
+        <span class="chip sub" class:all={subDone === subs.length} title="Подзадачи: {subDone} из {subs.length}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4" /><path d="M8.5 12.5l2.5 2.5 4.5-5" /></svg>{subDone} из {subs.length}
+          <span class="segs" aria-hidden="true">{#each Array(segN) as _, i}<b class:on={i < segOn}></b>{/each}</span>
         </span>
       {/if}
-      {#if remind && !done}
-        <span class="data bell" title="Напоминание"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" /></svg>{remind}</span>
-      {/if}
-      {#if (show('subtasks') || show('progress')) && subs.length}<span class="data">{show('progress') ? `${subDone} из ${subs.length}` : `${subDone}/${subs.length}`}</span>{/if}
-      {#if listName}<span class="data">{listName}</span>{/if}
+      {#if remind && !done}<span class="chip" title="Напоминание">🔔 {remind}</span>{/if}
     </div>
   {/if}
-  {#if next}
-    <button type="button" class="adv" aria-label="Перенести в «{next.name}»" title="Перенести в «{next.name}»"
-      onclick={(e) => { e.stopPropagation(); onadvance(); }}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
-    </button>
+  {#if !editing}
+    <div class="qa">
+      {#if next}
+        <button type="button" aria-label="Перенести в «{next.name}»" title="Перенести в «{next.name}» · Alt+→" onclick={stop(() => onadvance(task))}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" /></svg>
+        </button>
+      {/if}
+      <button type="button" aria-label="Срок" title="Срок · D" onclick={stop(() => ondue(task))}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>
+      </button>
+      <button type="button" aria-label="Ещё действия" title="Ещё · правый клик" aria-haspopup="menu" onclick={stop((e) => onmenu(task, e.currentTarget.closest('.kc')))}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2" /><circle cx="12" cy="12" r="1.2" /><circle cx="19" cy="12" r="1.2" /></svg>
+      </button>
+    </div>
   {/if}
 </article>

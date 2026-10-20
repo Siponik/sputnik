@@ -1,23 +1,70 @@
 /* Экран «Доска» (дизайн v2, design/screens/Main.dc.html) */
-.bd .board { gap: 20px; }
-.bcol { flex: none; width: 272px; min-height: 120px; display: flex; flex-direction: column; gap: 10px; padding: 4px; border-radius: var(--radius-lg); }
-.bcol.over { background: var(--clay-soft); }
-.colh { display: flex; align-items: baseline; gap: 8px; padding: 0 4px 4px; border-bottom: 2px solid var(--hairline); }
-.colh.donecol { border-bottom-color: color-mix(in srgb, var(--signal-done) 60%, transparent); }
-.colh h3 { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-soft); }
-.colh .n { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
-.wip { margin-left: auto; font: 600 11px/1 var(--font-mono); padding: 3px 7px; border-radius: var(--radius-pill); background: var(--wash); color: var(--ink-faint); }
-.wip.hot { background: var(--gold-soft); color: var(--gold); }
-.wip-warn { margin: 0; font-size: 12px; line-height: 16px; color: var(--gold); }
+.bd .board { gap: 14px; }
+/* Колонка (design/screens/Kanban.dc.html): полоска цвета колонки, НАЗВАНИЕ, число, лимит, ＋ и «свернуть». */
+.bcol { flex: none; width: 286px; min-height: 120px; display: flex; flex-direction: column; gap: 8px; padding: 10px 10px 12px; border-radius: 14px; background: color-mix(in srgb, var(--wash) 70%, transparent); border: 1px solid transparent; }
+.bcol.drop { border-color: var(--clay); background: color-mix(in srgb, var(--clay) 7%, var(--wash)); }
+.ch { display: flex; align-items: center; gap: 8px; padding: 2px 2px 8px; border-bottom: 2px solid var(--cc, var(--hairline)); }
+.ch h3 { margin: 0; font: 600 12.5px/1 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink); }
+.ch .n { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
+.lim { font: 600 11px/1 var(--font-mono); padding: 3px 7px; border-radius: 999px; background: var(--wash); color: var(--ink-faint); }
+.lim.full { background: var(--gold-soft); color: var(--gold); }
+.lim.over { background: color-mix(in srgb, var(--signal-overdue) 18%, transparent); color: var(--signal-overdue); }
+.hb { width: 26px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--ink-faint); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.hb:hover { background: var(--raised); color: var(--ink); }
+.hb svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.wip-warn { margin: 0; font-size: 12px; line-height: 16px; color: var(--signal-overdue); }
+.colz { flex: none; width: 46px; align-self: stretch; min-height: 300px; border-radius: 14px; background: var(--wash); border: 0; border-top: 2px solid var(--cc, var(--hairline)); color: var(--ink-soft); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 12px 0; }
+.colz:hover { color: var(--ink); background: var(--raised); }
+.colz span { writing-mode: vertical-rl; transform: rotate(180deg); font: 600 12px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; }
+.colz b { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
 
-.bcol .sp-card { position: relative; border-radius: 10px; }
-.bcol .sp-card.has-adv { padding-right: 40px; }
-.adv { position: absolute; right: 8px; bottom: 8px; width: 28px; height: 28px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); display: grid; place-items: center; cursor: pointer; opacity: 0; }
-.adv svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
-.sp-card:hover .adv, .sp-card:focus-within .adv, .adv:focus-visible { opacity: 1; }
-.adv:hover { color: var(--clay); border-color: var(--clay); }
-.adv:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
-@media (prefers-reduced-motion: no-preference) { .adv { transition: opacity .15s; } }
+/* Карточка: полоска приоритета слева, до 2 строк названия, чипы, кнопки → 📅 ⋯ при наведении и выборе. */
+.kc { position: relative; display: flex; flex-direction: column; gap: 7px; padding: 11px 12px 11px 14px; border-radius: 11px; background: var(--raised); border: 1px solid var(--edge); cursor: pointer; outline: none; }
+.kc::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--pc, transparent); }
+.kc:hover { border-color: color-mix(in srgb, var(--ink-faint) 55%, var(--edge)); }
+.kc.sel, .kc:focus-visible { border-color: var(--clay); box-shadow: 0 0 0 2px color-mix(in srgb, var(--clay) 30%, transparent); }
+.kc.lift { transform: rotate(-2deg) scale(1.02); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); border-color: var(--clay); }
+.kc.ghost { opacity: .35; }
+.ph { flex: none; height: 74px; border-radius: 11px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 8%, transparent); }
+.kc .t { font-size: 14px; line-height: 19px; font-weight: 600; padding-right: 56px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.kc .d { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kc.done .t { color: var(--ink-faint); text-decoration: line-through; font-weight: 500; }
+.kc .kc-ren { margin-right: 4px; height: 30px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--clay); background: var(--bg); color: var(--ink); font: 600 14px/1 var(--font-sans); }
+.kc .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.kc .chip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--edge); font: 500 11.5px/1 var(--font-sans); color: var(--ink-soft); }
+.kc .chip.late { border-color: color-mix(in srgb, var(--signal-overdue) 50%, var(--edge)); color: var(--signal-overdue); }
+.kc .chip.soon { border-color: color-mix(in srgb, var(--clay) 45%, var(--edge)); color: var(--clay); }
+.kc .chip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.kc .chip.sub { gap: 6px; padding: 0 8px 0 7px; font-family: var(--font-mono); }
+.kc .chip.sub svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.kc .segs { display: inline-flex; gap: 2px; }
+.kc .segs b { width: 6px; height: 6px; border-radius: 2px; background: var(--hairline); }
+.kc .segs b.on { background: var(--signal-done); }
+.kc .chip.sub.all { color: var(--signal-done); border-color: color-mix(in srgb, var(--signal-done) 45%, var(--edge)); }
+.kc .qa { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; opacity: 0; }
+.kc:hover .qa, .kc.sel .qa, .kc:focus-within .qa { opacity: 1; }
+.kc .qa button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.kc .qa button:hover { color: var(--clay); border-color: var(--clay); }
+.kc .qa button:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
+.kc .qa svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.kb-hint { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-faint); }
+.kb-hint kbd, .cmenu kbd { font: 500 11px/1 var(--font-mono); color: var(--ink-faint); }
+.kb-hint kbd { padding: 3px 6px; border-radius: 5px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); margin-right: 4px; }
+
+/* Меню задачи (CardMenu.svelte) */
+.cm-back { position: fixed; inset: 0; z-index: 30; }
+.cmenu { position: fixed; z-index: 31; width: 236px; padding: 6px; border-radius: 12px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 14px 34px rgba(0, 0, 0, .45); display: flex; flex-direction: column; max-height: calc(100vh - 16px); overflow-y: auto; }
+.cmenu button { display: flex; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border: 0; border-radius: 8px; background: none; color: var(--ink); font: 500 13px/1.2 var(--font-sans); text-align: left; cursor: pointer; }
+.cmenu button:hover, .cmenu button:focus-visible { background: var(--wash); outline: none; }
+.cmenu kbd { margin-left: auto; }
+.cmenu hr { border: 0; height: 1px; background: var(--hairline); margin: 4px 2px; }
+.cmenu .danger { color: var(--signal-overdue); }
+.cm-sub { display: flex; flex-direction: column; margin: 0 0 4px 12px; padding-left: 6px; border-left: 1px solid var(--hairline); }
+.cm-sub.row { flex-direction: row; gap: 4px; }
+.cm-sub.row button { flex: 1; justify-content: center; font-family: var(--font-mono); }
+.cm-sub button[aria-checked="true"] { color: var(--clay); }
+.cm-sub .num { font: 500 11px/1 var(--font-mono); color: var(--ink-faint); width: 12px; }
+.toast .undo { font-weight: 700; }
 
 /* Пустая колонка: пунктирная рамка, текст и маленький скетч-енот у края (design/mascot/peek, docs/design-v2.md). */
 /* Все пустые колонки одной высоты (150 px) — разной высоты рамки рябили; енот меняет только место, не размер. */
@@ -51,7 +98,7 @@
 .compose .ca { display: flex; gap: 6px; }
 
 .types { display: flex; gap: 6px; }
-.tf { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: var(--radius-pill); border: 0; background: none; color: var(--ink-soft); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.tf { white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 12px; border-radius: var(--radius-pill); border: 0; background: none; color: var(--ink-soft); font: 500 13px/1 var(--font-sans); cursor: pointer; }
 .tf:hover { color: var(--ink); background: var(--wash); }
 .tf[aria-pressed="true"] { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); color: var(--ink); }
 .tf .dot { width: 8px; height: 8px; border-radius: 50%; }

@@ -8,7 +8,8 @@
   import { startOfWeek, addDays } from './calendar.js';
 
   let { list, tasks, cols, colOf, layTasks, visible = () => true, gallery = false, project = null,
-    onopen, onmove, ontoggle, onaddsub, onsetstage, onrename } = $props();
+    act, ontoggle, onaddsub, onmenu } = $props();
+  const onopen = (t) => act.open(t), onmove = (t, c) => act.stage(t, c), onsetstage = onmove, onrename = (t, title) => act.rename(t, title);
 
   const stages = $derived(cols.slice(0, -1));
   const endCol = $derived(cols[cols.length - 1]);

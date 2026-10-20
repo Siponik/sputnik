@@ -74,11 +74,17 @@
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
 
-  function say(msg) {
+  // Плашка внизу; undo — кнопка «Отменить» (перенос этапа, удаление). Таймер 6 с, на наведении — пауза.
+  let toastUndo = $state(null);
+  let toastHover = false;
+  function say(msg, undo = null) {
     toast = msg;
+    toastUndo = undo;
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (toast = ''), 6000);
+    const tick6 = () => { toastTimer = setTimeout(() => { if (toastHover) tick6(); else { toast = ''; toastUndo = null; } }, 6000); };
+    tick6();
   }
+  function undoToast() { const fn = toastUndo; toast = ''; toastUndo = null; fn?.(); }
 
   // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
   function touch(section, key, patch) {
@@ -312,7 +318,7 @@
   }
 
   /** Новая задача на доске — сразу в нужную колонку. */
-  async function create(title, col = null) {
+  async function create(title, col = null, ord = null) {
     if (!activeId) return;
     const listId = activeId;
     try {
@@ -320,7 +326,72 @@
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
       if (col && col !== templateFor(listId).cols[0].id) { touch('tasks', r.id, { status: col }); saveLayer(); }
       if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
+      if (ord != null) { touch('tasks', r.id, { ord }); saveLayer(); }
     } catch (e) { say('Не удалось создать задачу: ' + e); }
+  }
+
+  // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
+
+  const colName = (listId, col) => templateFor(listId).cols.find((c) => c.id === col)?.name ?? col;
+  const findTask = (listId, id) => (tasks[listId] ?? []).find((t) => t.id === id);
+  /** Перенос этапа с плашкой «… → Этап · Отменить». */
+  async function stageUndo(t, col, listId = activeId) {
+    const prev = colOf(t, templateFor(listId).cols);
+    if (prev === col) return;
+    await move(t, col, listId);
+    say(`«${t.title || 'Без названия'}» → ${colName(listId, col)}`, () => { const cur = findTask(listId, t.id); if (cur) move(cur, prev, listId); });
+  }
+  const pendingDel = new Map(); // id → таймер удаления (6 с на «Отменить»)
+  function removeUndo(t, listId = activeId) {
+    const before = tasks[listId] ?? [];
+    tasks[listId] = before.filter((x) => x.id !== t.id && x.parent !== t.id);
+    if (openRef?.id === t.id) openRef = null;
+    const timer = setTimeout(async () => {
+      pendingDel.delete(t.id);
+      try { await api.deleteTask(listId, t.id); }
+      catch (e) { tasks[listId] = before; say('Не удалось удалить: ' + e); }
+    }, 6000);
+    pendingDel.set(t.id, timer);
+    say(`«${t.title || 'Без названия'}» удалена`, () => {
+      clearTimeout(pendingDel.get(t.id));
+      pendingDel.delete(t.id);
+      const back = before.filter((x) => x.id === t.id || x.parent === t.id);
+      tasks[listId] = [...back, ...(tasks[listId] ?? []).filter((x) => !back.some((b) => b.id === x.id))];
+    });
+  }
+  async function duplicateTask(t, listId = activeId) {
+    try {
+      const r = await api.createTask(listId, { title: t.title, notes: t.notes, due: t.due });
+      tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      const L = lay.tasks?.[t.id] ?? {};
+      const copy = Object.fromEntries(['type', 'priority', 'status', 'project', 'slot', 'client', 'money'].filter((k) => L[k] != null).map((k) => [k, L[k]]));
+      if (Object.keys(copy).length) { touch('tasks', r.id, copy); saveLayer(); }
+      say(`Копия «${t.title}» создана`);
+    } catch (e) { say('Не удалось дублировать: ' + e); }
+  }
+  async function moveToList(t, dest, listId = activeId) {
+    try {
+      await api.moveTask(listId, t.id, dest);
+      const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
+      tasks[listId] = a; tasks[dest] = b;
+      say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
+    } catch (e) { say('Не удалось перенести в другой список: ' + e); }
+  }
+  const boardAct = {
+    open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
+    rename: (t, title) => renameTask(activeId, t, title),
+    stage: (t, col) => stageUndo(t, col, activeId),
+    priority: (t, n) => { touch('tasks', t.id, { priority: n }); saveLayer(); },
+    order: (ids) => { ids.forEach((id, i) => touch('tasks', id, { ord: i })); saveLayer(); },
+    moveList: (t, dest) => moveToList(t, dest, activeId),
+    duplicate: (t) => duplicateTask(t, activeId),
+    remove: (t) => removeUndo(t, activeId),
+  };
+  const boardFold = $derived(lay.settings?.fold?.[activeId] ?? {});
+  function foldCol(col, v) {
+    const all = lay.settings?.fold ?? {};
+    touch('settings', 'fold', { ...all, [activeId]: { ...(all[activeId] ?? {}), [col]: v } });
+    saveLayer();
   }
 
   // ---------- доска: проекты и совет енота ----------
@@ -829,11 +900,9 @@
             view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
             onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
-            onsetstage={(t, col) => move(t, col, activeId)}
-            onrename={(t, title) => renameTask(activeId, t, title)} onedittemplate={() => (view = 'templates')}
+            act={boardAct} lists={boardLists.filter((l) => l.id !== activeId)} fold={boardFold} onfold={foldCol}
+            onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
-            onopen={(t) => (openRef = { listId: activeId, id: t.id })}
-            onmove={(t, col) => move(t, col, activeId)}
             oncreate={create}
             onarchive={() => (view = 'archive')} />
         {:else}
@@ -849,7 +918,7 @@
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
-      fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
+      pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
@@ -883,5 +952,9 @@
 {/if}
 
 {#if toast}
-  <div class="toast" role="status"><span>{toast}</span><button type="button" onclick={() => (toast = '')}>Скрыть</button></div>
+  <div class="toast" role="status" onmouseenter={() => (toastHover = true)} onmouseleave={() => (toastHover = false)}>
+    <span>{toast}</span>
+    {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>Отменить</button>{/if}
+    <button type="button" onclick={() => { toast = ''; toastUndo = null; }}>Скрыть</button>
+  </div>
 {/if}
