@@ -138,7 +138,7 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents);
+    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log)];
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       reminders.publish(items).catch((e) => {

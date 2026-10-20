@@ -54,7 +54,8 @@ function remindersTick_() {
     if (!at || at > now || sent[item.key]) continue;
     // Если Telegram не ответил, не отмечаем — попробуем через минуту.
     // События и дни рождения выполненными не бывают — проверяем только задачи.
-    const isEvent = item.kind === 'event' || item.kind === 'birthday';
+    // Привычки тоже: отмеченную трекер просто убирает из файла.
+    const isEvent = item.kind === 'event' || item.kind === 'birthday' || item.kind === 'habit';
     if (now - at <= LATE_LIMIT_MS && (isEvent || stillOpen_(item))) {
       try { send_(format_(item)); } catch (e) { console.error(e); continue; }
     }
@@ -99,6 +100,9 @@ function format_(item) {
     const ev = ['📅 <b>' + esc_(item.title) + '</b>', when];
     if (item.note) ev.push(esc_(item.note));
     return ev.join('\n');
+  }
+  if (item.kind === 'habit') {
+    return '⏰ <b>' + esc_(item.title) + '</b>\nПривычка · ' + Utilities.formatDate(new Date(item.fireAt), 'Europe/Moscow', 'H:mm');
   }
   // Веха серии привычки (трекер кладёт её с kind: 'milestone') — без колокольчика, эмодзи уже в заголовке.
   const lines = [(item.kind === 'milestone' ? '' : '🔔 ') + '<b>' + esc_(item.title) + '</b>'];
