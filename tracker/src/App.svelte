@@ -258,11 +258,19 @@
     const i = VIEWS.indexOf(section(view));
     go(VIEWS[(i + dir + VIEWS.length) % VIEWS.length]);
   }
+  // [ / ] — по спискам в том порядке, как они стоят в левой колонке: сферы по порядку, потом «Без сферы».
+  // Списки свёрнутых сфер пропускаем (их не видно), кроме открытого сейчас.
   function stepList(dir) {
-    const i = boardLists.findIndex((l) => l.id === activeId);
-    if (i < 0 || !boardLists.length) return;
-    activeId = boardLists[(i + dir + boardLists.length) % boardLists.length].id;
+    const order = [
+      ...spheres.flatMap((sp) => sphereLists(sp.id).filter((l) => !lay.settings?.sphereFold?.[sp.id] || l.id === activeId)),
+      ...noSphereLists,
+    ];
+    if (!order.length) return;
+    const i = order.findIndex((l) => l.id === activeId);
+    const to = i < 0 ? (dir > 0 ? 0 : order.length - 1) : (i + dir + order.length) % order.length;
+    activeId = order[to].id;
     boardProject = null;
+    tick().then(() => document.querySelector('.side .lst.on')?.scrollIntoView({ block: 'nearest' }));
   }
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
