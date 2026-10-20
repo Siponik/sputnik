@@ -4,9 +4,10 @@
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
+  import { LEADS } from './reminders.js';
 
   // Окно «Создать» (кнопка в шапке, N / Ctrl+N): задача в Google Tasks, событие или день рождения в Google Календаре.
-  let { lists, listId = null, day = '', s = '', e = '', dueDays = new Set(), loadEvents = null, oncreate, oncreateevent, oncreatebirthday, onclose } = $props();
+  let { lists, listId = null, day = '', s = '', e = '', dueDays = new Set(), loadEvents = null, remindDefault = null, onremindDefault = null, oncreate, oncreateevent, oncreatebirthday, onclose } = $props();
 
   const KINDS = [
     { id: 'task', label: 'Задача', key: '1' },
@@ -15,7 +16,7 @@
   ];
 
   // Подставленные значения берём один раз, дальше поля живут сами.
-  const init = untrack(() => ({ list: listId ?? lists[0]?.id ?? '', day, s, e }));
+  const init = untrack(() => ({ list: listId ?? lists[0]?.id ?? '', day, s, e, remind: remindDefault?.min ?? null }));
   let kind = $state('task');
   let title = $state('');
   let list = $state(init.list);
@@ -25,6 +26,9 @@
   let type = $state(null);
   let priority = $state(null);
   let notes = $state('');
+  let remind = $state(init.remind); // минут до начала или null — без напоминания
+  const remindStr = $derived(remind == null ? '' : String(remind));
+  const isDefault = $derived(remind === (remindDefault?.min ?? null));
   let busy = $state(false);
 
   const wt = $derived(whenText(due, due && kind !== 'birthday' ? slot : null));
@@ -44,6 +48,7 @@
       const layer = {};
       if (type) layer.type = type;
       if (priority) layer.priority = priority;
+      layer.remind = remind == null ? null : { kind: 'lead', min: remind };
       ok = await oncreate({ title: t, listId: list, due, slot: when, layer, notes: notes.trim() });
     } else if (kind === 'event') ok = await oncreateevent({ title: t, day: due, slot: when, notes: notes.trim() });
     else ok = await oncreatebirthday({ name: t, day: due });
@@ -113,10 +118,23 @@
       <span class:muted={!due}>{wt.date}</span>{#if wt.time && kind !== 'birthday'}<span class="muted">· {wt.time}</span>{/if}
     </button>
   </div>
+  {#if kind === 'task'}
+  <div class="field">
+    <label for="q-remind">Напоминание</label>
+    <div class="q-remind">
+      <select id="q-remind" value={remindStr} onchange={(ev) => (remind = ev.currentTarget.value === '' ? null : Number(ev.currentTarget.value))}>
+        <option value="">Нет</option>
+        {#each LEADS as l (l.min)}<option value={String(l.min)}>{l.name}</option>{/each}
+      </select>
+      {#if isDefault}<span class="muted">по умолчанию</span>
+      {:else if onremindDefault}<button type="button" class="linkish" onclick={() => onremindDefault(remind)}>Сделать по умолчанию</button>{/if}
+    </div>
+  </div>
+  {/if}
   <p class="hint">
     {#if kind === 'birthday'}{due ? 'Каждый год в этот день — в Google Календаре, в Спутнике золотом, как дни рождения из контактов.' : 'Выбери дату.'}
     {:else if kind === 'event'}{due ? (slot ? 'Событие в Google Календаре на это время.' : 'Событие на весь день в Google Календаре.') : 'Выбери дату.'}
-    {:else if !due}Без срока задача попадёт только на доску.
+    {:else if !due}Без срока задача попадёт только на доску{remind != null ? ', напоминание сработает, когда появится срок' : ''}.
     {:else if slot}Задача в Google Tasks, в календаре встанет в сетку на это время.
     {:else}Задача в Google Tasks, в календаре — в строке «весь день».{/if}
     Ctrl+Enter — создать.
