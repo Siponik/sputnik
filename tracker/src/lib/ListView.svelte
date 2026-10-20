@@ -5,7 +5,8 @@
   import { colColor, isArchived } from './templates.js';
   import { priorityOf, priorityRank } from './meta.js';
 
-  let { tasks, cols, colOf, layTasks, fields = [], visible = () => true, onopen, onmove } = $props();
+  let { tasks, cols, colOf, layTasks, fields = [], visible = () => true, onopen, onmove, onmenu } = $props();
+  // Правый клик по строке — то же меню задачи, что на канбане (onmenu от доски).
 
   const has = (f) => fields.includes(f);
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
@@ -22,7 +23,8 @@
     {@const sd = subs.filter((s) => s.status === 'completed').length}
     {@const pr = priorityOf(layTasks?.[t.id]?.priority)}
     {@const ds = dueState(t)}
-    <div class="lvr" class:done={t.status === 'completed'}>
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <div class="lvr" class:done={t.status === 'completed'} oncontextmenu={(e) => { e.preventDefault(); onmenu?.(t, e.currentTarget); }}>
       <label class="lv-stage" style="--c: {colColor(c)}" title="Этап">
         <span class="dot"></span>
         <select value={c.id} aria-label="Этап задачи «{t.title}»" onchange={(e) => onmove(t, e.currentTarget.value)}>

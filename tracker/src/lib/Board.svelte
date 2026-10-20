@@ -87,16 +87,16 @@
     await tick();
     document.querySelector(`.kc[data-id="${id}"]`)?.focus({ preventScroll: false });
   }
-  function openMenu(t, anchor, expand = '') {
+  function openMenu(t, anchor, expand = '', rename = null) {
     sel = t.id;
     const r = anchor?.getBoundingClientRect?.();
-    menu = { task: t, at: r ? { x: r.right - 236, y: r.top + 34 } : { x: innerWidth / 2 - 118, y: innerHeight / 3 }, expand };
+    menu = { task: t, at: r ? { x: r.right - 236, y: r.top + 34 } : { x: innerWidth / 2 - 118, y: innerHeight / 3 }, expand, rename };
   }
   function menuAction(name, arg) {
     const t = menu?.task;
     if (!t) return;
     if (name === 'open') act.open(t);
-    else if (name === 'rename') { editing = t.id; }
+    else if (name === 'rename') { if (menu.rename) menu.rename(t); else editing = t.id; }
     else if (name === 'due') act.open(t, true);
     else if (name === 'priority') act.priority(t, arg);
     else if (name === 'stage') act.stage(t, arg);
@@ -271,10 +271,10 @@
   </header>
 
   {#if view === 'pipe' || view === 'gallery'}
-    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub}
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
       onmenu={openMenu} />
   {:else if view === 'list'}
-    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} />
+    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
   {:else}
   <div class="board kb">
     {#each cols as col, i (col.id)}

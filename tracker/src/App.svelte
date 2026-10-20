@@ -380,6 +380,7 @@
   const boardAct = {
     open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
     rename: (t, title) => renameTask(activeId, t, title),
+    notes: async (t, notes) => { try { replace(activeId, await api.patchTask(activeId, t.id, { notes })); } catch (e) { say('Не удалось сохранить заметку: ' + e); } },
     stage: (t, col) => stageUndo(t, col, activeId),
     priority: (t, n) => { touch('tasks', t.id, { priority: n }); saveLayer(); },
     order: (ids) => { ids.forEach((id, i) => touch('tasks', id, { ord: i })); saveLayer(); },
