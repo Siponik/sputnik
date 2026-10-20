@@ -31,6 +31,7 @@
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
+  import * as repeat from './lib/repeat.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -176,6 +177,7 @@
       inboxSt = await api.inboxStatus().catch(() => inboxSt);
       await loadRemindEvents();
       pullInboxLayer();
+      await rollRepeats();
       sync.at = new Date();
     } catch (e) {
       sync.err = String(e);
@@ -336,10 +338,47 @@
     tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
   }
 
+  // ---------- повтор: выполненная задача с правилом → следующая с новым сроком ----------
+  let rolling = false;
+  async function rollRepeats(quiet = false) {
+    if (rolling) return;
+    rolling = true;
+    try {
+      const todo = repeat.dueRepeats(lists.filter((l) => !isHabitList(l, lay)), tasks, lay.tasks);
+      for (const { listId, task, rule } of todo) {
+        const day = repeat.nextDue(rule, api.dueToYmd(task.due), api.ymd(new Date()));
+        if (!day) continue;
+        try {
+          const r = await api.createTask(listId, { title: task.title, notes: task.notes ?? '', due: api.ymdToDue(day) });
+          tasks[listId] = [r, ...(tasks[listId] ?? [])];
+          const L = lay.tasks?.[task.id] ?? {};
+          touch('tasks', r.id, Object.fromEntries(repeat.CARRY.filter((k) => L[k] != null).map((k) => [k, L[k]])));
+          touch('tasks', task.id, { repeatNext: r.id, repeatAt: Date.now() });
+          saveLayer();
+          if (!quiet && !toastUndo) say(`Повтор: «${task.title}» — снова ${api.humanDue(r.due)}`);
+        } catch (e) { say('Не удалось создать следующую повторяющуюся задачу: ' + e); break; }
+      }
+    } finally { rolling = false; }
+  }
+
+  // Отметку сняли сразу после выполнения («Отменить») — следующую копию убираем, пока её не трогали (10 мин).
+  async function unrollRepeat(task, listId) {
+    const L = lay.tasks?.[task.id];
+    if (!L?.repeatNext || Date.now() - (L.repeatAt ?? 0) > 10 * 60e3) return;
+    const next = (tasks[listId] ?? []).find((x) => x.id === L.repeatNext);
+    touch('tasks', task.id, { repeatNext: null, repeatAt: null });
+    saveLayer();
+    if (!next || next.status === 'completed') return;
+    tasks[listId] = tasks[listId].filter((x) => x.id !== next.id);
+    await api.deleteTask(listId, next.id).catch(() => {});
+  }
+
   async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
     try {
       const r = await api.completeTask(listId, task.id, done);
       replace(listId, r);
+      if (done && lay.tasks?.[task.id]?.repeat?.every) rollRepeats(quiet);
+      if (!done) unrollRepeat(task, listId);
       if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
       return true;
     } catch (e) { say('Не удалось отметить: ' + e); return false; }
@@ -987,6 +1026,7 @@
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
+      repeat={lay.tasks?.[openTask.id]?.repeat ?? null}
       pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}

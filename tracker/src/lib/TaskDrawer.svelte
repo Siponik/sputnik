@@ -7,10 +7,11 @@
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
+  import { REPEATS, nextDue } from './repeat.js';
 
   // type / priority — из слоя (tasks[id]); onlayer(patch) пишет туда же.
   // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
-  let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
+  let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null, repeat = null,
     dueDays = new Set(), loadEvents = null,
     pick = false, // сразу открыть окно «Когда» (клавиша D, кнопка срока на карточке)
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
@@ -71,6 +72,7 @@
   let picking = $state(untrack(() => pick));
   const due = $derived(dueToYmd(task.due));
   const wt = $derived(whenText(due, due ? slot : null));
+  const nextDay = $derived(repeat?.every ? nextDue(repeat, due, ymd(new Date())) : null);
   function applyWhen(r) {
     picking = false;
     const d = r.day ?? '';
@@ -161,6 +163,18 @@
       {:else if slot}Срок — в Google Tasks, время — в Спутнике: задача встанет в сетку календаря на это время.
       {:else}Срок попадёт в Google Tasks, в календаре — строка «весь день».{/if}
     </p>
+    <div class="field">
+      <span>Повтор</span>
+      <div class="seg2" role="group" aria-label="Повтор">
+        <button type="button" aria-pressed={!repeat?.every} onclick={() => onlayer({ repeat: null })}>Нет</button>
+        {#each REPEATS as r (r.id)}
+          <button type="button" aria-pressed={repeat?.every === r.id} onclick={() => onlayer({ repeat: { every: r.id } })}>{r.label}</button>
+        {/each}
+      </div>
+    </div>
+    {#if repeat?.every}
+      <p class="remind-hint">Когда выполнишь, появится новая такая же задача{#if nextDay}{" "}со сроком {whenText(nextDay, null).date.toLowerCase()}{/if}.</p>
+    {/if}
     <div class="field">
       <span>Напомнить</span>
       <RemindChips value={leads} onchange={(v) => saveRemind(v, custom)} />

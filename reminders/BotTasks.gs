@@ -46,12 +46,14 @@ function cmdAdd_(raw) {
   const layer = {};
   if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
   if (p.priority) layer.priority = p.priority;
+  if (p.repeat) layer.repeat = p.repeat;
   if (p.time) layer.slot = { s: p.time, e: plusHour_(p.time) };
   if (Object.keys(layer).length) queueLayer_(t.id, list.id, layer);
 
   const bits = [p.day ? humanDay_(p.day) : 'без срока'];
   if (p.time) bits[0] += ' ' + p.time;
   if (p.priority) bits.push(PRIO_MARK[p.priority]);
+  if (p.repeat) bits.push('↻ ' + REPEAT_WORDS.find((r) => r[1] === p.repeat.every)[2]);
   if (p.kind) bits.push('#' + Object.keys(TASK_TAGS).find((k) => TASK_TAGS[k] === p.kind));
   return {
     text: '✅ <b>' + esc_(p.title) + '</b>\n' + bits.join(' · ') + ' · <i>' + esc_(list.title) + '</i>',
@@ -249,10 +251,23 @@ function parseTask_(raw) {
     kind = TASK_TAGS[OLD_TASK_TAGS[k] || k] || null;
     if (kind) txt = txt.replace(tg[0], ' ');
   }
+  let repeat = null; // «каждую неделю», «по будням» — повтор живёт в слое трекера (tracker/src/lib/repeat.js)
+  for (const r of REPEAT_WORDS) {
+    const m = txt.match(r[0]);
+    if (m) { repeat = { every: r[1] }; txt = txt.replace(m[0], ' '); break; }
+  }
   const w = parseWhen_(txt, todayYmd_());
   const title = w.rest ? w.rest[0].toUpperCase() + w.rest.slice(1) : '';
-  return { title: title.slice(0, 250), notes: notes.slice(0, 4000), day: w.day, time: w.time, kind: kind, priority: priority, listWord: listWord };
+  return { title: title.slice(0, 250), notes: notes.slice(0, 4000), day: w.day, time: w.time, kind: kind, priority: priority, listWord: listWord, repeat: repeat };
 }
+
+const REPEAT_WORDS = [
+  [/\s(каждый\s+день|ежедневно)(?=\s)/i, 'day', 'каждый день'],
+  [/\s(по\s+будням|каждый\s+будний\s+день)(?=\s)/i, 'weekdays', 'по будням'],
+  [/\s(каждую\s+неделю|еженедельно)(?=\s)/i, 'week', 'каждую неделю'],
+  [/\s(каждый\s+месяц|ежемесячно)(?=\s)/i, 'month', 'каждый месяц'],
+  [/\s(каждый\s+год|ежегодно)(?=\s)/i, 'year', 'каждый год'],
+];
 
 /** Тот же разбор, что tracker/src/lib/when.js → parseWhen, только даты — строки ГГГГ-ММ-ДД по Москве. */
 function parseWhen_(text, base) {

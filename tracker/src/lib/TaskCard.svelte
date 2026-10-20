@@ -4,6 +4,7 @@
   // Клик по названию — открыть окно задачи, по остальной карточке — только выбрать. Двойной клик по названию или F2 — переименовать.
   import { humanDue, dueState } from './api.js';
   import { typeLabel } from './meta.js';
+  import { repeatLabel } from './repeat.js';
 
   // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет, тип. Подзадачи «☑ 3 из 5» — всегда, если они есть (как на макете). extra — запись слоя (клиент, сумма).
   let { task, subs = [], remind = '', type = '', priority = null, fields = [], extra = null, next = null,
@@ -17,6 +18,7 @@
   const segOn = $derived(subs.length ? Math.round((subDone / subs.length) * segN) : 0);
   const firstLine = $derived((task.notes ?? '').split('\n')[0]);
   const ds = $derived(dueState(task));
+  const rep = $derived(done ? '' : repeatLabel(extra?.repeat));
   const PC = { 1: 'var(--clay)', 2: 'var(--gold)', 3: 'var(--ink-faint)' };
   const pc = $derived(!done && show('prio') ? PC[priority] ?? 'transparent' : 'transparent');
 
@@ -91,7 +93,7 @@
   {#if (show('client') && extra?.client) || (show('money') && money)}
     <p class="d client">{show('client') && extra?.client ? extra.client : ''}{show('client') && extra?.client && show('money') && money ? ' · ' : ''}{show('money') ? money : ''}</p>
   {/if}
-  {#if (show('due') && task.due) || (show('type') && typeLabel(type)) || (subs.length && !done) || (remind && !done)}
+  {#if (show('due') && task.due) || (show('type') && typeLabel(type)) || (subs.length && !done) || (remind && !done) || rep}
     <div class="mt">
       {#if show('due') && task.due}
         <span class="chip" class:late={ds === 'overdue' && !done} class:soon={ds === 'soon' && !done}>{done ? '✓ ' : ds === 'overdue' ? 'просрочено · ' : ''}{humanDue(task.due)}</span>
@@ -104,6 +106,7 @@
         </span>
       {/if}
       {#if remind && !done}<span class="chip" title="Напоминание">🔔 {remind}</span>{/if}
+      {#if rep}<span class="chip" title="Повторяется {rep}">↻ {rep}</span>{/if}
     </div>
   {/if}
 </article>
