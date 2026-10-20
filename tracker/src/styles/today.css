@@ -17,6 +17,7 @@
 .next { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 6px 12px 6px 10px; border-radius: var(--radius-pill); background: var(--raised); border: 1px solid var(--edge); font-size: 13px; color: var(--ink-soft); }
 .next b { color: var(--ink); font-weight: 600; }
 .next svg { width: 15px; height: 15px; fill: none; stroke: var(--clay); stroke-width: 2; stroke-linecap: round; }
+.next .busy { color: var(--ink-faint); }
 .t-coon { flex: none; display: flex; align-items: center; gap: 18px; }
 .bubble { position: relative; margin: 0; max-width: 230px; padding: 10px 14px; border-radius: 14px; background: var(--raised); border: 1px solid var(--edge); font-size: 14px; line-height: 20px; box-shadow: var(--shadow-lift); }
 .bubble::after { content: ""; position: absolute; width: 12px; height: 12px; background: var(--raised); border: 1px solid var(--edge); border-top: 0; border-left: 0; transform: rotate(-45deg); right: -7px; top: 50%; margin-top: -6px; }
