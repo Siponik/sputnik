@@ -57,6 +57,7 @@ function inboxTick_() {
   for (const ev of events) {
     const title = ev.getTitle();
     if (ev.getTag('sputnik') === 'status') continue;
+    if (title.indexOf(BRIEF_READY_TITLE) === 0) continue; // отметка «сводка готова» — её читает morningTick_ в Code.gs
     if (title.indexOf('⚠') === 0) continue; // уже помечено ошибкой — ждёт человека
     changed = true;
     let req = null;

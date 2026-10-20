@@ -102,11 +102,15 @@ function esc_(s) {
 }
 
 // ── Утренняя сводка: ссылка в Telegram (по умолчанию по будням в 08:00 МСК) ──
-// Раньше слал GitHub Actions, но его расписание запускается с опозданием или пропускается.
-// Здесь точнее: tick() идёт раз в минуту. Отправляется один раз в день, окно — 3 часа после времени.
-// Время, дни и паузу меняют командами боту (Bot.gs): свойства BRIEF_AT, BRIEF_DAYS, BRIEF_OFF.
+// tick() идёт раз в минуту. Время, дни и паузу меняют командами боту (Bot.gs): свойства BRIEF_AT, BRIEF_DAYS, BRIEF_OFF.
+// Синхронизация со сборкой: задача Claude «Утренняя сводка» собирает страницу заранее (по будням в 5:45 МСК)
+// и, опубликовав её, ставит в календарь «Спутник · входящие» событие «Спутник · сводка готова» на сегодня.
+// Ссылка уходит в выбранное время, но не раньше этой отметки; если отметки нет — ждём до BRIEF_WAIT_MIN
+// после выбранного времени и шлём с пометкой, что по ссылке прошлая сводка.
 const BRIEF_URL_DEFAULT = 'https://claude.ai/artifact/Mftfm4G7jmnrQZhnVJw728';
 const BRIEF_AT_DEFAULT = 8 * 60; // минуты от полуночи по Москве
+const BRIEF_READY_TITLE = 'Спутник · сводка готова';
+const BRIEF_WAIT_MIN = 180;
 
 /** Время отправки в минутах от полуночи по Москве. */
 function briefAt_() {
@@ -119,6 +123,21 @@ function briefDays_() {
   return PropertiesService.getScriptProperties().getProperty('BRIEF_DAYS') === 'all' ? 'all' : 'work';
 }
 
+/** Есть ли сегодня отметка «сводка готова». Старые отметки заодно удаляет. */
+function briefReady_() {
+  const cal = typeof inboxCalendar_ === 'function' ? inboxCalendar_(false) : null;
+  if (!cal) return null; // календаря нет — синхронизация не работает, шлём по времени
+  const now = new Date(), tz = 'Europe/Moscow';
+  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  let ready = false;
+  for (const ev of cal.getEvents(new Date(now.getTime() - 7 * 864e5), new Date(now.getTime() + 864e5))) {
+    if (ev.getTitle().indexOf(BRIEF_READY_TITLE) !== 0) continue;
+    if (Utilities.formatDate(ev.getStartTime(), tz, 'yyyy-MM-dd') === today) ready = true;
+    else ev.deleteEvent();
+  }
+  return ready;
+}
+
 function morningTick_() {
   const tz = 'Europe/Moscow', now = new Date();
   const props = PropertiesService.getScriptProperties();
@@ -127,17 +146,20 @@ function morningTick_() {
   if (dow > 5 && briefDays_() === 'work') return;
   const min = +Utilities.formatDate(now, tz, 'H') * 60 + +Utilities.formatDate(now, tz, 'm');
   const at = briefAt_();
-  if (min < at || min > at + 180) return;
+  if (min < at || min > at + BRIEF_WAIT_MIN) return;
   const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
   if (props.getProperty('BRIEF_SENT') === today) return;
-  sendBrief_();
+  const ready = briefReady_();
+  // Свежей сводки ещё нет — ждём; в выходные (сводку не собирают) и по истечении ожидания шлём как есть.
+  if (ready === false && dow <= 5 && min < at + BRIEF_WAIT_MIN) return;
+  sendBrief_(ready === false ? '\n<i>Свежая сводка сегодня не собралась — по ссылке прошлая.</i>' : '');
   props.setProperty('BRIEF_SENT', today);
 }
 
 /** Отправить ссылку на сводку прямо сейчас (для проверки). */
-function sendBrief_() {
+function sendBrief_(note) {
   const url = PropertiesService.getScriptProperties().getProperty('BRIEF_URL') || BRIEF_URL_DEFAULT;
-  send_('🛰 Спутник · утренняя сводка готова', { inline_keyboard: [[{ text: 'Открыть сводку', url: url }]] });
+  send_('🛰 Спутник · утренняя сводка готова' + (note || ''), { inline_keyboard: [[{ text: 'Открыть сводку', url: url }]] });
 }
 
 /** Запустить вручную из редактора: пришлёт сводку сейчас — проверка, что всё работает. */
