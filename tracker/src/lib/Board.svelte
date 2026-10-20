@@ -3,12 +3,12 @@
   import TaskCard from './TaskCard.svelte';
   import PeekCoon, { peekVariant } from './PeekCoon.svelte';
   import { ymd, dueToYmd } from './api.js';
-  import { TEMPLATES, isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
+  import { isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
   import { startOfWeek, addDays } from './calendar.js';
   import { priorityRank, TYPES as META_TYPES } from './meta.js';
 
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '',
-    onopen, onmove, oncreate, onarchive, ontemplate } = $props();
+    onopen, onmove, oncreate, onarchive } = $props();
 
   const WIP = 3; // лимит «В работе»
   const TYPES = [
@@ -95,14 +95,7 @@
           {/each}
         </div>
       {/if}
-      <!-- Шаблон меняется только у пустого списка: иначе карточки разъедутся по чужим колонкам. -->
-      <label class="tpl" title={top.length ? 'Шаблон можно сменить, только пока в списке нет задач' : ''}>
-        <span>Шаблон</span>
-        <select value={template.id} disabled={top.length > 0} onchange={(e) => ontemplate(e.currentTarget.value)}>
-          {#each TEMPLATES as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
-        </select>
-        {#if top.length}<svg class="lock" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>{/if}
-      </label>
+      <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. -->
       <button class="sp-btn" type="button" onclick={onarchive}>Архив · {archived}</button>
     </div>
   </header>

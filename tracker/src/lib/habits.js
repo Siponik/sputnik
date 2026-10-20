@@ -81,7 +81,40 @@ export function stats(habit, log) {
   return { streak, best, todayDone, cells, months };
 }
 
-const MONTH_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+/** Календарь одного месяца для карточки привычки (design/screens/Habits.dc.html, «Привычки: календарь одного месяца»).
+ *  cells — пн…вс, пустые клетки до 1-го и после последнего числа (blank); state: done | miss | off | fut | today | blank.
+ *  off — не по расписанию или привычки ещё не было (бледное число). done / sched — «14 из 19»: сделано / запланировано до сегодня. */
+export function monthGrid(habit, log, year, month) {
+  const days = habit.days?.length ? habit.days : [0, 1, 2, 3, 4, 5, 6];
+  const created = habit.createdAt ? habit.createdAt.slice(0, 10) : '0000';
+  const today = ymd(dayOffset(0));
+  const first = new Date(year, month, 1);
+  const dim = new Date(year, month + 1, 0).getDate();
+  const lead = dow(first);
+  const cells = [];
+  let done = 0, sched = 0;
+  for (let i = 0; i < Math.ceil((lead + dim) / 7) * 7; i++) {
+    const n = i - lead + 1;
+    if (n < 1 || n > dim) { cells.push({ key: `b${i}`, n: '', state: 'blank', title: '' }); continue; }
+    const d = new Date(year, month, n), s = ymd(d);
+    const isDoneDay = isDone(log, habit.id, s);
+    const scheduledDay = days.includes(dow(d));
+    let state, what;
+    if (s > today) { state = 'fut'; what = scheduledDay ? 'по плану' : 'не по расписанию'; }
+    else if (isDoneDay) { state = s === today ? 'today done' : 'done'; what = 'сделано'; done++; sched++; }
+    else if (s === today) { state = scheduledDay ? 'today' : 'off'; what = scheduledDay ? 'сегодня' : 'не по расписанию'; if (scheduledDay) sched++; }
+    else if (s < created) { state = 'off'; what = 'привычки ещё не было'; }
+    else if (!scheduledDay) { state = 'off'; what = 'не по расписанию'; }
+    else if (isOff(log, habit.id, s)) { state = 'off'; what = 'выходной, серия сохранена'; }
+    else { state = 'miss'; what = 'пропуск'; sched++; }
+    cells.push({ key: s, n, state, title: `${n} ${MONTH_GEN[month]} · ${what}` });
+  }
+  return { cells, done, sched };
+}
+
+export const MONTH_NAMES = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
+
+const MONTH_SHORT =['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 const MONTH_GEN = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
 
 export function scheduleLabel(days) {

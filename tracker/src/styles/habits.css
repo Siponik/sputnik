@@ -58,3 +58,23 @@
 .habit-form .h-time input { height: 32px; padding: 0 8px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); }
 .habit-form .hint-t { font-size: 12px; color: var(--ink-faint); }
 .hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); }
+
+/* Календарь одного месяца в карточке привычки (вместо сетки 13 недель). */
+.hmo { margin: 0; flex: none; display: flex; flex-direction: column; gap: 6px; }
+.hmo-head { display: flex; align-items: baseline; justify-content: space-between; font-size: 12px; color: var(--ink-soft); }
+.hmo-head .score { font-family: var(--font-mono); color: var(--gold); }
+.mo { display: grid; grid-template-columns: repeat(7, 28px); gap: 4px; }
+.mo .wd { height: 16px; font-size: 10.5px; line-height: 16px; text-align: center; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.mo .d, .legend .lg { width: 28px; height: 28px; border-radius: 8px; box-sizing: border-box; display: grid; place-items: center; font: 500 11px/1 var(--font-mono); color: var(--ink-soft); font-variant-numeric: tabular-nums; font-style: normal; }
+.mo .done, .legend .lg.done { background: var(--gold); color: var(--bg); font-weight: 700; }
+.mo .miss, .legend .lg.miss { background: var(--hairline); color: var(--ink-soft); }
+.mo .off, .legend .lg.off { color: var(--ink-faint); opacity: .5; }
+.mo .fut { color: var(--ink-faint); }
+.mo .today, .legend .lg.today { box-shadow: inset 0 0 0 2px var(--clay); color: var(--clay); font-weight: 700; }
+.mo .today.done { box-shadow: 0 0 0 2px var(--clay); color: var(--bg); }
+.mo .blank { visibility: hidden; }
+.legend .lg { width: 20px; height: 20px; border-radius: 6px; font-size: 10px; }
+/* Переключатель месяца — один на экран, в ряду «Сегодня». */
+.monav { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; }
+.monav b { min-width: 118px; text-align: center; font-size: 14px; font-weight: 600; }
+.monav .sp-btn { min-height: 30px; padding: 0 10px; }

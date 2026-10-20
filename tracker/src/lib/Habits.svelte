@@ -1,5 +1,5 @@
 <script>
-  import { stats, plural, scheduleLabel, WEEKDAYS, MILESTONES, nextMilestone, milestonePos } from './habits.js';
+  import { stats, plural, scheduleLabel, WEEKDAYS, MILESTONES, nextMilestone, milestonePos, monthGrid, MONTH_NAMES } from './habits.js';
   import { ymd } from './api.js';
   import Coon from './Coon.svelte';
 
@@ -12,6 +12,11 @@
   const dateLine = `${WEEK[now.getDay()]} · ${now.getDate()} ${MONTHS[now.getMonth()]} ${now.getFullYear()}`;
   const today = ymd(now);
   const ALL = [0, 1, 2, 3, 4, 5, 6];
+
+  // Месяц в карточках — один на экран: 0 — текущий, -1 — прошлый… Вперёд дальше текущего не листаем.
+  let mo = $state(0);
+  const shown = $derived(new Date(now.getFullYear(), now.getMonth() + mo, 1));
+  const moTitle = $derived(`${MONTH_NAMES[shown.getMonth()]} ${shown.getFullYear()}`);
   const WORKDAYS = [0, 1, 2, 3, 4];
 
   const rows = $derived(habits.map((h) => {
@@ -25,6 +30,7 @@
     else note = `До вехи ${next}: ${next - s.streak} ${plural(next - s.streak, forms)} · лучшая ${s.best}`;
     return {
       h, s, forms, unit: plural(s.streak, forms), note,
+      month: monthGrid(h, log, shown.getFullYear(), shown.getMonth()),
       short: h.name.split(/[\s,]/)[0],
     };
   }));
@@ -75,11 +81,6 @@
     if (editing === 'new') await oncreate(name, days, fTime || null);
     else await onupdate(editing, { name, days, time: fTime || null });
     editing = null;
-  }
-
-  function cellTitle(c) {
-    const what = { done: 'сделано', miss: 'пропуск', rest: 'не по расписанию', today: 'сегодня', before: 'привычки ещё не было', plan: 'по плану', off: 'выходной, серия сохранена', future: '' }[c.state];
-    return what ? `${c.title} · ${what}` : c.title;
   }
 </script>
 
@@ -146,6 +147,13 @@
         {/each}
       </section>
     {/if}
+    {#if rows.length}
+      <span class="monav" role="group" aria-label="Месяц в карточках">
+        <button type="button" class="sp-btn sp-btn-ghost" aria-label="Предыдущий месяц" onclick={() => mo--}>‹</button>
+        <b>{moTitle}</b>
+        <button type="button" class="sp-btn sp-btn-ghost" aria-label="Следующий месяц" disabled={mo >= 0} onclick={() => mo++}>›</button>
+      </span>
+    {/if}
     <button class="sp-btn sp-btn-primary" type="button" onclick={() => openForm()}>
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Новая привычка
     </button>
@@ -206,15 +214,12 @@
               </div>
             </div>
 
-            <figure class="heat" aria-label="Отметки за 13 недель: {r.h.name}">
-              <div class="months">
-                {#each r.s.months as m (m.col)}<span style="grid-column: {m.col + 2} / span 3">{m.name}</span>{/each}
-              </div>
-              <div style="display: flex; gap: 4px">
-                <div class="wd"><span>пн</span><span></span><span>ср</span><span></span><span>пт</span><span></span><span>вс</span></div>
-                <div class="hm">
-                  {#each r.s.cells as c (c.date)}<span class="c {c.state}" class:now={c.today} title={cellTitle(c)}></span>{/each}
-                </div>
+            <!-- Календарь одного месяца (месяц один на экран — переключатель в ряду «Сегодня»). -->
+            <figure class="hmo" aria-label="Отметки за {moTitle.toLowerCase()}: {r.h.name}">
+              <div class="hmo-head"><span>{MONTH_NAMES[shown.getMonth()]}</span><span class="score">{r.month.sched ? `${r.month.done} из ${r.month.sched}` : '—'}</span></div>
+              <div class="mo">
+                {#each WEEKDAYS as w (w)}<span class="wd">{w}</span>{/each}
+                {#each r.month.cells as c (c.key)}<span class="d {c.state}" title={c.title}>{c.n}</span>{/each}
               </div>
             </figure>
           </div>
@@ -226,12 +231,10 @@
   </div>
 
   <div class="legend">
-    <span><i class="c done"></i>сделано</span>
-    <span><i class="c miss"></i>пропуск</span>
-    <span><i class="c rest"></i>не по расписанию</span>
-    <span><i class="c plan"></i>по плану</span>
-    <span><i class="c before"></i>привычки ещё не было</span>
-    <span><i class="c today"></i>сегодня</span>
+    <span><i class="lg done">7</i>сделано</span>
+    <span><i class="lg miss">7</i>пропуск</span>
+    <span><i class="lg off">7</i>не по расписанию или привычки ещё не было</span>
+    <span><i class="lg today">7</i>сегодня</span>
     <span><i class="dotg"></i>вехи 7 · 21 · 50 · 100 — енот празднует</span>
   </div>
 </div>

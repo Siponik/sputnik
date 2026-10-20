@@ -61,6 +61,3 @@
 .side-tip p { margin: 0; font-size: 13px; line-height: 18px; text-align: center; color: var(--ink); }
 .side .side-tip + .foot { margin-top: 0; }
 
-/* Замок у шаблона непустого списка. */
-.tpl select:disabled { opacity: .6; cursor: not-allowed; }
-.tpl .lock { width: 14px; height: 14px; fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linecap: round; }

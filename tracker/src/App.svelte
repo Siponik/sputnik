@@ -346,10 +346,6 @@
     } catch (e) { say('Не удалось создать список: ' + e); }
   }
 
-  function setTemplate(template) {
-    touch('lists', activeId, { template });
-    saveLayer();
-  }
 
   async function save(patch) {
     const { listId, id } = openRef;
@@ -683,8 +679,7 @@
             onopen={(t) => (openRef = { listId: activeId, id: t.id })}
             onmove={(t, col) => move(t, col, activeId)}
             oncreate={create}
-            onarchive={() => (view = 'archive')}
-            ontemplate={setTemplate} />
+            onarchive={() => (view = 'archive')} />
         {:else}
           <div class="page"><p class="empty">Создай первый список — слева «+ Новый список».</p></div>
         {/if}
