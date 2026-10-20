@@ -21,6 +21,7 @@
   import SphereIcon from './lib/SphereIcon.svelte';
   import SphereView from './lib/SphereView.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
+  import SphereFilter from './lib/SphereFilter.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
@@ -732,7 +733,7 @@
           <h4>Сферы</h4>
           {#snippet listRow(l)}
             <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}>
-              <span class="lt">{l.title}</span><span class="tg">{shortName(templateFor(l.id))}</span><span class="n">{openCount(l)}</span>
+              <span class="lt">{l.title}</span><span class="n">{openCount(l)}</span>
             </button>
           {/snippet}
           {#each spheres as sp (sp.id)}
@@ -789,14 +790,7 @@
       {/if}
 
       <div class="main">
-        {#if (view === 'today' || view === 'calendar') && spheres.length}
-          <div class="sph-chips" role="group" aria-label="Сфера">
-            <button type="button" aria-pressed={!sphereFilter} onclick={() => (sphereFilter = '')}>Все сферы</button>
-            {#each spheres as sp (sp.id)}
-              <button type="button" aria-pressed={sphereFilter === sp.id} onclick={() => (sphereFilter = sphereFilter === sp.id ? '' : sp.id)}><SphereIcon sphere={sp} size={18} />{sp.name}</button>
-            {/each}
-          </div>
-        {/if}
+        {#snippet sphFilter()}<SphereFilter {spheres} value={sphereFilter} onchange={(v) => (sphereFilter = v)} />{/snippet}
         {#if view === 'today'}
           <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
@@ -805,7 +799,7 @@
             oncreate={(p, loud = false) => quickCreate(p, !loud)} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
             onregister={(fn) => (quickLine = fn)}
-            onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} />
+            onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />
         {:else if view === 'calendar'}
           <Calendar lists={shownLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
             loadEvents={api.eventsRange} syncAt={sync.at} reloadKey={calReload} oncreatebirthday={createBirthday}
@@ -814,7 +808,7 @@
             ontogglehabit={toggleHabit}
             onschedule={schedule}
             oncreatetask={(p) => quickCreate(p)}
-            oncreateevent={createEvent} />
+            oncreateevent={createEvent} filter={sphFilter} />
         {:else if view === 'habits'}
           <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />

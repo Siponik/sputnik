@@ -52,11 +52,11 @@
 .sub-del:hover { color: var(--signal-overdue); background: var(--wash); }
 
 /* Свои кнопки окна (вместо виндовской рамки). Стоят в правом верхнем углу шапки, на всю её высоту сверху. */
-.winctl { display: flex; align-self: flex-start; margin: -20px calc(-1 * var(--space-5)) 0 8px; }
-.winctl button { width: 46px; height: 34px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-soft); cursor: pointer; }
+.winctl { display: flex; position: absolute; top: 0; right: 0; z-index: 2; }
+.shell .sp-tabs { position: relative; padding-top: 30px; }
+.winctl button { width: 44px; height: 28px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-soft); cursor: pointer; }
 .winctl button:hover { background: var(--raised); color: var(--ink); }
 .winctl button.close:hover { background: #C42B1C; color: #fff; }
 .winctl svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 1.2; }
 .winctl button:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
-.setup2 > header .winctl { margin: -22px -32px 0 auto; }
-.setup2 > header .sp-btn + .winctl { margin-left: 8px; }
+.setup2 > header { position: relative; }

@@ -11,7 +11,7 @@
   import Coon from './Coon.svelte';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
-    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0 } = $props();
+    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0, filter = null } = $props();
 
   // Вид и фильтры запоминаем на этом компьютере — это удобство, не данные.
   const remember = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -248,6 +248,7 @@
         <button class="sp-btn sp-btn-ghost" type="button" aria-label="Вперёд" title="Вперёд (→)" onclick={() => (sel = cal.shiftPeriod(sel, mode, 1))}>›</button>
       </span>
       <button class="sp-btn" type="button" style="min-height: 30px" onclick={() => (sel = today)}>Сегодня</button>
+      {@render filter?.()}
       {#if evErr}<span class="cal-err" title={evErr}>События не загрузились</span>{/if}
     </div>
     <div class="tb">

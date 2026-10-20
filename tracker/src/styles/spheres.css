@@ -86,9 +86,14 @@
 .sph-pop .danger { color: var(--signal-overdue); }
 .sph-pop .sp-btn.danger:not(.sp-btn-ghost) { border-color: currentColor; }
 
-/* Чипы сфер над «Сегодня» и «Календарём» */
-.sph-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 24px 0; }
-.sph-chips button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px 0 6px; border-radius: 999px; border: 1px solid var(--edge); background: none; color: var(--ink-soft); font-size: 12.5px; cursor: pointer; }
-.sph-chips button:first-child { padding-left: 10px; }
-.sph-chips button:hover { color: var(--ink); background: var(--wash); }
-.sph-chips button[aria-pressed="true"] { border-color: var(--clay); color: var(--clay); background: var(--clay-soft); }
+/* Фильтр сферы в «Сегодня» и «Календаре» (lib/SphereFilter.svelte) */
+.sph-sel { position: relative; display: inline-flex; align-items: center; height: 30px; border-radius: 999px; border: 1px solid var(--edge); background: none; color: var(--ink-soft); font-size: 12.5px; cursor: pointer; flex: none; }
+.sph-sel:hover { color: var(--ink); background: var(--wash); }
+.sph-sel.on { border-color: color-mix(in srgb, var(--sc) 60%, var(--edge)); color: var(--ink); }
+.sph-sel .dot { position: absolute; left: 11px; width: 8px; height: 8px; border-radius: 50%; background: var(--sc, var(--ink-faint)); pointer-events: none; }
+.sph-sel select { appearance: none; -webkit-appearance: none; height: 100%; padding: 0 28px 0 26px; border: 0; border-radius: 999px; background: none; color: inherit; font: inherit; cursor: pointer; }
+.sph-sel select:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
+.sph-sel select option { background: var(--raised); color: var(--ink); }
+.sph-sel svg { position: absolute; right: 9px; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.t-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.t-top .date { margin: 0; }

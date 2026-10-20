@@ -9,7 +9,7 @@
   import { parseWhen, whenText } from './when.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
-    onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar } = $props();
+    onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar, filter = null } = $props();
 
   let clock = $state(Date.now());
   onMount(() => {
@@ -207,7 +207,7 @@
   <section class="t-hero">
     <div class="in">
       <div class="t-head">
-        <p class="date">{dateLine}</p>
+        <div class="t-top"><p class="date">{dateLine}</p>{@render filter?.()}</div>
         <h1>{headline}</h1>
         <div class="meters">
           <div>
