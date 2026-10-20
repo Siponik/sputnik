@@ -6,7 +6,8 @@
 .wk-grid .slot { position: absolute; left: 0; right: 0; width: 100%; border: 0; padding: 0; background: none; cursor: pointer; display: block; }
 .wk-grid .slot:hover { background: color-mix(in srgb, var(--clay) 8%, transparent); }
 .wk-grid .slot:hover::after { content: attr(data-t); position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font: 500 11px/1 var(--font-mono); color: var(--clay); }
-.wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 10%, transparent); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 1; }
+/* Черновик непрозрачный и над часами: подсказка «+ 10:00» под ним не просвечивает. */
+.wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 12%, var(--bg)); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 2; }
 
 /* Неделя на широком окне — без прокрутки страницы: всё по высоте экрана, сетка забирает остаток
    (часы подстраиваются в calendar.hourLayout). Если часов слишком много, прокручивается только сетка. */
