@@ -48,6 +48,7 @@ function cmdAdd_(raw) {
   if (p.priority) layer.priority = p.priority;
   if (p.time) layer.slot = { s: p.time, e: plusHour_(p.time) };
   if (Object.keys(layer).length) queueLayer_(t.id, list.id, layer);
+  if (p.day) queueBotReminders_(t, list, p);
 
   const bits = [p.day ? humanDay_(p.day) : 'без срока'];
   if (p.time) bits[0] += ' ' + p.time;
@@ -375,6 +376,30 @@ function listOfTask_(taskId) {
   if (map[taskId] && ok(map[taskId])) return map[taskId];
   for (const l of taskLists_()) if (ok(l.id)) { rememberTask_(taskId, l.id); return l.id; }
   return null;
+}
+
+/** Напоминания для задачи из бота — сразу, не дожидаясь, пока трекер откроют.
+ *  За сколько минут — как «по умолчанию» в трекере (он кладёт их в файл напоминаний: defaults.task), иначе за час.
+ *  Ключ — как у трекера (taskId|время), поэтому когда трекер посчитает то же напоминание, второе сообщение не придёт. */
+function queueBotReminders_(t, list, p) {
+  try {
+    const data = readFile_();
+    const mins = data && data.defaults && Array.isArray(data.defaults.task) ? data.defaults.task : [60];
+    const d = p.day.split('-').map(Number);
+    const hm = (p.time || '10:00').split(':').map(Number);
+    const start = Date.UTC(d[0], d[1] - 1, d[2], hm[0] - 3, hm[1]); // Москва: UTC+3 круглый год
+    const props = PropertiesService.getScriptProperties();
+    const queue = JSON.parse(props.getProperty('BOT_REM') || '[]');
+    for (const min of mins) {
+      const at = new Date(start - min * 60e3);
+      if (at.getTime() < Date.now()) continue;
+      queue.push({ key: t.id + '|' + at.toISOString(), bot: true, taskId: t.id, listId: list.id, list: list.title,
+        title: p.title, note: (p.notes || '').split('\n')[0].slice(0, 200), due: p.day, fireAt: at.toISOString() });
+    }
+    props.setProperty('BOT_REM', JSON.stringify(queue.slice(-100)));
+  } catch (e) {
+    console.error('Напоминания для задачи из бота: ' + e); // задача создана, напоминание посчитает трекер
+  }
 }
 
 /** Тип, приоритет и время задачи — в pendingLayer статуса «Входящих»; трекер перенесёт их в свой слой. */
