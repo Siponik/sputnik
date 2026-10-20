@@ -12,3 +12,4 @@ tracker/src-tauri/gen/
 
 # Архив навыка для загрузки в claude.ai
 skills/*.zip
+tracker/shots/

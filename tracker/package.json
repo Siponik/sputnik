@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "demo": "vite --mode demo",
+    "shot": "node ../tools/design/shot-demo.mjs",
     "build": "vite build",
     "tauri": "tauri"
   },
