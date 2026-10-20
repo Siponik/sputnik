@@ -13,7 +13,7 @@
 //   /now           — прислать ссылку на сводку сейчас
 //   /help          — список команд
 
-const BOT_VERSION = '3'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
+const BOT_VERSION = '4'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
 const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
@@ -26,6 +26,7 @@ function setupBot() {
       { command: 'done', description: 'Отметить: /done 3 или /done молоко' },
       { command: 'move', description: 'Перенести: /move 3 завтра' },
       { command: 'lists', description: 'Списки и основной список' },
+      { command: 'review', description: 'Итог недели (сам — по пятницам в 18:00)' },
       { command: 'time', description: 'Время сводки: /time 7:30' },
       { command: 'days', description: 'По будням или каждый день' },
       { command: 'off', description: 'Пауза сводки' },
@@ -46,6 +47,7 @@ const HELP_ = [
   '/done 3 или /done молоко — отметить (в списках есть кнопки ✓)',
   '/move 3 завтра или /move молоко в пятницу 17:00 — перенести срок',
   '/lists — списки и основной',
+  '/review — итог недели (сам приходит по пятницам в 18:00; /review off — выключить)',
   '',
   '<b>Сводка</b>',
   '/time 7:30 — поменять время (или просто пришли «7:30»)',
@@ -154,7 +156,7 @@ function handle_(text) {
   const alias = {
     '/время': '/time', '/дни': '/days', '/пауза': '/off', '/вкл': '/on', '/сейчас': '/now', '/start': '/help', '/помощь': '/help',
     '/задача': '/add', '/добавь': '/add', '/сегодня': '/today', '/задачи': '/tasks', '/список': '/tasks',
-    '/готово': '/done', '/сделано': '/done', '/списки': '/lists',
+    '/готово': '/done', '/сделано': '/done', '/списки': '/lists', '/итог': '/review',
     '/неделя': '/week', '/перенеси': '/move', '/перенести': '/move',
   };
   cmd = alias[cmd] || cmd;
@@ -166,6 +168,7 @@ function handle_(text) {
   if (cmd === '/tasks') return cmdTasks_(raw);
   if (cmd === '/done') return cmdDone_(raw);
   if (cmd === '/lists') return cmdLists_(raw);
+  if (cmd === '/review') return cmdReview_(arg);
 
   if (cmd === '/time') {
     if (!arg) return statusText_();

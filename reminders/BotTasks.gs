@@ -180,6 +180,63 @@ function plural_(n, f) {
   return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
 }
 
+// ---------- итог недели ----------
+// По пятницам в REVIEW_AT (18:00 МСК) бот сам присылает итог; /review — в любой момент, /review off|on — выключить/включить.
+const REVIEW_AT = 18 * 60;
+
+/** Текст итога: сделано за 7 дней (по спискам), просрочено и что на следующей неделе. */
+function cmdReview_(arg) {
+  const props = PropertiesService.getScriptProperties();
+  if (/^(off|выкл|нет)/i.test(arg || '')) { props.setProperty('REVIEW_OFF', '1'); return '⏸ Итог недели по пятницам выключен. Включить — /review on.'; }
+  if (/^(on|вкл|да)/i.test(arg || '')) { props.deleteProperty('REVIEW_OFF'); return '▶ Итог недели будет приходить по пятницам в 18:00.'; }
+  const today = todayYmd_(), weekAgo = ymdAdd_(today, -6), nextEnd = ymdAdd_(today, 7);
+  const since = new Date(Date.now() - 7 * 864e5).toISOString();
+  const done = [], over = [], ahead = [];
+  for (const l of taskLists_()) {
+    if (l.title === HABITS_LIST) continue;
+    let page;
+    do {
+      const r = Tasks.Tasks.list(l.id, { maxResults: 100, showCompleted: true, showHidden: true, completedMin: since, pageToken: page });
+      for (const t of r.items || []) if (t.status === 'completed' && !t.parent && t.title && !t.deleted) done.push({ t: t, list: l });
+      page = r.nextPageToken;
+    } while (page);
+    for (const t of topTasks_(l.id)) {
+      const d = t.due ? t.due.slice(0, 10) : '';
+      if (d && d < today) over.push(t);
+      else if (d && d > today && d <= nextEnd) ahead.push(t);
+    }
+  }
+  const lines = ['🗓 <b>Итог недели</b> · ' + humanDay_(weekAgo) + ' — ' + humanDay_(today)];
+  if (done.length) {
+    const byList = {};
+    for (const x of done) byList[x.list.title] = (byList[x.list.title] || 0) + 1;
+    lines.push('', '✅ <b>Сделано: ' + done.length + '</b> · ' + Object.keys(byList).map((k) => esc_(k) + ' ' + byList[k]).join(', '));
+    done.sort((a, b) => (b.t.completed || '').localeCompare(a.t.completed || ''));
+    for (const x of done.slice(0, 8)) lines.push('• ' + esc_(x.t.title));
+    if (done.length > 8) lines.push('…и ещё ' + (done.length - 8));
+  } else lines.push('', 'За неделю выполненных задач нет — бывает. Енот верит в следующую 🦝');
+  if (over.length) {
+    lines.push('', '⚠ <b>Просрочено: ' + over.length + '</b> — перенести: /move номер когда');
+    for (const t of over.slice(0, 5)) lines.push('• ' + esc_(t.title) + ' · ' + humanDay_(t.due.slice(0, 10)));
+  }
+  if (ahead.length) lines.push('', '➡ На следующей неделе со сроком: ' + ahead.length + '. По дням — /week');
+  return lines.join('\n');
+}
+
+/** Раз в минуту из tick(): по пятницам после REVIEW_AT — итог недели, один раз в день. */
+function reviewTick_() {
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('REVIEW_OFF') === '1') return;
+  const now = new Date();
+  if (Utilities.formatDate(now, TZ, 'u') !== '5') return;
+  const min = +Utilities.formatDate(now, TZ, 'H') * 60 + +Utilities.formatDate(now, TZ, 'm');
+  if (min < REVIEW_AT || min > REVIEW_AT + 180) return;
+  const today = todayYmd_();
+  if (props.getProperty('REVIEW_SENT') === today) return;
+  props.setProperty('REVIEW_SENT', today); // до отправки: при сбое не повторяем каждую минуту
+  send_(cmdReview_(''));
+}
+
 /** /done N | /done текст. */
 function cmdDone_(arg) {
   if (!arg) {
