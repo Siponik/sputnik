@@ -8,7 +8,7 @@
   import { startOfWeek, addDays } from './calendar.js';
 
   let { list, tasks, cols, colOf, layTasks, visible = () => true, gallery = false, project = null,
-    onopen, onmove, ontoggle, onaddsub, onsetstage } = $props();
+    onopen, onmove, ontoggle, onaddsub, onsetstage, onrename } = $props();
 
   const stages = $derived(cols.slice(0, -1));
   const endCol = $derived(cols[cols.length - 1]);
@@ -68,6 +68,26 @@
     });
   }
 
+  // Переименование: двойной клик по названию или F2 (на строке или у раскрытой).
+  let editId = $state('');
+  let editDraft = $state('');
+  function startEdit(t) { editId = t.id; editDraft = t.title || ''; }
+  function finishEdit(t, keep = true) {
+    if (editId !== t.id) return;
+    const title = editDraft.trim();
+    editId = '';
+    if (keep && title && title !== t.title) onrename?.(t, title);
+  }
+  const focusSel = (el) => { el.focus(); el.select(); };
+  function onKey(e) {
+    if (e.code !== 'F2' || editId) return;
+    const tag = document.activeElement?.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const id = document.activeElement?.closest?.('.cvr')?.dataset.id || openId;
+    const t = id && top.find((x) => x.id === id);
+    if (t) { e.preventDefault(); startEdit(t); }
+  }
+
   let subDraft = $state('');
   let subInput = $state(null);
   async function addSub(t) {
@@ -79,6 +99,8 @@
     subInput?.focus();
   }
 </script>
+
+<svelte:window onkeydown={onKey} />
 
 <section class="dist" aria-label="Сколько задач на каждом этапе — нажми, чтобы отфильтровать" style="grid-template-columns: repeat({cols.length}, minmax(0, 1fr))">
   {#each dist as d (d.c.id)}
@@ -102,11 +124,20 @@
         {@const ch = checks(t)}
         {@const allChecked = ch.stage.length > 0 && ch.stage.every((s) => s.status === 'completed')}
         {@const dn = daysOn(t)}
-        <div class="cvr" class:open={openId === t.id}>
-          <button type="button" class="name" aria-expanded={openId === t.id} onclick={() => (openId = openId === t.id ? '' : t.id)}>
+        <div class="cvr" class:open={openId === t.id} data-id={t.id}>
+          {#if editId === t.id}
+            <div class="name">
+              <span class="thumb">{initials(t.title)}</span>
+              <input class="ren" use:focusSel bind:value={editDraft} aria-label="Название"
+                onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); finishEdit(t); } else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finishEdit(t, false); } }}
+                onblur={() => finishEdit(t)} />
+            </div>
+          {:else}
+          <button type="button" class="name" aria-expanded={openId === t.id} title="Двойной клик или F2 — переименовать" onclick={() => (openId = openId === t.id ? '' : t.id)} ondblclick={() => startEdit(t)}>
             <span class="thumb">{initials(t.title)}</span>
             <span class="nm"><b>{t.title || 'Без названия'}</b><small>{layTasks?.[t.id]?.project ? `${layTasks[t.id].project} · ` : ''}{subsOf(t.id).length ? `подзадач ${subsOf(t.id).filter((s) => s.status === 'completed').length}/${subsOf(t.id).length}` : 'нажми, чтобы раскрыть'}</small></span>
           </button>
+          {/if}
           <div>
             <div class="track" role="group" aria-label="Этапы: {done ? 'готово' : stages[si]?.name}" style="grid-template-columns: repeat({stages.length}, minmax(0, 1fr))">
               {#each stages as c, i (c.id)}

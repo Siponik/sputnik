@@ -11,7 +11,7 @@
 
   // view — kanban | pipe | gallery | list (свой вид списка или вид шаблона); onview — сменить вид этого списка.
   let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '', view = 'kanban',
-    onopen, onmove, oncreate, onarchive, onview, ontoggle, onaddsub, onsetstage } = $props();
+    onopen, onmove, oncreate, onarchive, onview, ontoggle, onaddsub, onsetstage, onrename, onedittemplate } = $props();
 
   const VIEW_TABS = $derived([
     { id: 'kanban', name: 'Канбан' }, { id: 'pipe', name: 'Конвейер' },
@@ -107,12 +107,13 @@
       <div class="seg3" role="group" aria-label="Вид доски">
         {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
       </div>
+      <button class="sp-btn" type="button" title="Колонки, цвета, лимиты и поля шаблона «{template.name}»" onclick={onedittemplate}>Настроить шаблон</button>
       <button class="sp-btn" type="button" onclick={onarchive}>Архив · {archived}</button>
     </div>
   </header>
 
   {#if view === 'pipe' || view === 'gallery'}
-    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {onopen} {onmove} {ontoggle} {onaddsub} {onsetstage} />
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {onopen} {onmove} {ontoggle} {onaddsub} {onsetstage} {onrename} />
   {:else if view === 'list'}
     <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {onopen} {onmove} />
   {:else}

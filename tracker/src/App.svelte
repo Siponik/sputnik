@@ -432,6 +432,9 @@
   function newListIn(sid) { newListSphere = sid; newList = true; }
 
   async function createList(title, template) {
+    // «Пустой шаблон» в окне «Новый список»: свой шаблон с именем списка, после создания — его настройка.
+    const blank = template === '__blank';
+    if (blank) { template = 'tpl' + Date.now().toString(36); touch('templates', template, blankTemplate(title)); }
     try {
       const l = await api.createList(title);
       touch('lists', l.id, newListSphere ? { template, sphere: newListSphere } : { template });
@@ -440,7 +443,7 @@
       lists = [...lists, l];
       tasks[l.id] = [];
       activeId = l.id;
-      view = 'board';
+      view = blank ? 'templates' : 'board';
       newList = false;
     } catch (e) { say('Не удалось создать список: ' + e); }
   }
@@ -450,6 +453,11 @@
     const { listId, id } = openRef;
     try { replace(listId, await api.patchTask(listId, id, patch)); }
     catch (e) { say('Не удалось сохранить: ' + e); }
+  }
+
+  async function renameTask(listId, t, title) {
+    try { replace(listId, await api.patchTask(listId, t.id, { title })); }
+    catch (e) { say('Не удалось переименовать: ' + e); }
   }
 
   async function remove() {
@@ -828,6 +836,7 @@
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
             onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
             onsetstage={(t, col) => move(t, col, activeId)}
+            onrename={(t, title) => renameTask(activeId, t, title)} onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
             onopen={(t) => (openRef = { listId: activeId, id: t.id })}
             onmove={(t, col) => move(t, col, activeId)}

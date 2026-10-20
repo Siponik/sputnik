@@ -18,8 +18,8 @@
 .bd .dist i { display: block; height: 4px; border-radius: 4px; background: var(--hairline); }
 .bd .dist i span { display: block; height: 100%; border-radius: 4px; background: var(--clay); }
 .cv-sum { margin: -6px 0 0; font-size: 13.5px; color: var(--ink-soft); }
-.cv { display: flex; flex-direction: column; gap: 10px; }
-.cv-head, .cvr { display: grid; grid-template-columns: minmax(200px, 1.1fr) minmax(360px, 2.6fr) 110px 130px; gap: 18px; align-items: center; }
+.cv { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cv-head, .cvr { display: grid; grid-template-columns: minmax(150px, 1.1fr) minmax(0, 2.6fr) 84px minmax(96px, auto); gap: 14px; align-items: center; }
 .cv-head { padding: 0 15px; font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--ink-faint); }
 .cv .grp { margin: 6px 0 0; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); display: flex; align-items: center; gap: 8px; }
 .cv .grp::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
@@ -154,3 +154,13 @@
 .tpl-ed .warn .wa { margin-left: auto; display: flex; gap: 6px; }
 .tpl-ed .ed-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding-top: 10px; border-top: 1px solid var(--hairline); }
 .tpl-ed .ed-foot span { flex: 1; font-size: 13px; color: var(--ink-soft); }
+
+/* Переименование в «Конвейере» */
+.cvr .ren { flex: 1; min-width: 0; height: 32px; padding: 0 10px; border-radius: var(--radius-md); border: 1px solid var(--clay); background: var(--bg); color: var(--ink); font: 600 14.5px/1 var(--font-sans); }
+
+/* «Новый список»: название вида справа от имени шаблона, пустой шаблон пунктиром */
+.tpl-card b { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.tpl-card b small { font-size: 11px; font-weight: 500; color: var(--ink-faint); white-space: nowrap; }
+.tpl-card.blank { border-style: dashed; }
+.cvr > *, .cv-head > * { min-width: 0; }
+.page.bd { min-width: 0; }
