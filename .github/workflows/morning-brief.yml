@@ -3,11 +3,15 @@ name: Утренняя сводка
 on:
   schedule:
     # По будням в 05:00 UTC = 08:00 МСК
-    - cron: "0 5 * * 1-5"
+    - cron: "7 5 * * 1-5"
   workflow_dispatch: {}
 
 jobs:
   notify:
+    # Плановую отправку забирает Google Apps Script (reminders/Code.gs, morningTick_) — он точнее.
+    # Когда он подключён, переменная репозитория BRIEF_VIA_GAS = true, и по расписанию здесь ничего не шлётся.
+    # Ручной запуск (workflow_dispatch) работает всегда.
+    if: github.event_name == 'workflow_dispatch' || vars.BRIEF_VIA_GAS != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

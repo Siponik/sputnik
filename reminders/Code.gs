@@ -27,6 +27,7 @@ function tick() {
   if (!lock.tryLock(0)) return; // прошлый запуск ещё идёт
   try {
     try { remindersTick_(); } catch (e) { console.error('Напоминания: ' + e); }
+    try { morningTick_(); } catch (e) { console.error('Утренняя сводка: ' + e); }
     // «Входящие от Claude» — файл Inbox.gs в этом же проекте.
     if (typeof inboxTick_ === 'function') {
       try { inboxTick_(); } catch (e) { console.error('Входящие: ' + e); }
@@ -96,7 +97,35 @@ function esc_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-function send_(text) {
+// ── Утренняя сводка: ссылка в Telegram по будням в 08:00 МСК ──
+// Раньше слал GitHub Actions, но его расписание запускается с опозданием или пропускается.
+// Здесь точнее: tick() идёт раз в минуту. Отправляется один раз в день, окно 08:00–11:00.
+const BRIEF_URL_DEFAULT = 'https://claude.ai/artifact/Mftfm4G7jmnrQZhnVJw728';
+const BRIEF_AT = 8 * 60; // минуты от полуночи по Москве
+
+function morningTick_() {
+  const tz = 'Europe/Moscow', now = new Date();
+  const dow = +Utilities.formatDate(now, tz, 'u'); // 1 = пн … 7 = вс
+  if (dow > 5) return;
+  const min = +Utilities.formatDate(now, tz, 'H') * 60 + +Utilities.formatDate(now, tz, 'm');
+  if (min < BRIEF_AT || min > BRIEF_AT + 180) return;
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  if (props.getProperty('BRIEF_SENT') === today) return;
+  sendBrief_();
+  props.setProperty('BRIEF_SENT', today);
+}
+
+/** Отправить ссылку на сводку прямо сейчас (для проверки). */
+function sendBrief_() {
+  const url = PropertiesService.getScriptProperties().getProperty('BRIEF_URL') || BRIEF_URL_DEFAULT;
+  send_('🛰 Спутник · утренняя сводка готова', { inline_keyboard: [[{ text: 'Открыть сводку', url: url }]] });
+}
+
+/** Запустить вручную из редактора: пришлёт сводку сейчас — проверка, что всё работает. */
+function testBrief() { sendBrief_(); }
+
+function send_(text, markup) {
   const props = PropertiesService.getScriptProperties();
   const token = props.getProperty('TELEGRAM_BOT_TOKEN');
   const chat = props.getProperty('TELEGRAM_CHAT_ID');
@@ -104,6 +133,6 @@ function send_(text) {
   UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify({ chat_id: chat, text: text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    payload: JSON.stringify(Object.assign({ chat_id: chat, text: text, parse_mode: 'HTML', disable_web_page_preview: true }, markup ? { reply_markup: markup } : {})),
   });
 }
