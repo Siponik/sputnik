@@ -2,6 +2,10 @@
 .t-page { min-height: 100%; display: flex; flex-direction: column; }
 .t-page h2 { margin: 0 0 6px; font-size: 16px; line-height: 22px; font-weight: 600; }
 .t-page h2.over { color: var(--signal-overdue); }
+.t-sechead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.t-move { border: 0; background: none; padding: 2px 0; font: 500 13px/18px var(--font-sans); color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-decoration-color: var(--hairline); text-underline-offset: 3px; }
+.t-move:hover { color: var(--clay); text-decoration-color: currentColor; }
+.t-move:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: 2px; }
 .t-page .empty { padding: 6px 2px; }
 .t-hero { background: radial-gradient(90% 160% at 100% 0%, color-mix(in srgb, var(--clay) 9%, var(--wash)), var(--wash) 55%); border-bottom: 1px solid var(--edge); }
 .t-hero .in, .t-body { max-width: 1180px; margin: 0 auto; box-sizing: border-box; }
