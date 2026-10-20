@@ -28,10 +28,10 @@
   import * as updater from './lib/updater.js';
   import * as meta from './lib/meta.js';
   import { whenText } from './lib/when.js';
+  import * as repeat from './lib/repeat.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
-  import * as repeat from './lib/repeat.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
