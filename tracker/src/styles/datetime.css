@@ -1,0 +1,81 @@
+/* Окно выбора даты и времени (design/screens/DateTime.dc.html). Всё под .dtp — общие имена классов не задевают другие экраны. */
+.dtp-back { position: fixed; inset: 0; z-index: 30; border: 0; padding: 0; background: rgba(0, 0, 0, .18); cursor: default; }
+.dtp { position: fixed; z-index: 31; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow-y: auto; border-radius: 16px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 18px 50px rgba(0, 0, 0, .45); display: flex; flex-direction: column; }
+/* По умолчанию — по центру; рядом с окном задачи — слева от него, чтобы задача оставалась видна. */
+.dtp-center { left: 50%; top: 50%; transform: translate(-50%, -50%); }
+.dtp-drawer { right: calc(min(520px, 100%) + 14px); top: 72px; }
+@media (max-width: 1200px) { .dtp-drawer { right: auto; left: 50%; top: 50%; transform: translate(-50%, -50%); } }
+
+.dtp .nl { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--hairline); }
+.dtp .nl svg { width: 17px; height: 17px; flex: none; fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linecap: round; }
+.dtp .nl input { flex: 1; min-width: 0; height: 34px; border: 0; background: none; color: var(--ink); font: 500 15px/1 var(--font-sans); outline: none; }
+.dtp .nl input::placeholder { color: var(--ink-faint); }
+.dtp .parsed { font: 500 12.5px/1 var(--font-mono); color: var(--clay); white-space: nowrap; }
+.dtp .quick { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 16px 4px; }
+.dtp .qb { height: 30px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px solid var(--edge); background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.dtp .qb small { font: 400 11px/1 var(--font-mono); color: var(--ink-faint); }
+.dtp .qb[aria-pressed="true"] { border-color: var(--clay); color: var(--ink); background: var(--clay-soft); }
+.dtp .qb:hover:not(:disabled) { color: var(--ink); }
+.dtp .qb:disabled { opacity: .45; cursor: default; }
+
+.dtp-body { display: flex; flex-wrap: wrap; gap: 18px; padding: 12px 16px 14px; }
+.dtp-month { flex: none; display: flex; flex-direction: column; gap: 8px; }
+.dtp .mt { display: flex; align-items: center; gap: 6px; }
+.dtp .mt span { flex: 1; font-size: 14.5px; font-weight: 600; }
+.dtp .mt .sp-btn { min-height: 28px; padding: 0 9px; }
+.dtp .mgrid2 { display: grid; grid-template-columns: repeat(7, 36px); gap: 2px; }
+.dtp .wd2 { height: 24px; display: grid; place-items: center; font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: .04em; }
+.dtp .dc { position: relative; width: 36px; height: 36px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 500 13.5px/1 var(--font-sans); cursor: pointer; font-variant-numeric: tabular-nums; }
+.dtp .dc:hover { background: var(--wash); }
+.dtp .dc.we { color: var(--ink-soft); }
+.dtp .dc.past { color: var(--ink-faint); }
+.dtp .dc.out { color: var(--ink-faint); opacity: .55; }
+.dtp .dc.today { box-shadow: inset 0 0 0 1.5px var(--clay); color: var(--clay); }
+.dtp .dc[aria-pressed="true"] { background: var(--clay); color: var(--on-clay); box-shadow: none; }
+.dtp .dc i, .dtp .dlegend i { position: absolute; left: 50%; bottom: 4px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--ink-soft); }
+.dtp .dc i.gold, .dtp .dlegend i.gold { background: var(--gold); }
+.dtp .dlegend { display: flex; gap: 14px; font-size: 11.5px; color: var(--ink-faint); }
+.dtp .dlegend span { display: inline-flex; align-items: center; gap: 5px; }
+.dtp .dlegend i { position: static; margin: 0; width: 6px; height: 6px; }
+
+.dtp-day { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.dtp .dt { display: flex; align-items: center; gap: 8px; }
+.dtp .dt > span:first-child { flex: 1; font-size: 14.5px; font-weight: 600; }
+.dtp .lbl2 { font-size: 12.5px; color: var(--ink-soft); }
+.dtp .sw { position: relative; width: 34px; height: 20px; border-radius: var(--radius-pill); border: 0; background: var(--hairline); cursor: pointer; flex: none; }
+.dtp .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-soft); }
+.dtp .sw[aria-pressed="true"] { background: var(--clay); }
+.dtp .sw[aria-pressed="true"]::after { transform: translateX(14px); background: var(--on-clay); }
+@media (prefers-reduced-motion: no-preference) { .dtp .sw::after { transition: transform .15s; } }
+.dtp .tl { position: relative; height: 308px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--hairline); }
+.dtp .tl-in { position: relative; }
+.dtp .tr { position: absolute; left: 0; right: 0; height: 22px; display: flex; align-items: center; border: 0; background: none; padding: 0 0 0 46px; cursor: pointer; text-align: left; }
+.dtp .tr.hour { border-top: 1px solid var(--hairline); }
+.dtp .tr:hover { background: color-mix(in srgb, var(--clay) 8%, transparent); }
+.dtp .tr b { position: absolute; left: 8px; font: 400 10.5px/1 var(--font-mono); color: var(--ink-faint); }
+.dtp .tr:hover::after { content: attr(data-t); font: 500 11px/1 var(--font-mono); color: var(--clay); }
+.dtp .ev2 { position: absolute; left: 46px; right: 6px; border-radius: 6px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--edge); padding: 3px 8px; box-sizing: border-box; font-size: 11.5px; line-height: 15px; color: var(--ink-soft); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
+.dtp .pick { position: absolute; left: 46px; right: 6px; border-radius: 6px; background: color-mix(in srgb, var(--clay) 22%, var(--raised)); box-shadow: inset 0 0 0 1.5px var(--clay); padding: 3px 8px; box-sizing: border-box; font: 600 12px/15px var(--font-sans); color: var(--ink); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dtp .pick.clash { background: color-mix(in srgb, var(--signal-overdue) 18%, var(--raised)); box-shadow: inset 0 0 0 1.5px var(--signal-overdue); }
+.dtp .mins { display: flex; gap: 4px; }
+.dtp .mins button { flex: 1; height: 28px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: none; color: var(--ink-soft); font: 500 12px/1 var(--font-mono); cursor: pointer; }
+.dtp .mins button[aria-pressed="true"] { background: var(--raised); border-color: var(--clay); color: var(--ink); }
+.dtp .durs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dtp .durs > span { font-size: 12.5px; color: var(--ink-soft); margin-right: 2px; }
+.dtp .durs .qb { height: 26px; padding: 0 10px; }
+.dtp .clash-t { margin: 0; font-size: 12px; line-height: 16px; color: var(--signal-overdue); }
+.dtp .allday-note { flex: 1; min-height: 200px; display: grid; place-items: center; text-align: center; border-radius: 10px; border: 1.5px dashed var(--edge); padding: 16px; font-size: 13px; line-height: 19px; color: var(--ink-soft); }
+
+.dtp-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--hairline); }
+.dtp-foot > svg { width: 16px; height: 16px; fill: none; stroke: var(--ink-faint); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.dtp-foot .qb { height: 28px; }
+.dtp-foot .keep { font-size: 12px; color: var(--ink-faint); }
+.dtp button:focus-visible, .dtp input:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* Поле «Срок» в окнах — кнопка, открывающая выбор. */
+.when-btn { height: 36px; width: 100%; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); color: var(--ink); font: 500 14px/1 var(--font-sans); cursor: pointer; text-align: left; }
+.when-btn:hover { border-color: var(--ink-faint); }
+.when-btn[aria-expanded="true"] { border-color: var(--clay); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 16%, transparent); }
+.when-btn svg { width: 16px; height: 16px; flex: none; fill: none; stroke: var(--clay); stroke-width: 2; stroke-linecap: round; }
+.when-btn .muted { color: var(--ink-faint); font-weight: 400; }
+.when-btn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }

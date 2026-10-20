@@ -19,6 +19,7 @@
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
   import * as meta from './lib/meta.js';
+  import { whenText } from './lib/when.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -415,6 +416,13 @@
 
   // ---------- календарь ----------
 
+  /** Дни со сроками открытых задач (кроме этой) — золотые точки в окне «Когда». */
+  function dueDaysExcept(taskId = null) {
+    const out = new Set();
+    for (const l of boardLists) for (const t of tasks[l.id] ?? []) if (t.id !== taskId && !t.parent && t.due && t.status !== 'completed') out.add(api.dueToYmd(t.due));
+    return out;
+  }
+
   // Цвет задачи: свой тип из слоя (например, пришёл из чата), иначе — по шаблону списка.
   const typeOf = (listId, taskId) => lay.tasks?.[taskId]?.type ?? typeOfTemplate(lay.lists?.[listId]?.template);
 
@@ -460,7 +468,7 @@
       if (layer && Object.keys(layer).length) touch('tasks', r.id, layer);
       if (slot) setSlot(r.id, slot);
       else if (layer && Object.keys(layer).length) saveLayer();
-      if (!quiet) say(`«${title}» — добавлено${due ? '' : ' на доску'}`);
+      if (!quiet) say(`«${title}» — добавлено${due ? ` на ${whenText(due, slot).date.toLowerCase()}${slot ? `, ${slot.s}` : ''}` : ' на доску'}`);
       return r.id;
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
   }
@@ -648,7 +656,7 @@
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
-            oncreate={(p) => quickCreate(p, true)} ontogglehabit={toggleHabit}
+            oncreate={(p, loud = false) => quickCreate(p, !loud)} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
             onregister={(fn) => (quickLine = fn)}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} />
@@ -691,6 +699,7 @@
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
+      dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
       onsave={save}
       onstatus={(s) => move(openTask, s, openRef.listId)}
@@ -702,6 +711,7 @@
   {#if quick}
     <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
       day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
+      dueDays={dueDaysExcept()} loadEvents={api.eventsRange}
       oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
   {/if}
 

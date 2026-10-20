@@ -1,9 +1,11 @@
 <script>
   import { untrack } from 'svelte';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
+  import { whenText } from './when.js';
+  import DateTimePicker from './DateTimePicker.svelte';
 
   // Окно «Создать» (кнопка в шапке, N / Ctrl+N): задача в Google Tasks, событие или день рождения в Google Календаре.
-  let { lists, listId = null, day = '', s = '', e = '', oncreate, oncreateevent, oncreatebirthday, onclose } = $props();
+  let { lists, listId = null, day = '', s = '', e = '', dueDays = new Set(), loadEvents = null, oncreate, oncreateevent, oncreatebirthday, onclose } = $props();
 
   const KINDS = [
     { id: 'task', label: 'Задача', key: '1' },
@@ -17,40 +19,32 @@
   let title = $state('');
   let list = $state(init.list);
   let due = $state(init.day);
-  let from = $state(init.s);
-  let to = $state(init.e);
+  let slot = $state(init.s ? { s: init.s, e: init.e || init.s } : null); // время — { s, e } или null (весь день)
+  let picking = $state(false);
   let type = $state(null);
   let priority = $state(null);
   let notes = $state('');
   let busy = $state(false);
 
-  const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
-  const bad = $derived(!!from && !!to && toMin(to) <= toMin(from));
+  const wt = $derived(whenText(due, due && kind !== 'birthday' ? slot : null));
   const needDate = $derived(kind !== 'task' && !due);
-  const canSubmit = $derived(!!title.trim() && !bad && !busy && !needDate && (kind !== 'task' || !!list));
+  const canSubmit = $derived(!!title.trim() && !busy && !needDate && (kind !== 'task' || !!list));
 
-  // Поставили начало — конец через час, если его нет или он раньше.
-  function setFrom(v) {
-    from = v;
-    if (v && (!to || toMin(to) <= toMin(v))) {
-      const m = Math.min(toMin(v) + 60, 23 * 60 + 59);
-      to = `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-    }
-  }
+  function applyWhen(r) { picking = false; due = r.day ?? ''; slot = r.slot ?? null; }
 
   async function submit(ev) {
     ev?.preventDefault();
     if (!canSubmit) return;
     const t = title.trim();
     busy = true;
-    const slot = due && from ? { s: from, e: to || from } : null;
+    const when = due && kind !== 'birthday' ? slot : null;
     let ok;
     if (kind === 'task') {
       const layer = {};
       if (type) layer.type = type;
       if (priority) layer.priority = priority;
-      ok = await oncreate({ title: t, listId: list, due, slot, layer, notes: notes.trim() });
-    } else if (kind === 'event') ok = await oncreateevent({ title: t, day: due, slot, notes: notes.trim() });
+      ok = await oncreate({ title: t, listId: list, due, slot: when, layer, notes: notes.trim() });
+    } else if (kind === 'event') ok = await oncreateevent({ title: t, day: due, slot: when, notes: notes.trim() });
     else ok = await oncreatebirthday({ name: t, day: due });
     busy = false;
     if (ok) onclose();
@@ -58,7 +52,7 @@
 
   // Esc — закрыть, Ctrl+Enter — создать, Alt+1/2/3 — вид записи.
   function key(ev) {
-    if (document.querySelector('.keyhelp')) return;
+    if (document.querySelector('.keyhelp, .dtp')) return; // открыто окно «Когда» — Esc закрывает его
     if (ev.key === 'Escape') { ev.preventDefault(); onclose(); }
     else if (ev.key === 'Enter' && (ev.ctrlKey || ev.metaKey)) submit(ev);
     else if (ev.altKey && /^Digit[1-3]$/.test(ev.code)) { ev.preventDefault(); kind = KINDS[ev.code.slice(5) - 1].id; }
@@ -110,27 +104,19 @@
     </div>
   {/if}
 
+  <!-- Дата и время — одно поле, по клику окно «Когда». У дня рождения — только дата. -->
   <div class="field">
-    <label for="q-due">{kind === 'task' ? 'Срок' : 'Дата'}</label>
-    <input id="q-due" type="date" bind:value={due} />
+    <span>{kind === 'task' ? 'Срок' : 'Дата'}</span>
+    <button type="button" class="when-btn" aria-haspopup="dialog" aria-expanded={picking} onclick={() => (picking = true)}>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>
+      <span class:muted={!due}>{wt.date}</span>{#if wt.time && kind !== 'birthday'}<span class="muted">· {wt.time}</span>{/if}
+    </button>
   </div>
-  {#if kind !== 'birthday'}
-    <div class="field">
-      <label for="q-from">Время</label>
-      <div class="time-row">
-        <input id="q-from" type="time" value={from} disabled={!due} onchange={(ev) => setFrom(ev.currentTarget.value)} aria-label="Начало" />
-        <span>–</span>
-        <input type="time" bind:value={to} disabled={!due || !from} aria-label="Конец" />
-        {#if from}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => { from = ''; to = ''; }}>Весь день</button>{/if}
-      </div>
-    </div>
-  {/if}
   <p class="hint">
-    {#if bad}Конец должен быть позже начала.
-    {:else if kind === 'birthday'}{due ? 'Каждый год в этот день — в Google Календаре, в Спутнике золотом, как дни рождения из контактов.' : 'Выбери дату.'}
-    {:else if kind === 'event'}{due ? (from ? 'Событие в Google Календаре на это время.' : 'Событие на весь день в Google Календаре.') : 'Выбери дату.'}
+    {#if kind === 'birthday'}{due ? 'Каждый год в этот день — в Google Календаре, в Спутнике золотом, как дни рождения из контактов.' : 'Выбери дату.'}
+    {:else if kind === 'event'}{due ? (slot ? 'Событие в Google Календаре на это время.' : 'Событие на весь день в Google Календаре.') : 'Выбери дату.'}
     {:else if !due}Без срока задача попадёт только на доску.
-    {:else if from}Задача в Google Tasks, в календаре встанет в сетку на это время.
+    {:else if slot}Задача в Google Tasks, в календаре встанет в сетку на это время.
     {:else}Задача в Google Tasks, в календаре — в строке «весь день».{/if}
     Ctrl+Enter — создать.
   </p>
@@ -139,3 +125,8 @@
     <button class="sp-btn sp-btn-primary" type="submit" disabled={!canSubmit}>Создать</button>
   </div>
 </form>
+
+{#if picking}
+  <DateTimePicker day={due} slot={kind === 'birthday' ? null : slot} allowTime={kind !== 'birthday'} {title} {dueDays} {loadEvents}
+    onapply={applyWhen} onclose={() => (picking = false)} />
+{/if}

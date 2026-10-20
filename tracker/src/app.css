@@ -8,6 +8,7 @@
 @import './styles/calendar.css';
 @import './styles/setup.css';
 @import './styles/extras.css';
+@import './styles/datetime.css';
 
 /* Раскладка приложения */
 html, body, #app { height: 100%; }

@@ -2,22 +2,14 @@
   import { dueToYmd, ymdToDue, ymd } from './api.js';
   import { BEFORE, DEFAULT_TIME, remindLabel } from './reminders.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
+  import { whenText } from './when.js';
+  import DateTimePicker from './DateTimePicker.svelte';
 
   // type / priority — из слоя (tasks[id]); onlayer(patch) пишет туда же.
+  // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
   let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
+    dueDays = new Set(), loadEvents = null,
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
-
-  // Время задачи живёт в слое Спутника: в Google Tasks у срока нет часов.
-  const toMin = (v) => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
-  const fromMin = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
-  function setSlotFrom(v) {
-    if (!v) return onslot(null);
-    const len = slot ? Math.max(15, toMin(slot.e) - toMin(slot.s)) : 60;
-    onslot({ s: v, e: fromMin(Math.min(toMin(v) + len, 23 * 60 + 59)) });
-  }
-  function setSlotTo(v) {
-    if (v && toMin(v) > toMin(slot.s)) onslot({ ...slot, e: v });
-  }
 
   const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : `b${remind.days ?? 0}`);
   const remindWhen = $derived(remindLabel(remind, task));
@@ -33,7 +25,6 @@
 
   let title = $state('');
   let notes = $state('');
-  let due = $state('');
   let subDraft = $state('');
   let confirmDelete = $state(false);
   let loadedId = '';
@@ -45,7 +36,6 @@
       confirmDelete = false;
       title = task.title ?? '';
       notes = task.notes ?? '';
-      due = dueToYmd(task.due);
     }
   });
 
@@ -56,9 +46,6 @@
   function saveNotes() {
     if (notes !== (task.notes ?? '')) onsave({ notes });
   }
-  function saveDue() {
-    if (due !== dueToYmd(task.due)) onsave({ due: ymdToDue(due) });
-  }
   async function addSub(e) {
     e.preventDefault();
     const t = subDraft.trim();
@@ -68,8 +55,21 @@
   }
   function close() { saveTitle(); saveNotes(); onclose(); }
   // Esc / Ctrl+Enter — сохранить и закрыть; Alt+←/→ — соседний этап; Alt+1/2/3/0 — приоритет.
+  // ---------- срок и время: окно «Когда» ----------
+  let picking = $state(false);
+  const due = $derived(dueToYmd(task.due));
+  const wt = $derived(whenText(due, due ? slot : null));
+  function applyWhen(r) {
+    picking = false;
+    const d = r.day ?? '';
+    // Время задачи живёт в слое Спутника: в Google Tasks у срока нет часов.
+    if (d !== dueToYmd(task.due)) onsave({ due: ymdToDue(d) });
+    if (JSON.stringify(r.slot ?? null) !== JSON.stringify(slot ?? null)) onslot(r.slot ?? null);
+    if (r.remind !== undefined) onremind(r.remind);
+  }
+
   function key(e) {
-    if (document.querySelector('.keyhelp')) return;
+    if (document.querySelector('.keyhelp, .dtp')) return; // открыто окно поверх — Esc закроет его, а не задачу
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); close(); return; }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     const i = cols.findIndex((c) => c.id === status);
@@ -124,20 +124,19 @@
         {/each}
       </div>
     </div>
+    <!-- Срок и время — одно поле, по клику окно «Когда» (DateTimePicker) слева от окна задачи. -->
     <div class="field">
-      <label for="f-due">Срок</label>
-      <input id="f-due" type="date" bind:value={due} onchange={saveDue} />
+      <span>Срок</span>
+      <button type="button" class="when-btn" aria-haspopup="dialog" aria-expanded={picking} onclick={() => (picking = true)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>
+        <span class:muted={!due}>{wt.date}</span>{#if wt.time}<span class="muted">· {wt.time}</span>{/if}
+      </button>
     </div>
-    <div class="field">
-      <label for="f-from">Время</label>
-      <div class="time-row">
-        <input id="f-from" type="time" value={slot?.s ?? ''} disabled={!due} aria-label="Начало" onchange={(e) => setSlotFrom(e.currentTarget.value)} />
-        <span>–</span>
-        <input type="time" value={slot?.e ?? ''} disabled={!due || !slot} aria-label="Конец" onchange={(e) => setSlotTo(e.currentTarget.value)} />
-        {#if slot}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => onslot(null)}>Весь день</button>{/if}
-      </div>
-    </div>
-    {#if !due}<p class="remind-hint">Поставь срок — тогда можно выбрать время, и задача встанет в сетку календаря.</p>{/if}
+    <p class="remind-hint">
+      {#if !due}Без срока задача только на доске.
+      {:else if slot}Срок — в Google Tasks, время — в Спутнике: задача встанет в сетку календаря на это время.
+      {:else}Срок попадёт в Google Tasks, в календаре — строка «весь день».{/if}
+    </p>
     <div class="field">
       <label for="f-remind">Напоминание</label>
       <div class="remind">
@@ -201,3 +200,8 @@
     </div>
   </div>
 </aside>
+
+{#if picking}
+  <DateTimePicker day={dueToYmd(task.due)} {slot} {remind} title={task.title} place="drawer" {dueDays} {loadEvents}
+    onapply={applyWhen} onclose={() => (picking = false)} />
+{/if}

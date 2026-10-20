@@ -7,6 +7,7 @@
   import { pickNext } from './meta.js';
   import CalWeek from './CalWeek.svelte';
   import CalMonth from './CalMonth.svelte';
+  import DateTimePicker from './DateTimePicker.svelte';
   import Coon from './Coon.svelte';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
@@ -29,7 +30,14 @@
   let planning = $state(false);
   let reload = $state(0); // перечитать события после создания своего
   // Форма «＋ Добавить на этот день» в панели дня.
-  let cmp = $state({ open: false, title: '', kind: 'task', time: 'all', listId: '' });
+  let cmp = $state({ open: false, title: '', kind: 'task', time: 'all', end: '', listId: '' }); // end — конец из окна «Когда»
+  let cmpPick = $state(false);
+  function applyCmpWhen(r) {
+    cmpPick = false;
+    if (r.day) sel = r.day;
+    cmp.time = r.slot?.s ?? 'all';
+    cmp.end = r.slot?.e ?? '';
+  }
   let cmpBusy = $state(false);
   let cmpInput = $state(null);
   // Неделя на широком окне укладывается в экран без прокрутки: сетка занимает оставшуюся высоту.
@@ -190,7 +198,7 @@
     const title = cmp.title.trim();
     if (!title || cmpBusy) return;
     cmpBusy = true;
-    const slot = cmp.time === 'all' ? null : { s: cmp.time, e: cal.fromMin(Math.min(cal.toMin(cmp.time) + 60, 1439)) };
+    const slot = cmp.time === 'all' ? null : { s: cmp.time, e: cmp.end && cmp.end > cmp.time ? cmp.end : cal.fromMin(Math.min(cal.toMin(cmp.time) + 60, 1439)) };
     const ok = cmp.kind === 'event' ? await oncreateevent({ title, day: sel, slot })
       : cmp.kind === 'birthday' ? await oncreatebirthday({ name: title, day: sel })
       : await oncreatetask({ title, listId: cmpList, due: sel, slot });
@@ -397,7 +405,8 @@
             <button type="button" aria-pressed={cmp.kind === 'birthday'} onclick={() => (cmp.kind = 'birthday')}>День рождения</button>
           </div>
           {#if cmp.kind !== 'birthday'}<div class="seg2" role="group" aria-label="Время">
-            {#each cmpTimes as t (t)}<button type="button" aria-pressed={cmp.time === t} onclick={() => (cmp.time = t)}>{t === 'all' ? 'весь день' : t}</button>{/each}
+            {#each cmpTimes as t (t)}<button type="button" aria-pressed={cmp.time === t} onclick={() => { cmp.time = t; cmp.end = ''; }}>{t === 'all' ? 'весь день' : cmp.end && t === cmp.time ? `${t}–${cmp.end}` : t}</button>{/each}
+            <button type="button" title="Другой день или точное время" onclick={() => (cmpPick = true)}>Другое время…</button>
           </div>{/if}
           {#if cmp.kind === 'task' && lists.length > 1}
             <select class="cmp-list" aria-label="Список" value={cmpList} onchange={(e) => (cmp.listId = e.currentTarget.value)}>
@@ -416,3 +425,8 @@
     </aside>
   </div>
 </div>
+
+{#if cmpPick}
+  <DateTimePicker day={sel} slot={cmp.time === 'all' ? null : { s: cmp.time, e: cmp.end || cal.fromMin(Math.min(cal.toMin(cmp.time) + 60, 1439)) }}
+    title={cmp.title} {loadEvents} onapply={applyCmpWhen} onclose={() => (cmpPick = false)} />
+{/if}

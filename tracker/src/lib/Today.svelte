@@ -6,6 +6,7 @@
   import { templateOf } from './templates.js';
   import Coon from './Coon.svelte';
   import { priorityOf, priorityRank, pickNext } from './meta.js';
+  import { parseWhen, whenText } from './when.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
     onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar } = $props();
@@ -136,18 +137,17 @@
   /** «скетч таверны 17:00 #asset» → { title, time, kind } */
   function parse(raw) {
     let txt = ` ${raw} `;
-    let time = '';
-    const tm = txt.match(/\s([01]?\d|2[0-3])[:.]([0-5]\d)(?=\s)/);
-    if (tm) { time = `${tm[1].padStart(2, '0')}:${tm[2]}`; txt = txt.replace(tm[0], ' '); }
     // !!! — высокий приоритет, !! — средний, ! — низкий.
     let priority = null;
-    const pm = txt.match(/s(!{1,3})(?=s)/);
+    const pm = txt.match(/\s(!{1,3})(?=\s)/);
     if (pm) { priority = 4 - pm[1].length; txt = txt.replace(pm[0], ' '); }
     let kind = null;
     const tg = txt.match(/#([^\s#]+)/);
     if (tg) { const k = tg[1].toLowerCase(); kind = TAGS[OLD_TAGS[k] ?? k] ?? null; txt = txt.replace(tg[0], ' '); }
-    txt = txt.replace(/\s+/g, ' ').trim();
-    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time, kind, priority };
+    // Дата и время словами — общий разбор (тот же, что в окне «Когда»): «в пятницу 17:00», «завтра», «25 окт».
+    const w = parseWhen(txt, new Date(clock));
+    txt = w.rest;
+    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time: w.time ?? '', day: w.day, kind, priority };
   }
   const preview = $derived(draft.trim() ? parse(draft) : null);
 
@@ -163,7 +163,7 @@
     const layer = {};
     if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
     if (p.priority) layer.priority = p.priority;
-    const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer });
+    const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: p.day ?? today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer }, !!p.day && p.day !== today); // не на сегодня — App покажет, куда ушла
     adding = false;
     if (id) { draft = ''; fresh = new Set([...fresh, id]); input?.focus(); }
   }
@@ -244,10 +244,10 @@
         </form>
         <p class="qa-hint">
           {#if preview?.title}
-            Добавлю «{preview.title}» на сегодня{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}
+            Добавлю «{preview.title}» {preview.day && preview.day !== today ? `на ${whenText(preview.day, null).date.toLowerCase()}` : 'на сегодня'}{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}
             → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
           {:else}
-            Время, #тип и приоритет распознаются сами: 17:00, #asset #work #client #study #personal, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+            Дата, время, #тип и приоритет распознаются сами: «завтра», «в пятницу», «25 окт», 17:00, #asset #work #client #study #personal, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
           {/if}
         </p>
       </div>
