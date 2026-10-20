@@ -307,20 +307,43 @@ pub async fn gapi(
     }
     let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes()).map_err(|e| e.to_string())?;
 
-    for attempt in 0..2 {
+    // Google иногда отвечает «занят» (429, 5xx) или рвёт связь. Запросы, которые можно
+    // безопасно повторить (всё, кроме POST — он мог успеть создать задачу), повторяем
+    // ещё дважды: через 1 и через 3 секунды.
+    let repeatable = method != reqwest::Method::POST;
+    let mut waits = [1u64, 3].into_iter();
+    let mut refreshed = false;
+    loop {
         let token = access_token(&app, &google).await?;
         let mut req = google.http.request(method.clone(), parsed.clone()).bearer_auth(&token);
         if let Some(b) = &body {
             req = req.json(b);
         }
-        let resp = req.send().await.map_err(|e| format!("Нет связи с Google: {e}"))?;
-        if resp.status() == reqwest::StatusCode::UNAUTHORIZED && attempt == 0 {
+        let resp = match req.send().await {
+            Ok(r) => r,
+            Err(e) => match waits.next().filter(|_| repeatable) {
+                Some(w) => {
+                    tokio::time::sleep(std::time::Duration::from_secs(w)).await;
+                    continue;
+                }
+                None => return Err(format!("Нет связи с Google: {e}")),
+            },
+        };
+        let status = resp.status();
+        if status == reqwest::StatusCode::UNAUTHORIZED && !refreshed {
+            refreshed = true;
             if let Some(t) = google.token.lock().await.as_mut() {
                 t.expires_at = 0; // заставит обновить токен
             }
             continue;
         }
-        if !resp.status().is_success() {
+        if busy(status) && repeatable {
+            if let Some(w) = waits.next() {
+                tokio::time::sleep(std::time::Duration::from_secs(w)).await;
+                continue;
+            }
+        }
+        if !status.is_success() {
             return Err(google_error(resp).await);
         }
         let text = resp.text().await.map_err(|e| e.to_string())?;
@@ -329,5 +352,9 @@ pub async fn gapi(
         }
         return serde_json::from_str(&text).map_err(|e| e.to_string());
     }
-    Err(SIGN_IN_AGAIN.to_string())
+}
+
+/// Временные ответы Google: стоит подождать и повторить.
+fn busy(status: reqwest::StatusCode) -> bool {
+    status == reqwest::StatusCode::TOO_MANY_REQUESTS || status.is_server_error()
 }
