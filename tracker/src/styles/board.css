@@ -19,15 +19,16 @@
 .colz b { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
 
 /* Карточка: полоска приоритета слева, до 2 строк названия, чипы, кнопки → 📅 ⋯ при наведении и выборе. */
-.kc { position: relative; display: flex; flex-direction: column; gap: 7px; padding: 11px 12px 11px 14px; border-radius: 11px; background: var(--raised); border: 1px solid var(--edge); cursor: pointer; outline: none; }
+.kc { position: relative; display: flex; flex-direction: column; gap: 7px; padding: 11px 12px 11px 14px; border-radius: 11px; background: var(--raised); border: 1px solid var(--edge); cursor: default; outline: none; }
 .kc::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--pc, transparent); }
 .kc:hover { border-color: color-mix(in srgb, var(--ink-faint) 55%, var(--edge)); }
 .kc.sel, .kc:focus-visible { border-color: var(--clay); box-shadow: 0 0 0 2px color-mix(in srgb, var(--clay) 30%, transparent); }
 .kc.lift { transform: rotate(-2deg) scale(1.02); box-shadow: 0 14px 30px rgba(0, 0, 0, .45); border-color: var(--clay); }
 .kc.ghost { opacity: .35; }
 .ph { flex: none; height: 74px; border-radius: 11px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 8%, transparent); }
-.kc .t { font-size: 14px; line-height: 19px; font-weight: 600; padding-right: 56px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.kc .t { cursor: pointer; font-size: 14px; line-height: 19px; font-weight: 600; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 .kc .d { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kc .t:hover { color: var(--clay); }
 .kc.done .t { color: var(--ink-faint); text-decoration: line-through; font-weight: 500; }
 .kc .kc-ren { margin-right: 4px; height: 30px; padding: 0 8px; border-radius: 7px; border: 1px solid var(--clay); background: var(--bg); color: var(--ink); font: 600 14px/1 var(--font-sans); }
 .kc .mt { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
@@ -41,12 +42,14 @@
 .kc .segs b { width: 6px; height: 6px; border-radius: 2px; background: var(--hairline); }
 .kc .segs b.on { background: var(--signal-done); }
 .kc .chip.sub.all { color: var(--signal-done); border-color: color-mix(in srgb, var(--signal-done) 45%, var(--edge)); }
-.kc .qa { position: absolute; top: 8px; right: 8px; display: flex; gap: 2px; opacity: 0; }
-.kc:hover .qa, .kc.sel .qa, .kc:focus-within .qa { opacity: 1; }
-.kc .qa button { width: 26px; height: 26px; border-radius: 7px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; padding: 0; }
-.kc .qa button:hover { color: var(--clay); border-color: var(--clay); }
-.kc .qa button:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
-.kc .qa svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+/* Кнопки плавают справа в первой строке названия и всегда занимают место (только прозрачные): текст обтекает их,
+   не уходит под них и не прыгает при наведении. Отрицательный нижний отступ — чтобы вторая строка шла на всю ширину. */
+.kc .kc-qa { float: right; display: flex; gap: 2px; margin: -3px -4px -6px 6px; opacity: 0; color: var(--ink-soft); font-weight: 400; }
+.kc:hover .kc-qa, .kc.sel .kc-qa, .kc:focus-within .kc-qa { opacity: 1; }
+.kc .kc-qa button { width: 24px; height: 24px; border-radius: 7px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); cursor: pointer; display: grid; place-items: center; padding: 0; }
+.kc .kc-qa button:hover { color: var(--clay); border-color: var(--clay); }
+.kc .kc-qa button:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
+.kc .kc-qa svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 .kb-hint { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--ink-faint); }
 .kb-hint kbd, .cmenu kbd { font: 500 11px/1 var(--font-mono); color: var(--ink-faint); }
 .kb-hint kbd { padding: 3px 6px; border-radius: 5px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); margin-right: 4px; }

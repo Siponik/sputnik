@@ -1,6 +1,6 @@
 <script>
   // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
-  // Одна выбранная карточка (обводка clay): клик — окно задачи, двойной клик / F2 — переименовать, правый клик — меню.
+  // Одна выбранная карточка (обводка clay): клик по названию — окно задачи, по карточке — выбрать, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
   import TaskCard from './TaskCard.svelte';
   import CardMenu from './CardMenu.svelte';
@@ -356,7 +356,7 @@
     {/each}
   </div>
   <footer class="kb-hint" aria-label="Подсказка по клавишам">
-    <span><kbd>клик</kbd>открыть задачу</span><span><kbd>2×клик</kbd>по названию — переименовать</span><span><kbd>↑↓←→</kbd>ходить по карточкам</span><span><kbd>Alt+←→</kbd>этап</span><span><kbd>Alt+↑↓</kbd>порядок</span><span><kbd>Alt+1/2/3</kbd>приоритет</span><span><kbd>D</kbd>срок</span><span><kbd>?</kbd>все клавиши</span>
+    <span><kbd>клик</kbd>по названию — открыть задачу</span><span><kbd>2×клик</kbd>по названию — переименовать</span><span><kbd>↑↓←→</kbd>ходить по карточкам</span><span><kbd>Alt+←→</kbd>этап</span><span><kbd>Alt+↑↓</kbd>порядок</span><span><kbd>Alt+1/2/3</kbd>приоритет</span><span><kbd>D</kbd>срок</span><span><kbd>?</kbd>все клавиши</span>
   </footer>
   {/if}
 </div>
