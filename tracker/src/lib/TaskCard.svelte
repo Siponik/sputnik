@@ -5,7 +5,10 @@
   // Стрелка (видна при наведении и фокусе) переносит на следующий этап.
   import { typeLabel, priorityOf } from './meta.js';
 
-  let { task, subs = [], listName = '', remind = '', type = '', priority = null, draggable = true, next = null, onopen, onadvance } = $props();
+  // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет и тип, как раньше. extra — запись слоя (клиент, сумма).
+  let { task, subs = [], listName = '', remind = '', type = '', priority = null, fields = [], extra = null, draggable = true, next = null, onopen, onadvance } = $props();
+  const show = (f) => (fields.length ? fields.includes(f) : ['due', 'prio', 'type', 'subtasks'].includes(f));
+  const money = $derived(extra?.money ? Number(extra.money).toLocaleString('ru-RU') + ' ₽' : '');
   const pr = $derived(priorityOf(priority));
   const done = $derived(task.status === 'completed');
   const subDone = $derived(subs.filter((s) => s.status === 'completed').length);
@@ -25,11 +28,14 @@
   <!-- Клик по любому месту карточки открывает задачу; кнопка — для клавиатуры, её клик всплывает сюда. -->
   <button class="t" type="button">{task.title || 'Без названия'}</button>
   {#if firstLine}<p class="d">{firstLine}</p>{/if}
+  {#if (show('client') && extra?.client) || (show('money') && money)}
+    <p class="d client">{show('client') && extra?.client ? extra.client : ''}{show('client') && extra?.client && show('money') && money ? ' · ' : ''}{show('money') ? money : ''}</p>
+  {/if}
   {#if task.due || subs.length || listName || remind || type || pr}
     <div class="meta">
-      {#if pr && !done}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
-      {#if typeLabel(type)}<span class="sp-chip sp-chip-{type}"><span class="dot"></span>{typeLabel(type)}</span>{/if}
-      {#if task.due}
+      {#if show('prio') && pr && !done}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
+      {#if show('type') && typeLabel(type)}<span class="sp-chip sp-chip-{type}"><span class="dot"></span>{typeLabel(type)}</span>{/if}
+      {#if show('due') && task.due}
         <span class="sp-chip" class:sp-chip-overdue={ds === 'overdue'} class:sp-chip-soon={ds === 'soon'}>
           {ds === 'overdue' ? 'просрочено · ' : ''}{humanDue(task.due)}
         </span>
@@ -37,7 +43,7 @@
       {#if remind && !done}
         <span class="data bell" title="Напоминание"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2 2 0 0 0 4 0" /></svg>{remind}</span>
       {/if}
-      {#if subs.length}<span class="data">{subDone}/{subs.length}</span>{/if}
+      {#if (show('subtasks') || show('progress')) && subs.length}<span class="data">{show('progress') ? `${subDone} из ${subs.length}` : `${subDone}/${subs.length}`}</span>{/if}
       {#if listName}<span class="data">{listName}</span>{/if}
     </div>
   {/if}

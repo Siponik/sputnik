@@ -3,14 +3,22 @@
   import TaskCard from './TaskCard.svelte';
   import PeekCoon, { peekVariant } from './PeekCoon.svelte';
   import { ymd, dueToYmd } from './api.js';
-  import { isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
+  import { isArchived, ARCHIVE_AFTER_DAYS, colColor } from './templates.js';
+  import Conveyor from './Conveyor.svelte';
+  import ListView from './ListView.svelte';
   import { startOfWeek, addDays } from './calendar.js';
   import { priorityRank, TYPES as META_TYPES } from './meta.js';
 
-  let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '',
-    onopen, onmove, oncreate, onarchive } = $props();
+  // view — kanban | pipe | gallery | list (свой вид списка или вид шаблона); onview — сменить вид этого списка.
+  let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '', view = 'kanban',
+    onopen, onmove, oncreate, onarchive, onview, ontoggle, onaddsub, onsetstage } = $props();
 
-  const WIP = 3; // лимит «В работе»
+  const VIEW_TABS = $derived([
+    { id: 'kanban', name: 'Канбан' }, { id: 'pipe', name: 'Конвейер' },
+    ...(template.view === 'pipe' || template.fields.includes('stage') ? [{ id: 'gallery', name: 'Галерея' }] : []),
+    { id: 'list', name: 'Список' },
+  ]);
+  const fields = $derived(template.fields ?? []);
   const TYPES = [
     { k: '', label: 'Все' }, ...META_TYPES.map((t) => ({ k: t.id, label: t.label })),
   ];
@@ -95,11 +103,19 @@
           {/each}
         </div>
       {/if}
-      <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. -->
+      <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. Вид — меняется. -->
+      <div class="seg3" role="group" aria-label="Вид доски">
+        {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
+      </div>
       <button class="sp-btn" type="button" onclick={onarchive}>Архив · {archived}</button>
     </div>
   </header>
 
+  {#if view === 'pipe' || view === 'gallery'}
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {onopen} {onmove} {ontoggle} {onaddsub} {onsetstage} />
+  {:else if view === 'list'}
+    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {onopen} {onmove} />
+  {:else}
   <div class="board">
     {#each cols as col, i (col.id)}
       {@const items = column(col.id)}
@@ -116,16 +132,16 @@
         ondragleave={() => { if (over === col.id) over = ''; }}
         ondrop={(e) => drop(e, col.id)}
       >
-        <header class="colh" class:donecol={isDoneCol}>
+        <header class="colh" class:donecol={isDoneCol} style="--cc: {colColor(col)}">
           <h3>{col.name}</h3><span class="n">{items.length}</span>
-          {#if col.id === 'doing'}<span class="wip" class:hot={items.length > WIP} title="Лимит задач в работе">{items.length} / {WIP}</span>{/if}
+          {#if col.limit}<span class="wip" class:hot={items.length > col.limit} title="Лимит колонки (из шаблона)">{items.length} / {col.limit}</span>{/if}
         </header>
-        {#if col.id === 'doing' && items.length > WIP}
-          <p class="wip-warn">Много всего в работе. Закончи одну, прежде чем брать новую.</p>
+        {#if col.limit && items.length > col.limit}
+          <p class="wip-warn">В «{col.name}» больше {col.limit}. Закончи одну, прежде чем брать новую.</p>
         {/if}
 
         {#each shown as task (task.id)}
-          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {onopen}
+          <TaskCard {task} subs={subsOf(task.id)} remind={remindOf(task)} type={typeOf(list.id, task.id)} priority={layTasks?.[task.id]?.priority} {fields} extra={layTasks?.[task.id]} {onopen}
             next={isDoneCol ? null : next} onadvance={() => onmove(task, next.id)} />
         {/each}
 
@@ -156,4 +172,5 @@
     {/each}
   </div>
   <p class="bd-hint">Наведи на карточку — стрелка переносит её на следующий этап. Можно и перетаскивать.</p>
+  {/if}
 </div>

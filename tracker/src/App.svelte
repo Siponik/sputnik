@@ -15,7 +15,8 @@
   import QuickAdd from './lib/QuickAdd.svelte';
   import Coon from './lib/Coon.svelte';
   import * as api from './lib/api.js';
-  import { templateOf, isHabitList, HABITS } from './lib/templates.js';
+  import { templateOf, templatesFrom, isBuiltin, blankTemplate, isHabitList, HABITS } from './lib/templates.js';
+  import Templates from './lib/Templates.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
@@ -27,7 +28,7 @@
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
-  let view = $state('today'); // today | calendar | board | archive | habits
+  let view = $state('today'); // today | calendar | board | archive | habits | templates | sphere
   let lists = $state([]);
   let activeId = $state(null);
   let tasks = $state({}); // listId → задачи (вместе с подзадачами)
@@ -41,13 +42,15 @@
   let toast = $state('');
   let toastTimer;
 
-  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {}, cals: {}, settings: {} }; }
+  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {}, cals: {}, settings: {}, templates: {}, templatesEdit: {}, spheres: {} }; }
 
   // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
   const habitList = $derived(lists.find((l) => isHabitList(l, lay)) ?? null);
   const activeList = $derived(boardLists.find((l) => l.id === activeId));
-  const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template);
+  const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template, lay);
+  // Вид доски списка: свой (lists[id].view) или вид шаблона по умолчанию.
+  const viewFor = (listId) => lay.lists?.[listId]?.view ?? templateFor(listId).view ?? 'kanban';
   const openTask = $derived(openRef ? (tasks[openRef.listId] ?? []).find((t) => t.id === openRef.id) : null);
   const openSubs = $derived(openTask ? (tasks[openRef.listId] ?? []).filter((t) => t.parent === openTask.id).sort((a, b) => (a.position || '').localeCompare(b.position || '')) : []);
   const openCount = (l) => (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
@@ -223,7 +226,7 @@
   const VIEWS = ['today', 'calendar', 'board', 'habits'];
   let helpOpen = $state(false);
   function stepView(dir) {
-    const i = VIEWS.indexOf(view === 'archive' ? 'board' : view);
+    const i = VIEWS.indexOf(['archive', 'templates', 'sphere'].includes(view) ? 'board' : view);
     view = VIEWS[(i + dir + VIEWS.length) % VIEWS.length];
   }
   function stepList(dir) {
@@ -293,7 +296,11 @@
   }
 
   async function move(task, col, listId = activeId) {
-    if (col !== 'done') { touch('tasks', task.id, { status: col }); saveLayer(); }
+    // stageAt[колонка] — когда задача пришла на этап (учёт времени в «Конвейере»).
+    const stageAt = { ...(lay.tasks?.[task.id]?.stageAt ?? {}), [col]: Date.now() };
+    if (col !== 'done') touch('tasks', task.id, { status: col, stageAt });
+    else touch('tasks', task.id, { stageAt });
+    saveLayer();
     const wasDone = task.status === 'completed';
     if (col === 'done' && !wasDone) await toggle(task, true, listId);
     else if (col !== 'done' && wasDone) await toggle(task, false, listId);
@@ -334,6 +341,52 @@
     return `${head}${head.endsWith('.') ? '' : '.'} Остальное подождёт.`; // «18 окт.» уже с точкой
   });
 
+  // ---------- шаблоны досок ----------
+
+  const allTemplates = $derived(templatesFrom(lay));
+  const templateUsage = (tid) => boardLists.filter((l) => templateFor(l.id).id === tid).map((l) => l.title);
+  /** Открытых задач в колонке шаблона по всем его спискам. */
+  function templateCount(tid, colId) {
+    let n = 0;
+    for (const l of boardLists) {
+      const t = templateFor(l.id);
+      if (t.id !== tid) continue;
+      for (const x of tasks[l.id] ?? []) if (!x.parent && x.status !== 'completed' && colOf(x, t.cols) === colId) n++;
+      if (colId === 'done') n += (tasks[l.id] ?? []).filter((x) => !x.parent && x.status === 'completed').length;
+    }
+    return n;
+  }
+  /** Сохранить шаблон; removed — удалённые колонки: их задачи переезжают в соседнюю. */
+  function saveTemplate(id, draft, removed = []) {
+    const moves = Object.fromEntries(removed.map((r) => [r.id, r.to]));
+    for (const l of boardLists) {
+      if (templateFor(l.id).id !== id) continue;
+      for (const t of tasks[l.id] ?? []) {
+        let s = lay.tasks?.[t.id]?.status, guard = 0;
+        if (!s || !moves[s]) continue;
+        while (moves[s] && guard++ < 20) s = moves[s];
+        touch('tasks', t.id, { status: s });
+      }
+    }
+    if (isBuiltin(id)) touch('templatesEdit', id, { ...draft, removed: false });
+    else touch('templates', id, { ...draft, removed: false });
+    saveLayer();
+    say(`Шаблон «${draft.name}» сохранён`);
+  }
+  function resetTemplate(id) { touch('templatesEdit', id, { removed: true }); saveLayer(); say('Шаблон возвращён как был'); }
+  function createTemplate() {
+    const id = 'tpl' + Date.now().toString(36);
+    touch('templates', id, blankTemplate('Свой шаблон'));
+    saveLayer();
+    return id;
+  }
+  function deleteTemplate(id, replacement) {
+    for (const l of boardLists) if (templateFor(l.id).id === id) touch('lists', l.id, { template: replacement });
+    touch('templates', id, { removed: true });
+    saveLayer();
+    say('Шаблон удалён');
+  }
+
   async function createList(title, template) {
     try {
       const l = await api.createList(title);
@@ -362,6 +415,15 @@
       openRef = null;
       say('Задача удалена');
     } catch (e) { say('Не удалось удалить: ' + e); }
+  }
+
+  /** Подзадача из «Конвейера»: вложенная задача Google Tasks, помеченная этапом в слое. */
+  async function addSubTo(listId, parent, title, stage) {
+    try {
+      const r = await api.createTask(listId, { title }, parent.id);
+      tasks[listId] = [...(tasks[listId] ?? []), r];
+      if (stage) { touch('tasks', r.id, { stage }); saveLayer(); }
+    } catch (e) { say('Не удалось добавить подзадачу: ' + e); }
   }
 
   async function addSub(title) {
@@ -564,7 +626,7 @@
       <Brand />
       <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
       <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => (view = 'calendar')}>Календарь</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => (view = 'board')}>Доска</button>
+      <button class="sp-tab" role="tab" aria-selected={['board', 'archive', 'templates', 'sphere'].includes(view)} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => (view = 'board')}>Доска</button>
       <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
       <div class="right" data-tauri-drag-region>
         <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
@@ -643,6 +705,7 @@
           <span>Спутник {version}</span>
           <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
           {#if upd.note}<span>{upd.note}</span>{/if}
+          <button type="button" onclick={() => (view = 'templates')}>Шаблоны досок →</button>
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
@@ -671,6 +734,9 @@
         {:else if view === 'habits'}
           <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
+        {:else if view === 'templates'}
+          <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
+            onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
         {:else if view === 'archive'}
           <Archive lists={boardLists} tasksByList={tasks} {activeId}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
@@ -678,6 +744,10 @@
             onback={() => (view = 'board')} />
         {:else if activeList}
           <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf} {typeOf}
+            view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
+            ontoggle={(t, d) => toggle(t, d, activeId, true)}
+            onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
+            onsetstage={(t, col) => move(t, col, activeId)}
             layTasks={lay.tasks} project={boardProject}
             onopen={(t) => (openRef = { listId: activeId, id: t.id })}
             onmove={(t, col) => move(t, col, activeId)}
@@ -696,6 +766,7 @@
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
+      fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
@@ -718,7 +789,7 @@
   {/if}
 
   {#if newList}
-    <NewList oncreate={createList} onclose={() => (newList = false)} />
+    <NewList templates={allTemplates} oncreate={createList} onclose={() => (newList = false)} />
   {/if}
 {/if}
 

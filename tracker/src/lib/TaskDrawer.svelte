@@ -9,6 +9,7 @@
   // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
   let { task, list, subs, status, cols, remind = null, slot = null, type = null, priority = null,
     dueDays = new Set(), loadEvents = null,
+    fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
   const remindKind = $derived(!remind ? '' : remind.kind === 'at' ? 'at' : `b${remind.days ?? 0}`);
@@ -124,6 +125,18 @@
         {/each}
       </div>
     </div>
+    {#if fields.includes('client')}
+      <div class="field">
+        <label for="f-client">Клиент</label>
+        <input id="f-client" value={client} placeholder="Кто заказал" onchange={(e) => onlayer({ client: e.currentTarget.value.trim() })} />
+      </div>
+    {/if}
+    {#if fields.includes('money')}
+      <div class="field">
+        <label for="f-money">Сумма, ₽</label>
+        <input id="f-money" type="number" min="0" step="100" value={money} placeholder="0" onchange={(e) => onlayer({ money: e.currentTarget.value ? Number(e.currentTarget.value) : null })} />
+      </div>
+    {/if}
     <!-- Срок и время — одно поле, по клику окно «Когда» (DateTimePicker) слева от окна задачи. -->
     <div class="field">
       <span>Срок</span>

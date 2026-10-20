@@ -1,10 +1,12 @@
 <script>
-  import { TEMPLATES } from './templates.js';
+  import { BUILTIN } from './templates.js';
 
-  let { oncreate, onclose } = $props();
+  // templates — встроенные (с правками) и свои шаблоны (templatesFrom).
+  let { templates = BUILTIN, oncreate, onclose } = $props();
+  const TEMPLATES = $derived(templates);
 
-  let tpl = $state(TEMPLATES[0].id);
-  let title = $state(TEMPLATES[0].title);
+  let tpl = $state(BUILTIN[0].id);
+  let title = $state(BUILTIN[0].title);
   let touched = false;
   let busy = $state(false);
 
