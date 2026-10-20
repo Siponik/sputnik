@@ -5,7 +5,7 @@
 // новые сообщения (getUpdates), тогда ответ приходит в течение минуты. Слушаем только свой чат (TELEGRAM_CHAT_ID).
 //
 // Команды:
-//   текст          — новая задача; /today, /tasks, /done, /lists — см. BotTasks.gs
+//   текст          — новая задача; /today, /week, /tasks, /done, /move, /lists — см. BotTasks.gs
 //   /time          — когда приходит сводка
 //   /time 7:30     — поставить время (можно и просто прислать «7:30»)
 //   /days будни    — только по будням; /days все — каждый день
@@ -13,7 +13,7 @@
 //   /now           — прислать ссылку на сводку сейчас
 //   /help          — список команд
 
-const BOT_VERSION = '2'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
+const BOT_VERSION = '3'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
 const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
@@ -21,8 +21,10 @@ function setupBot() {
   tg_('setMyCommands', {
     commands: [
       { command: 'today', description: 'Задачи на сегодня' },
+      { command: 'week', description: 'Задачи на неделю по дням' },
       { command: 'tasks', description: 'Все открытые задачи: /tasks Работа' },
       { command: 'done', description: 'Отметить: /done 3 или /done молоко' },
+      { command: 'move', description: 'Перенести: /move 3 завтра' },
       { command: 'lists', description: 'Списки и основной список' },
       { command: 'time', description: 'Время сводки: /time 7:30' },
       { command: 'days', description: 'По будням или каждый день' },
@@ -39,9 +41,10 @@ const HELP_ = [
   '<b>Задачи</b>',
   'Просто напиши — добавлю задачу: <i>позвонить маме завтра 17:00</i>',
   'Можно дописать @список, #work #asset #client #study #personal, приоритет !!! / !! / !, а со второй строки — заметку.',
-  '/today — на сегодня и просроченное',
+  '/today — на сегодня и просроченное, /week — на неделю по дням',
   '/tasks — все открытые, /tasks работа — одного списка',
   '/done 3 или /done молоко — отметить (в списках есть кнопки ✓)',
+  '/move 3 завтра или /move молоко в пятницу 17:00 — перенести срок',
   '/lists — списки и основной',
   '',
   '<b>Сводка</b>',
@@ -152,11 +155,14 @@ function handle_(text) {
     '/время': '/time', '/дни': '/days', '/пауза': '/off', '/вкл': '/on', '/сейчас': '/now', '/start': '/help', '/помощь': '/help',
     '/задача': '/add', '/добавь': '/add', '/сегодня': '/today', '/задачи': '/tasks', '/список': '/tasks',
     '/готово': '/done', '/сделано': '/done', '/списки': '/lists',
+    '/неделя': '/week', '/перенеси': '/move', '/перенести': '/move',
   };
   cmd = alias[cmd] || cmd;
 
   if (cmd === '/add') return cmdAdd_(raw);
   if (cmd === '/today') return cmdToday_();
+  if (cmd === '/week') return cmdWeek_();
+  if (cmd === '/move') return cmdMove_(raw);
   if (cmd === '/tasks') return cmdTasks_(raw);
   if (cmd === '/done') return cmdDone_(raw);
   if (cmd === '/lists') return cmdLists_(raw);
