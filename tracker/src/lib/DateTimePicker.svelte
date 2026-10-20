@@ -1,9 +1,9 @@
 <script>
   import { fade, pop } from './motion.js';
   // Окно «Когда» (design/screens/DateTime.dc.html, docs/design-v2.md — «Выбор даты и времени»):
-  // строка словами, быстрые кнопки, месяц с точками занятости, время по расписанию дня, длительность, «Весь день»,
+  // строка словами, быстрые кнопки, месяц с точками занятости, время — сетка часов 00–23 + минуты (без прокрутки), длительность, «Весь день»,
   // напоминание, «Без срока». Время задачи — слой tasks[id].slot = { s, e }; длительность = e − s.
-  import { onMount, tick, untrack } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { ymd } from './api.js';
   import { parseWhen } from './when.js';
   import { DEFAULT_TIME } from './reminders.js';
@@ -20,7 +20,8 @@
   const MONG = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
   const WDF = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье'];
   const WDS = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
-  const START = 8 * 60, END = 22 * 60, ROW = 22; // лента 8:00–22:00 шагом 30 минут
+  // Сутки целиком, без прокрутки: 4 ряда по 6 часов.
+  const PARTS = [['ночь', 0], ['утро', 6], ['день', 12], ['вечер', 18]];
   const DURS = [[30, '30 мин'], [60, '1 ч'], [120, '2 ч'], [180, '3 ч']];
 
   const pad = (n) => String(n).padStart(2, '0');
@@ -91,8 +92,6 @@
   }
 
   // ---------- время ----------
-  const rows = Array.from({ length: (END - START) / 30 }, (_, i) => START + i * 30);
-  const yAt = (min) => ((min - START) / 30) * ROW;
   const ps = $derived(!allDay && time ? toMin(time) : null);
   const pe = $derived(ps != null ? ps + dur : null);
   const clash = $derived(ps == null ? null : dayBusy.find((b) => b.s < pe && ps < b.e) ?? null);
@@ -101,21 +100,27 @@
     for (let s = ps; s + dur <= 24 * 60; s += 30) if (!dayBusy.some((b) => b.s < s + dur && s < b.e)) return fromMin(s);
     return null;
   });
-  // «Весь день» включили — время очищается; выключили — ждём, пока выберут время в расписании.
+  // Занятость по часам: события дня, попадающие в час h (для подсветки и подсказки).
+  const busyHour = $derived(Array.from({ length: 24 }, (_, h) => dayBusy.filter((b) => b.s < (h + 1) * 60 && h * 60 < b.e)));
+  const inPick = (h) => ps != null && ps < (h + 1) * 60 && h * 60 < pe;
+  // «Весь день» включили — время очищается; выключили — ждём, пока выберут час.
   function toggleAllDay() {
     allDay = !allDay;
     if (allDay) time = '';
-    else scrollToTime();
   }
-  function pickTime(min) { time = fromMin(min); allDay = false; if (!sel) sel = today; }
-  function setMinutes(mm) { const h = time ? time.split(':')[0] : '10'; time = `${h}:${mm}`; allDay = false; if (!sel) sel = today; }
+  function setTime(t) { time = t; allDay = false; if (!sel) sel = today; }
+  // Час: минуты сохраняются, если время уже было.
+  function pickHour(h) { setTime(`${pad(h)}:${time && !allDay ? time.split(':')[1] : '00'}`); }
+  function setMinutes(mm) { setTime(`${time && !allDay ? time.split(':')[0] : '10'}:${mm}`); }
+  // Точное время руками: «7:40», «07.40», «740», «19».
+  let exact = $state(null);
+  function typeTime(v) {
+    const m = v.trim().match(/^(\d{1,2})(?:[:.\s]?(\d{2}))?$/);
+    if (!m || +m[1] > 23 || +(m[2] ?? 0) > 59) { if (exact) exact.value = time; return; }
+    setTime(`${pad(+m[1])}:${m[2] ?? '00'}`);
+  }
 
-  let lane = $state(null);
-  async function scrollToTime() {
-    await tick();
-    if (lane) lane.scrollTop = Math.max(0, yAt(ps ?? (dayBusy[0]?.s ?? 10 * 60)) - 60);
-  }
-  onMount(() => { scrollToTime(); input?.focus(); });
+  onMount(() => input?.focus());
 
   // ---------- строка словами ----------
   let input = $state(null);
@@ -124,7 +129,7 @@
     const p = parseWhen(v);
     if (p.day) pickDay(p.day);
     if (p.allDay) allDay = true;
-    if (p.time && allowTime) { time = p.time; allDay = false; if (!p.day && !sel) sel = today; scrollToTime(); }
+    if (p.time && allowTime) { time = p.time; allDay = false; if (!p.day && !sel) sel = today; }
   }
 
   // ---------- итог и применение ----------
@@ -204,30 +209,30 @@
         {/if}
       </div>
       {#if allowTime}
-        <!-- Расписание видно всегда; при «Весь день» приглушено, клик по времени выключает «Весь день». -->
-        <div class="tl" class:dim={allDay || ps == null} bind:this={lane} aria-label="Расписание дня — выбери свободное время">
-          <div class="tl-in" style="height: {yAt(END)}px">
-            {#each rows as m (m)}
-              <button type="button" class="tr" class:hour={m % 60 === 0} data-t={fromMin(m)} aria-label="Выбрать {fromMin(m)}" style="top: {yAt(m)}px" onclick={() => pickTime(m)}>
-                {#if m % 60 === 0}<b>{fromMin(m)}</b>{/if}
-              </button>
+        <!-- Сутки 00–23 сеткой, без прокрутки. Занятые часы отмечены, при «Весь день» сетка приглушена, клик по часу выключает «Весь день». -->
+        <div class="dtp-hours" class:dim={allDay || ps == null} role="group" aria-label="Час">
+          {#each PARTS as [name, h0] (h0)}
+            <span class="hp">{name}</span>
+            {#each Array.from({ length: 6 }, (_, i) => h0 + i) as h (h)}
+              {@const bz = busyHour[h]}
+              <button type="button" class="hc" class:busy={bz.length} class:in={inPick(h)} class:clash={clash && inPick(h) && bz.length}
+                aria-pressed={ps != null && Math.floor(ps / 60) === h}
+                title={bz.length ? bz.map((b) => `${fromMin(b.s)} ${b.title}`).join('\n') : ''}
+                aria-label="{pad(h)} часов{bz.length ? ', занято' : ''}" onclick={() => pickHour(h)}>{pad(h)}</button>
             {/each}
-            {#each dayBusy as b, i (i)}
-              <div class="ev2" style="top: {yAt(Math.max(START, b.s)) + 1}px; height: {Math.max(18, yAt(Math.min(END, b.e)) - yAt(Math.max(START, b.s)) - 2)}px">{fromMin(b.s)} {b.title}</div>
-            {/each}
-            {#if ps != null && sel}
-              <div class="pick" class:clash style="top: {yAt(Math.max(START, ps)) + 1}px; height: {Math.max(18, (dur / 30) * ROW - 2)}px">{time}–{fromMin(pe)}{title ? ` · ${title}` : ''}</div>
-            {/if}
-          </div>
+          {/each}
         </div>
         <div class="mins" class:dim={allDay || ps == null} role="group" aria-label="Минуты">
           {#each ['00', '15', '30', '45'] as mm (mm)}<button type="button" aria-pressed={time.endsWith(':' + mm)} onclick={() => setMinutes(mm)}>:{mm}</button>{/each}
+          <input bind:this={exact} class="ex" value={ps != null ? time : ''} placeholder="чч:мм" maxlength="5" inputmode="numeric" aria-label="Точное время"
+            onchange={(e) => typeTime(e.currentTarget.value)} onkeydown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); typeTime(e.currentTarget.value); } }} />
         </div>
+        {#if ps != null && sel}<p class="pick" class:clash>{time}–{fromMin(pe)}{title ? ` · ${title}` : ''}</p>{/if}
         <div class="durs" class:dim={allDay || ps == null}>
           <span>Длится</span>
           {#each DURS as [m, l] (m)}<button type="button" class="qb" aria-pressed={dur === m} onclick={() => (dur = m)}>{l}</button>{/each}
         </div>
-        {#if allDay || ps == null}<p class="time-hint">{!sel ? 'Срок не выбран — задача останется на доске без даты. Нажми на день или время.' : 'Весь день, без времени. Нажми на время в расписании, чтобы назначить его.'}</p>{/if}
+        {#if allDay || ps == null}<p class="time-hint">{!sel ? 'Срок не выбран — задача останется на доске без даты. Нажми на день или час.' : 'Весь день, без времени. Нажми на час, чтобы назначить время.'}</p>{/if}
         {#if clash}<p class="clash-t">Пересекается с «{clash.title}»{freeAfter ? `. Свободно с ${freeAfter}.` : '.'}</p>{/if}
       {:else}
         <div class="allday-note">

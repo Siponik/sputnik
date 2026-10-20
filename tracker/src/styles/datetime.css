@@ -47,18 +47,22 @@
 .dtp .sw[aria-pressed="true"] { background: var(--clay); }
 .dtp .sw[aria-pressed="true"]::after { transform: translateX(14px); background: var(--on-clay); }
 @media (prefers-reduced-motion: no-preference) { .dtp .sw::after { transition: transform .15s; } }
-.dtp .tl { position: relative; height: 308px; overflow-y: auto; border-radius: 10px; border: 1px solid var(--hairline); }
-.dtp .tl-in { position: relative; }
-.dtp .tr { position: absolute; left: 0; right: 0; height: 22px; display: flex; align-items: center; border: 0; background: none; padding: 0 0 0 46px; cursor: pointer; text-align: left; }
-.dtp .tr.hour { border-top: 1px solid var(--hairline); }
-.dtp .tr:hover { background: color-mix(in srgb, var(--clay) 8%, transparent); }
-.dtp .tr b { position: absolute; left: 8px; font: 400 10.5px/1 var(--font-mono); color: var(--ink-faint); }
-.dtp .tr:hover::after { content: attr(data-t); font: 500 11px/1 var(--font-mono); color: var(--clay); }
-.dtp .ev2 { position: absolute; left: 46px; right: 6px; border-radius: 6px; background: var(--wash); box-shadow: inset 0 0 0 1px var(--edge); padding: 3px 8px; box-sizing: border-box; font-size: 11.5px; line-height: 15px; color: var(--ink-soft); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none; }
-.dtp .pick { position: absolute; left: 46px; right: 6px; border-radius: 6px; background: color-mix(in srgb, var(--clay) 22%, var(--raised)); box-shadow: inset 0 0 0 1.5px var(--clay); padding: 3px 8px; box-sizing: border-box; font: 600 12px/15px var(--font-sans); color: var(--ink); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.dtp .pick.clash { background: color-mix(in srgb, var(--signal-overdue) 18%, var(--raised)); box-shadow: inset 0 0 0 1.5px var(--signal-overdue); }
+.dtp .dtp-hours { display: grid; grid-template-columns: 40px repeat(6, 1fr); gap: 3px; }
+.dtp .hp { align-self: center; font-size: 11px; color: var(--ink-faint); }
+.dtp .hc { position: relative; height: 28px; border: 1px solid transparent; border-radius: var(--radius-md); background: var(--wash); color: var(--ink-soft); font: 500 12.5px/1 var(--font-mono); cursor: pointer; font-variant-numeric: tabular-nums; }
+.dtp .hc:hover { color: var(--ink); border-color: var(--edge); }
+/* Занято событием — полоска снизу; выбранный отрезок — мягкий clay; начало — сплошной clay; пересечение — красным. */
+.dtp .hc.busy::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 3px; height: 2px; border-radius: 1px; background: var(--ink-faint); }
+.dtp .hc.in { background: color-mix(in srgb, var(--clay) 18%, var(--raised)); color: var(--ink); }
+.dtp .hc[aria-pressed="true"] { background: var(--clay); color: var(--on-clay); }
+.dtp .hc.clash { box-shadow: inset 0 0 0 1.5px var(--signal-overdue); }
+.dtp .hc.clash::after { background: var(--signal-overdue); }
+.dtp .pick { margin: 0; padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--clay) 14%, var(--raised)); box-shadow: inset 0 0 0 1px var(--clay); font: 600 12.5px/16px var(--font-sans); color: var(--ink); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.dtp .pick.clash { background: color-mix(in srgb, var(--signal-overdue) 14%, var(--raised)); box-shadow: inset 0 0 0 1px var(--signal-overdue); }
 .dtp .mins { display: flex; gap: 4px; }
 .dtp .mins button { flex: 1; height: 28px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: none; color: var(--ink-soft); font: 500 12px/1 var(--font-mono); cursor: pointer; }
+.dtp .mins .ex { width: 64px; flex: none; height: 28px; box-sizing: border-box; padding: 0 8px; border-radius: var(--radius-md); border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 500 12.5px/1 var(--font-mono); text-align: center; }
+.dtp .mins .ex::placeholder { color: var(--ink-faint); }
 .dtp .mins button[aria-pressed="true"] { background: var(--raised); border-color: var(--clay); color: var(--ink); }
 .dtp .durs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dtp .durs > span { font-size: 12.5px; color: var(--ink-soft); margin-right: 2px; }
@@ -80,7 +84,7 @@
 .when-btn .muted { color: var(--ink-faint); font-weight: 400; }
 .when-btn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
 
-/* Время не выбрано («Весь день» или без срока) — расписание видно, но приглушено; наведение и клик работают. */
-.dtp .tl.dim, .dtp .mins.dim, .dtp .durs.dim { opacity: .5; }
-.dtp .tl.dim:hover { opacity: .8; }
+/* Время не выбрано («Весь день» или без срока) — сетка часов видна, но приглушена; наведение и клик работают. */
+.dtp .dtp-hours.dim, .dtp .mins.dim, .dtp .durs.dim { opacity: .5; }
+.dtp .dtp-hours.dim:hover, .dtp .mins.dim:hover { opacity: .8; }
 .dtp .time-hint { margin: 0; font-size: 12px; line-height: 16px; color: var(--ink-faint); }
