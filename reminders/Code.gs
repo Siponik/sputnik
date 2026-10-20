@@ -32,6 +32,10 @@ function tick() {
     if (typeof inboxTick_ === 'function') {
       try { inboxTick_(); } catch (e) { console.error('Входящие: ' + e); }
     }
+    // Команды боту (/time, /off …) — файл Bot.gs в этом же проекте.
+    if (typeof botTick_ === 'function') {
+      try { botTick_(); } catch (e) { console.error('Бот: ' + e); }
+    }
   } finally {
     lock.releaseLock();
   }
@@ -97,19 +101,33 @@ function esc_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Утренняя сводка: ссылка в Telegram по будням в 08:00 МСК ──
+// ── Утренняя сводка: ссылка в Telegram (по умолчанию по будням в 08:00 МСК) ──
 // Раньше слал GitHub Actions, но его расписание запускается с опозданием или пропускается.
-// Здесь точнее: tick() идёт раз в минуту. Отправляется один раз в день, окно 08:00–11:00.
+// Здесь точнее: tick() идёт раз в минуту. Отправляется один раз в день, окно — 3 часа после времени.
+// Время, дни и паузу меняют командами боту (Bot.gs): свойства BRIEF_AT, BRIEF_DAYS, BRIEF_OFF.
 const BRIEF_URL_DEFAULT = 'https://claude.ai/artifact/Mftfm4G7jmnrQZhnVJw728';
-const BRIEF_AT = 8 * 60; // минуты от полуночи по Москве
+const BRIEF_AT_DEFAULT = 8 * 60; // минуты от полуночи по Москве
+
+/** Время отправки в минутах от полуночи по Москве. */
+function briefAt_() {
+  const v = PropertiesService.getScriptProperties().getProperty('BRIEF_AT');
+  return v === null || isNaN(+v) ? BRIEF_AT_DEFAULT : +v;
+}
+
+/** 'work' — по будням, 'all' — каждый день. */
+function briefDays_() {
+  return PropertiesService.getScriptProperties().getProperty('BRIEF_DAYS') === 'all' ? 'all' : 'work';
+}
 
 function morningTick_() {
   const tz = 'Europe/Moscow', now = new Date();
-  const dow = +Utilities.formatDate(now, tz, 'u'); // 1 = пн … 7 = вс
-  if (dow > 5) return;
-  const min = +Utilities.formatDate(now, tz, 'H') * 60 + +Utilities.formatDate(now, tz, 'm');
-  if (min < BRIEF_AT || min > BRIEF_AT + 180) return;
   const props = PropertiesService.getScriptProperties();
+  if (props.getProperty('BRIEF_OFF') === '1') return;
+  const dow = +Utilities.formatDate(now, tz, 'u'); // 1 = пн … 7 = вс
+  if (dow > 5 && briefDays_() === 'work') return;
+  const min = +Utilities.formatDate(now, tz, 'H') * 60 + +Utilities.formatDate(now, tz, 'm');
+  const at = briefAt_();
+  if (min < at || min > at + 180) return;
   const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
   if (props.getProperty('BRIEF_SENT') === today) return;
   sendBrief_();
