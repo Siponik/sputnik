@@ -1,6 +1,8 @@
 // Спутник · команды боту в Telegram: задачи (BotTasks.gs) и время утренней сводки.
-// Без вебхука: tick() в Code.gs раз в минуту забирает новые сообщения (getUpdates),
-// поэтому ответ приходит в течение минуты. Слушаем только свой чат (TELEGRAM_CHAT_ID).
+// Сообщения приходят сразу через вебхук: скрипт опубликован как веб-приложение, Telegram шлёт обновления в doPost().
+// Вебхук ставит workflow .github/workflows/apps-script.yml после каждого обновления скрипта.
+// Запасной путь — опрос: если вебхука нет или он сбоит, tick() в Code.gs раз в минуту забирает
+// новые сообщения (getUpdates), тогда ответ приходит в течение минуты. Слушаем только свой чат (TELEGRAM_CHAT_ID).
 //
 // Команды:
 //   текст          — новая задача; /today, /tasks, /done, /lists — см. BotTasks.gs
@@ -16,7 +18,6 @@ const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
 function setupBot() {
-  tg_('deleteWebhook', {}); // getUpdates не работает, пока у бота есть вебхук
   tg_('setMyCommands', {
     commands: [
       { command: 'today', description: 'Задачи на сегодня' },
@@ -57,29 +58,81 @@ function botTick_() {
     props.setProperty('BOT_READY', BOT_VERSION);
     setupBot();
   }
+  if (props.getProperty('BOT_HOOK') === '1' && hookAlive_()) return; // сообщения приходят в doPost
   const offset = +(props.getProperty('TG_OFFSET') || 0);
-  const res = tg_('getUpdates', { offset: offset, timeout: 0, allowed_updates: ['message', 'callback_query'] });
+  const res = tg_('getUpdates', { offset: offset, timeout: 0, allowed_updates: ['message', 'callback_query'] }, true);
+  if (res && res.error_code === 409) { props.setProperty('BOT_HOOK', '1'); return; } // вебхук поставлен — опрос не нужен
   if (!res || !res.ok || !res.result.length) return;
-  const chat = String(props.getProperty('TELEGRAM_CHAT_ID'));
-  let last = offset;
   for (const u of res.result) {
-    last = u.update_id + 1;
     // Сразу запоминаем: если команда упадёт, она не будет повторяться каждую минуту.
-    props.setProperty('TG_OFFSET', String(last));
-    if (u.callback_query) { // нажали кнопку под сообщением
-      const q = u.callback_query;
-      if (q.message && String(q.message.chat.id) === chat) onCallback_(q);
-      continue;
-    }
-    const m = u.message;
-    if (!m || !m.text || String(m.chat.id) !== chat) continue; // чужие чаты молча пропускаем
-    try {
-      const r = handle_(m.text.trim());
-      if (typeof r === 'string') send_(r); else send_(r.text, r.markup);
-    } catch (e) {
-      console.error('Команда «' + m.text + '»: ' + e);
-      try { send_('⚠ Не получилось: ' + esc_(e.message || e)); } catch (e2) { /* Telegram недоступен */ }
-    }
+    props.setProperty('TG_OFFSET', String(u.update_id + 1));
+    handleUpdate_(u);
+  }
+}
+
+// ---------- вебхук: мгновенные ответы ----------
+
+/** Telegram присылает сюда каждое сообщение. Ключ k в адресе знает только он (выводится из токена бота). */
+function doPost(e) {
+  // HtmlService, а не ContentService: тот отвечает переадресацией 302, Telegram считает это ошибкой и шлёт повторно.
+  const out = HtmlService.createHtmlOutput('ok');
+  try {
+    if (!e || !e.parameter || e.parameter.k !== hookKey_() || !e.postData) return out;
+    handleUpdate_(JSON.parse(e.postData.contents));
+  } catch (err) {
+    console.error('Вебхук: ' + err);
+  }
+  return out;
+}
+
+function doGet() { return HtmlService.createHtmlOutput('Спутник'); }
+
+/** Ключ для адреса вебхука: первые 24 знака SHA-256 от токена. Workflow считает так же (sha256sum). */
+function hookKey_() {
+  const token = PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN') || '';
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, token, Utilities.Charset.UTF_8)
+    .map((b) => ((b + 256) % 256).toString(16).padStart(2, '0')).join('').slice(0, 24);
+}
+
+/** Раз в минуту: работает ли вебхук. Если Telegram копит сообщения с ошибкой — снимаем вебхук и переходим на опрос. */
+function hookAlive_() {
+  const props = PropertiesService.getScriptProperties();
+  const info = tg_('getWebhookInfo', {});
+  if (!info || !info.ok) return true; // Telegram не ответил — проверим через минуту
+  const w = info.result;
+  if (!w.url) { props.deleteProperty('BOT_HOOK'); props.deleteProperty('HOOK_FAILS'); return false; }
+  const failing = w.pending_update_count > 0 && w.last_error_date && Date.now() / 1000 - w.last_error_date < 180;
+  const fails = failing ? +(props.getProperty('HOOK_FAILS') || 0) + 1 : 0;
+  props.setProperty('HOOK_FAILS', String(fails));
+  if (fails < 3) return true;
+  console.error('Вебхук сбоит: ' + w.last_error_message + ' — перехожу на опрос раз в минуту');
+  tg_('deleteWebhook', {}); // ждущие сообщения не теряются: их заберёт getUpdates
+  props.deleteProperty('BOT_HOOK');
+  props.deleteProperty('HOOK_FAILS');
+  return false;
+}
+
+/** Одно обновление от Telegram — из вебхука или из опроса. Повтор того же update_id пропускаем. */
+function handleUpdate_(u) {
+  if (!u || !u.update_id) return;
+  const cache = CacheService.getScriptCache();
+  if (cache.get('u' + u.update_id)) return;
+  cache.put('u' + u.update_id, '1', 6 * 3600);
+  const chat = String(PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_ID'));
+  if (u.callback_query) { // нажали кнопку под сообщением
+    const q = u.callback_query;
+    if (q.message && String(q.message.chat.id) === chat) onCallback_(q);
+    return;
+  }
+  const m = u.message;
+  if (!m || !m.text || String(m.chat.id) !== chat) return; // чужие чаты молча пропускаем
+  tg_('sendChatAction', { chat_id: chat, action: 'typing' }); // «печатает…», пока ходим в Google Tasks
+  try {
+    const r = handle_(m.text.trim());
+    if (typeof r === 'string') send_(r); else send_(r.text, r.markup);
+  } catch (e) {
+    console.error('Команда «' + m.text + '»: ' + e);
+    try { send_('⚠ Не получилось: ' + esc_(e.message || e)); } catch (e2) { /* Telegram недоступен */ }
   }
 }
 
@@ -165,7 +218,7 @@ function hhmm_(t) {
   return Math.floor(t / 60) + ':' + String(t % 60).padStart(2, '0');
 }
 
-function tg_(method, body) {
+function tg_(method, body, quiet) {
   const token = PropertiesService.getScriptProperties().getProperty('TELEGRAM_BOT_TOKEN');
   if (!token) throw new Error('Добавь TELEGRAM_BOT_TOKEN в свойства скрипта');
   const r = UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/' + method, {
@@ -175,6 +228,6 @@ function tg_(method, body) {
     muteHttpExceptions: true,
   });
   const res = JSON.parse(r.getContentText() || '{}');
-  if (!res.ok) console.error('Telegram ' + method + ': ' + r.getContentText());
+  if (!res.ok && !quiet) console.error('Telegram ' + method + ': ' + r.getContentText());
   return res;
 }
