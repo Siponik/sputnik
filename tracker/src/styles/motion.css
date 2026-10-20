@@ -4,9 +4,7 @@
 
 /* ---------- 1. Смена экрана: View Transitions ---------- */
 .shell .sp-tabs { view-transition-name: nav; }
-.shell .side { view-transition-name: side; }
-::view-transition-group(nav), ::view-transition-old(nav), ::view-transition-new(nav),
-::view-transition-group(side), ::view-transition-old(side), ::view-transition-new(side) { animation: none; }
+::view-transition-group(nav), ::view-transition-old(nav), ::view-transition-new(nav) { animation: none; }
 ::view-transition-old(root) { animation: vt-out 120ms var(--ease-in) both; }
 ::view-transition-new(root) { animation: vt-in-fwd 220ms var(--ease-out) both; }
 [data-vt-dir="back"]::view-transition-new(root) { animation-name: vt-in-back; }
