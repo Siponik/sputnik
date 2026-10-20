@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import Brand from './Brand.svelte';
   import Coon from './Coon.svelte';
+  import WinControls from './WinControls.svelte';
   import { auth, listLists, calendarsAll, isOffline } from './api.js';
   import { plural } from './habits.js';
 
@@ -102,9 +103,10 @@
 {/snippet}
 
 <div class="setup2">
-  <header>
+  <header data-tauri-drag-region>
     <Brand size={26} />
     {#if oncancel}<button class="sp-btn sp-btn-ghost" type="button" style="margin-left: auto; min-height: 30px" onclick={oncancel}>Назад к Спутнику</button>{/if}
+    <WinControls />
   </header>
 
   <main>

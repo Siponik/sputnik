@@ -2,6 +2,19 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Права главного окна Спутника",
-  "windows": ["main"],
-  "permissions": ["core:default", "notification:default", "updater:default", "process:allow-restart"]
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "notification:default",
+    "updater:default",
+    "process:allow-restart",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-internal-toggle-maximize",
+    "core:window:allow-is-maximized",
+    "core:window:allow-close",
+    "core:window:allow-start-dragging"
+  ]
 }

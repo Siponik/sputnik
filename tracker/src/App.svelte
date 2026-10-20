@@ -2,6 +2,7 @@
   import { onMount, tick } from 'svelte';
   import * as keys from './lib/keys.js';
   import KeyHelp from './lib/KeyHelp.svelte';
+  import WinControls from './lib/WinControls.svelte';
   import Brand from './lib/Brand.svelte';
   import Setup from './lib/Setup.svelte';
   import Board from './lib/Board.svelte';
@@ -558,13 +559,14 @@
   <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
-    <nav class="sp-tabs" aria-label="Разделы">
+    <!-- Шапка — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. -->
+    <nav class="sp-tabs" aria-label="Разделы" data-tauri-drag-region>
       <Brand />
       <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => (view = 'today')}>Сегодня <span class="n">· {todayCount}</span></button>
       <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => (view = 'calendar')}>Календарь</button>
       <button class="sp-tab" role="tab" aria-selected={view === 'board' || view === 'archive'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => (view = 'board')}>Доска</button>
       <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => (view = 'habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}</button>
-      <div class="right">
+      <div class="right" data-tauri-drag-region>
         <button class="sync" class:busy={sync.busy} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
         </button>
@@ -580,6 +582,7 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
         </button>
       </div>
+      <WinControls />
     </nav>
 
     {#if (upd.found && !upd.later) || upd.err}
