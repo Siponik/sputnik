@@ -33,3 +33,37 @@ jobs:
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
           cd reminders
           npx --yes @google/clasp@3.4.1 push --force
+
+      # Мгновенные ответы бота: скрипт публикуется как веб-приложение (одно развёртывание «telegram», адрес не меняется),
+      # и Telegram шлёт сообщения прямо в doPost (reminders/Bot.gs). Если вебхук сбоит, скрипт сам вернётся к опросу раз в минуту.
+      # Каждое обновление создаёт версию проекта (у Apps Script лимит 200 версий — старые можно удалить в редакторе).
+      - name: Опубликовать веб-приложение и поставить вебхук
+        env:
+          CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          if [ -z "$CLASPRC_JSON" ] || [ -z "$TG_TOKEN" ]; then
+            echo "::warning::Нет CLASPRC_JSON или TELEGRAM_BOT_TOKEN — бот остаётся на опросе раз в минуту."
+            exit 0
+          fi
+          cd reminders
+          clasp() { npx --yes @google/clasp@3.4.1 "$@"; }
+          DEP=$(clasp list-deployments --json | node -e '
+            const s = require("fs").readFileSync(0, "utf8"); const i = s.indexOf("[");
+            const d = i < 0 ? [] : JSON.parse(s.slice(i)); const x = d.find((x) => x.description === "telegram");
+            process.stdout.write(x ? x.deploymentId : "")')
+          if [ -n "$DEP" ]; then clasp update-deployment "$DEP" -d telegram; else
+            DEP=$(clasp create-deployment -d telegram --json | node -e '
+              const s = require("fs").readFileSync(0, "utf8"); process.stdout.write(JSON.parse(s.slice(s.indexOf("{"))).deploymentId)')
+          fi
+          echo "Развёртывание: $DEP"
+          KEY=$(printf '%s' "$TG_TOKEN" | sha256sum | cut -c1-24)
+          URL="https://script.google.com/macros/s/$DEP/exec"
+          # Проверка: веб-приложение открыто без входа в Google и отвечает без переадресации.
+          echo "GET:  $(curl -s -L -o /dev/null -w '%{http_code}' "$URL")"
+          echo "POST: $(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$URL?k=$KEY")"
+          curl -s "https://api.telegram.org/bot$TG_TOKEN/setWebhook" -H 'Content-Type: application/json' \
+            -d "{\"url\":\"$URL?k=$KEY\",\"allowed_updates\":[\"message\",\"callback_query\"]}" | head -c 300; echo
+          sleep 20
+          curl -s "https://api.telegram.org/bot$TG_TOKEN/getWebhookInfo" | node -e '
+            const r = JSON.parse(require("fs").readFileSync(0, "utf8")).result || {}; delete r.url; console.log(JSON.stringify(r))'
