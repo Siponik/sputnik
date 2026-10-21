@@ -342,7 +342,7 @@
           </div>
         </section>
       {:else}
-        <CalMonth days={dayObjs} month={selMonth} {show} onpick={pick} onopenhabits={openHabits} />
+        <CalMonth days={dayObjs} month={selMonth} {show} onpick={pick} onopenhabits={openHabits} onmove={moveItem} />
       {/if}
     </main>
 

@@ -11,6 +11,9 @@
 .wk-grid .blk[draggable="true"], .wk-allday .ad[draggable="true"] { cursor: grab; }
 .wk-grid .blk.lift, .wk-allday .ad.lift { opacity: .45; }
 .wk-allday .adcol.drop { outline: 1.5px dashed var(--clay); outline-offset: -3px; border-radius: 7px; }
+.cal-month .it[draggable="true"] { cursor: grab; }
+.cal-month .it.lift { opacity: .45; }
+.cal-month .cellw.drop { outline: 1.5px dashed var(--clay); outline-offset: -2px; }
 
 /* Неделя на широком окне — без прокрутки страницы: всё по высоте экрана, сетка забирает остаток
    (часы подстраиваются в calendar.hourLayout). Если часов слишком много, прокручивается только сетка. */
