@@ -746,6 +746,20 @@
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
   }
 
+  /** Новый срок сразу нескольким задачам (на «Сегодня» — «Всё на сегодня»), с «Отменить». items — [{ task, list }]. */
+  async function rescheduleMany(items, day) {
+    const prev = items.map((x) => ({ listId: x.list.id, id: x.task.id, due: x.task.due ?? null }));
+    const setDue = async (listId, id, due) => replace(listId, await api.patchTask(listId, id, { due }));
+    let n = 0;
+    try {
+      for (const p of prev) { await setDue(p.listId, p.id, api.ymdToDue(day)); n++; }
+    } catch (e) { say('Перенесено не всё: ' + e); return; }
+    say(`Перенесено на ${whenText(day, null).date.split(',')[0].toLowerCase()}: ${n}`, async () => {
+      try { for (const p of prev) await setDue(p.listId, p.id, p.due); }
+      catch (e) { say('Не удалось вернуть сроки: ' + e); }
+    });
+  }
+
   // ---------- привычки ----------
 
   function toggleHabit(h) {
@@ -963,7 +977,7 @@
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
-            oncreate={(p, loud = false) => quickCreate(p, !loud)} ontogglehabit={toggleHabit}
+            oncreate={(p, loud = false) => quickCreate(p, !loud)} onreschedule={rescheduleMany} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
             onregister={(fn) => (quickLine = fn)}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />

@@ -9,7 +9,7 @@
   import { parseWhen, whenText } from './when.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
-    onopen, ontoggle, oncreate, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar, filter = null } = $props();
+    onopen, ontoggle, oncreate, onreschedule = null, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar, filter = null } = $props();
 
   let clock = $state(Date.now());
   onMount(() => {
@@ -254,7 +254,13 @@
 
       {#if overdue.length}
         <section>
-          <h2 class:over={lateLeft}>{lateLeft ? `Просрочено · ${lateLeft}` : 'Просрочено · разобрано'}</h2>
+          <div class="t-sechead">
+            <h2 class:over={lateLeft}>{lateLeft ? `Просрочено · ${lateLeft}` : 'Просрочено · разобрано'}</h2>
+            {#if lateLeft && onreschedule}
+              <button type="button" class="t-move" title="Поставить срок «сегодня» всем просроченным (можно отменить)"
+                onclick={() => onreschedule(overdue.filter((x) => !isOn(x)), today)}>Всё на сегодня</button>
+            {/if}
+          </div>
           <div class:box={lateLeft}>{#each overdue as x (x.task.id)}{@render taskRow(x)}{/each}</div>
         </section>
       {/if}
