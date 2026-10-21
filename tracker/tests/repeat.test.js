@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { nextDue, dueRepeats, repeatLabel, takeRepeat } from '../src/lib/repeat.js';
+import { nextDue, dueRepeats, repeatLabel, takeRepeat, CARRY } from '../src/lib/repeat.js';
 import { layerPatches } from '../src/lib/inbox.js';
 
 const T = '2026-10-21'; // среда
@@ -83,4 +83,8 @@ test('бот понимает повтор в тексте задачи', () => 
   assert.deepEqual({ ...p.repeat }, { every: 'week' });
   assert.equal(p.day, '2026-10-23');
   assert.equal(ctx.parseTask_('купить хлеб').repeat, null);
+});
+
+test('следующая копия повтора сохраняет тему и булавку стикера', () => {
+  assert.ok(CARRY.includes('topic') && CARRY.includes('pin'));
 });

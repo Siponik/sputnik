@@ -125,7 +125,7 @@
   let wallEl = $state(null);
   async function flipGroup() {
     const before = rectsOf(wallEl);
-    adding = '';
+    adding = null;
     act.set({ group: group === 'when' ? 'topic' : 'when' });
     await tick();
     flipFrom(wallEl, before);
@@ -233,7 +233,8 @@
   }
 
   // ---------- новый стикер ----------
-  let adding = $state('');
+  // null — новый стикер не пишут; '' — пишут в «Разное» (у этой колонки id пустой).
+  let adding = $state(null);
   let draft = $state('');
   let addEl = $state(null);
   async function startAdd(laneId) {
@@ -261,7 +262,7 @@
   }
   function addKey(e, lane) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(lane); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); adding = ''; draft = ''; }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); adding = null; draft = ''; }
   }
 
   // ---------- меню шапки и темы ----------
@@ -360,7 +361,7 @@
         {#if adding === lane.id}
           <div class="stk-new open">
             <textarea bind:this={addEl} bind:value={draft} rows="2" aria-label="Новый стикер в «{lane.name}»" placeholder="Что сделать?"
-              onkeydown={(e) => addKey(e, lane)} onblur={() => { if (!draft.trim()) adding = ''; }}></textarea>
+              onkeydown={(e) => addKey(e, lane)} onblur={() => { if (!draft.trim()) adding = null; }}></textarea>
             <span class="stk-new-hint">Enter — приклеить · Esc — отмена</span>
           </div>
         {:else}

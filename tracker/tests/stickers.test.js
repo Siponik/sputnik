@@ -114,3 +114,10 @@ test('пустые темы прячутся, по срокам — всегда
   v = visibleLanes([L('today', 0), L('week', 0), L('later', 1)], { group: 'when' });
   assert.equal(v.shown.length, 3);
 });
+
+test('«Разное» (id пустой) не считается колонкой, куда пишут новый стикер, пока не начали', () => {
+  const L = (id, n) => ({ id, items: Array.from({ length: n }, (_, i) => ({ id: id + i })) });
+  const all = [L('docs', 0), L('', 1)];
+  assert.deepEqual(visibleLanes(all, { group: 'topic', keep: null }).shown.map((l) => l.id), ['']);
+  assert.deepEqual(visibleLanes(all, { group: 'topic', keep: 'docs' }).shown.map((l) => l.id), ['docs', '']);
+});
