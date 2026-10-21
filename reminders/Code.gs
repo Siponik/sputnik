@@ -47,20 +47,21 @@ function tick() {
 
 function remindersTick_() {
   const data = readFile_();
-  if (!data) return;
   const props = PropertiesService.getScriptProperties();
+  const snoozed = JSON.parse(props.getProperty('SNOOZED') || '[]'); // «⏰ Через час» под напоминанием
+  if (!data && !snoozed.length) return;
   const sent = JSON.parse(props.getProperty('SENT') || '{}');
   const now = Date.now();
   let changed = false;
 
-  for (const item of data.items || []) {
+  for (const item of ((data && data.items) || []).concat(snoozed)) {
     const at = Date.parse(item.fireAt);
     if (!at || at > now || sent[item.key]) continue;
     // Если Telegram не ответил, не отмечаем — попробуем через минуту.
     // События и дни рождения выполненными не бывают — проверяем только задачи.
     const isEvent = item.kind === 'event' || item.kind === 'birthday';
     if (now - at <= LATE_LIMIT_MS && (isEvent || stillOpen_(item))) {
-      try { send_(format_(item)); } catch (e) { console.error(e); continue; }
+      try { send_(format_(item), remindButtons_(item)); } catch (e) { console.error(e); continue; }
     }
     sent[item.key] = now;
     changed = true;
@@ -68,6 +69,44 @@ function remindersTick_() {
 
   for (const k of Object.keys(sent)) if (now - sent[k] > KEEP_SENT_MS) { delete sent[k]; changed = true; }
   if (changed) props.setProperty('SENT', JSON.stringify(sent));
+  const left = snoozed.filter((x) => !sent[x.key]);
+  if (left.length !== snoozed.length) props.setProperty('SNOOZED', JSON.stringify(left));
+}
+
+// ── Кнопки под напоминанием: «✓ Готово» (задача) и «⏰ Через час» ──
+// Кнопке хватает короткого номера: само напоминание лежит в свойстве REM_LAST (последние REM_KEEP).
+const REM_KEEP = 40;
+const SNOOZE_MIN = 60;
+
+function remindButtons_(item) {
+  if (item.kind === 'milestone') return null;
+  const props = PropertiesService.getScriptProperties();
+  const seq = +(props.getProperty('REM_SEQ') || 0) + 1;
+  props.setProperty('REM_SEQ', String(seq));
+  const last = JSON.parse(props.getProperty('REM_LAST') || '{}');
+  last[seq] = item;
+  const ids = Object.keys(last).map(Number).sort((a, b) => a - b);
+  for (const k of ids.slice(0, Math.max(0, ids.length - REM_KEEP))) delete last[k];
+  props.setProperty('REM_LAST', JSON.stringify(last));
+  const row = [];
+  if (item.taskId && item.listId) {
+    if (typeof rememberTask_ === 'function') rememberTask_(item.taskId, item.listId); // для кнопки ✓ (BotTasks.gs)
+    row.push({ text: '✓ Готово', callback_data: 'd:' + item.taskId });
+  }
+  row.push({ text: '⏰ Через час', callback_data: 'z:' + seq });
+  return { inline_keyboard: [row] };
+}
+
+/** «⏰ Через час»: напоминание n повторится через SNOOZE_MIN минут. Возвращает подпись для кнопки или null. */
+function snoozeRemind_(n) {
+  const props = PropertiesService.getScriptProperties();
+  const item = JSON.parse(props.getProperty('REM_LAST') || '{}')[n];
+  if (!item) return null;
+  const at = new Date(Date.now() + SNOOZE_MIN * 60e3);
+  const snoozed = JSON.parse(props.getProperty('SNOOZED') || '[]').filter((x) => x.from !== n);
+  snoozed.push(Object.assign({}, item, { key: 'snooze|' + n + '|' + at.getTime(), fireAt: at.toISOString(), from: n }));
+  props.setProperty('SNOOZED', JSON.stringify(snoozed.slice(-REM_KEEP)));
+  return Utilities.formatDate(at, 'Europe/Moscow', 'H:mm');
 }
 
 function readFile_() {
