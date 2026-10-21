@@ -33,7 +33,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
 .nav button{display:flex;align-items:center;gap:10px;height:38px;padding:0 10px;border:0;border-radius:10px;background:none;color:var(--ink-soft);font:500 13.5px/1 var(--font-sans);text-align:left;cursor:pointer}
 .nav button:hover{background:var(--raised);color:var(--ink)}
 .nav button[aria-current="true"]{background:var(--raised);color:var(--ink);box-shadow:inset 2px 0 0 var(--clay)}
-.nav button i{width:20px;font-style:normal;text-align:center}
+.nav .tic{width:17px;height:17px;flex:none;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .nav button b{margin-left:auto;width:7px;height:7px;border-radius:50%;background:var(--clay)}
 .nav .ver{margin-top:auto;padding:10px;font-size:12px;line-height:17px;color:var(--ink-faint)}
 .pane{display:flex;flex-direction:column;gap:18px;padding:22px 28px;overflow:hidden}
@@ -84,7 +84,7 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
   <div class="st" role="dialog" aria-label="Настройки">
     <nav class="nav" aria-label="Разделы настроек">
       <h2>Настройки</h2>
-      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="6"><button type="button" aria-current="{{t.on}}" onClick="{{t.pick}}"><i>{{t.i}}</i>{{t.l}}<sc-if value="{{t.dot}}" hint-placeholder-val="{{false}}"><b></b></sc-if></button></sc-for>
+      <sc-for list="{{tabs}}" as="t" hint-placeholder-count="6"><button type="button" aria-current="{{t.on}}" onClick="{{t.pick}}"><sc-if value="{{t.look}}" hint-placeholder-val="{{false}}"><svg class="tic" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><path d="M12 4a8 8 0 0 0 0 16z"></path></svg></sc-if><sc-if value="{{t.show}}" hint-placeholder-val="{{false}}"><svg class="tic" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></sc-if><sc-if value="{{t.rem}}" hint-placeholder-val="{{false}}"><svg class="tic" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20h4"></path></svg></sc-if><sc-if value="{{t.sync}}" hint-placeholder-val="{{false}}"><svg class="tic" viewBox="0 0 24 24"><path d="M7 18h10a4 4 0 0 0 .5-8A6 6 0 0 0 6 9.5 4.3 4.3 0 0 0 7 18z"></path></svg></sc-if><sc-if value="{{t.upd}}" hint-placeholder-val="{{false}}"><svg class="tic" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"></path></svg></sc-if>{{t.l}}<sc-if value="{{t.dot}}" hint-placeholder-val="{{false}}"><b></b></sc-if></button></sc-for>
       <div class="ver">Спутник 0.5.13<br>Ctrl + , — открыть настройки<br>? — все клавиши</div>
     </nav>
     <div class="pane">
@@ -158,12 +158,12 @@ class Component extends DCLogic {
   }
   renderVals() {
     var self = this, st = this.state;
-    var TABS = [['look', '🎨', 'Вид'], ['show', '👁', 'Что показывать'], ['rem', '🔔', 'Напоминания'], ['sync', '☁', 'Синхронизация'], ['upd', '⬇', 'Обновления']];
+    var TABS = [['look', '', 'Вид'], ['show', '', 'Что показывать'], ['rem', '', 'Напоминания'], ['sync', '', 'Синхронизация'], ['upd', '', 'Обновления']];
     var set = function (k, v) { return function () { var o = {}; o[k] = v; self.setState(o); }; };
     var cur = TABS.filter(function (t) { return t[0] === st.tab; })[0];
     return {
       theme: this.props.theme || 'dark',
-      tabs: TABS.map(function (t) { return { i: t[1], l: t[2], on: st.tab === t[0] ? 'true' : 'false', dot: t[0] === 'upd', pick: set('tab', t[0]) }; }),
+      tabs: TABS.map(function (t) { return { look: t[0] === 'look', show: t[0] === 'show', rem: t[0] === 'rem', sync: t[0] === 'sync', upd: t[0] === 'upd', l: t[2], on: st.tab === t[0] ? 'true' : 'false', dot: t[0] === 'upd', pick: set('tab', t[0]) }; }),
       title: cur[2],
       isLook: st.tab === 'look', isShow: st.tab === 'show', isRem: st.tab === 'rem', isSync: st.tab === 'sync', isUpd: st.tab === 'upd',
       themes: [['sys', 'Как в Windows'], ['dark', 'Тёмная'], ['light', 'Светлая']].map(function (o) { return { l: o[1], on: st.theme === o[0] ? 'true' : 'false', pick: set('theme', o[0]) }; }),

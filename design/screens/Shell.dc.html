@@ -67,7 +67,8 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
 .h4{display:flex;align-items:center;justify-content:space-between;margin:0 6px 8px;font:600 11px/1 var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-faint)}
 .h4 button{border:0;background:none;color:var(--ink-faint);font:500 16px/1 var(--font-sans);cursor:pointer;padding:0 2px}
 .sph{display:flex;align-items:center;gap:9px;height:34px;padding:0 8px;border-radius:9px;font:600 13.5px/1 var(--font-sans);color:var(--ink)}
-.sph i{width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--sc) 22%,transparent);display:grid;place-items:center;font-style:normal;font-size:12px}
+.sph i{width:22px;height:22px;border-radius:7px;background:color-mix(in srgb,var(--sc) 18%,transparent);color:var(--sc);display:grid;place-items:center}
+.sph i svg{width:13px;height:13px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .sph .n{margin-left:auto;font:400 12px/1 var(--font-mono);color:var(--ink-faint)}
 .lst{display:flex;align-items:center;gap:8px;height:32px;padding:0 8px 0 39px;border-radius:9px;font:500 13.5px/1 var(--font-sans);color:var(--ink-soft)}
 .lst.on{background:var(--raised);color:var(--ink);box-shadow:inset 2px 0 0 var(--clay)}
@@ -139,14 +140,14 @@ button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offse
     <aside class="side" aria-label="Списки">
       <div class="scroll">
         <div class="h4">Сферы <button type="button" title="Новая сфера или список">＋</button></div>
-        <div class="sph" style="--sc: var(--type-work)"><i>💼</i>Работа<span class="n">9</span></div>
+        <div class="sph" style="--sc: var(--type-work)"><i><svg viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="12" rx="2"></rect><path d="M9 7V5h6v2M4 12h16"></path></svg></i>Работа<span class="n">9</span></div>
         <div class="lst on"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="10" rx="1"></rect></svg>Иконки для клиента<span class="n">6</span></div>
         <div class="lst"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="16" rx="1"></rect><rect x="11" y="4" width="5" height="10" rx="1"></rect></svg>Заказы<span class="n">3</span></div>
-        <div class="sph" style="--sc: var(--clay)"><i>🎨</i>Творчество<span class="n">4</span></div>
+        <div class="sph" style="--sc: var(--clay)"><i><svg viewBox="0 0 24 24"><path d="M12 4l2.5 5 5.5.8-4 3.9.9 5.5L12 16.6 7.1 19.2l.9-5.5-4-3.9 5.5-.8z"></path></svg></i>Творчество<span class="n">4</span></div>
         <div class="lst"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>3D-проекты<span class="n">4</span></div>
-        <div class="sph" style="--sc: var(--type-personal)"><i>🏠</i>Личное<span class="n">12</span></div>
+        <div class="sph" style="--sc: var(--type-personal)"><i><svg viewBox="0 0 24 24"><path d="M4 11l8-6 8 6v8H4z"></path><path d="M10 19v-5h4v5"></path></svg></i>Личное<span class="n">12</span></div>
         <div class="lst"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1"></rect><rect x="13" y="4" width="7" height="7" rx="1"></rect><rect x="4" y="13" width="7" height="7" rx="1"></rect></svg>Дела по дому<span class="n">12</span></div>
-        <div class="sph" style="--sc: var(--type-study)"><i>📚</i>Учёба<span class="n">7</span></div>
+        <div class="sph" style="--sc: var(--type-study)"><i><svg viewBox="0 0 24 24"><path d="M5 5h5a2 2 0 0 1 2 2v12a2 2 0 0 0-2-2H5zM19 5h-5a2 2 0 0 0-2 2v12a2 2 0 0 1 2-2h5z"></path></svg></i>Учёба<span class="n">7</span></div>
         <div class="lst"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"></path></svg>Курс Blender<span class="n">7</span></div>
         <div style="margin-top: 14px" class="h4">Проекты</div>
         <div class="lst" style="padding-left: 14px">Башня<span class="n">2</span></div>
