@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
-import { nextDue, dueRepeats, repeatLabel, takeRepeat, CARRY } from '../src/lib/repeat.js';
+import { nextDue, dueRepeats, repeatLabel, takeRepeat, CARRY, existingNext } from '../src/lib/repeat.js';
 import { layerPatches } from '../src/lib/inbox.js';
 
 const T = '2026-10-21'; // среда
@@ -87,4 +87,13 @@ test('бот понимает повтор в тексте задачи', () => 
 
 test('следующая копия повтора сохраняет тему и булавку стикера', () => {
   assert.ok(CARRY.includes('topic') && CARRY.includes('pin'));
+});
+
+test('копию повтора, сделанную другим компьютером, второй раз не создаём', () => {
+  const done = { id: 'a', title: 'Полить цветы', status: 'completed', due: '2026-10-21T00:00:00.000Z' };
+  const copy = { id: 'b', title: 'Полить цветы ', status: 'needsAction', due: '2026-10-22T00:00:00.000Z' };
+  assert.equal(existingNext([done, copy], done, '2026-10-22')?.id, 'b');
+  assert.equal(existingNext([done, copy], done, '2026-10-23'), null); // другой срок — это не она
+  assert.equal(existingNext([done, { ...copy, title: 'Другое' }], done, '2026-10-22'), null);
+  assert.equal(existingNext([done], done, '2026-10-21'), null); // сама задача не считается
 });
