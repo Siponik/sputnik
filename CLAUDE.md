@@ -58,6 +58,7 @@
   - 20.10, канбан и Конвейер по `design/screens/Kanban.dc.html` / `Conveyor.dc.html`: карточка `lib/TaskCard.svelte` (класс `.kc`), меню задачи `lib/CardMenu.svelte` (⋯, правый клик, Shift+F10), действия — объект `boardAct` в App (open/rename/notes/stage с «Отменить»/priority/order/moveList/duplicate/remove с «Отменить» 6 с). Свой порядок в колонке — `tasks[id].ord`, свёрнутые колонки — `settings.fold[listId][colId]`, перенос в другой список — `api.moveTask` (`destinationTasklist`). Клавиши доски ловятся на фазе погружения (`onkeydowncapture`) и не уходят в общие.
   - Анимации: токены `--dur-*`/`--ease-*` в `tokens.css`, CSS — `styles/motion.css`, пресеты — `lib/motion.js` (`fly/fade/pop/expand`, `cardCrossfade`, `viewTransition`). Настройка `settings.motion = { v: full | min | off }` — внизу левой колонки доски, уровень в `<html data-motion>`. Смена раздела — `go(v)` в App через View Transitions.
   - Осторожно с общими именами классов: корень «Сегодня» — `.t-page` (раньше `.today` ломал полоски загрузки недели).
+  - Поиск (21.10): Ctrl+K или / — `lib/Search.svelte` (окно `.dialog.srch`), расчёты — `lib/search.js` (все слова запроса в названии или заметке, ё = е, открытые выше выполненных, подзадачи открывают родителя); там же переход к разделам и спискам. Кнопка-лупа в шапке рядом с «?».
 
 Запуск для разработки: `cd tracker; npm install; npm run tauri dev`.
 
