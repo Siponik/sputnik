@@ -76,11 +76,18 @@ function botTick_() {
 function doPost(e) {
   // HtmlService, а не ContentService: тот отвечает переадресацией 302, Telegram считает это ошибкой и шлёт повторно.
   const out = HtmlService.createHtmlOutput('ok');
+  if (!e || !e.parameter || e.parameter.k !== hookKey_() || !e.postData) return out;
+  // Та же блокировка, что у tick(): иначе задача из бота и обработка «Входящих» могут одновременно
+  // переписать статус (pendingLayer) или очередь напоминаний, и одна из правок потеряется.
+  // tick() держит её несколько секунд; не дождались — всё равно отвечаем, чтобы сообщение не пропало.
+  const lock = LockService.getScriptLock();
+  const locked = lock.tryLock(20000);
   try {
-    if (!e || !e.parameter || e.parameter.k !== hookKey_() || !e.postData) return out;
     handleUpdate_(JSON.parse(e.postData.contents));
   } catch (err) {
     console.error('Вебхук: ' + err);
+  } finally {
+    if (locked) lock.releaseLock();
   }
   return out;
 }
