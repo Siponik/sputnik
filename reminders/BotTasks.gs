@@ -9,6 +9,8 @@
 //   /tasks [список]   — все открытые задачи (или одного списка)
 //   /done 3 | /done молоко — отметить выполненной (номер из последнего списка или часть названия)
 //   /lists [список]   — списки; с названием — сделать список основным (туда идут задачи без @)
+//   /week             — на 7 дней вперёд по дням (и просроченное)
+//   /move 3 завтра | /move молоко в пятницу 17:00 — перенести срок (/move 3 без срока — убрать срок)
 
 const HABITS_LIST = 'Привычки'; // привычки отмечают в трекере, в списках бота их нет
 const SHOW_MAX = 30;
@@ -22,6 +24,7 @@ const TASK_TAGS = {
 };
 const OLD_TASK_TAGS = { 'ассет': 'asset', 'работа': 'work', 'клиент': 'client', 'учёба': 'study', 'учеба': 'study', 'личное': 'personal' };
 const PRIO_MARK = { 1: '!!!', 2: '!!', 3: '!' };
+const WEEKDAY_NAMES = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
 
 // ---------- команды ----------
 
@@ -92,6 +95,93 @@ function cmdTasks_(word) {
   return showTasks_(word ? '' : '<b>Открытые задачи</b>', groups, false);
 }
 
+/** /week — просроченное и 7 дней вперёд, по дням. */
+function cmdWeek_() {
+  const today = todayYmd_(), end = ymdAdd_(today, 6);
+  const byDay = {};
+  for (const l of taskLists_()) {
+    if (l.title === HABITS_LIST) continue;
+    for (const t of topTasks_(l.id)) {
+      const d = t.due ? t.due.slice(0, 10) : '';
+      if (!d || d > end) continue;
+      const k = d < today ? 'over' : d;
+      (byDay[k] = byDay[k] || []).push({ t: t, list: l });
+    }
+  }
+  const groups = [];
+  if (byDay.over) { byDay.over.head = '⚠ Просрочено'; groups.push(byDay.over); }
+  for (let i = 0; i < 7; i++) {
+    const d = ymdAdd_(today, i);
+    if (!byDay[d]) continue;
+    byDay[d].head = WEEKDAY_NAMES[ymdDow_(d)] + ', ' + humanDay_(d);
+    groups.push(byDay[d]);
+  }
+  if (!groups.length) return '🌿 На неделю задач со сроком нет. Все открытые — /tasks';
+  return showTasks_('<b>Неделя</b>', groups, true);
+}
+
+/** /move N когда | /move текст когда — перенести срок. Время («17:00») уходит в слой трекера. */
+function cmdMove_(raw) {
+  if (!raw) return 'Что и куда перенести? Пример: /move 2 завтра или /move молоко в пятницу';
+  let found = null, rest = raw;
+  const num = /^(\d+)\s+([\s\S]*)$/.exec(raw);
+  if (num) {
+    const shown = JSON.parse(PropertiesService.getScriptProperties().getProperty('TG_SHOWN') || '[]');
+    const id = shown[+num[1] - 1];
+    if (!id) return 'Номера ' + num[1] + ' нет в последнем списке. Пришли /today, /week или /tasks.';
+    const listId = listOfTask_(id);
+    if (!listId) return 'Эта задача уже удалена.';
+    found = { t: Tasks.Tasks.get(listId, id), listId: listId };
+    rest = num[2];
+  }
+  const clear = /(^|\s)без срока(\s|$)/i.test(rest);
+  const w = parseWhen_(clear ? rest.replace(/без срока/i, ' ') : rest, todayYmd_());
+  if (!w.day && w.time) w.day = todayYmd_(); // «/move 2 в 17:00» — сегодня
+  if (!w.day && !clear) return 'Не понял, на когда. Пример: /move 2 завтра, /move 2 в пятницу 17:00, /move 2 без срока';
+  if (!found) {
+    const q = w.rest.toLowerCase();
+    if (!q) return 'Какую задачу перенести? Напиши номер из списка или часть названия.';
+    const hits = [];
+    for (const l of taskLists_()) {
+      if (l.title === HABITS_LIST) continue;
+      for (const t of topTasks_(l.id)) if (t.title.toLowerCase().indexOf(q) >= 0) hits.push({ t: t, list: l, listId: l.id });
+    }
+    if (!hits.length) return 'Открытой задачи с «' + esc_(w.rest) + '» не нашёл.';
+    if (hits.length > 1) return showTasks_('Нашёл несколько — пришли /move номер ' + esc_(clear ? 'без срока' : (w.time ? humanDay_(w.day) + ' ' + w.time : humanDay_(w.day))), hits.map((x) => [x]), true);
+    found = hits[0];
+  }
+  Tasks.Tasks.patch({ due: clear ? null : w.day + 'T00:00:00.000Z' }, found.listId, found.t.id);
+  rememberTask_(found.t.id, found.listId);
+  if (w.time && !clear) queueLayer_(found.t.id, found.listId, { slot: { s: w.time, e: plusHour_(w.time) } });
+  return '📅 <b>' + esc_(found.t.title) + '</b> → ' + (clear ? 'без срока' : humanDay_(w.day) + (w.time ? ' ' + w.time : ''));
+}
+
+/** Строки для утреннего сообщения: задачи на сегодня и просроченные (или '', если их нет или Google не ответил). */
+function todayBrief_() {
+  try {
+    const today = todayYmd_();
+    const items = [];
+    for (const l of taskLists_()) {
+      if (l.title === HABITS_LIST) continue;
+      for (const t of topTasks_(l.id)) if (t.due && t.due.slice(0, 10) <= today) items.push(t);
+    }
+    if (!items.length) return '\n\n☀ Задач со сроком на сегодня нет.';
+    items.sort((a, b) => a.due.localeCompare(b.due));
+    const over = items.filter((t) => t.due.slice(0, 10) < today).length;
+    const lines = items.slice(0, 5).map((t) => '• ' + (t.due.slice(0, 10) < today ? '⚠ ' : '') + esc_(t.title));
+    if (items.length > 5) lines.push('…и ещё ' + (items.length - 5) + ' — /today');
+    return '\n\n<b>Сегодня ' + items.length + ' ' + plural_(items.length, ['задача', 'задачи', 'задач']) + '</b>' + (over ? ' (просрочено ' + over + ')' : '') + '\n' + lines.join('\n');
+  } catch (e) {
+    console.error('Задачи для сводки: ' + e);
+    return '';
+  }
+}
+
+function plural_(n, f) {
+  const a = n % 10, b = n % 100;
+  return a === 1 && b !== 11 ? f[0] : a >= 2 && a <= 4 && (b < 12 || b > 14) ? f[1] : f[2];
+}
+
 /** /done N | /done текст. */
 function cmdDone_(arg) {
   if (!arg) {
@@ -158,14 +248,16 @@ function showTasks_(head, groups, flat) {
   const ids = [];
   let more = 0;
   for (const g of groups) {
-    if (!flat) lines.push((lines.length ? '\n' : '') + '<b>' + esc_(g[0].list.title) + '</b>');
+    // Заголовок группы: день (/week, g.head) или список (/tasks).
+    if (g.head || !flat) lines.push((lines.length ? '\n' : '') + '<b>' + (g.head || esc_(g[0].list.title)) + '</b>');
     for (const x of g) {
       if (ids.length >= SHOW_MAX) { more++; continue; }
       ids.push(x.t.id);
       rememberTask_(x.t.id, x.list.id);
       const due = x.t.due ? x.t.due.slice(0, 10) : '';
       let line = ids.length + '. ' + esc_(x.t.title);
-      if (due) line += ' · ' + (due < today ? '⚠ ' : '') + humanDay_(due);
+      if (due && !g.head) line += ' · ' + (due < today ? '⚠ ' : '') + humanDay_(due);
+      else if (due && due < today) line += ' · ' + humanDay_(due);
       if (flat) line += ' · <i>' + esc_(x.list.title) + '</i>';
       lines.push(line);
     }

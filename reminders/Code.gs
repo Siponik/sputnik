@@ -166,7 +166,7 @@ function morningTick_() {
   const ready = briefReady_();
   // Свежей сводки ещё нет — ждём; в выходные (сводку не собирают) и по истечении ожидания шлём как есть.
   if (ready === false && dow <= 5 && min < at + BRIEF_WAIT_MIN) return;
-  sendBrief_(ready === false ? '\n<i>Свежая сводка сегодня не собралась — по ссылке прошлая.</i>' : '');
+  sendBrief_((ready === false ? '\n<i>Свежая сводка сегодня не собралась — по ссылке прошлая.</i>' : '') + (typeof todayBrief_ === 'function' ? todayBrief_() : ''));
   props.setProperty('BRIEF_SENT', today);
 }
 
