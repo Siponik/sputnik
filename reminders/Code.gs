@@ -49,12 +49,13 @@ function remindersTick_() {
   const data = readFile_();
   const props = PropertiesService.getScriptProperties();
   const snoozed = JSON.parse(props.getProperty('SNOOZED') || '[]'); // «⏰ Через час» под напоминанием
-  if (!data && !snoozed.length) return;
+  const botRem = JSON.parse(props.getProperty('BOT_REM') || '[]'); // задачи из бота, пока трекер их не видел (BotTasks.gs)
+  if (!data && !snoozed.length && !botRem.length) return;
   const sent = JSON.parse(props.getProperty('SENT') || '{}');
   const now = Date.now();
   let changed = false;
 
-  for (const item of ((data && data.items) || []).concat(snoozed)) {
+  for (const item of ((data && data.items) || []).concat(snoozed, botRem)) {
     const at = Date.parse(item.fireAt);
     if (!at || at > now || sent[item.key]) continue;
     // Если Telegram не ответил, не отмечаем — попробуем через минуту.
@@ -71,6 +72,8 @@ function remindersTick_() {
   if (changed) props.setProperty('SENT', JSON.stringify(sent));
   const left = snoozed.filter((x) => !sent[x.key]);
   if (left.length !== snoozed.length) props.setProperty('SNOOZED', JSON.stringify(left));
+  const botLeft = botRem.filter((x) => !sent[x.key] && now - Date.parse(x.fireAt) <= LATE_LIMIT_MS);
+  if (botLeft.length !== botRem.length) props.setProperty('BOT_REM', JSON.stringify(botLeft));
 }
 
 // ── Кнопки под напоминанием: «✓ Готово» (задача) и «⏰ Через час» ──
@@ -124,6 +127,8 @@ function readFile_() {
 function stillOpen_(item) {
   try {
     const t = Tasks.Tasks.get(item.listId, item.taskId);
+    // Напоминание из бота привязано к сроку: срок перенесли — старое не шлём (трекер посчитает новое).
+    if (item.bot && String(t.due || '').slice(0, 10) !== item.due) return false;
     return t.status !== 'completed' && !t.deleted;
   } catch (e) {
     return false; // задачи больше нет

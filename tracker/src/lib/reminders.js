@@ -200,9 +200,10 @@ async function ensureFolder() {
   return folderId;
 }
 
-/** Записывает список напоминаний на Drive, если он изменился. */
-export async function publish(items) {
-  const body = JSON.stringify(items);
+/** Записывает список напоминаний на Drive, если он изменился.
+ *  defaults — напоминания по умолчанию ({ task: [минуты] }): по ним бот ставит напоминания задачам, созданным в Telegram. */
+export async function publish(items, defaults = null) {
+  const body = JSON.stringify({ items, defaults });
   if (body === lastBody) return;
   if (!fileId) fileId = await findByProp('reminders');
   if (!fileId) {
@@ -210,6 +211,6 @@ export async function publish(items) {
     const f = await gapi('POST', `${DRIVE}/files?fields=id`, { name: FILE_NAME, parents: [parent], mimeType: 'application/json', appProperties: { sputnik: 'reminders' } });
     fileId = f.id;
   }
-  await gapi('PATCH', `${UPLOAD}/files/${fileId}?uploadType=media`, { version: 1, updated: new Date().toISOString(), items });
+  await gapi('PATCH', `${UPLOAD}/files/${fileId}?uploadType=media`, { version: 1, updated: new Date().toISOString(), items, ...(defaults ? { defaults } : {}) });
   lastBody = body;
 }

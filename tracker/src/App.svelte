@@ -144,7 +144,7 @@
     const items = reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents);
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
-      reminders.publish(items).catch((e) => {
+      reminders.publish(items, { task: remindDefaults.task }).catch((e) => {
         if (!publishWarned) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
       });
     }, 3000);
