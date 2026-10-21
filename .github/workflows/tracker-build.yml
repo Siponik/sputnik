@@ -41,7 +41,7 @@ jobs:
         working-directory: tracker
         run: npm install --no-audit --no-fund 2>&1 | tee -a ../build.log
 
-      # Версия 0.3.<номер сборки>: по ней приложение понимает, что вышло обновление.
+      # Версия 0.5.<номер сборки>: по ней приложение понимает, что вышло обновление.
       - name: Версия
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -71,7 +71,7 @@ jobs:
           HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         run: |
           MSI=$(ls tracker/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          VER="0.3.${{ github.run_number }}"
+          VER="0.5.${{ github.run_number }}"
           NOTE=$(git log -1 --format=%s)
           HELP="Первая установка: скачайте .msi ниже и запустите. Windows может предупредить, что издатель неизвестен: «Подробнее» → «Выполнить в любом случае». Дальше Спутник обновляется сам."
           if [ "$HAS_KEY" = "true" ]; then

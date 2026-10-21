@@ -58,7 +58,8 @@ function tasksApi(method, path, q, body) {
 
 function calApi(method, path, q, body) {
   if (/^users\/me\/calendarList/.test(path)) {
-    return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' }] };
+    return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
+      { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' }] };
   }
   if (method === 'POST') return { id: 'E' + n++, ...body };
   return { items: [] };

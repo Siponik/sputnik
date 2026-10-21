@@ -9,6 +9,10 @@
 //   shots/stickers.png      ↔ design/screens/ref/stickers-по-темам.png
 //   shots/stickers-when.png ↔ design/screens/ref/stickers-по-срокам.png
 //   shots/stickers-light.png ↔ design/screens/ref/stickers-светлая.png
+//   shots/create-личное.png  ↔ design/screens/ref/create-личное.png   (окно «Создать», стикеры)
+//   shots/create-работа.png  ↔ design/screens/ref/create-работа.png   (канбан)
+//   shots/create-3D.png      ↔ design/screens/ref/create-3D.png       (конвейер)
+//   shots/create-куда.png, create-событие.png, create-др.png ↔ design/screens/ref/create-список-событие-др.png
 //   shots/*-light.png       — то же в светлой теме
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -64,6 +68,40 @@ for (const theme of ['dark', 'light']) {
     await shot(p, 'stickers-when' + sfx);
     await p.keyboard.press('KeyG');
   }
+  // Окно «Создать» v2: три случая, как Create.dc.html (demo = личное / работа / 3D), и CreateMore.dc.html.
+  await tab(p, 'Сегодня');
+  const create = async (line, name, extra) => {
+    await p.waitForTimeout(300); // прежнее окно успело закрыться
+    await p.locator('button[title^="Новая задача"]').first().click();
+    await p.locator('.cr-input').fill(line);
+    await p.waitForTimeout(250);
+    if (extra) await extra();
+    await shot(p, name + sfx);
+  };
+  await create('купить лампочки в коридор в субботу', 'create-личное');
+  await p.keyboard.press('Alt+KeyL');
+  await shot(p, 'create-куда' + sfx);
+  await p.keyboard.press('Escape');
+  await p.keyboard.press('Escape');
+  await create('смета для клиента по иконкам завтра 15:00 !!', 'create-работа', async () => {
+    await p.locator('.cr-subin').fill('Собрать список иконок'); await p.keyboard.press('Enter');
+    await p.locator('.cr-subin').fill('Посчитать часы'); await p.keyboard.press('Enter');
+  });
+  await p.keyboard.press('Escape');
+  await create('сундук с золотом lowpoly для таверны', 'create-3D', async () => {
+    await p.locator('.cr-c.p2').click();
+  });
+  await p.keyboard.press('Escape');
+  await create('Созвон с клиентом по иконкам завтра 14:00', 'create-событие', async () => {
+    await p.keyboard.press('Alt+Digit2');
+    await p.locator('.cr-c', { hasText: '45 мин' }).click();
+  });
+  await p.keyboard.press('Escape');
+  await create('Аня 12 марта', 'create-др', async () => {
+    await p.keyboard.press('Alt+Digit3');
+    await p.locator('.cr-fld').fill('1997');
+  });
+  await p.keyboard.press('Escape');
   await p.close();
 }
 await b.close();

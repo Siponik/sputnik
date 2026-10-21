@@ -74,7 +74,7 @@ export function seedLayer() {
   const L = (o) => ({ ...o, t });
   return {
     version: 1,
-    lists: { Lwork: L({ template: 'work' }), L3d: L({ template: 'asset3d', view: 'pipe' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }),
+    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }),
       Lhome: L({ template: 'personal', view: 'stickers', sphere: 'sMe', topics: [
         { id: 'docs', name: 'Документы', color: 'clay' }, { id: 'buy', name: 'Покупки', color: 'gold' },
         { id: 'call', name: 'Звонки', color: 'work' }, { id: 'health', name: 'Здоровье', color: 'study' },
@@ -99,7 +99,9 @@ export function seedLayer() {
       h13: L({ topic: 'home', repeat: { every: 'month' } }),
     },
     habits: {}, log: {}, cals: {}, templates: {}, templatesEdit: {},
-    spheres: { sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }) },
+    // Сферы — как на макетах «Создать» (Create.dc.html): Работа · Творчество · Личное.
+    spheres: { sWork: L({ name: 'Работа', color: 'work', icon: 'case', order: 0 }), sArt: L({ name: 'Творчество', color: 'clay', icon: 'brush', order: 0.5 }),
+      sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }) },
     settings: { setup: L({ done: true }) },
   };
 }

@@ -35,7 +35,8 @@ export function parseWhen(text, today = new Date()) {
       day = addDays(base, n);
     })
     || take(/\s(\d{1,2})\s(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-я]*\.?(?=\s|[,!?])/i, (m) => {
-      const mi = MONTHS.indexOf(m[2].toLowerCase().slice(0, 3) === 'май' ? 'ма' : m[2].toLowerCase().slice(0, m[2].toLowerCase().startsWith('ма') ? 2 : 3));
+      const k = m[2].toLowerCase();
+      const mi = /^ма[йя]/.test(k) ? 4 : MONTHS.indexOf(k.slice(0, 3)); // «марта» — март, не май
       day = nearestDate(base, mi, Number(m[1]));
     })
     || take(/\s(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?(?=\s|[,!?])/, (m) => {

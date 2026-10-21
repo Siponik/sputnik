@@ -1,0 +1,132 @@
+// Окно «Создать» v2 — чистые помощники (без Svelte): подписи дат, день рождения, свободное время, чек-лист этапа.
+// Даты — строки 'ГГГГ-ММ-ДД', today передаётся снаружи, чтобы тесты не зависели от часов.
+import { bucket } from './stickers.js';
+
+const pad = (n) => String(n).padStart(2, '0');
+const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+export const plus = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return fmt(d); };
+export const toMin = (s) => { const [h, m] = s.split(':').map(Number); return h * 60 + m; };
+export const fromMin = (m) => `${pad(Math.floor(Math.min(m, 1439) / 60))}:${pad(Math.min(m, 1439) % 60)}`;
+export const addMin = (hhmm, n) => fromMin(toMin(hhmm) + n);
+
+const WD = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+const WDF = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const MON = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+const MONG = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
+
+/** Чип «Понял:»: «сб, 24 окт.» */
+export const shortDay = (s) => { const d = parse(s); return `${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`; };
+/** Крупная строка события: «Чт, 22 октября» */
+export const longDay = (s) => { const d = parse(s); return `${WDF[d.getDay()]}, ${d.getDate()} ${MONG[d.getMonth()]}`; };
+/** День рождения: «12 марта» */
+export const dayMonth = (s) => { const d = parse(s); return `${d.getDate()} ${MONG[d.getMonth()]}`; };
+export const weekday = (s) => WD[parse(s).getDay()];
+
+/** Срок по-человечески для превью: «сегодня», «завтра, 15:00», «сб», «24 окт.». */
+export function dueShort(due, today, slot = null) {
+  if (!due) return '';
+  const t = slot?.s ? `, ${slot.s}` : '';
+  if (due === today) return 'сегодня' + t;
+  if (due === plus(today, 1)) return 'завтра' + t;
+  if (due < today) return 'просрочено';
+  if (bucket(due, today) === 'week') return weekday(due) + t;
+  const d = parse(due);
+  return `${d.getDate()} ${MON[d.getMonth()]}${t}`;
+}
+
+/** Чип «Когда» у стикера: today | week | later | date (срок дальше недели). */
+export function whenChip(due, today) {
+  if (!due) return 'later';
+  const b = bucket(due, today);
+  return b === 'later' ? 'date' : b;
+}
+
+// ---------- день рождения ----------
+
+/** Имя в дательном падеже для «Подарок Ане»: Аня → Ане, Иван → Ивану, Мария → Марии, Андрей → Андрею. */
+export function dative(name) {
+  const n = String(name ?? '').trim();
+  if (!n || /\s/.test(n)) return n;
+  if (/ия$/i.test(n)) return n.slice(0, -1) + 'и';
+  if (/[ая]$/i.test(n)) return n.slice(0, -1) + 'е';
+  if (/[йь]$/i.test(n)) return n.slice(0, -1) + 'ю';
+  if (/[бвгджзклмнпрстфхцчшщ]$/i.test(n)) return n + 'у';
+  return n;
+}
+
+/** Ближайший день рождения (сегодня или позже) по дате любого года. */
+export function nextBirthday(day, today) {
+  const d = parse(day), t = parse(today);
+  let x = new Date(t.getFullYear(), d.getMonth(), d.getDate());
+  if (x < t) x = new Date(t.getFullYear() + 1, d.getMonth(), d.getDate());
+  return fmt(x);
+}
+
+/** Сколько исполнится в ближайший день рождения (год — число или строка; нет года — null). */
+export function ageAt(year, day, today) {
+  const y = Number(year);
+  if (!y || y < 1900 || y > 2100) return null;
+  const a = Number(nextBirthday(day, today).slice(0, 4)) - y;
+  return a > 0 && a < 130 ? a : null;
+}
+
+/** «лет»: 1 год, 2 года, 5 лет. */
+export function years(n) {
+  const a = n % 100, b = n % 10;
+  return `${n} ${a > 10 && a < 20 ? 'лет' : b === 1 ? 'год' : b > 1 && b < 5 ? 'года' : 'лет'}`;
+}
+
+// ---------- событие: свободно ли время ----------
+
+/**
+ * events — события Google за день (start.dateTime/end.dateTime), slot — { s, e } нового события.
+ * → { clash: 'название' } | { until: 'ЧЧ:ММ' } (следующее событие) | { free: true } (до конца дня свободно).
+ */
+export function freeCheck(events, day, slot) {
+  if (!slot?.s) return null;
+  const s = toMin(slot.s), e = toMin(slot.e || slot.s);
+  const timed = (events ?? [])
+    .filter((x) => x.start?.dateTime && x.end?.dateTime && x.start.dateTime.slice(0, 10) <= day && x.end.dateTime.slice(0, 10) >= day)
+    .map((x) => {
+      const a = new Date(x.start.dateTime), b = new Date(x.end.dateTime);
+      const am = fmt(a) < day ? 0 : a.getHours() * 60 + a.getMinutes();
+      const bm = fmt(b) > day ? 1440 : b.getHours() * 60 + b.getMinutes();
+      return { a: am, b: bm, title: x.summary || 'событие' };
+    });
+  const clash = timed.find((x) => x.a < e && x.b > s);
+  if (clash) return { clash: clash.title };
+  const next = timed.filter((x) => x.a >= e).sort((x, y) => x.a - y.a)[0];
+  return next ? { until: fromMin(next.a) } : { free: true };
+}
+
+// ---------- доски ----------
+
+/** Сколько открытых задач в колонке (для лимита «2/3»). Колонка без статуса в слое — первая. */
+export function colCount(listTasks = [], layTasks = {}, colId, firstCol) {
+  return listTasks.filter((t) => !t.parent && t.status !== 'completed' && (layTasks?.[t.id]?.status ?? firstCol) === colId).length;
+}
+
+/** Порядок «сверху» колонки: меньше всех, кто там уже есть. */
+export function topOrd(listTasks = [], layTasks = {}, colId, firstCol) {
+  const ords = listTasks.filter((t) => !t.parent && t.status !== 'completed' && (layTasks?.[t.id]?.status ?? firstCol) === colId)
+    .map((t, i) => layTasks?.[t.id]?.ord ?? i);
+  return Math.min(0, ...ords) - 1;
+}
+
+/**
+ * Чек-лист этапов для нового ассета — подзадачи с этапом (tasks[sub].stage) у последнего ассета списка,
+ * у которого они есть. → [{ title, stage }] в порядке Google.
+ */
+export function stageChecklist(listTasks = [], layTasks = {}) {
+  const tops = listTasks.filter((t) => !t.parent).sort((a, b) => (b.updated ?? '').localeCompare(a.updated ?? ''));
+  for (const top of tops) {
+    const subs = listTasks.filter((t) => t.parent === top.id && layTasks?.[t.id]?.stage)
+      .sort((a, b) => (a.position || '').localeCompare(b.position || ''));
+    if (subs.length) return subs.map((s) => ({ title: s.title, stage: layTasks[s.id].stage }));
+  }
+  return [];
+}
+
+/** Две буквы для миниатюры ассета: «Сундук с золотом» → «СУ». */
+export const initials = (title) => (String(title ?? '').replace(/[^a-zа-яё0-9]/gi, '').slice(0, 2) || '··').toUpperCase();

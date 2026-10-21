@@ -154,19 +154,20 @@ export async function eventsRange(start, end) {
 // Напоминания Спутника в событии: минуты до начала через запятую + метка для поиска (remindEvents).
 const remindProps = (mins) => (mins?.length ? { sputnikR: '1', sputnikRemind: [...new Set(mins)].join(',') } : {});
 
-export function createEvent({ title, day, slot, notes = '', remind = [] }) {
+export function createEvent({ title, day, slot, notes = '', remind = [], calendarId = 'primary', location = '' }) {
   const next = (d) => { const [y, m, dd] = d.split('-').map(Number); return ymd(new Date(y, m - 1, dd + 1)); };
   const local = (d, hhmm) => { const [y, m, dd] = d.split('-').map(Number); const [h, mi] = hhmm.split(':').map(Number); return new Date(y, m - 1, dd, h, mi).toISOString(); };
   const body = slot
     ? { summary: title, start: { dateTime: local(day, slot.s) }, end: { dateTime: local(day, slot.e) } }
     : { summary: title, start: { date: day }, end: { date: next(day) } };
   if (notes) body.description = notes;
+  if (location) body.location = location;
   if (remind.length) body.extendedProperties = { private: remindProps(remind) };
-  return gapi('POST', `${CAL}/calendars/primary/events`, body);
+  return gapi('POST', `${CAL}/calendars/${encodeURIComponent(calendarId || 'primary')}/events`, body);
 }
 
 /** День рождения: ежегодное событие на весь день в основном календаре с меткой Спутника (видно как день рождения). */
-export function createBirthday({ name, day, remind = [] }) {
+export function createBirthday({ name, day, remind = [], year = null }) {
   const [y, m, d] = day.split('-').map(Number);
   return gapi('POST', `${CAL}/calendars/primary/events`, {
     summary: `🎂 ${name}`,
@@ -174,17 +175,22 @@ export function createBirthday({ name, day, remind = [] }) {
     end: { date: ymd(new Date(y, m - 1, d + 1)) },
     recurrence: ['RRULE:FREQ=YEARLY'],
     transparency: 'transparent', // не занимает время
-    extendedProperties: { private: { sputnik: 'birthday', ...remindProps(remind) } },
+    // Год рождения (необязательно) — для «исполнится N» в календаре и сводке.
+    extendedProperties: { private: { sputnik: 'birthday', ...(year ? { sputnikYear: String(year) } : {}), ...remindProps(remind) } },
     reminders: { useDefault: false },
   });
 }
-/** События основного календаря с напоминаниями Спутника на ближайшие 32 дня (хватает и для «за месяц»). */
+/** События с напоминаниями Спутника на ближайшие 32 дня (хватает и для «за месяц») — из всех календарей с правом записи
+ *  (окно «Создать» кладёт событие и не в основной). */
 export async function remindEvents() {
   const now = Date.now();
   const q = new URLSearchParams({ timeMin: new Date(now - 864e5).toISOString(), timeMax: new Date(now + 32 * 864e5).toISOString(),
     singleEvents: 'true', privateExtendedProperty: 'sputnikR=1', maxResults: '250' });
-  const r = await gapi('GET', `${CAL}/calendars/primary/events?${q}`);
-  return (r?.items ?? []).filter((e) => e.status !== 'cancelled');
+  const own = (await calendarList().catch(() => [])).filter((c) => ['owner', 'writer'].includes(c.accessRole) && !c.primary && !isQueue(c) && calKind(c) === 'event');
+  const ids = ['primary', ...own.map((c) => c.id)];
+  const all = await Promise.all(ids.map((id) => gapi('GET', `${CAL}/calendars/${encodeURIComponent(id)}/events?${q}`)
+    .then((r) => r?.items ?? []).catch((e) => { if (id === 'primary') throw e; return []; })));
+  return all.flat().filter((e) => e.status !== 'cancelled');
 }
 
 const isBirthday = (e) => e.eventType === 'birthday' || e.extendedProperties?.private?.sputnik === 'birthday';
