@@ -28,6 +28,10 @@ function tick() {
   try {
     try { remindersTick_(); } catch (e) { console.error('Напоминания: ' + e); }
     try { morningTick_(); } catch (e) { console.error('Утренняя сводка: ' + e); }
+    // Итог недели по пятницам — BotTasks.gs.
+    if (typeof reviewTick_ === 'function') {
+      try { reviewTick_(); } catch (e) { console.error('Итог недели: ' + e); }
+    }
     // «Входящие от Claude» — файл Inbox.gs в этом же проекте.
     if (typeof inboxTick_ === 'function') {
       try { inboxTick_(); } catch (e) { console.error('Входящие: ' + e); }
