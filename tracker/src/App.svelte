@@ -420,7 +420,13 @@
   }
   async function moveToList(t, dest, listId = activeId) {
     try {
-      await api.moveTask(listId, t.id, dest);
+      const r = await api.moveTask(listId, t.id, dest);
+      // Если Google выдал задаче в новом списке другой id — переносим её поля Спутника (статус, тип, время…).
+      if (r?.id && r.id !== t.id && lay.tasks?.[t.id]) {
+        const { t: _, ...rest } = lay.tasks[t.id];
+        touch('tasks', r.id, rest);
+        saveLayer();
+      }
       const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
       tasks[listId] = a; tasks[dest] = b;
       say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
@@ -730,7 +736,12 @@
     if (done) {
       const n = stats(h, lay.log).streak;
       if (MILESTONES.includes(n) && lay.habits?.[h.id]?.cheer?.key !== `${n}|${day}`) celebrate(h, n, day);
-    } else if (cele?.id === h.id) cele = null;
+    } else {
+      if (cele?.id === h.id) cele = null;
+      // Отметку сняли — снимаем и сегодняшнюю веху, иначе бот всё равно поздравил бы (файл напоминаний, cheers).
+      const c = lay.habits?.[h.id]?.cheer;
+      if (c?.key?.endsWith(`|${day}`)) touch('habits', h.id, { cheer: null });
+    }
     saveLayer();
   }
 
