@@ -9,7 +9,7 @@
 
   let {
     tab: tab0 = 'look', settings = {}, lists = [], hiddenLists = [], hiddenCals = [], sphereName = () => '',
-    version = '', upd, sync, offline = false, cloud, rem = null, remind = { task: [], event: [], birthday: [] },
+    version = '', upd, sync, offline = false, cloud, rem = null, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
     onset, onhidelist, onhidecal, onremind, ontestbot, onlogout, onrefresh, oncloudlogin, oninstall, oncheck, onclose,
   } = $props();
 
@@ -49,6 +49,14 @@
   const r = $derived(shell.remindLine(rem));
   const notes = $derived(shell.notesOf(upd.found?.notes));
   const backupText = $derived(backup ? `каждый день, хранятся 14 · последняя ${backup === new Date().toISOString().slice(0, 10) ? 'сегодня' : backup.split('-').reverse().join('.')}` : 'каждый день перед первым изменением, хранятся 14');
+
+  // Дубли задач: список групп раскрывается кнопкой, лишние копии отмечены сразу, снять можно.
+  let dupOpen = $state(false);
+  let dupSkip = $state(new Set());
+  const dupExtra = $derived(dupes.flatMap((g) => g.extra.map((t) => ({ listId: g.listId, id: t.id }))));
+  const dupPicked = $derived(dupExtra.filter((x) => !dupSkip.has(x.id)));
+  const dupToggle = (id) => { const s = new Set(dupSkip); s.has(id) ? s.delete(id) : s.add(id); dupSkip = s; };
+  const dupDay = (d) => (d ? d.split('-').reverse().slice(0, 2).join('.') : 'без срока');
 
   const CHIPS = {
     task: [[0, 'в начало'], [15, '15 мин'], [60, 'за час'], [1440, 'за день']],
@@ -174,6 +182,20 @@
             <button type="button" class="stg-btn" disabled={sync.busy} onclick={onrefresh}>Обновить · R</button></div>
           <div class="it" class:hit={hit.has('cloud')}>{@render tx('cloud', 'Между компьютерами', c.text, c.cls)}
             {#if cloud.state === 'login'}<button type="button" class="stg-btn pri" onclick={oncloudlogin}>Разрешить</button>{/if}</div>
+          <div class="it" class:hit={hit.has('dupes')}>{@render tx('dupes', 'Дубли задач', dupExtra.length ? `лишних копий: ${dupExtra.length} — одинаковые название и срок в одном списке` : 'не найдено', dupExtra.length ? 'w' : '')}
+            {#if dupExtra.length}<button type="button" class="stg-btn" aria-expanded={dupOpen} onclick={() => (dupOpen = !dupOpen)}>{dupOpen ? 'Скрыть' : 'Показать'}</button>{/if}</div>
+          {#if dupOpen && dupExtra.length}
+            <div class="stg-dupes">
+              {#each dupes as g (g.listId + g.keep.id)}
+                <div class="dg"><b>{g.title}</b><span>{g.listName} · {dupDay(g.due)} · оставим одну</span>
+                  {#each g.extra as t, i (t.id)}
+                    <label><input type="checkbox" checked={!dupSkip.has(t.id)} onchange={() => dupToggle(t.id)} /> копия {i + 2} — удалить</label>
+                  {/each}
+                </div>
+              {/each}
+              <button type="button" class="stg-btn dng" disabled={!dupPicked.length} onclick={() => ondedupe(dupPicked)}>Удалить отмеченные ({dupPicked.length})</button>
+            </div>
+          {/if}
           <div class="it" class:hit={hit.has('backup')}>{@render tx('backup', 'Резервные копии', backupText)}
             <button type="button" class="stg-btn" onclick={() => openPlace('backups').catch(() => {})}>Открыть папку</button></div>
         </div>
