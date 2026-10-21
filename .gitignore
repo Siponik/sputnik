@@ -2,6 +2,7 @@
 client_secret*.json
 .token.json
 .state.json
+.sphere-state.json
 node_modules/
 
 # Трекер
