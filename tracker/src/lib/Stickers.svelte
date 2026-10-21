@@ -234,13 +234,15 @@
     const p = stk.parseSticker(draft, topics, new Date());
     if (!p.title) return;
     draft = '';
-    const ords = lane.items.map((x) => layTasks?.[x.id]?.ord).filter((x) => typeof x === 'number');
-    const layer = { ord: Math.max(lane.items.length, ...ords.map((x) => x + 1)) };
     const topic = p.topic ?? (group === 'topic' ? lane.id || null : null);
+    const due = p.day ?? (group === 'when' ? stk.newDue(lane.id, today) : p.time ? today : null);
+    // В конец своей колонки (#тема или «в пятницу» могут увести в другую): колонке — порядок, новому — следующий номер.
+    const dest = lanes.find((l) => l.id === (group === 'topic' ? topic ?? '' : stk.bucket(due ?? '', today))) ?? lane;
+    if (dest.items.some((x) => typeof layTasks?.[x.id]?.ord !== 'number')) act.order(dest.items.map((x) => x.id));
+    const layer = { ord: Math.max(dest.items.length, ...dest.items.map((x) => (layTasks?.[x.id]?.ord ?? 0) + 1)) };
     if (topic) layer.topic = topic;
     if (p.priority) layer.priority = p.priority;
     if (p.repeat) layer.repeat = p.repeat;
-    const due = p.day ?? (group === 'when' ? stk.newDue(lane.id, today) : p.time ? today : null);
     const slot = p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null;
     await act.add({ title: p.title, due, slot, layer });
     addEl?.focus();
