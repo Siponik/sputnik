@@ -215,6 +215,12 @@
   function openHabits(day) { sel = day; habitsOpen = true; }
   const toggleItem = (it) => ontoggle(it.task, !it.done, it.listId);
   const openItem = (it) => onopen(it.task, it.listId);
+  // Задачу перетащили в неделе: s — начало в минутах (null — «весь день»), длительность прежняя (без времени — час).
+  function moveItem(it, day, s) {
+    const dur = it.s != null ? Math.max(15, it.e - it.s) : 60;
+    const slot = s == null ? null : { s: cal.fromMin(s), e: cal.fromMin(Math.min(s + dur, 1439)) };
+    onschedule(it.task, it.listId, day, slot);
+  }
   // Клавиши календаря (по физической кнопке — работают и в русской раскладке).
   function key(e) {
     if (keys.typing(e) || !keys.plain(e) || e.shiftKey || keys.overlay()) return;
@@ -290,7 +296,7 @@
         <CalWeek days={dayObjs} {habits} {show} {free} {clock} {layout} {stripOpen} {fit} bind:avail={gridAvail}
           draft={cmp.open && cmp.time !== 'all' ? { day: sel, time: cmp.time, title: cmp.title } : null}
           ontogglestrip={() => (stripOpen = !stripOpen)}
-          onpick={pick} onopenhabits={openHabits} onopen={openItem} ontoggle={toggleItem} {ontogglehabit}
+          onpick={pick} onopenhabits={openHabits} onopen={openItem} ontoggle={toggleItem} {ontogglehabit} onmove={moveItem}
           oncompose={(day, time) => compose(day, time)} />
 
         <section class="cal-over" aria-label="Обзор недели">
