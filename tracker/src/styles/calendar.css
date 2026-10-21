@@ -8,6 +8,9 @@
 .wk-grid .slot:hover::after { content: attr(data-t); position: absolute; left: 6px; top: 50%; transform: translateY(-50%); font: 500 11px/1 var(--font-mono); color: var(--clay); }
 /* Черновик непрозрачный и над часами: подсказка «+ 10:00» под ним не просвечивает. */
 .wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 12%, var(--bg)); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 2; }
+.wk-grid .blk[draggable="true"], .wk-allday .ad[draggable="true"] { cursor: grab; }
+.wk-grid .blk.lift, .wk-allday .ad.lift { opacity: .45; }
+.wk-allday .adcol.drop { outline: 1.5px dashed var(--clay); outline-offset: -3px; border-radius: 7px; }
 
 /* Неделя на широком окне — без прокрутки страницы: всё по высоте экрана, сетка забирает остаток
    (часы подстраиваются в calendar.hourLayout). Если часов слишком много, прокручивается только сетка. */

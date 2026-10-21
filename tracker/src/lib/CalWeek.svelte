@@ -2,11 +2,44 @@
   import { fromMin, toMin, typeColor, nowMin } from './calendar.js';
 
   // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты; draft — черновик { day, time } из формы панели дня.
-  let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose } = $props();
+  let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose, onmove = null } = $props();
 
   const hasAllday = $derived(days.some((d) => d.allday.length));
   const nowTop = $derived((clock, layout.yAt(nowMin())));
   const slots = $derived(Array.from({ length: 24 }, (_, h) => ({ h, top: layout.Y[h], ht: layout.HT[h], t: String(h).padStart(2, '0') + ':00' })));
+
+  // Перетаскивание задачи: в сетку — новый день и время (длительность сохраняется), в «весь день» — день без времени.
+  let drag = $state(null); // { it, dur }
+  let drop = $state(null); // { day, s } — куда встанет; s = null — «весь день»
+  const len = (it) => (it.s != null ? Math.max(15, it.e - it.s) : 60);
+  function startDrag(e, it) {
+    if (!onmove || it.done) return e.preventDefault();
+    drag = { it, dur: len(it) };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', it.title);
+  }
+  // Минута под курсором по раскладке часов (обратное к layout.yAt), с шагом 15 минут.
+  function minAt(e) {
+    const y = e.clientY - e.currentTarget.getBoundingClientRect().top;
+    let h = 0;
+    while (h < 23 && layout.Y[h + 1] <= y) h++;
+    const m = h * 60 + Math.max(0, Math.min(1, (y - layout.Y[h]) / layout.HT[h])) * 60;
+    return Math.min(1440 - drag.dur, Math.max(0, Math.round(m / 15) * 15));
+  }
+  function over(e, day, grid) {
+    if (!drag) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    drop = { day, s: grid ? minAt(e) : null };
+  }
+  function put(e) {
+    if (!drag || !drop) return;
+    e.preventDefault();
+    const { it } = drag, { day, s } = drop;
+    drag = drop = null;
+    if (day !== it.day || s !== it.s) onmove(it, day, s);
+  }
+  const endDrag = () => (drag = drop = null);
 
   const dotClass = (x) => (!x.sched ? 'off' : x.done ? 'done' : x.isToday ? 'now' : 'plan');
 </script>
@@ -63,9 +96,12 @@
     <div class="wk wk-allday">
       <span class="lbl" style="padding-top: 10px">весь день</span>
       {#each days as d (d.ymd)}
-        <div class="adcol" class:sel={d.isSel}>
+        <div class="adcol" class:sel={d.isSel} class:drop={drop && drop.day === d.ymd && drop.s === null}
+          ondragover={(e) => over(e, d.ymd, false)} ondrop={put} role="group" aria-label="Весь день, {d.title}">
           {#each d.allday as a (a.id)}
-            <div class="ad k-{a.kind}" class:done={a.done} style="--c: {a.type ? typeColor(a.type) : 'var(--ink-soft)'}">
+            <div class="ad k-{a.kind}" class:done={a.done} class:lift={drag?.it.id === a.id}
+              draggable={a.kind === 'task' && !a.done && !!onmove} ondragstart={(e) => startDrag(e, { ...a, day: d.ymd })} ondragend={endDrag}
+              style="--c: {a.type ? typeColor(a.type) : 'var(--ink-soft)'}">
               {#if a.kind === 'task'}
                 <button type="button" class="chk" class:on={a.done} aria-label={a.done ? 'Вернуть в работу' : 'Выполнено'} onclick={() => ontoggle(a)}></button>
                 <button type="button" class="tx link" class:over={a.overdue} onclick={() => onopen(a)} title={a.title}>{a.title}</button>
@@ -86,7 +122,8 @@
       {#each layout.labels as l (l.key)}<span class="lbl" class:small={l.small} style="top: {l.top}px">{l.text}</span>{/each}
     </div>
     {#each days as d (d.ymd)}
-      <div class="col" class:sel={d.isSel} style="height: {layout.height}px">
+      <div class="col" class:sel={d.isSel} style="height: {layout.height}px"
+        ondragover={(e) => over(e, d.ymd, true)} ondrop={put} role="group" aria-label={d.title}>
         {#each layout.bands as bd (bd.top)}<div class="band" style="top: {bd.top}px; height: {bd.h}px"></div>{/each}
         {#each layout.lines as y (y)}<div class="hline" style="top: {y}px"></div>{/each}
         {#each slots as sl (sl.h)}
@@ -94,7 +131,8 @@
             style="top: {sl.top}px; height: {sl.ht}px" onclick={() => oncompose(d.ymd, sl.t)}></button>
         {/each}
         {#each d.blocks as b (b.id)}
-          <div class="blk k-{b.kind}" class:done={b.done}
+          <div class="blk k-{b.kind}" class:done={b.done} class:lift={drag?.it.id === b.id}
+            draggable={b.kind === 'task' && !b.done && !!onmove} ondragstart={(e) => startDrag(e, { ...b, day: d.ymd })} ondragend={endDrag}
             style="top: {b.top}px; height: {b.height}px; left: calc({(b.col / b.cols) * 100}% + 3px); width: calc({100 / b.cols}% - 6px); --c: {b.type ? typeColor(b.type) : 'var(--ink-soft)'}">
             <div class="bt">
               {#if b.kind === 'task'}
@@ -112,6 +150,9 @@
         {/if}
         {#if draft && draft.day === d.ymd && draft.time}
           <div class="ghost" style="top: {layout.yAt(toMin(draft.time)) + 1}px; height: 38px">{draft.title || 'Новое · ' + draft.time}</div>
+        {/if}
+        {#if drop && drop.day === d.ymd && drop.s !== null}
+          <div class="ghost" style="top: {layout.yAt(drop.s) + 1}px; height: {Math.max(18, layout.yAt(drop.s + drag.dur) - layout.yAt(drop.s) - 2)}px">{fromMin(drop.s)}–{fromMin(drop.s + drag.dur)} · {drag.it.title}</div>
         {/if}
         {#if d.isToday}<div class="now" style="top: {nowTop}px"></div>{/if}
       </div>
