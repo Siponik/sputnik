@@ -121,6 +121,17 @@ export function lanes(tasks, { group = 'topic', topics = DEFAULT_TOPICS, layTask
   return out;
 }
 
+/**
+ * Какие колонки показать. По темам пустые темы прячутся (кроме keep — туда сейчас пишут новый стикер);
+ * если пусто везде — показываем все, чтобы было куда приклеить первый. По срокам — всегда три.
+ * Возвращает { shown, hidden } — hidden идут кнопками «＋ в тему».
+ */
+export function visibleLanes(all, { group = 'topic', keep = '' } = {}) {
+  if (group === 'when' || all.every((l) => !l.items.length)) return { shown: all, hidden: [] };
+  const vis = (l) => l.items.length > 0 || (keep !== '' && l.id === keep);
+  return { shown: all.filter(vis), hidden: all.filter((l) => !vis(l)) };
+}
+
 /** Тема задачи из списка тем (или null — «Разное»). */
 export const topicOfTask = (task, layTasks, topics) => topics.find((t) => t.id === layTasks?.[task.id]?.topic) ?? null;
 

@@ -146,6 +146,33 @@ export function toJar(node, { el = null } = {}) {
   return { duration: 420, easing: easeIn, css: (k, u) => `opacity: ${0.3 + 0.7 * k}; transform: translate(${u * dx}px, ${u * dy}px) scale(${1 - 0.85 * u})` };
 }
 
+/**
+ * Смена раскладки стикеров (G): FLIP без Svelte-переходов — снять места до смены (`rectsOf`), после — `flipFrom`.
+ * full — каждый стикер летит со старого места на новое 260 мс --ease-out со сдвигом 12 мс, шапки гаснут-появляются
+ * 160 мс; min — общий crossfade 160 мс; off — сразу.
+ */
+export function rectsOf(root) {
+  const m = new Map();
+  root?.querySelectorAll('[data-id]').forEach((el) => m.set(el.dataset.id, el.getBoundingClientRect()));
+  return m;
+}
+export function flipFrom(root, before) {
+  const lv = level();
+  if (!root || lv === 'off' || typeof root.animate !== 'function') return;
+  if (lv === 'min') { root.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'ease-out' }); return; }
+  const ease = 'cubic-bezier(.2, .8, .2, 1)'; // --ease-out
+  root.querySelectorAll('.lh').forEach((el) => el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: ease }));
+  [...root.querySelectorAll('[data-id]')].forEach((el, i) => {
+    const a = before.get(el.dataset.id);
+    const rot = `rotate(${parseFloat(el.style.getPropertyValue('--rot')) || 0}deg)`;
+    if (!a) { el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: i * 12, easing: ease, fill: 'backwards' }); return; }
+    const b = el.getBoundingClientRect();
+    const dx = a.left - b.left, dy = a.top - b.top;
+    if (!dx && !dy) return;
+    el.animate([{ transform: `translate(${dx}px, ${dy}px) ${rot}` }, { transform: rot }], { duration: 260, delay: i * 12, easing: ease, fill: 'backwards' });
+  });
+}
+
 /** Длительность для animate:flip — 0, если движение выключено или «минимум». */
 export const flipMs = () => (level() === 'full' ? 220 : 0);
 
