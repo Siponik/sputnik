@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Спутник · Создать: список, событие, день рождения</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/sputnik/components/bundle.css">
+</head>
+<body>
+
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.sp-app{--bg:#1C1B19;--wash:#22211E;--raised:#282723;--hairline:#34332E;--edge:#3A3934;--ink:#ECEAE3;--ink-soft:#A8A69D;--ink-faint:#7C7B72;--clay:#D9774F;--clay-soft:#30221B;--on-clay:#1C1B19;--gold:#E0A04A;--gold-soft:#3A2E1A;--signal-overdue:#F07A6A;--signal-soon:var(--gold);--signal-done:#6FB6CF;--type-work:#7FA6E8;--type-creative:var(--clay);--type-study:#B79BE6;--type-personal:#8FBF7F;--type-habit:var(--gold);--shadow-lift:0 6px 18px rgba(0,0,0,.45);color-scheme:dark;--font-display:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;--font-sans:-apple-system,"Segoe UI",system-ui,sans-serif;--font-mono:"Cascadia Mono",ui-monospace,Consolas,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:24px;--space-6:32px;--space-7:48px;--radius-sm:4px;--radius-md:8px;--radius-lg:12px;--radius-pill:999px;background:var(--bg);color:var(--ink);font-family:var(--font-sans)}
+.sp-app[data-theme="light"]{--bg:#FCFCFB;--wash:#F5F4F0;--raised:#FFFFFF;--hairline:#E4E3DC;--edge:#E1E1DF;--ink:#2E2C27;--ink-soft:#6B6A63;--ink-faint:#8A897F;--clay:#AD4F2C;--clay-soft:#FBEEE7;--on-clay:#FFFFFF;--gold:#8F5A00;--gold-soft:#FBF1DF;--signal-overdue:#B42318;--signal-done:#1F6A80;--type-work:#2F5DA8;--type-study:#6D4AA5;--type-personal:#3E6B31;--shadow-lift:0 6px 18px rgba(46,44,39,.14);color-scheme:light}
+a{color:inherit;text-decoration:none}
+.sp-app .sp-tab{text-decoration:none;display:inline-block}
+button:focus-visible,a:focus-visible{outline:2px solid var(--clay);outline-offset:2px}
+.tick{width:20px;height:20px;flex:none;border-radius:6px;box-sizing:border-box;border:1.5px solid var(--ink-faint);background:none;padding:0;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.tick[aria-pressed="true"]{background:var(--signal-done);border-color:var(--signal-done)}
+.ring{width:20px;height:20px;flex:none;border-radius:50%;box-sizing:border-box;padding:0;border:2px solid var(--clay);background:none;display:grid;place-items:center;cursor:pointer;color:var(--bg)}
+.ring[aria-pressed="true"]{border-color:var(--gold);background:var(--gold)}
+.bubble{position:relative;padding:10px 14px;border-radius:14px;background:var(--raised);border:1px solid var(--edge);font-size:14px;line-height:20px;box-shadow:var(--shadow-lift)}
+.bubble::after{content:"";position:absolute;width:12px;height:12px;background:var(--raised);border:1px solid var(--edge);border-top:0;border-left:0;transform:rotate(45deg);right:-7px;top:50%;margin-top:-6px}
+.cap{margin:0 0 8px;font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-faint)}
+.wrap{display:flex;gap:28px;justify-content:center;align-items:flex-start;padding:36px 28px 30px;background:var(--wash);min-height:900px;box-sizing:border-box}
+.pane{width:440px;display:flex;flex-direction:column;gap:12px}
+.ccap{font-size:13px;line-height:18px;color:var(--ink-soft)}
+.ccap b{display:block;font:600 16px/22px var(--font-display);color:var(--ink);margin-bottom:2px}
+.card{border-radius:18px;background:var(--raised);border:1px solid var(--edge);box-shadow:0 20px 44px rgba(0,0,0,.4);padding:18px 18px 16px;display:flex;flex-direction:column;gap:14px}
+.sp-app[data-theme="light"] .card{box-shadow:0 20px 44px rgba(46,44,39,.14)}
+.srch{display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:11px;background:var(--bg);border:1.5px solid var(--clay);font-size:14px;color:var(--ink-faint)}
+.srch svg{width:16px;height:16px;fill:none;stroke:var(--ink-faint);stroke-width:2;stroke-linecap:round}
+.grp{font:600 11px/1 var(--font-sans);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-faint);margin:4px 2px 0;display:flex;align-items:center;gap:7px}
+.grp i{width:8px;height:8px;border-radius:3px;background:var(--sc)}
+.it{display:flex;align-items:center;gap:11px;min-height:42px;padding:0 10px;border-radius:11px;font-size:14px}
+.it:hover,.it.on{background:var(--wash)}
+.it.sug{background:color-mix(in srgb,var(--gold) 10%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--gold) 40%,transparent)}
+.it .v{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:color-mix(in srgb,var(--sc) 18%,transparent);color:var(--sc)}
+.it .v svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.it span{flex:1}
+.it .v,.it .why{flex:none}
+.it small{font-size:12px;color:var(--ink-faint)}
+.it kbd,.k{font:500 10.5px/1 var(--font-mono);padding:3px 5px;border-radius:4px;border:1px solid var(--edge);color:var(--ink-faint)}
+.it .why{font:600 11px/1 var(--font-sans);color:var(--gold)}
+.newl{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;border-radius:11px;border:1px dashed var(--edge);color:var(--ink-soft);font-size:13.5px}
+.ttl{font:600 21px/28px var(--font-display);padding:10px 14px;border-radius:12px;background:var(--bg);border:1px solid var(--hairline)}
+.row{display:grid;grid-template-columns:86px minmax(0,1fr);gap:10px;align-items:center}
+.row>span{font-size:13px;color:var(--ink-soft)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.c{display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:999px;border:1px solid var(--edge);background:var(--raised);color:var(--ink-soft);font:500 12.5px/1 var(--font-sans)}
+.c.on{border-color:var(--clay);color:var(--ink);background:color-mix(in srgb,var(--clay) 12%,var(--raised))}
+.c.gold.on{border-color:var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--raised))}
+.c i{width:8px;height:8px;border-radius:3px;background:var(--tc)}
+.big{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--bg);border:1px solid var(--hairline);font-size:15px;font-weight:600}
+.big svg{width:18px;height:18px;fill:none;stroke:var(--clay);stroke-width:2;stroke-linecap:round}
+.big small{margin-left:auto;font-weight:400;font-size:12.5px;color:var(--ink-faint)}
+.fld{padding:9px 12px;border-radius:11px;background:var(--bg);border:1px solid var(--hairline);font-size:13.5px;color:var(--ink-faint)}
+.pv{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--wash);font-size:13px;color:var(--ink-soft)}
+.pv .ev{flex:1;padding:7px 10px;border-radius:9px;background:var(--raised);border:1px solid var(--edge);color:var(--ink);font-size:13px}
+.pv .ev small{display:block;font:500 11px/1.4 var(--font-mono);color:var(--ink-faint)}
+.pv .bd{flex:1;padding:8px 10px;border-radius:9px;background:var(--gold-soft);color:var(--ink);font-size:13px}
+.ft{display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.ft .k{margin-right:auto}
+.sp-app{--rim:#C9D6E2}.sp-app[data-theme="light"]{--rim:#A9BCCB}.coon{overflow:visible;display:block}.coon .c-float{animation:c-float 5.5s ease-in-out infinite;transform-box:view-box;transform-origin:120px 150px}.coon .c-wave{animation:c-wave 1.8s ease-in-out infinite;transform-box:view-box;transform-origin:154px 196px}.coon .c-tail{animation:c-tail 3.2s ease-in-out infinite;transform-box:view-box;transform-origin:150px 222px}.coon .c-ear{animation:c-ear 6s ease-in-out infinite;transform-box:view-box;transform-origin:146px 84px}.coon .c-eye{animation:c-blink 4.8s infinite;transform-box:fill-box;transform-origin:center}.coon .c-beacon{animation:c-beacon 1.6s ease-in-out infinite}.coon .c-star{animation:c-twinkle 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}.coon .c-hop{animation:c-hop 1.1s cubic-bezier(.3,.6,.4,1) infinite;transform-box:view-box;transform-origin:120px 250px}.coon .c-z{animation:c-z 3s ease-in-out infinite;opacity:0}.coon .c-dot{animation:c-dot 1.4s ease-in-out infinite}.coon .c-orb{animation:c-orb 6s linear infinite;transform-box:view-box;transform-origin:120px 216px}.coon .c-flag{animation:c-flag 1.4s ease-in-out infinite;transform-box:view-box;transform-origin:190px 100px}@keyframes c-float{0%,100%{transform:translateY(0) rotate(-1.5deg)}50%{transform:translateY(-6px) rotate(1.5deg)}}@keyframes c-wave{0%,100%{transform:rotate(-8deg)}50%{transform:rotate(12deg)}}@keyframes c-tail{0%,100%{transform:rotate(0)}50%{transform:rotate(-8deg)}}@keyframes c-ear{0%,86%,100%{transform:rotate(0)}90%{transform:rotate(8deg)}94%{transform:rotate(-3deg)}}@keyframes c-blink{0%,93%,100%{transform:scaleY(1)}96%{transform:scaleY(.1)}}@keyframes c-beacon{0%,100%{opacity:.35}50%{opacity:1}}@keyframes c-twinkle{0%,100%{opacity:.2;transform:scale(.7)}50%{opacity:1;transform:scale(1)}}@keyframes c-hop{0%,100%{transform:translateY(0) scaleY(1)}12%{transform:translateY(0) scaleY(.95)}45%{transform:translateY(-12px) scaleY(1.02)}}@keyframes c-z{0%{opacity:0;transform:translate(0,0)}25%{opacity:1}100%{opacity:0;transform:translate(10px,-22px)}}@keyframes c-dot{0%,100%{opacity:.25}50%{opacity:1}}@keyframes c-orb{to{transform:rotate(360deg)}}@keyframes c-flag{0%,100%{transform:skewY(0)}50%{transform:skewY(-6deg)}}@media (prefers-reduced-motion:reduce){.coon *{animation:none!important}.coon .c-z,.coon .c-dot{opacity:1}}
+</style>
+</helmet>
+<div class="sp-app" data-theme="{{theme}}">
+<div class="wrap">
+  <div class="pane">
+    <div class="card" role="listbox" aria-label="Куда положить">
+      <div class="srch"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"></circle><path d="M20 20l-4.5-4.5"></path></svg>Найти список…<span style="margin-left: auto" class="k">Alt+L</span></div>
+      <div class="it sug" style="--sc: var(--type-personal)"><span class="v"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg></span><span>Дела по дому<br><small>Стикеры · тема «Покупки»</small></span><span class="why">✦ угадано</span></div>
+      <div class="grp" style="--sc: var(--type-work)"><i></i>Работа</div>
+      <div class="it" style="--sc: var(--type-work)"><span class="v"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="16" rx="1.5"></rect><rect x="10.5" y="4" width="5" height="11" rx="1.5"></rect><rect x="17" y="4" width="3.5" height="7" rx="1.2"></rect></svg></span><span>Иконки для клиента<br><small>Канбан · 6 открытых</small></span><kbd>1</kbd></div>
+      <div class="it" style="--sc: var(--type-work)"><span class="v"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="5" height="16" rx="1.5"></rect><rect x="10.5" y="4" width="5" height="11" rx="1.5"></rect><rect x="17" y="4" width="3.5" height="7" rx="1.2"></rect></svg></span><span>Заказы<br><small>Канбан · заявка → оплачено</small></span><kbd>2</kbd></div>
+      <div class="grp" style="--sc: var(--clay)"><i></i>Творчество</div>
+      <div class="it" style="--sc: var(--clay)"><span class="v"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"></path></svg></span><span>3D-проекты<br><small>Конвейер · 4 ассета</small></span><kbd>3</kbd></div>
+      <div class="grp" style="--sc: var(--type-personal)"><i></i>Личное</div>
+      <div class="it on" style="--sc: var(--type-personal)"><span class="v"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5"></rect><rect x="13" y="4" width="7" height="7" rx="1.5"></rect><rect x="4" y="13" width="7" height="7" rx="1.5"></rect><rect x="13" y="13" width="7" height="7" rx="1.5"></rect></svg></span><span>Дела по дому<br><small>Стикеры · 12 дел</small></span><kbd>4</kbd></div>
+      <div class="it" style="--sc: var(--type-study)"><span class="v"><svg viewBox="0 0 24 24"><path d="M5 6h14M5 12h14M5 18h9"></path></svg></span><span>Курс Blender<br><small>Список · 3 из 10</small></span><kbd>5</kbd></div>
+      <div class="newl">＋ Новый список «лампочки…» — откроет выбор шаблона</div>
+    </div>
+    <div class="ccap"><b>Выбор «Куда»</b>Клик по карточке «Куда» или Alt+L. Сверху — угаданный список, ниже все по сферам со значком вида. Цифры 1–9 — быстрый выбор, ввод — поиск. Выбранный вручную список запоминается: в следующий раз похожие слова поведут туда же.</div>
+  </div>
+
+  <div class="pane">
+    <div class="card" aria-label="Событие">
+      <div class="chips"><span class="c">Задача</span><span class="c on">Событие</span><span class="c">День рождения</span></div>
+      <div class="ttl">Созвон с клиентом по иконкам</div>
+      <div class="big"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="3"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></svg>Чт, 22 октября · 14:00–14:45<small>изменить</small></div>
+      <div class="row"><span>Длится</span><div class="chips"><span class="c">15 мин</span><span class="c">30 мин</span><span class="c on">45 мин</span><span class="c">1 ч</span><span class="c">2 ч</span><span class="c">весь день</span></div></div>
+      <div class="row"><span>Календарь</span><div class="chips"><span class="c on" style="--tc: var(--type-work)"><i></i>Основной</span><span class="c" style="--tc: var(--gold)"><i></i>Работа</span></div></div>
+      <div class="row"><span>Где</span><div class="fld">Ссылка на созвон или адрес</div></div>
+      <div class="row"><span>Напомнить</span><div class="chips"><span class="c">Нет</span><span class="c on">За 15 минут</span><span class="c">За час</span><span class="c">Ещё…</span></div></div>
+      <div class="pv">В календаре:<div class="ev"><b>Созвон с клиентом по иконкам</b><small>14:00–14:45 · свободно до 17:00</small></div></div>
+      <div class="ft"><span class="k">Enter — создать</span><span class="sp-btn sp-btn-ghost">Отмена</span><span class="sp-btn sp-btn-primary">Создать событие</span></div>
+    </div>
+    <div class="ccap"><b>Событие</b>Дата и время — одной крупной строкой (сразу распознаётся из названия), длительность кнопками, календарь, место. Внизу — как ляжет в неделю и свободно ли время.</div>
+  </div>
+
+  <div class="pane">
+    <div class="card" aria-label="День рождения">
+      <div class="chips"><span class="c">Задача</span><span class="c">Событие</span><span class="c gold on">День рождения</span></div>
+      <div class="ttl">Аня</div>
+      <div class="big"><svg viewBox="0 0 24 24" style="stroke: var(--gold)"><path d="M5 20h14M6 20v-7h12v7M12 13V9"></path></svg>12 марта · каждый год<small>изменить</small></div>
+      <div class="row"><span>Год</span><div class="fld">1996 — необязательно, тогда напишу «исполнится 30»</div></div>
+      <div class="row"><span>Напомнить</span><div class="chips"><span class="c gold on">В день</span><span class="c gold on">За день</span><span class="c gold">За 3 дня</span><span class="c gold">За неделю — подарок</span></div></div>
+      <div class="row"><span>Задача</span><div class="chips"><span class="c on">＋ «Подарок Ане» в «Дела по дому» за неделю</span></div></div>
+      <div class="pv">В календаре:<div class="bd">🎂 <b>Аня</b> — 30 лет · чт, 12 марта</div></div>
+      <div class="ft"><span class="k">Enter — создать</span><span class="sp-btn sp-btn-ghost">Отмена</span><span class="sp-btn sp-btn-primary">Добавить</span></div>
+    </div>
+    <div class="ccap"><b>День рождения</b>Золотой акцент, как дни рождения в календаре. Год — по желанию (для «исполнится N»). Одной галочкой — задача «Подарок …» в личный список за неделю.</div>
+  </div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic { renderVals() { return { theme: this.props.theme || 'dark' }; } }
+</script>
+</body>
+</html>
