@@ -40,6 +40,7 @@
   import * as layerSync from './lib/layer.js';
   import * as shell from './lib/shell.js';
   import StatusPop from './lib/StatusPop.svelte';
+  import Popover from './lib/Popover.svelte';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -286,7 +287,7 @@
   // ---------- обновление из приложения ----------
 
   let version = $state('');
-  let upd = $state({ found: null, busy: false, progress: 0, err: '', note: '', later: false, checkedAt: null });
+  let upd = $state({ found: null, busy: false, progress: 0, err: '', fail: '', note: '', checkedAt: null });
   async function checkUpdate(manual = false) {
     if (upd.busy) return;
     upd.err = '';
@@ -294,7 +295,6 @@
     try {
       upd.found = await updater.findUpdate();
       upd.checkedAt = new Date();
-      upd.later = false;
       upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
     } catch (e) {
       upd.note = '';
@@ -302,11 +302,22 @@
     }
   }
   async function installUpdate() {
+    if (!upd.found || upd.busy) return;
     upd.busy = true;
-    upd.err = '';
+    upd.err = ''; upd.fail = '';
+    upd.progress = 0;
     try { await updater.install(upd.found, (p) => (upd.progress = p)); }
-    catch (e) { upd.err = 'Не удалось обновиться: ' + e; upd.busy = false; }
+    catch (e) { upd.fail = 'Не удалось обновиться: ' + e; upd.busy = false; }
   }
+  // Чип «✦ Версия …» в шапке: «Вечером» — напомнить в 20:00, «Пропустить» — не показывать для этой версии
+  // (точка «версия» в «Состоянии» остаётся). settings.update = { skip, remindAt, auto, night }.
+  const updPref = $derived(lay.settings?.update ?? {});
+  let nowMin = $state(Date.now()); // раз в минуту: «Вечером» наступило, ночная установка
+  const updChip = $derived(upd.busy || shell.showUpdChip(upd.found, updPref, nowMin));
+  let updOpen = $state(false);
+  let updBtn = $state(null);
+  function updLater() { touch('settings', 'update', { remindAt: shell.eveningAt() }); saveLayer(); updOpen = false; say('Напомню про обновление вечером, в 20:00'); }
+  function updSkip() { touch('settings', 'update', { skip: upd.found.version, remindAt: null }); saveLayer(); updOpen = false; say(`Версию ${upd.found.version} пропускаю — поставить можно в «Состоянии»`); }
 
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
@@ -415,12 +426,19 @@
     start();
     updater.currentVersion().then((v) => (version = v));
     // Обновления: через полминуты после запуска и дальше раз в 6 часов.
-    const updFirst = setTimeout(() => checkUpdate(), import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
-    const updTimer = setInterval(() => checkUpdate(), 6 * 3600e3);
+    // «Проверять самому» (settings.update.auto) выключено — только вручную.
+    const autoCheck = () => { if (lay.settings?.update?.auto !== false) checkUpdate(); };
+    const updFirst = setTimeout(autoCheck, import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
+    const updTimer = setInterval(autoCheck, 6 * 3600e3);
+    // «Ставить ночью»: компьютер не спит в 3:00 и есть версия — ставим.
+    const minTimer = setInterval(() => {
+      nowMin = Date.now();
+      if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
+    }, 60e3);
     const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
     const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
     window.addEventListener('focus', onFocus);
-    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); window.removeEventListener('focus', onFocus); };
+    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); window.removeEventListener('focus', onFocus); };
   });
 
   function replace(listId, updated) {
@@ -1153,6 +1171,13 @@
         <button class="hd-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="cnt" title="Осталось отметить сегодня">{habitsLeft}</span>{/if}</button>
       </nav>
       <span class="hd-sp" data-tauri-drag-region></span>
+      {#if updChip}
+        <button class="hd-upd" bind:this={updBtn} type="button" aria-expanded={updOpen} aria-haspopup="dialog" transition:motion.pop
+          title={upd.busy ? 'Ставлю обновление' : 'Что нового — и обновить'} onclick={() => (updOpen = !updOpen)}>
+          {#if upd.busy}Обновляю · {Math.round(upd.progress * 100)}%<span class="pr" style="width: {Math.round(upd.progress * 100)}%"></span>
+          {:else}✦ Версия {upd.found.version}{/if}
+        </button>
+      {/if}
       {#if runRef}
         <span class="timer-pill" role="status">
           <button type="button" class="tp-open" title="Открыть задачу «{runRef.task.title || 'Без названия'}»" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
@@ -1184,19 +1209,11 @@
       <WinControls />
     </header>
 
-    {#if (upd.found && !upd.later) || upd.err}
-      <div class="upd" role="status">
-        {#if upd.err}
-          <p class="err">{upd.err}</p>
-          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.err = '')}>Скрыть</button>
-        {:else if upd.busy}
-          <p><b>Ставлю Спутник {upd.found.version}…</b> Окно установки закроется само, приложение перезапустится.</p>
-          <span class="upd-bar"><span style="width: {Math.round(upd.progress * 100)}%"></span></span>
-        {:else}
-          <p><b>Вышла версия {upd.found.version}.</b> Обновление займёт меньше минуты, данные никуда не денутся.</p>
-          <button class="sp-btn sp-btn-primary" type="button" style="min-height: 30px" onclick={installUpdate}>Обновить</button>
-          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.later = true)}>Позже</button>
-        {/if}
+    {#if upd.fail}
+      <div class="upd" role="alert">
+        <p class="err">{upd.fail}</p>
+        <button class="st-mini" type="button" onclick={installUpdate}>Ещё раз</button>
+        <button class="st-mini ghost" type="button" onclick={() => (upd.fail = '')}>Скрыть</button>
       </div>
     {/if}
 
@@ -1368,6 +1385,24 @@
       onclose={() => (quick = null)} />
   {/if}
 
+  {#if updOpen && updChip}
+    <Popover anchor={updBtn} width={344} label="Обновление" onclose={() => (updOpen = false)}>
+      <h5>{upd.busy ? `Ставлю ${upd.found.version}` : `Что нового в ${upd.found.version}`}</h5>
+      {#if shell.notesOf(upd.found.notes).length}
+        <ul class="st-notes" style="margin-left: 10px">{#each shell.notesOf(upd.found.notes) as n, i (i)}<li>{n}</li>{/each}</ul>
+      {/if}
+      {#if upd.busy}
+        <div class="st-bar" style="margin-left: 10px"><i style="width: {Math.round(upd.progress * 100)}%"></i></div>
+        <p class="upd-note">Скачиваю… окно установки закроется само, Спутник перезапустится. Данные не пострадают.</p>
+      {:else}
+        <div class="upd-acts">
+          <button type="button" class="st-mini pri" onclick={installUpdate}>Обновить сейчас</button>
+          <button type="button" class="st-mini" onclick={updLater}>Вечером</button>
+          <button type="button" class="st-mini ghost" onclick={updSkip}>Пропустить</button>
+        </div>
+      {/if}
+    </Popover>
+  {/if}
   {#if statOpen}
     <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remStat} notes={shell.notesOf(upd.found?.notes)}
       onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
