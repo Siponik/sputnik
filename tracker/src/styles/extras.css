@@ -86,3 +86,10 @@
 .sr-hint { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-faint); }
 .sr-hint .kbd { margin-left: 6px; }
 .sr-hint .kbd:first-child { margin-left: 0; }
+
+/* Подтверждение удаления (lib/ConfirmDelete.svelte): списка, сферы. */
+.dialog.del-ask { width: min(440px, calc(100% - 32px)); gap: 12px; padding: 22px 24px; }
+.dialog.del-ask h2 { font-size: 20px; line-height: 26px; }
+.dialog.del-ask p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+.dialog.del-ask .actions { margin-top: 6px; }
+.dialog.del-ask .sp-btn.danger { color: var(--signal-overdue); border-color: currentColor; }
