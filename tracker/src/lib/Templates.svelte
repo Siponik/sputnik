@@ -2,6 +2,7 @@
   // Экран «Шаблоны досок» (design/screens/Templates.dc.html): слева шаблоны, справа редактор выбранного.
   import { untrack } from 'svelte';
   import { PALETTE, VIEWS, FIELDS, colColor, isBuiltin } from './templates.js';
+  import ItemMenu from './ItemMenu.svelte';
 
   // templates — templatesFrom(слой); usage(id) → [названия списков]; count(id, colId) → открытых задач в колонке.
   let { templates, usage, count, onsave, onreset, oncreate, ondelete, onback, current = null } = $props();
@@ -13,11 +14,13 @@
   let removed = $state([]); // [{ id, name, to, toName, n }] — удалённые колонки (задачи переедут при сохранении)
   let replaceWith = $state('');
   let askDelete = $state(false);
+  let menu = $state(null); // { at, id } — правый клик по своему шаблону
+  let wantDelete = null; // «Удалить шаблон…» из меню: открыть шаблон и сразу спросить
 
   const curT = $derived(templates.find((t) => t.id === sel) ?? templates[0]);
   function load(t) {
     draft = { name: t.name, view: t.view, fields: [...t.fields], cols: t.cols.map((c) => ({ ...c })) };
-    dirty = false; note = ''; removed = []; askDelete = false;
+    dirty = false; note = ''; removed = []; askDelete = wantDelete === t.id; wantDelete = null;
     replaceWith = templates.find((x) => x.id !== t.id)?.id ?? '';
   }
   $effect(() => { if (curT && (!draft || draft._for !== curT.id)) { load(curT); draft._for = curT.id; } });
@@ -62,6 +65,21 @@
     if (dirty && !confirm('В шаблоне есть несохранённые изменения. Создать новый без сохранения?')) return;
     sel = await oncreate();
   }
+  function openMenu(e, t) {
+    if (!t.mine) return; // встроенные не удаляются — у них «Вернуть как было»
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    menu = { at: e.type === 'contextmenu' && e.clientX ? { x: e.clientX, y: e.clientY } : { x: r.left + 24, y: r.bottom }, id: t.id };
+  }
+  function menuAction(a, id) {
+    if (a === 'open') choose(id);
+    else if (a === 'delete') {
+      if (id === sel) { askDelete = true; return; }
+      wantDelete = id;
+      choose(id);
+      if (sel !== id) wantDelete = null; // остался на прежнем (несохранённые изменения)
+    }
+  }
   function remove() {
     if (usage(sel).length && !replaceWith) return;
     ondelete(sel, replaceWith);
@@ -78,15 +96,22 @@
       <p class="cap">Шаблоны досок</p>
     </div>
     {#each templates as t (t.id)}
-      <button type="button" class="ti" aria-current={sel === t.id} onclick={() => choose(t.id)}>
+      <button type="button" class="ti" aria-current={sel === t.id} onclick={() => choose(t.id)} title={t.mine ? 'Правый клик — удалить' : undefined}
+        oncontextmenu={(e) => openMenu(e, t)} onkeydown={(e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') openMenu(e, t); }}>
         <b>{t.name}{#if t.changed}<span class="badge">изменён</span>{/if}{#if t.mine}<span class="badge mine">свой</span>{/if}</b>
         <span class="mini">{#each t.cols as c, i (c.id)}<i class:end={i === t.cols.length - 1}></i>{/each}</span>
         <small>{meta(t)}</small>
       </button>
     {/each}
     <button type="button" class="sp-btn add-tpl" onclick={create}>＋ Свой шаблон</button>
-    <p class="hint">Новый шаблон начинается с трёх колонок: «Надо → Делаю → Готово».</p>
+    <p class="hint">Новый шаблон начинается с трёх колонок: «Надо → Делаю → Готово». Свой шаблон удаляется правым кликом.</p>
   </aside>
+
+  {#if menu}
+    {@const id = menu.id}
+    <ItemMenu at={menu.at} label="Действия с шаблоном" items={[{ id: 'open', label: 'Открыть' }, { id: 'delete', label: 'Удалить шаблон…', danger: true, sep: true }]}
+      onaction={(a) => menuAction(a, id)} onclose={() => (menu = null)} />
+  {/if}
 
   {#if draft}
     <main class="tpl-ed">
