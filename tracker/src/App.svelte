@@ -16,6 +16,7 @@
   import Calendar from './lib/Calendar.svelte';
   import QuickAdd from './lib/QuickAdd.svelte';
   import Coon from './lib/Coon.svelte';
+  import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
   import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
@@ -399,6 +400,7 @@
       if (done && lay.tasks?.[task.id]?.repeat?.every) rollRepeats(quiet);
       if (!done) unrollRepeat(task, listId);
       if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
+      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
       return true;
     } catch (e) { say('Не удалось отметить: ' + e); return false; }
   }
@@ -426,6 +428,25 @@
       if (boardProject) { touch('tasks', r.id, { project: boardProject }); saveLayer(); }
       if (ord != null) { touch('tasks', r.id, { ord }); saveLayer(); }
     } catch (e) { say('Не удалось создать задачу: ' + e); }
+  }
+
+  // ---------- учёт времени: один таймер на задачу, в слое (tasks[id].timer / spent) ----------
+  const runId = $derived(worktime.runningId(lay.tasks));
+  const runRef = $derived.by(() => {
+    if (!runId) return null;
+    for (const l of lists) { const t = (tasks[l.id] ?? []).find((x) => x.id === runId); if (t) return { task: t, listId: l.id }; }
+    return null;
+  });
+  let nowTick = $state(Date.now());
+  $effect(() => {
+    if (!runId) return;
+    nowTick = Date.now();
+    const id = setInterval(() => (nowTick = Date.now()), 1000);
+    return () => clearInterval(id);
+  });
+  function toggleTimer(id) {
+    for (const [tid, patch] of worktime.toggle(lay.tasks, id)) touch('tasks', tid, patch);
+    saveLayer();
   }
 
   // ---------- анимации: settings.motion = full | min | off ----------
@@ -904,6 +925,16 @@
         <button class="sync" class:busy={sync.busy} class:flash={syncFlash} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
           <span class="dot"></span>{syncLabel}
         </button>
+        {#if runRef}
+          <span class="timer-pill" role="status">
+            <button type="button" class="tp-open" title="Открыть задачу" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
+              <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
+            </button>
+            <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
+            </button>
+          </span>
+        {/if}
         {#if inboxItems.length}
           <button class="sp-btn sp-btn-ghost inbox-btn" type="button" title="Входящие от Claude — разобрать на «Сегодня»"
             aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
@@ -1074,6 +1105,7 @@
       repeat={lay.tasks?.[openTask.id]?.repeat ?? null}
       pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
+      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
       onsave={save}
