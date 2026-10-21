@@ -90,3 +90,18 @@ test('сброс поля — через null, и он побеждает', () =
   const r = merge({ tasks: { a: { slot: null, t: 20 } } }, { tasks: { a: { slot: { s: '10:00', e: '11:00' }, status: 'doing', t: 10 } } });
   assert.deepEqual(r.merged.tasks.a, { slot: null, status: 'doing', t: 20 });
 });
+
+test('удалённый список: надгробия у списка и его задач, другой компьютер их не вернёт', async () => {
+  const { forgetList } = await import('../src/lib/layer.js');
+  const local = { ...emptyLayer(), lists: { L: { template: 'work', t: 1 } }, tasks: { a: { status: 'doing', t: 1 }, b: { type: 'study', t: 1 } } };
+  forgetList(local, 'L', ['a', 'x'], 10);
+  assert.deepEqual(local.lists.L, { gone: true, t: 10 });
+  assert.deepEqual(local.tasks.a, { gone: true, t: 10 });
+  assert.equal(local.tasks.x, undefined, 'задачам без записи в слое надгробие не нужно');
+  assert.deepEqual(local.tasks.b, { type: 'study', t: 1 }, 'чужие задачи не трогаем');
+  const remote = { ...emptyLayer(), lists: { L: { template: 'work', sphere: 's', t: 5 } }, tasks: { a: { status: 'review', t: 5 } } };
+  const r = merge(local, remote);
+  assert.deepEqual(r.merged.lists.L, { gone: true, t: 10 });
+  assert.deepEqual(r.merged.tasks.a, { gone: true, t: 10 });
+  assert.equal(r.remoteChanged, true);
+});

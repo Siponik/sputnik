@@ -14,6 +14,15 @@ export function emptyLayer() {
   return { version: 1, ...Object.fromEntries(SECTIONS.map((s) => [s, {}])) };
 }
 
+/** Надгробия для удалённого списка: его запись и записи его задач (статусы, время, напоминания…). */
+export function forgetList(lay, listId, taskIds = [], t = Date.now()) {
+  lay.lists ??= {};
+  lay.tasks ??= {};
+  lay.lists[listId] = { gone: true, t };
+  for (const id of taskIds) if (lay.tasks[id]) lay.tasks[id] = { gone: true, t };
+  return lay;
+}
+
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
 const tOf = (rec) => (isObj(rec) && Number.isFinite(rec.t) ? rec.t : 0);
 // Разделы — известные и любые новые от более свежей версии трекера на другом компьютере.

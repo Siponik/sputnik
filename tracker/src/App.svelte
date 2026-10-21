@@ -25,6 +25,8 @@
   import SphereView from './lib/SphereView.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
   import SphereFilter from './lib/SphereFilter.svelte';
+  import ItemMenu from './lib/ItemMenu.svelte';
+  import ConfirmDelete from './lib/ConfirmDelete.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
@@ -644,7 +646,8 @@
     return id;
   }
   function deleteTemplate(id, replacement) {
-    for (const l of boardLists) if (templateFor(l.id).id === id) touch('lists', l.id, { template: replacement });
+    // и скрытым спискам тоже, иначе после «показать» они молча получили бы «Работу»
+    for (const l of lists) if (!isHabitList(l, lay) && templateFor(l.id).id === id) touch('lists', l.id, { template: replacement });
     touch('templates', id, { removed: true });
     saveLayer();
     say('Шаблон удалён');
@@ -678,17 +681,110 @@
   }
   function updateSphere(patch) { if (!activeSphere) return; touch('spheres', activeSphere, patch); saveLayer(); }
   function toggleListSphere(listId, on) { touch('lists', listId, { sphere: on ? activeSphere : null }); saveLayer(); }
-  function deleteSphere() {
-    const id = activeSphere;
+  function deleteSphere(id = activeSphere) {
     for (const l of sphereLists(id)) touch('lists', l.id, { sphere: null });
     touch('spheres', id, { removed: true });
     saveLayer();
     sphereEditOpen = false;
     if (sphereFilter === id) sphereFilter = '';
-    view = 'board';
+    if (view === 'sphere' && activeSphere === id) view = 'board';
     say('Сфера удалена, списки — в «Без сферы»');
   }
   function newListIn(sid) { newListSphere = sid; newList = true; }
+
+  // ---------- меню левой колонки (правый клик по списку или сфере) и удаление ----------
+
+  let sideMenu = $state(null); // { at, kind: 'list' | 'sphere', id }
+  let askDel = $state(null); // { title, text, note, yes, run } — окно подтверждения
+
+  function openSideMenu(e, kind, id) {
+    e.preventDefault();
+    const r = e.currentTarget.getBoundingClientRect();
+    // правый клик — у курсора, Shift+F10 / клавиша меню — у строки
+    const at = e.type === 'contextmenu' && e.clientX ? { x: e.clientX, y: e.clientY } : { x: r.left + 24, y: r.bottom };
+    sideMenu = { at, kind, id };
+  }
+  const menuKey = (kind, id) => (e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') openSideMenu(e, kind, id); };
+
+  const sideItems = $derived.by(() => {
+    if (!sideMenu) return [];
+    if (sideMenu.kind === 'sphere') return [
+      { id: 'open', label: 'Открыть сферу' },
+      { id: 'edit', label: 'Изменить сферу' },
+      { id: 'delete', label: 'Удалить сферу…', danger: true, sep: true },
+    ];
+    return [
+      { id: 'open', label: 'Открыть доску' },
+      ...(sphereOf(sideMenu.id, lay) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
+      { id: 'delete', label: 'Удалить список…', danger: true, sep: true },
+    ];
+  });
+
+  function sideAction(a) {
+    const { kind, id } = sideMenu;
+    if (kind === 'sphere') {
+      if (a === 'open') openSphere(id);
+      else if (a === 'edit') { openSphere(id); sphereEditOpen = true; }
+      else if (a === 'delete') askDeleteSphere(id);
+    } else {
+      if (a === 'open') openList(id);
+      else if (a === 'unsphere') { touch('lists', id, { sphere: null }); saveLayer(); say('Список — в «Без сферы»'); }
+      else if (a === 'delete') askDeleteList(id);
+    }
+  }
+
+  function askDeleteSphere(id) {
+    const sp = spheres.find((s) => s.id === id);
+    if (!sp) return;
+    const n = sphereLists(id).length;
+    askDel = {
+      title: `Удалить сферу «${sp.name}»?`,
+      text: n ? `${n} ${plural(n, ['список останется', 'списка останутся', 'списков останутся'])} и ${n === 1 ? 'уйдёт' : 'уйдут'} в «Без сферы» — задачи не пострадают.` : 'В сфере нет списков.',
+      note: 'Вернуть сферу будет нельзя — только создать заново.',
+      yes: 'Удалить сферу',
+      run: () => deleteSphere(id),
+    };
+  }
+
+  async function askDeleteList(id) {
+    const l = boardLists.find((x) => x.id === id);
+    if (!l) return;
+    // Основной список Google Tasks («Мои задачи») Google удалить не даёт — скажем заранее.
+    try { if ((await api.defaultListId()) === id) { say(`«${l.title}» — основной список Google Tasks, его удалить нельзя. Можно скрыть: «Что показывать» внизу колонки.`); return; } }
+    catch { /* не узнали — попробуем, Google сам откажет */ }
+    const all = (tasks[id] ?? []).filter((t) => !t.parent);
+    const open = all.filter((t) => t.status !== 'completed').length;
+    askDel = {
+      title: `Удалить список «${l.title}»?`,
+      text: all.length
+        ? `Он удалится из Google Tasks вместе со всеми задачами: ${all.length} ${plural(all.length, ['задача', 'задачи', 'задач'])}${open ? `, из них открытых — ${open}` : ''}. На телефоне тоже пропадёт.`
+        : 'Он пустой. Удалится из Google Tasks — на телефоне тоже пропадёт.',
+      note: 'Вернуть будет нельзя. Если список просто мешает — его можно скрыть: «Что показывать» внизу колонки.',
+      yes: 'Удалить список',
+      run: () => deleteList(id),
+    };
+  }
+
+  async function deleteList(id) {
+    const l = lists.find((x) => x.id === id);
+    try { await api.deleteList(id); }
+    catch (e) { say('Не удалось удалить список: ' + e); return; }
+    const ids = (tasks[id] ?? []).map((t) => t.id);
+    lists = lists.filter((x) => x.id !== id);
+    delete tasks[id];
+    // Надгробия, а не delete: иначе другой компьютер при слиянии вернул бы записи списка и его задач.
+    layerSync.forgetList(lay, id, ids);
+    saveLayer();
+    if (openRef?.listId === id) openRef = null;
+    if (activeId === id) { activeId = boardLists[0]?.id ?? null; boardProject = null; }
+    say(`Список «${l?.title ?? ''}» удалён`);
+  }
+
+  async function confirmDel() {
+    const run = askDel?.run;
+    await run?.();
+    askDel = null;
+  }
 
   async function createList(title, template) {
     // «Пустой шаблон» в окне «Новый список»: свой шаблон с именем списка, после создания — его настройка.
@@ -1037,7 +1133,8 @@
         <div class="sph-side">
           <h4>Сферы</h4>
           {#snippet listRow(l)}
-            <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}>
+            <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}
+              oncontextmenu={(e) => openSideMenu(e, 'list', l.id)} onkeydown={menuKey('list', l.id)}>
               <span class="lt">{l.title}</span><span class="n">{openCount(l)}</span>
             </button>
           {/snippet}
@@ -1048,7 +1145,8 @@
               <button type="button" class="chev" aria-label={folded ? 'Развернуть сферу' : 'Свернуть сферу'} aria-expanded={!folded} onclick={() => foldSphere(sp.id, !folded)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true" class:closed={folded}><path d="M6 9l6 6 6-6" /></svg>
               </button>
-              <button type="button" class="sph" aria-current={view === 'sphere' && activeSphere === sp.id} onclick={() => openSphere(sp.id)}>
+              <button type="button" class="sph" aria-current={view === 'sphere' && activeSphere === sp.id} onclick={() => openSphere(sp.id)}
+                oncontextmenu={(e) => openSideMenu(e, 'sphere', sp.id)} onkeydown={menuKey('sphere', sp.id)}>
                 <SphereIcon sphere={sp} size={26} /><span class="sn">{sp.name}</span><span class="n">{sl.reduce((n, l) => n + openCount(l), 0)}</span>
               </button>
             </div>
@@ -1193,7 +1291,15 @@
   {#if sphereEditOpen && curSphere && view === 'sphere'}
     <SphereEdit sphere={curSphere} lists={boardLists} inSphere={(id) => sphereOf(id, lay) === curSphere.id}
       whereOf={(id) => spheres.find((s) => s.id === sphereOf(id, lay))?.name ?? ''}
-      onchange={updateSphere} ontogglelist={toggleListSphere} ondelete={deleteSphere} onclose={() => (sphereEditOpen = false)} />
+      onchange={updateSphere} ontogglelist={toggleListSphere} ondelete={() => deleteSphere()} onclose={() => (sphereEditOpen = false)} />
+  {/if}
+
+  {#if sideMenu}
+    <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : 'Действия со списком'} items={sideItems}
+      onaction={sideAction} onclose={() => (sideMenu = null)} />
+  {/if}
+  {#if askDel}
+    <ConfirmDelete title={askDel.title} text={askDel.text} note={askDel.note} yes={askDel.yes} onconfirm={confirmDel} onclose={() => (askDel = null)} />
   {/if}
 
   {#if newList}

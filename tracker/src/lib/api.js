@@ -26,6 +26,10 @@ export async function listLists() {
 }
 
 export const createList = (title) => gapi('POST', `${TASKS}/users/@me/lists`, { title });
+/** Удалить список вместе с задачами — в Google Tasks насовсем. Основной список Google удалить не даёт. */
+export const deleteList = (listId) => gapi('DELETE', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`);
+/** id основного списка Google Tasks («Мои задачи»). */
+export const defaultListId = async () => (await gapi('GET', `${TASKS}/users/@me/lists/@default`))?.id ?? null;
 
 export async function listTasks(listId) {
   let items = [];
