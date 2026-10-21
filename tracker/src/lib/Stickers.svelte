@@ -42,24 +42,33 @@
 
   let jarEl = $state(null);
   const timers = new Map();
+  const unstamp = (id) => { stamped = new Set([...stamped].filter((x) => x !== id)); };
+  // Сделано: штамп держится 2 с и до ответа Google — иначе при медленной сети стикер на миг возвращался открытым.
+  // Второй клик в первые 0,6 с (двойной клик) отметку не снимает: стикер улетал в баночку и тут же возвращался.
+  const markedAt = new Map();
   function done(t) {
     if (stamped.has(t.id) || t.status === 'completed') {
+      if (Date.now() - (markedAt.get(t.id) ?? 0) < 600) return;
       clearTimeout(timers.get(t.id));
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
+      unstamp(t.id);
       act.done(t, false);
       return;
     }
     stamped = new Set([...stamped, t.id]);
-    act.done(t, true, () => { // «Отменить» на плашке
+    markedAt.set(t.id, Date.now());
+    let undone = false;
+    const sent = act.done(t, true, () => { // «Отменить» на плашке
+      undone = true;
       clearTimeout(timers.get(t.id));
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
+      unstamp(t.id);
     });
-    timers.set(t.id, setTimeout(() => {
+    const wait = new Promise((r) => timers.set(t.id, setTimeout(r, 2000)));
+    Promise.all([sent, wait]).then(() => {
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
-    }, 2000));
+      if (!undone) unstamp(t.id);
+    });
   }
   $effect(() => () => timers.forEach((x) => clearTimeout(x)));
   // Уход: сделанный — в баночку, остальное — перелёт в новую колонку.

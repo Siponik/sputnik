@@ -86,7 +86,10 @@ function driveApi(method, path, q, body) {
 }
 
 export async function invoke(cmd, args = {}) {
-  await new Promise((r) => setTimeout(r, 40));
+  // Задержка «сети» в демо: localStorage demo.delay (мс) — чтобы ловить гонки, как с настоящим Google.
+  let ms = 40;
+  try { ms = Number(localStorage.getItem('demo.delay')) || 40; } catch {}
+  await new Promise((r) => setTimeout(r, ms));
   switch (cmd) {
     case 'auth_status': return { has_secret: true, signed_in: true };
     case 'layer_read': return structuredClone(layer);

@@ -35,6 +35,7 @@
   import * as meta from './lib/meta.js';
   import { whenText } from './lib/when.js';
   import * as repeat from './lib/repeat.js';
+  import * as fresh from './lib/fresh.js';
   import * as stickers from './lib/stickers.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
@@ -231,10 +232,13 @@
     sync.busy = true;
     sync.err = '';
     try {
+      const t0 = Date.now();
+      const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
       const ls = await api.listLists();
       const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
       lists = ls;
-      tasks = Object.fromEntries(ls.map((l, i) => [l.id, all[i]]));
+      // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
+      tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
       // Первый обмен слоем — до того, как трекер сам что-то в него допишет (дата начала привычек, поля из «Входящих»):
       // иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
@@ -449,7 +453,10 @@
     return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); window.removeEventListener('focus', onFocus); };
   });
 
+  // Когда трекер сам менял задачу — чтобы ответ синхронизации, запрошенный раньше, её не откатил (lib/fresh.js).
+  const touchedAt = new Map();
   function replace(listId, updated) {
+    touchedAt.set(updated.id, Date.now());
     tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
   }
 
@@ -624,8 +631,9 @@
   /** Стикер сделан / возвращён: плашка «Сделано: «…» · Отменить». */
   async function doneUndo(t, d, listId, onundo) {
     const ok = await toggle(t, d, listId, true);
-    if (!ok || !d) return;
+    if (!ok || !d) return ok;
     say(`Сделано: «${t.title || 'Без названия'}»`, () => { onundo?.(); const cur = findTask(listId, t.id); if (cur) toggle(cur, false, listId, true); });
+    return true;
   }
   function topicUndo(t, id, listId) {
     const prev = lay.tasks?.[t.id]?.topic ?? null;
