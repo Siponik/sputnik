@@ -34,6 +34,7 @@
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
+  import * as layerSync from './lib/layer.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -41,7 +42,7 @@
   let lists = $state([]);
   let activeId = $state(null);
   let tasks = $state({}); // listId → задачи (вместе с подзадачами)
-  let lay = $state(emptyLayer()); // слой Спутника: то, чего нет в Google
+  let lay = $state(layerSync.emptyLayer()); // слой Спутника: то, чего нет в Google
   let events = $state([]);
   let inboxSt = $state(null); // статус «Входящих от Claude»
   let openRef = $state(null); // { listId, id }
@@ -51,8 +52,6 @@
   let toast = $state('');
   let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
   let toastTimer;
-
-  function emptyLayer() { return { version: 1, tasks: {}, lists: {}, habits: {}, log: {}, cals: {}, settings: {}, templates: {}, templatesEdit: {}, spheres: {} }; }
 
   // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
@@ -152,7 +151,56 @@
 
   async function saveLayer() {
     try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить: ' + e); }
+    clearTimeout(cloudTimer);
+    cloudTimer = setTimeout(syncLayer, 4000);
   }
+
+  // ---------- слой между компьютерами (lib/layer.js) ----------
+  // Копия слоя — в скрытой папке приложения на Google Drive. Сливаем при каждой синхронизации (раз в 2 мин и по фокусу)
+  // и через 4 с после изменения. state: idle | busy | ok | login (нет права — войти заново) | err.
+  let cloud = $state({ state: 'idle', at: null, err: '' });
+  let cloudTimer;
+  let cloudRun = null, cloudAgain = false;
+  async function syncLayer() {
+    if (phase !== 'ready' || cloud.state === 'login') return;
+    if (cloudRun) { cloudAgain = true; return cloudRun; }
+    cloudRun = (async () => {
+      cloud.state = 'busy';
+      try {
+        const remote = await layerSync.pull();
+        // Сливаем с тем, что на экране сейчас: правки, сделанные, пока шёл запрос, не теряются.
+        const { merged, localChanged, remoteChanged } = layerSync.merge($state.snapshot(lay), remote);
+        if (localChanged) {
+          lay = merged;
+          api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
+          await api.layer.write(merged).catch((e) => say('Не удалось сохранить: ' + e));
+        }
+        if (remoteChanged) await layerSync.push(merged);
+        cloud = { state: 'ok', at: new Date(), err: '' };
+      } catch (e) {
+        if (layerSync.needsLogin(e)) {
+          cloud = { state: 'login', at: null, err: String(e) };
+          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново (внизу левой колонки на «Доске»).');
+        } else cloud = { ...cloud, state: 'err', err: String(e) };
+      } finally {
+        cloudRun = null;
+        if (cloudAgain) { cloudAgain = false; setTimeout(syncLayer, 0); }
+      }
+    })();
+    return cloudRun;
+  }
+  // Вход с новым правом drive.appdata (кто входил до синхронизации).
+  async function cloudLogin() {
+    try {
+      await api.auth.login();
+      cloud = { state: 'idle', at: null, err: '' };
+      await syncLayer();
+      if (cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
+    } catch (e) { say('Не удалось войти: ' + e); }
+  }
+  const cloudLabel = $derived(cloud.state === 'busy' ? 'Синхронизирую слой…'
+    : cloud.state === 'ok' ? `Слой на Drive · ${cloud.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
+    : cloud.state === 'err' ? 'Слой не синхронизирован' : '');
 
   // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
   function ensureHabitMeta() {
@@ -174,6 +222,9 @@
       lists = ls;
       tasks = Object.fromEntries(ls.map((l, i) => [l.id, all[i]]));
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+      // Первый обмен слоем — до того, как трекер сам что-то в него допишет (дата начала привычек, поля из «Входящих»):
+      // иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
+      if (!cloud.at) await syncLayer();
       ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
       inboxSt = await api.inboxStatus().catch(() => inboxSt);
@@ -181,6 +232,7 @@
       pullInboxLayer();
       await rollRepeats();
       sync.at = new Date();
+      syncLayer();
     } catch (e) {
       sync.err = String(e);
       if (/войдите|sign in|invalid_grant/i.test(sync.err)) { phase = 'setup'; authInfo = await api.auth.status(); }
@@ -192,7 +244,7 @@
   }
 
   async function start() {
-    lay = { ...emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
+    lay = { ...layerSync.emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
     api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
@@ -887,8 +939,10 @@
     try {
       await api.deleteTask(habitList.id, id);
       tasks[habitList.id] = (tasks[habitList.id] ?? []).filter((t) => t.id !== id);
-      delete lay.habits[id];
-      for (const k of Object.keys(lay.log)) if (k.startsWith(id + '|')) delete lay.log[k];
+      // «Надгробия», а не delete: иначе другой компьютер при слиянии вернул бы записи обратно.
+      const t = Date.now();
+      lay.habits[id] = { gone: true, t };
+      for (const k of Object.keys(lay.log)) if (k.startsWith(id + '|')) lay.log[k] = { gone: true, t };
       saveLayer();
       say('Привычка удалена');
     } catch (e) { say('Не удалось удалить привычку: ' + e); }
@@ -897,6 +951,7 @@
   async function logout() {
     await api.auth.logout().catch(() => {});
     lists = []; tasks = {}; events = []; openRef = null;
+    layerSync.reset(); cloud = { state: 'idle', at: null, err: '' };
     authInfo = await api.auth.status();
     phase = 'setup';
   }
@@ -1035,6 +1090,11 @@
           {#if upd.note}<span>{upd.note}</span>{/if}
           <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
           <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
+          {#if cloud.state === 'login'}
+            <button type="button" title="Нужно новое право: скрытая папка Спутника на Google Drive" onclick={cloudLogin}>Синхронизация: войти заново</button>
+          {:else if cloudLabel}
+            <span title={cloud.err || 'Статусы, типы, время задач, привычки и настройки — общие для всех компьютеров'}>{cloudLabel}</span>
+          {/if}
           <button type="button" onclick={logout}>Выйти из Google</button>
         </div>
       </aside>

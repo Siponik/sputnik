@@ -146,7 +146,7 @@
             <ul class="perm" aria-label="Какие доступы попросит Google">
               <li><span class="ok">●</span><span><b>Задачи</b> — читать и создавать: это и есть доска.</span></li>
               <li><span class="ok">●</span><span><b>Календарь</b> — события, дни рождения, свободные окна.</span></li>
-              <li><span class="ok">●</span><span><b>Drive</b> — только собственные файлы Спутника, остальное не видно.</span></li>
+              <li><span class="ok">●</span><span><b>Drive</b> — только собственные файлы Спутника и его скрытая папка (так доска и привычки совпадают на всех компьютерах), остальное не видно.</span></li>
               <li><span class="no">●</span><span>Своего сервера нет: всё хранится у тебя и в твоём Google.</span></li>
             </ul>
             <div class="row">
