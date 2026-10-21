@@ -1,0 +1,28 @@
+# Проверка каждого PR: автотесты логики трекера и бота, сборка интерфейса.
+# Ничего не публикует и не трогает main — только ставит зелёную или красную галочку у PR.
+name: Проверка PR
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tracker
+    env:
+      TZ: Europe/Moscow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tracker/package-lock.json
+      - run: npm ci
+      - name: Тесты
+        run: npm test
+      - name: Сборка интерфейса
+        run: npm run build
