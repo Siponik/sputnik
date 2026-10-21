@@ -7,6 +7,7 @@
   import Coon from './Coon.svelte';
   import { priorityOf, priorityRank, pickNext, TYPES } from './meta.js';
   import { parseWhen, whenText } from './when.js';
+  import { takeRepeat, repeatLabel } from './repeat.js';
 
   let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
     onopen, ontoggle, oncreate, onreschedule = null, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar, filter = null } = $props();
@@ -145,9 +146,10 @@
     const tg = txt.match(/#([^\s#]+)/);
     if (tg) { const k = tg[1].toLowerCase(); kind = TAGS[OLD_TAGS[k] ?? k] ?? null; txt = txt.replace(tg[0], ' '); }
     // Дата и время словами — общий разбор (тот же, что в окне «Когда»): «в пятницу 17:00», «завтра», «25 окт».
-    const w = parseWhen(txt, new Date(clock));
+    const rp = takeRepeat(txt); // «каждую неделю», «по будням»
+    const w = parseWhen(rp.rest, new Date(clock));
     txt = w.rest;
-    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time: w.time ?? '', day: w.day, kind, priority };
+    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time: w.time ?? '', day: w.day, kind, priority, repeat: rp.rule };
   }
   const preview = $derived(draft.trim() ? parse(draft) : null);
 
@@ -163,6 +165,7 @@
     const layer = {};
     if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
     if (p.priority) layer.priority = p.priority;
+    if (p.repeat) layer.repeat = p.repeat;
     const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: p.day ?? today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer }, !!p.day && p.day !== today); // не на сегодня — App покажет, куда ушла
     adding = false;
     if (id) { draft = ''; fresh = new Set([...fresh, id]); input?.focus(); }
@@ -244,10 +247,10 @@
         </form>
         <p class="qa-hint">
           {#if preview?.title}
-            Добавлю «{preview.title}» {preview.day && preview.day !== today ? `на ${whenText(preview.day, null).date.toLowerCase()}` : 'на сегодня'}{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}
+            Добавлю «{preview.title}» {preview.day && preview.day !== today ? `на ${whenText(preview.day, null).date.toLowerCase()}` : 'на сегодня'}{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}{preview.repeat ? ` · ↻ ${repeatLabel(preview.repeat)}` : ''}
             → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
           {:else}
-            Дата, время, #тип и приоритет распознаются сами: «завтра», «в пятницу», «25 окт», 17:00, #asset #work #client #study #personal, !!! / !! / !. Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+            Дата, время, #тип и приоритет распознаются сами: «завтра», «в пятницу», «25 окт», 17:00, #asset #work #client #study #personal, !!! / !! / !, повтор «каждую неделю» или «по будням». Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
           {/if}
         </p>
       </div>

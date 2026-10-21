@@ -41,6 +41,7 @@ export function layerPatches(status, layTasks) {
     if (Array.isArray(f.tags)) patch.tags = f.tags.filter((x) => typeof x === 'string');
     if ([1, 2, 3].includes(f.priority)) patch.priority = f.priority;
     if (typeof f.stage === 'string') patch.stage = f.stage;
+    if (['day', 'weekdays', 'week', 'month', 'year'].includes(f.repeat?.every)) patch.repeat = { every: f.repeat.every };
     // Время из Telegram-бота: «завтра 17:00» → slot { s, e }.
     const hm = /^([01]\d|2[0-3]):[0-5]\d$/;
     if (f.slot && hm.test(f.slot.s) && hm.test(f.slot.e) && f.slot.s < f.slot.e) patch.slot = { s: f.slot.s, e: f.slot.e };
