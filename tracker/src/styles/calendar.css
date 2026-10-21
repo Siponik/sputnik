@@ -1,7 +1,8 @@
 /* Календарь v2 (design/screens/Calendar.dc.html): сутки 0–24 со сжатием, черновик, форма в панели дня. */
 .wk-grid .col { position: relative; border-left: 1px solid var(--hairline); }
 .wk-grid .hours .lbl.small { font-size: 10px; opacity: .8; }
-.wk-grid .band { position: absolute; left: 0; right: 0; box-sizing: border-box; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--hairline) 55%, transparent) 0 1px, transparent 1px 7px); border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.wk-grid .band { position: absolute; left: 0; right: 0; box-sizing: border-box; background: repeating-linear-gradient(135deg, color-mix(in srgb, var(--hairline) 55%, transparent) 0 1px, transparent 1px 7px); border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); border-inline: 0; padding: 0; width: 100%; display: block; cursor: zoom-in; }
+.wk-grid .band:hover { background-color: color-mix(in srgb, var(--clay) 8%, transparent); }
 .wk-grid .hline { position: absolute; left: 0; right: 0; height: 1px; background: color-mix(in srgb, var(--hairline) 70%, transparent); }
 .wk-grid .slot { position: absolute; left: 0; right: 0; width: 100%; border: 0; padding: 0; background: none; cursor: pointer; display: block; }
 .wk-grid .slot:hover { background: color-mix(in srgb, var(--clay) 8%, transparent); }
@@ -29,7 +30,7 @@
 .cal.fit .cal-body { flex: 1 1 0; min-height: 0; flex-wrap: nowrap; padding-bottom: 16px; }
 .cal.fit .cal-main { height: 100%; min-height: 0; gap: 12px; }
 .cal.fit .cal-week { flex: 1 1 0; min-height: 0; display: flex; flex-direction: column; }
-.wk-fit.on { flex: 1 1 0; min-height: 160px; overflow-y: auto; overflow-x: hidden; }
+.wk-fit.on { flex: 1 1 0; min-height: 240px; overflow-y: auto; overflow-x: hidden; }
 .cal.fit .cal-over { flex: none; }
 .cal.fit .cal-over .card { padding: 10px 14px; }
 .cal.fit .cal-day { align-self: stretch; max-height: 100%; overflow-y: auto; position: static; }
@@ -45,3 +46,20 @@
 .addday:hover { border-color: var(--clay); color: var(--clay); }
 .free-day { display: flex; align-items: center; gap: 10px; margin-top: 4px; }
 .free-day p { margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+
+/* Обзор недели под сеткой: компактные карточки (не выше ~130 px) или одна строка, если свёрнут. */
+.cal-over { display: flex; flex-direction: column; gap: 6px; }
+.cal-over.shut { flex-direction: row; align-items: center; gap: 12px; padding: 6px 0 0; border-top: 1px solid var(--hairline); }
+.cal-over .ov-tog { align-self: flex-start; display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; padding: 2px 0; cursor: pointer; font: 600 11px/14px var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
+.cal-over.shut .ov-tog { align-self: center; flex: none; }
+.cal-over .ov-tog:hover { color: var(--ink); }
+.cal-over .ov-tog svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.cal-over .ov-line { margin: 0; flex: 1; min-width: 0; font-size: 12.5px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-over .card { padding: 10px 14px; }
+.cal-over .card .cap { margin-bottom: 4px; }
+.cal-over .note { margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-over .note.more { margin-top: 4px; font-size: 12px; color: var(--ink-faint); }
+.cal-over .up { padding: 4px 0; font-size: 12.5px; }
+.cal-over .coon-card { gap: 10px; }
+.cal-over .coon-text { gap: 6px; }
+.cal-over .coon-text .tip { font-size: 12.5px; line-height: 17px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }

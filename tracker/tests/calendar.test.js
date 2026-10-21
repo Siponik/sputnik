@@ -1,24 +1,33 @@
 // Раскладка сетки недели (lib/calendar.js) и «Входящие от Claude» (lib/inbox.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { hourLayout, periodDays, toMin, fromMin, HOUR_PX, HOUR_EMPTY } from '../src/lib/calendar.js';
+import { hourLayout, periodDays, toMin, fromMin, HOUR_PX, HOUR_EMPTY, BAND_MAX } from '../src/lib/calendar.js';
 import { pending, layerPatches } from '../src/lib/inbox.js';
 
 test('hourLayout: занятые часы 40 px, пустые сжаты в полосы', () => {
   const L = hourLayout([{ s: toMin('10:00'), e: toMin('11:30') }]);
   assert.equal(L.HT[10], HOUR_PX);
   assert.equal(L.HT[11], HOUR_PX);
-  assert.equal(L.HT[12], HOUR_EMPTY);
-  assert.equal(L.height, 2 * HOUR_PX + 22 * HOUR_EMPTY);
-  assert.deepEqual(L.bands.map((b) => b.h), [10 * HOUR_EMPTY, 12 * HOUR_EMPTY]);
-  assert.equal(L.yAt(toMin('10:30')), 10 * HOUR_EMPTY + HOUR_PX / 2);
+  assert.equal(L.HT[12], BAND_MAX / 12);
+  assert.equal(L.height, 2 * HOUR_PX + 2 * BAND_MAX);
+  assert.deepEqual(L.bands.map((b) => [b.a, b.b, b.h]), [[0, 10, BAND_MAX], [12, 24, BAND_MAX]]);
+  assert.equal(L.yAt(toMin('10:30')), BAND_MAX + HOUR_PX / 2);
   assert.ok(L.labels.some((l) => l.text === '00–10') && L.labels.some((l) => l.text === '12–00'));
+});
+
+test('hourLayout: короткая полоса — 12 px на час и без подписи', () => {
+  const L = hourLayout([{ s: toMin('09:00'), e: toMin('17:00') }, { s: toMin('18:00'), e: toMin('19:00') }]);
+  assert.equal(L.HT[17], HOUR_EMPTY);
+  const b = L.bands.find((x) => x.a === 17);
+  assert.equal(b.h, HOUR_EMPTY);
+  assert.equal(b.text, '17–18');
+  assert.ok(!L.labels.some((l) => l.text === '17–18'));
 });
 
 test('hourLayout fit: сутки укладываются в окно', () => {
   const L = hourLayout([{ s: 600, e: 720 }], [], 600);
   assert.ok(L.height <= 600 + 72);
-  assert.ok(L.HT[10] >= 26 && L.HT[10] <= 72);
+  assert.ok(L.HT[10] >= 30 && L.HT[10] <= 72);
 });
 
 test('periodDays: неделя с понедельника, месяц — 42 дня', () => {

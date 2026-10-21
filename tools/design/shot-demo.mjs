@@ -73,7 +73,7 @@ for (const theme of ['dark', 'light']) {
   await tab(p, 'Календарь');
   await shot(p, 'calendar-week' + sfx);
   const more = p.locator('.ad-more').first();
-  if (await more.count()) { await more.click(); await shot(p, 'calendar-week-allday' + sfx); await more.click(); }
+  if (await more.count()) { await more.click(); await shot(p, 'calendar-week-allday' + sfx); await p.locator('.ad-fold').click(); }
   // Окно «Создать» v2: три случая, как Create.dc.html (demo = личное / работа / 3D), и CreateMore.dc.html.
   await tab(p, 'Сегодня');
   const create = async (line, name, extra) => {

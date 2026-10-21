@@ -291,9 +291,9 @@ svg.flip { transform: rotate(180deg); }
 .wk-grid .now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--clay); }
 
 /* Обзор недели */
-.cal-over { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.cal-over .ov-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .cal .card { border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); padding: 14px 16px; min-width: 0; }
-.bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; height: 92px; }
+.bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; height: 72px; }
 .bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; }
 .bar .h { font: 400 10.5px/1 var(--font-mono); color: var(--ink-soft); white-space: nowrap; }
 .bar .b { width: 100%; max-width: 22px; border-radius: 4px 4px 2px 2px; background: var(--ink-faint); }
