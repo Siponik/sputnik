@@ -25,8 +25,9 @@ const src = readFileSync(file, 'utf8');
 const tpl = src.match(/<x-dc>([\s\S]*)<\/x-dc>/)[1];
 const helmet = (tpl.match(/<helmet>([\s\S]*?)<\/helmet>/) ?? [, ''])[1];
 const body = tpl.replace(/<helmet>[\s\S]*?<\/helmet>/, '');
-const script = src.match(/<script[^>]*data-dc-script[^>]*?(?:data-props='([^']*)')?[^>]*>([\s\S]*?)<\/script>/);
-const meta = script[1] ? JSON.parse(script[1]) : {};
+const script = src.match(/<script([^>]*data-dc-script[^>]*)>([\s\S]*?)<\/script>/);
+const propsAttr = script[1].match(/data-props='([^']*)'/);
+const meta = propsAttr ? JSON.parse(propsAttr[1]) : {};
 for (const [k, d] of Object.entries(meta)) if (!(k in props) && d && 'default' in d) props[k] = d.default;
 const size = meta.$preview ?? { width: 1440, height: 900 };
 // Общие классы sp-* (шапка, кнопки) — те же, что в трекере; на холсте они приходят из bundle.css дизайн-системы.
