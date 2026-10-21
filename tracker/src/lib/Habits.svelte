@@ -4,7 +4,7 @@
   import Coon from './Coon.svelte';
 
   // habits: [{ id, name, days, createdAt }]; log — отметки из слоя; cele — свежая веха { id, text, n }.
-  let { habits, log, cele = null, ontoggle, onclosecele, oncreate, onupdate, ondelete } = $props();
+  let { habits, log, cele = null, ontoggle, onclosecele, oncreate, onupdate, ondelete, onregister } = $props();
 
   const WEEK = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
   const MONTHS = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря'];
@@ -70,6 +70,8 @@
     fTime = h?.time ?? '';
     confirmDelete = false;
   }
+  // Кнопка «Создать» в шапке на этом экране — новая привычка.
+  $effect(() => { onregister?.(() => openForm()); return () => onregister?.(null); });
   function toggleDay(d) {
     fDays = fDays.includes(d) ? fDays.filter((x) => x !== d) : [...fDays, d].sort();
   }
@@ -154,9 +156,6 @@
         <button type="button" class="sp-btn sp-btn-ghost" aria-label="Следующий месяц" disabled={mo >= 0} onclick={() => mo++}>›</button>
       </span>
     {/if}
-    <button class="sp-btn sp-btn-primary" type="button" onclick={() => openForm()}>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Новая привычка
-    </button>
   </div>
 
   {#if cele}

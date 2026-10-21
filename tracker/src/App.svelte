@@ -38,6 +38,7 @@
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
   import * as layerSync from './lib/layer.js';
+  import * as shell from './lib/shell.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -314,8 +315,11 @@
   // Экран может сам принять быстрое добавление (на «Сегодня» — строка сверху), иначе открываем окно «Создать».
   let quickLine = null;
   // fromKey — нажали N / Ctrl+N: на «Сегодня» это строка быстрого добавления. Кнопка «Создать» всегда открывает окно.
+  let habitForm = null; // «Создать» на «Привычках» — форма новой привычки (Habits регистрирует)
   function newTask(fromKey = false) {
-    if (!boardLists.length || openRef || newList) return;
+    if (openRef || newList) return;
+    if (view === 'habits' && habitForm) { habitForm(); return; }
+    if (!boardLists.length) return;
     if (fromKey && quickLine?.()) return;
     quick = {};
   }
@@ -1116,7 +1120,9 @@
     phase = 'setup';
   }
 
-  const syncLabel = $derived(sync.busy ? 'Синхронизация…' : sync.err ? 'Нет связи с Google' : sync.at ? `Синхронизировано · ${sync.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Ещё не синхронизировано');
+  // «Состояние» в шапке: три точки (Google, между компьютерами, версия) и время последней синхронизации.
+  let statOpen = $state(false);
+  const stat = $derived(shell.statusDots({ sync, offline, cloud, upd }));
 </script>
 
 <svelte:window onkeydown={hotkey} />
@@ -1129,42 +1135,46 @@
   <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
-    <!-- Шапка — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. -->
-    <nav class="sp-tabs" aria-label="Разделы" data-tauri-drag-region>
+    <!-- Шапка 0.6 — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. Ничего не переносится. -->
+    <header class="sp-hd" data-tauri-drag-region>
       <Brand />
-      <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня <span class="n">· {todayCount}</span>{#if view === 'today'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь{#if view === 'calendar'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={['board', 'archive', 'templates', 'sphere'].includes(view)} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска{#if section(view) === 'board'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}{#if view === 'habits'}<span class="ink"></span>{/if}</button>
-      <div class="right" data-tauri-drag-region>
-        <button class="sync" class:busy={sync.busy} class:flash={syncFlash} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
-          <span class="dot"></span>{syncLabel}
-        </button>
-        {#if runRef}
-          <span class="timer-pill" role="status">
-            <button type="button" class="tp-open" title="Открыть задачу" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
-              <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
-            </button>
-            <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
-            </button>
-          </span>
-        {/if}
-        {#if inboxItems.length}
-          <button class="sp-btn sp-btn-ghost inbox-btn" type="button" title="Входящие от Claude — разобрать на «Сегодня»"
-            aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg>
-            <span class="n">{inboxItems.length}</span>
+      <nav class="hd-tabs" aria-label="Разделы" style="display: contents">
+        <button class="hd-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня{#if todayCount}<span class="cnt hot" title="На сегодня и просрочено">{todayCount}</span>{/if}</button>
+        <button class="hd-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь</button>
+        <button class="hd-tab" role="tab" aria-selected={section(view) === 'board'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска</button>
+        <button class="hd-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="cnt" title="Осталось отметить сегодня">{habitsLeft}</span>{/if}</button>
+      </nav>
+      <span class="hd-sp" data-tauri-drag-region></span>
+      {#if runRef}
+        <span class="timer-pill" role="status">
+          <button type="button" class="tp-open" title="Открыть задачу «{runRef.task.title || 'Без названия'}»" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
+            <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
           </button>
-        {/if}
-        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Поиск по задачам (Ctrl+K)" aria-label="Поиск" onclick={() => (searchOpen = true)}><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></button>
-        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши" onclick={() => (helpOpen = true)}>?</button>
-        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={() => newTask()}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
+          <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
+          </button>
+        </span>
+      {/if}
+      <button class="hd-find" type="button" title="Поиск по задачам и разделам (Ctrl+K или /)" aria-label="Найти" onclick={() => (searchOpen = true)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg><span class="lbl">Найти</span><kbd>Ctrl K</kbd>
+      </button>
+      <button class="hd-stat" type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
+        onclick={() => (statOpen = !statOpen)}>
+        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && syncFlash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
+      </button>
+      {#if inboxItems.length}
+        <button class="hd-ib" type="button" title="Входящие от Claude · {inboxItems.length} — разобрать на «Сегодня»"
+          aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg><span class="b">{inboxItems.length}</span>
         </button>
-      </div>
+      {/if}
+      <button class="hd-create" type="button" disabled={view !== 'habits' && !boardLists.length}
+        title={view === 'habits' ? 'Новая привычка' : boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'}
+        onclick={() => newTask()}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
+      </button>
       <WinControls />
-    </nav>
+    </header>
 
     {#if (upd.found && !upd.later) || upd.err}
       <div class="upd" role="status">
@@ -1283,7 +1293,7 @@
             oncreatetask={(p) => quickCreate(p)}
             oncreateevent={createEvent} filter={sphFilter} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
+          <Habits {habits} log={lay.log} {cele} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
