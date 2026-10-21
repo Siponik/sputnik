@@ -9,7 +9,7 @@
   import * as stk from './stickers.js';
   import { ymd } from './api.js';
   import { fromMin, toMin } from './calendar.js';
-  import { stickerCrossfade, toJar, pop } from './motion.js';
+  import { stickerCrossfade, toJar, pop, rectsOf, flipFrom } from './motion.js';
 
   // layList — запись списка в слое (topics, group, sort); cols — колонки шаблона (для метки промежуточного этапа).
   // act — действия App (open, rename, priority, order, moveList, duplicate, remove, done, topic, pin, when, add, topics, set).
@@ -28,7 +28,10 @@
   let stamped = $state(new Set());
   const top = $derived(tasks.filter((t) => !t.parent));
   const shown = $derived(top.filter((t) => t.status !== 'completed' || stamped.has(t.id)));
-  const lanes = $derived(stk.lanes(shown, { group, topics, layTasks, today, sort }));
+  const allLanes = $derived(stk.lanes(shown, { group, topics, layTasks, today, sort }));
+  // По темам пустые темы спрятаны (кнопки «＋ в тему» под стеной); lanes — то, что на экране.
+  const vis = $derived(stk.visibleLanes(allLanes, { group, keep: adding }));
+  const lanes = $derived(vis.shown);
   const jarN = $derived(stk.jarCount(top.filter((t) => !stamped.has(t.id))));
   const firstCol = $derived(cols[0]?.id);
   const stageName = (t) => {
@@ -117,7 +120,16 @@
     else act.when(t, laneId);
   }
 
-  function flipGroup() { act.set({ group: group === 'when' ? 'topic' : 'when' }); adding = ''; }
+  // Смена раскладки — без Svelte-переходов (с |global старые колонки ждали улёта стикеров и оставались на экране
+  // вперемешку с новыми), перелёт стикеров — FLIP из motion.js.
+  let wallEl = $state(null);
+  async function flipGroup() {
+    const before = rectsOf(wallEl);
+    adding = '';
+    act.set({ group: group === 'when' ? 'topic' : 'when' });
+    await tick();
+    flipFrom(wallEl, before);
+  }
 
   // ---------- клавиши ----------
   function onKey(e) {
@@ -237,7 +249,7 @@
     const topic = p.topic ?? (group === 'topic' ? lane.id || null : null);
     const due = p.day ?? (group === 'when' ? stk.newDue(lane.id, today) : p.time ? today : null);
     // В конец своей колонки (#тема или «в пятницу» могут увести в другую): колонке — порядок, новому — следующий номер.
-    const dest = lanes.find((l) => l.id === (group === 'topic' ? topic ?? '' : stk.bucket(due ?? '', today))) ?? lane;
+    const dest = allLanes.find((l) => l.id === (group === 'topic' ? topic ?? '' : stk.bucket(due ?? '', today))) ?? lane;
     if (dest.items.some((x) => typeof layTasks?.[x.id]?.ord !== 'number')) act.order(dest.items.map((x) => x.id));
     const layer = { ord: Math.max(dest.items.length, ...dest.items.map((x) => (layTasks?.[x.id]?.ord ?? 0) + 1)) };
     if (topic) layer.topic = topic;
@@ -293,7 +305,7 @@
   </div>
 </header>
 
-<div class="wall" class:when={group === 'when'} style="--lanes: {lanes.length}">
+<div class="wall" class:when={group === 'when'} style="--lanes: {Math.max(5, lanes.length + (vis.hidden.length ? 1 : 0))}" bind:this={wallEl}>
   {#each lanes as lane, li (group + lane.id)}
     <section class="lane" class:drop={drop?.lane === lane.id} style="--tc: {lane.c}" aria-label={lane.name}
       ondragover={(e) => dragOver(e, lane.id)} ondragleave={(e) => dragLeave(e, lane.id)} ondrop={(e) => dropOn(e, lane)}>
@@ -315,7 +327,7 @@
             data-id={t.id} data-done={isDone ? '1' : '0'} tabindex="0" draggable={editing !== t.id}
             style="--tc: {tp ? stk.topicColor(tp) : stk.MISC.c}; --rot: {tiltOf(t.id)}deg"
             aria-label="{t.title || 'Без названия'}{tp ? `, ${tp.name}` : ''}{isDone ? ', сделано' : ''}"
-            in:receive|global={{ key: t.id, delay: k * 12 }} out:leave|global={{ key: t.id }}
+            in:receive={{ key: t.id, delay: k * 12 }} out:leave={{ key: t.id }}
             onclick={() => { sel = t.id; act.open(t); }}
             onfocus={() => (sel = t.id)}
             oncontextmenu={(e) => { e.preventDefault(); openMenu(t, null, { x: e.clientX, y: e.clientY }); }}
@@ -357,6 +369,16 @@
       </div>
     </section>
   {/each}
+  {#if vis.hidden.length}
+    <section class="lane lane-more" aria-label="Пустые темы">
+      <header class="lh">Пустые темы</header>
+      <div class="more-chips">
+        {#each vis.hidden as h (h.id)}
+          <button type="button" class="more-chip" style="--tc: {h.c}" title="Новый стикер в «{h.name}»" onclick={() => startAdd(h.id)}><i></i>＋ {h.name}</button>
+        {/each}
+      </div>
+    </section>
+  {/if}
 </div>
 
 <footer class="kb-hint stk-hint" aria-label="Подсказка по клавишам">

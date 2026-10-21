@@ -1,7 +1,7 @@
 // Вид «Стикеры»: раскладка по срокам, порядок, перенос срока, наклон (src/lib/stickers.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bucket, weekEnd, whenDue, newDue, dueLabel, order, lanes, tilt, parseSticker, jarCount, todaySub, DEFAULT_TOPICS } from '../src/lib/stickers.js';
+import { visibleLanes, bucket, weekEnd, whenDue, newDue, dueLabel, order, lanes, tilt, parseSticker, jarCount, todaySub, DEFAULT_TOPICS } from '../src/lib/stickers.js';
 
 const T = '2026-10-21'; // среда
 const SUN = '2026-10-25';
@@ -98,4 +98,19 @@ test('баночка: сделано за 7 дней', () => {
   const now = Date.parse('2026-10-21T12:00:00Z');
   const done = (d) => ({ status: 'completed', completed: new Date(now - d * 864e5).toISOString() });
   assert.equal(jarCount([done(1), done(6.5), done(8), { status: 'needsAction' }, { ...done(1), parent: 'p' }], now), 2);
+});
+
+test('пустые темы прячутся, по срокам — всегда три колонки', () => {
+  const L = (id, n) => ({ id, items: Array.from({ length: n }, (_, i) => ({ id: id + i })) });
+  const all = [L('docs', 0), L('buy', 2), L('calls', 0), L('', 1)];
+  let v = visibleLanes(all, { group: 'topic' });
+  assert.deepEqual(v.shown.map((l) => l.id), ['buy', '']);
+  assert.deepEqual(v.hidden.map((l) => l.id), ['docs', 'calls']);
+  v = visibleLanes(all, { group: 'topic', keep: 'calls' }); // пишут новый стикер в пустую тему
+  assert.deepEqual(v.shown.map((l) => l.id), ['buy', 'calls', '']);
+  v = visibleLanes([L('docs', 0), L('buy', 0)], { group: 'topic' }); // пусто везде — все
+  assert.equal(v.shown.length, 2);
+  assert.equal(v.hidden.length, 0);
+  v = visibleLanes([L('today', 0), L('week', 0), L('later', 1)], { group: 'when' });
+  assert.equal(v.shown.length, 3);
 });
