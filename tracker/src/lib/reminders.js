@@ -8,7 +8,8 @@
 // extendedProperties.private.sputnikRemind = '15,60' (минуты до начала) и метка sputnikR = '1' для поиска.
 // Трекер кладёт список ближайших напоминаний в файл на Google Drive (папка «Спутник»),
 // а скрипт Google Apps Script (reminders/Code.gs) раз в минуту читает его и пишет в Telegram.
-import { gapi, dueToYmd } from './api.js';
+import { gapi, dueToYmd, ymd } from './api.js';
+import { habitDay } from './calendar.js';
 
 export const BEFORE = [
   { days: 0, name: 'В день срока' },
@@ -173,6 +174,34 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
     }
   }
   return items.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
+}
+
+/** Напоминания о привычках со временем (habits[id].time) — на 7 дней вперёд, только по расписанию.
+ *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
+ *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
+export function habitItems(habits, log, now = new Date()) {
+  const items = [];
+  const today = ymd(now);
+  for (const h of habits) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(h.time ?? '');
+    if (!m) continue;
+    for (let i = 0; i < 7; i++) {
+      const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, +m[1], +m[2]);
+      const day = ymd(at);
+      const d = habitDay(h, log, day, today);
+      if (!d.sched || d.done || at.getTime() < now.getTime() - 120e3) continue;
+      items.push({
+        key: `habit|${h.id}|${day}`,
+        kind: 'habit',
+        title: h.name,
+        note: '',
+        list: 'Привычки',
+        due: '',
+        fireAt: at.toISOString(),
+      });
+    }
+  }
+  return items;
 }
 
 // ---------- файл на Google Drive ----------
