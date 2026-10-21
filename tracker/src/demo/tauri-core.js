@@ -1,7 +1,7 @@
 // Демо-режим (npm run demo): трекер открывается в обычном браузере, без Tauri и без Google.
 // Подменяет invoke(): Google Tasks и Calendar — выдуманные данные в памяти, слой — в памяти (?fresh — сначала).
 // Нужен, чтобы видеть экран и сравнивать с макетами (design/screens/ref/*.png). Ничего не уходит в сеть.
-import { seedLists, seedTasks, seedLayer } from './data.js';
+import { seedLists, seedTasks, seedLayer, seedInbox } from './data.js';
 
 const lists = seedLists();
 const tasks = seedTasks(); // { listId: [task] }
@@ -59,7 +59,11 @@ function tasksApi(method, path, q, body) {
 function calApi(method, path, q, body) {
   if (/^users\/me\/calendarList/.test(path)) {
     return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
-      { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' }] };
+      { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' },
+      { id: 'queue@demo', summary: 'Спутник · входящие', backgroundColor: '#888888', accessRole: 'owner' }] };
+  }
+  if (path.startsWith('calendars/queue%40demo/') || path.startsWith('calendars/queue@demo/')) {
+    return { items: q.get('timeMin')?.startsWith('2029') ? [{ id: 'st', summary: 'Спутник · статус', description: JSON.stringify(seedInbox()) }] : [] };
   }
   if (method === 'POST') return { id: 'E' + n++, ...body };
   return { items: [] };

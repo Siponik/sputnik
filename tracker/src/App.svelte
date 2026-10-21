@@ -598,7 +598,8 @@
       const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
       tasks[listId] = a; tasks[dest] = b;
       say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
-    } catch (e) { say('Не удалось перенести в другой список: ' + e); }
+      return r?.id ?? t.id;
+    } catch (e) { say('Не удалось перенести в другой список: ' + e); return null; }
   }
   const boardAct = {
     open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
@@ -967,8 +968,14 @@
     if (patches.length) saveLayer();
   }
 
-  function acceptInbox(items) {
-    for (const x of items) touch('tasks', x.task.id, { inbox: 'accepted' });
+  /** Принять входящие; dest — другой список, чем выбрал Claude («→ список» на «Сегодня»): сначала перенос. */
+  async function acceptInbox(items) {
+    for (const x of items) {
+      let id = x.task.id;
+      if (x.dest && x.dest !== x.listId) id = (await moveToList(x.task, x.dest, x.listId)) ?? id;
+      touch('tasks', x.task.id, { inbox: 'accepted' });
+      if (id !== x.task.id) touch('tasks', id, { inbox: 'accepted' });
+    }
     saveLayer();
     say(items.length > 1 ? `Принято задач: ${items.length}` : `«${items[0].task.title}» — принято`);
   }
@@ -1302,13 +1309,13 @@
       <div class="main">
         {#snippet sphFilter()}<SphereFilter {spheres} value={sphereFilter} onchange={(v) => (sphereFilter = v)} />{/snippet}
         {#if view === 'today'}
-          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
+          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
             oncreate={(p, loud = false) => quickCreate(p, !loud)} onreschedule={rescheduleMany} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
-            onregister={(fn) => (quickLine = fn)}
+            onregister={(fn) => (quickLine = fn)} onlearn={learnRoute} onfull={(line) => { if (boardLists.length) quick = { line }; }}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />
         {:else if view === 'calendar'}
           <Calendar lists={shownLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
@@ -1378,7 +1385,7 @@
     <!-- Окно «Создать» v2: с доски «Куда» по умолчанию — эта доска; из других разделов — по словам. -->
     <Create lists={boardLists} listId={view === 'board' && boardLists.some((l) => l.id === activeId) ? activeId : null}
       from={view === 'board' && boardProject ? { project: boardProject } : {}}
-      day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
+      day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''} line={quick.line ?? ''}
       layer={lay} tasksByList={tasks}
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange} loadCalendars={api.calendarsAll}
       {remindDefaults} onremindDefault={setRemindDefault}

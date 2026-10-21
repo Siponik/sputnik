@@ -43,8 +43,8 @@
 /* кнопки окна — в одну строку с шапкой, на всю её высоту */
 .sp-hd .winctl { position: static; height: 56px; margin-left: 10px; flex: none; }
 .sp-hd .winctl button { width: 46px; height: 56px; color: var(--ink-faint); }
-/* Окно уже 1180 px: сначала прячутся подписи — «Найти» → только лупа, «13:52» → только точки. */
-@media (max-width: 1179px) {
+/* Окно 1260 px и уже: сначала прячутся подписи — «Найти» → только лупа, «13:52» → только точки. */
+@media (max-width: 1259px) {
   .hd-find { width: 36px; padding: 0; justify-content: center; border-color: transparent; background: none; }
   .hd-find .lbl, .hd-find kbd, .hd-stat .lbl { display: none; }
   .hd-tab { padding: 0 10px; }
