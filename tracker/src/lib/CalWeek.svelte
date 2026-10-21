@@ -5,6 +5,15 @@
   let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose, onmove = null } = $props();
 
   const hasAllday = $derived(days.some((d) => d.allday.length));
+  // «Весь день» не съедает сетку: в свёрнутом виде по AD_MAX строк на день (открытые выше выполненных), остальное — «+ ещё N».
+  const AD_MAX = 3;
+  let adOpen = $state(false);
+  const adRows = $derived(days.map((d) => {
+    const all = [...d.allday].sort((a, b) => !!a.done - !!b.done);
+    const cut = !adOpen && all.length > AD_MAX ? AD_MAX - 1 : all.length; // строка «+ ещё» занимает место последней
+    return { shown: all.slice(0, cut), more: all.length - cut };
+  }));
+  const adMany = $derived(days.some((d) => d.allday.length > AD_MAX));
   const nowTop = $derived((clock, layout.yAt(nowMin())));
   const slots = $derived(Array.from({ length: 24 }, (_, h) => ({ h, top: layout.Y[h], ht: layout.HT[h], t: String(h).padStart(2, '0') + ':00' })));
 
@@ -93,12 +102,15 @@
   {/if}
 
   {#if hasAllday}
-    <div class="wk wk-allday">
-      <span class="lbl" style="padding-top: 10px">весь день</span>
-      {#each days as d (d.ymd)}
+    <div class="wk wk-allday" class:open={adOpen}>
+      <span class="lbl ad-lbl">
+        весь день
+        {#if adMany && adOpen}<button type="button" class="ad-fold" onclick={() => (adOpen = false)}>свернуть</button>{/if}
+      </span>
+      {#each days as d, di (d.ymd)}
         <div class="adcol" class:sel={d.isSel} class:drop={drop && drop.day === d.ymd && drop.s === null}
           ondragover={(e) => over(e, d.ymd, false)} ondrop={put} role="group" aria-label="Весь день, {d.title}">
-          {#each d.allday as a (a.id)}
+          {#each adRows[di].shown as a (a.id)}
             <div class="ad k-{a.kind}" class:done={a.done} class:lift={drag?.it.id === a.id}
               draggable={a.kind === 'task' && !a.done && !!onmove} ondragstart={(e) => startDrag(e, { ...a, day: d.ymd })} ondragend={endDrag}
               style="--c: {a.type ? typeColor(a.type) : 'var(--ink-soft)'}">
@@ -110,6 +122,9 @@
               {/if}
             </div>
           {/each}
+          {#if adRows[di].more}
+            <button type="button" class="ad-more" onclick={() => (adOpen = true)} title="Показать все задачи «весь день» на неделе">+ ещё {adRows[di].more}</button>
+          {/if}
         </div>
       {/each}
     </div>

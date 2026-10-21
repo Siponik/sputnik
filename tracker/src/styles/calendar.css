@@ -10,6 +10,14 @@
 .wk-grid .ghost { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 12%, var(--bg)); padding: 4px 7px; font-size: 12px; font-weight: 600; color: var(--clay); pointer-events: none; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; z-index: 2; }
 .wk-grid .blk[draggable="true"], .wk-allday .ad[draggable="true"] { cursor: grab; }
 .wk-grid .blk.lift, .wk-allday .ad.lift { opacity: .45; }
+/* «Весь день»: свёрнуто — до 3 строк на день и «+ ещё N»; раскрыто — не выше трети экрана, дальше прокрутка внутри. */
+.wk-allday .ad-lbl { padding-top: 9px; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.wk-allday .ad-fold, .wk-allday .ad-more { border: 0; background: none; padding: 0; font: 500 11.5px/16px var(--font-sans); color: var(--ink-soft); cursor: pointer; text-align: left; }
+.wk-allday .ad-more { padding: 2px 7px; border-radius: 6px; }
+.wk-allday .ad-fold:hover, .wk-allday .ad-more:hover { color: var(--clay); }
+.wk-allday .ad-more:hover { background: var(--wash); }
+.wk-allday.open { max-height: 34vh; overflow-y: auto; overscroll-behavior: contain; }
+.wk-allday.open .ad-lbl { position: sticky; top: 0; }
 .wk-allday .adcol.drop { outline: 1.5px dashed var(--clay); outline-offset: -3px; border-radius: 7px; }
 .cal-month .it[draggable="true"] { cursor: grab; }
 .cal-month .it.lift { opacity: .45; }
