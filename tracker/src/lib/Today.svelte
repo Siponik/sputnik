@@ -74,9 +74,24 @@
   const next = $derived(timed.find((t) => t.s > now && !t.done) ?? null);
   const nextWhen = $derived.by(() => {
     if (!next) return '';
-    const m = next.s - now;
-    return `через ${Math.floor(m / 60) ? Math.floor(m / 60) + ' ч ' : ''}${m % 60} мин`;
+    return `через ${dur(next.s - now)}`;
   });
+  // Сколько ещё занято в расписании до конца дня: события и задачи со временем,
+  // пересечения считаются один раз, прошедшее и выполненное — не в счёт.
+  const busyLeft = $derived.by(() => {
+    let sum = 0, edge = now;
+    for (const t of timed) {
+      if (t.done || t.e <= edge) continue;
+      sum += t.e - Math.max(t.s, edge);
+      edge = t.e;
+    }
+    return sum;
+  });
+  // 45 мин · 2 ч · 1 ч 20 мин
+  function dur(m) {
+    const h = Math.floor(m / 60);
+    return h ? `${h} ч${m % 60 ? ` ${m % 60} мин` : ''}` : `${m} мин`;
+  }
 
   // ---------- привычки ----------
 
@@ -227,6 +242,7 @@
         <div class="next">
           <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
           {#if next}Дальше: <b>{next.title}</b> · {nextWhen}{:else}Дальше: <b>свободный вечер</b> · в расписании пусто{/if}
+          {#if next && busyLeft >= 30}<span class="busy" title="Сколько ещё занято в расписании до конца дня">· занято ещё {dur(busyLeft)}</span>{/if}
         </div>
       </div>
       <div class="t-coon">
