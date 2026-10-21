@@ -160,7 +160,8 @@
         if (wrote || !remStat.at) remStat = { at: new Date(), n: items.length, err: '' };
       }).catch((e) => {
         remStat = { ...remStat, err: 'не удалось передать: ' + e };
-        if (!publishWarned) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
+        // Нет связи — об этом уже говорит полоса под шапкой; ошибку видно в «Состоянии».
+        if (!publishWarned && !api.isOffline(String(e))) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
       });
     }, 3000);
   });

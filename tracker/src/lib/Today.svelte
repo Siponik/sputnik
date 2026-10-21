@@ -261,7 +261,7 @@
         <form class="qa" onsubmit={(e) => { e.preventDefault(); add(); }}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
           <input bind:this={input} bind:value={draft} type="text" aria-label="Новая задача"
-            placeholder="Пиши как в окне «Создать»: «скетч таверны 17:00», «смета завтра !!», «@3D-проекты»…" onkeydown={lineKey} />
+            placeholder="Пиши как в окне «Создать»… например «скетч таверны 17:00»" onkeydown={lineKey} />
           <button class="sp-btn sp-btn-primary" type="submit" disabled={!parsed.title || adding || !lists.length}>Добавить</button>
         </form>
         <div class="qa-got">
