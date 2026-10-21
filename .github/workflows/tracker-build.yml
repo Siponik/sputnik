@@ -41,11 +41,16 @@ jobs:
         working-directory: tracker
         run: npm install --no-audit --no-fund 2>&1 | tee -a ../build.log
 
-      # Версия 0.6.<номер сборки>: по ней приложение понимает, что вышло обновление.
+      # Версия: МАЖОР.МИНОР — из tauri.conf.json, третье число — следующее после вышедших релизов этого минора
+      # (первый — x.y.0, потом x.y.1…). Новый минор — поменять версию в tauri.conf.json на x.(y+1).0.
       - name: Версия
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: node tools/ci/tracker-release.mjs prepare ${{ github.run_number }} 2>&1 | tee -a build.log
+        run: |
+          TAGS=$(git ls-remote --tags origin 'tracker-*' | sed 's#.*refs/tags/##; s#\^{}$##' | sort -u)
+          VER=$(node tools/ci/tracker-release.mjs next $TAGS)
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          node tools/ci/tracker-release.mjs prepare "$VER" 2>&1 | tee -a build.log
 
       - name: Сборка установщика
         working-directory: tracker
@@ -71,11 +76,10 @@ jobs:
           HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         run: |
           MSI=$(ls tracker/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          VER="0.6.${{ github.run_number }}"
           NOTE=$(git log -1 --format=%s)
           HELP="Первая установка: скачайте .msi ниже и запустите. Windows может предупредить, что издатель неизвестен: «Подробнее» → «Выполнить в любом случае». Дальше Спутник обновляется сам."
           if [ "$HAS_KEY" = "true" ]; then
-            node tools/ci/tracker-release.mjs latest ${{ github.run_number }} "$MSI" "$NOTE"
+            node tools/ci/tracker-release.mjs latest "$VER" "$MSI" "$NOTE"
             gh release create "tracker-$VER" "$MSI" "$MSI.sig" "$(dirname "$MSI")/latest.json" \
               --title "Спутник $VER" --notes "$NOTE"$'\n\n'"$HELP" --latest
           else
