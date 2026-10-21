@@ -123,7 +123,11 @@ const allWords = (text) => norm(text).split(/[^a-zа-я0-9]+/).filter((w) => w.l
 
 // ---------- маршрут ----------
 
-const W = { at: 1000, learn: 6, word: 4, topic: 3, sim: 3, simMax: 4, project: 4, current: 2 };
+/** #тег → шаблоны списков (теги как в строке «Сегодня» и в боте; старые русские тоже). */
+export const TAG_TPL = { asset: ['asset3d'], work: ['work', 'client'], client: ['client', 'work'], study: ['study'], personal: ['personal'],
+  'ассет': ['asset3d'], 'работа': ['work', 'client'], 'клиент': ['client', 'work'], 'учеба': ['study'], 'личное': ['personal'] };
+
+const W = { at: 1000, tag: 8, learn: 6, word: 4, topic: 3, sim: 3, simMax: 4, project: 4, current: 2 };
 const MIN_SCORE = 4;
 const MONTH = 30 * 864e5;
 
@@ -157,6 +161,8 @@ export function route(text, { lists = [], layer = {}, tasks = {}, current = null
   if (!lists.length) return [];
   const at = text.match(/(?:^|\s)@([^\s@]+)/);
   const atList = at ? findList(lists, at[1]) : null;
+  const tagM = text.match(/(?:^|\s)#([^\s#]+)/);
+  const tagTpl = tagM ? TAG_TPL[norm(tagM[1])] ?? [] : [];
   const ws = words(text.replace(/(?:^|\s)[@#]\S+/g, ' '));
   const all = allWords(text.replace(/(?:^|\s)[@#]\S+/g, ' '));
   const learned = layer?.settings?.route ?? {};
@@ -169,6 +175,7 @@ export function route(text, { lists = [], layer = {}, tasks = {}, current = null
     const view = viewOf(l.id, layer);
 
     if (atList?.id === l.id) add('at', W.at);
+    if (tagTpl.includes(tpl)) add('tag', tagTpl[0] === tpl ? W.tag : W.tag / 2);
 
     // выученные слова
     for (const w of ws) {
@@ -229,14 +236,15 @@ export function route(text, { lists = [], layer = {}, tasks = {}, current = null
   return out.map((r, i) => ({
     listId: r.listId,
     score: r.score,
-    why: whyOf(r, i === 0 && r.score - (r.parts.current ?? 0) < MIN_SCORE, atList, at?.[1]),
+    why: whyOf(r, i === 0 && r.score - (r.parts.current ?? 0) < MIN_SCORE, at?.[1], tagM?.[1]),
     ...(r.topic ? { topic: r.topic, topicWhy: r.topicWhy === 'learn' ? `запомнил «${r.topicWord}»` : `по слову «${r.topicWord}»` } : {}),
     ...(r.project ? { project: r.project, projectWord: r.projectWord } : {}),
   }));
 }
 
-function whyOf(r, weak, atList, atWord) {
+function whyOf(r, weak, atWord, tagWord) {
   if (r.parts.at) return `указано @${atWord}`;
+  if (r.parts.tag) return `указано #${tagWord}`;
   if (weak) return r.parts.current ? 'текущая доска' : 'по умолчанию';
   if (r.parts.learn) return `запомнил «${r.learnWord}»`;
   // Много общих слов с задачами, и среди них — слово из названия доски: это сильнее одного слова словаря.

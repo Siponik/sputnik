@@ -73,6 +73,13 @@ test('@список — сразу выбор, как в боте', () => {
   assert.equal(r.why, 'указано @курс');
 });
 
+test('#тип ведёт в список с подходящим шаблоном', () => {
+  const r = top('новая штука #asset');
+  assert.equal(r.listId, 'L3d');
+  assert.equal(r.why, 'указано #asset');
+  assert.equal(top('что-то #study').listId, 'Lstudy');
+});
+
 test('словарь по шаблонам: lowpoly → 3D, урок → учёба, купить → стикеры с темой «Покупки»', () => {
   const a = top('сундук с золотом lowpoly для таверны');
   assert.equal(a.listId, 'L3d');
