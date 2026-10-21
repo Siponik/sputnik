@@ -36,6 +36,7 @@
   import { whenText } from './lib/when.js';
   import * as repeat from './lib/repeat.js';
   import * as fresh from './lib/fresh.js';
+  import { findDupes } from './lib/dupes.js';
   import * as stickers from './lib/stickers.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
@@ -892,6 +893,27 @@
     say(`Список «${l?.title ?? ''}» удалён`);
   }
 
+  // Дубли задач (Настройки → Синхронизация): найти, показать, удалить отмеченные — только после подтверждения.
+  const dupeGroups = $derived(findDupes(tasks, lists.filter((l) => !isHabitList(l, lay)), lay.tasks));
+  function askDedupe(items) {
+    if (!items.length) return;
+    settingsTab = null;
+    askDel = {
+      title: `Удалить ${items.length} ${plural(items.length, ['лишнюю копию', 'лишние копии', 'лишних копий'])}?`,
+      text: 'Они удалятся из Google Tasks. У каждой задачи останется одна — та, у которой больше полей Спутника.',
+      note: 'Вернуть удалённые будет нельзя.',
+      yes: 'Удалить',
+      run: async () => {
+        let n = 0;
+        for (const { listId, id } of items) {
+          try { await api.deleteTask(listId, id); tasks[listId] = (tasks[listId] ?? []).filter((x) => x.id !== id); n++; }
+          catch (e) { say('Не удалось удалить: ' + e); break; }
+        }
+        if (n) say(`Удалено лишних копий: ${n}`);
+      },
+    };
+  }
+
   async function confirmDel() {
     const run = askDel?.run;
     await run?.();
@@ -1435,7 +1457,7 @@
   {#if settingsTab}
     <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
       hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
-      {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults}
+      {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
       onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
       onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
       oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />

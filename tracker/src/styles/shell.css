@@ -256,3 +256,8 @@
 .stg-kg .kr { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 16px; font-size: 13px; color: var(--ink-soft); }
 .stg-kg .kr kbd { margin-left: auto; font: 500 11px/1 var(--font-mono); padding: 4px 6px; border-radius: 5px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink); white-space: nowrap; }
 .stg-foot { margin: -4px 0 0; font-size: 13px; color: var(--ink-faint); }
+.stg-dupes { display: flex; flex-direction: column; gap: 10px; padding: 4px 0 12px 16px; }
+.stg-dupes .dg { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
+.stg-dupes .dg span { color: var(--ink-soft); font-size: 12px; }
+.stg-dupes label { display: flex; align-items: center; gap: 6px; color: var(--ink-soft); font-size: 12.5px; cursor: pointer; }
+.stg-dupes > .stg-btn { align-self: flex-start; }
