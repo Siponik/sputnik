@@ -408,7 +408,7 @@ Svelte `transition:` / `animate:flip` / `crossfade` для карточек, Vie
 
 Макеты — `design/screens/Create.dc.html` (свойство `demo`: личное / работа / 3D) и `design/screens/CreateMore.dc.html`
 (выбор списка, событие, день рождения); холст — страница «Создать задачу». Эталоны — `design/screens/ref/create-*.png`,
-как было — `ref/create-было.png`. Код сейчас — `lib/QuickAdd.svelte` (форма с одинаковыми рядами «Список / Тип / Приоритет /
+как было — `ref/create-было.png`. Сделано 21.10 — `lib/Create.svelte` + `lib/route.js` (было — `lib/QuickAdd.svelte`: форма с одинаковыми рядами «Список / Тип / Приоритет /
 Срок / Напомнить»); новое окно заменяет его, вызовы те же (кнопка «Новая задача», N / Ctrl+N, `quickLine` экранов).
 
 ### Идея
