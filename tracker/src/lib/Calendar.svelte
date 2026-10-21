@@ -25,6 +25,9 @@
   let sel = $state(ymd(new Date()));
   let habitsOpen = $state(true);
   let stripOpen = $state(false);
+  // Обзор под неделей (загрузка, сроки, енот) — компактный, сворачивается в одну строку; выбор запоминается.
+  let overOpen = $state(recall('cal.over', true));
+  const UP_MAX = 3;
   let events = $state([]);
   let evErr = $state('');
   let planned = $state(null);
@@ -56,6 +59,7 @@
   });
 
   $effect(() => remember('cal.mode', mode));
+  $effect(() => remember('cal.over', overOpen));
   $effect(() => remember('cal.show', $state.snapshot(show)));
 
   const days = $derived(cal.periodDays(sel, mode));
@@ -80,10 +84,14 @@
   const ORDER = { holiday: 0, birthday: 1, task: 2, event: 3 };
   const byTime = (a, b) => (a.s ?? -1) - (b.s ?? -1) || ORDER[a.kind] - ORDER[b.kind];
 
+  // Раскрытые кликом полосы пустых часов — до смены недели.
+  let openH = $state([]);
+  const weekKey = $derived(days[0]);
+  $effect(() => { weekKey; openH = []; });
   // Сутки 0–24: часы, где за неделю что-то есть (и текущий, черновик, свободное окно), — полные, остальные сжаты.
   const timedWeek = $derived(days.flatMap((d) => (allItems[d] ?? []).filter((i) => visible(i) && i.s != null)));
   const layout = $derived.by(() => {
-    const hot = [];
+    const hot = [...openH];
     if (days.includes(today)) hot.push(Math.floor(cal.nowMin() / 60));
     if (cmp.open && cmp.time !== 'all' && days.includes(sel)) hot.push(+cmp.time.slice(0, 2));
     if (free) for (let h = Math.floor(free.s / 60); h < Math.ceil(free.e / 60); h++) hot.push(h);
@@ -163,7 +171,7 @@
 
   const upcoming = $derived(mode === 'week'
     ? dayObjs.flatMap((d) => (allItems[d.ymd] ?? []).filter((i) => i.kind === 'task' || i.kind === 'birthday' || i.kind === 'holiday').map((i) => ({ ...i, day: d.ymd })))
-        .sort((a, b) => a.day.localeCompare(b.day) || ORDER[a.kind] - ORDER[b.kind])
+        .sort((a, b) => !!a.done - !!b.done || a.day.localeCompare(b.day) || ORDER[a.kind] - ORDER[b.kind]) // выполненное — в конце
     : []);
 
   // ---------- панель дня ----------
@@ -297,49 +305,61 @@
           draft={cmp.open && cmp.time !== 'all' ? { day: sel, time: cmp.time, title: cmp.title } : null}
           ontogglestrip={() => (stripOpen = !stripOpen)}
           onpick={pick} onopenhabits={openHabits} onopen={openItem} ontoggle={toggleItem} {ontogglehabit} onmove={moveItem}
+          onexpand={(a, b) => (openH = [...openH, ...Array.from({ length: b - a }, (_, i) => a + i)])}
           oncompose={(day, time) => compose(day, time)} />
 
-        <section class="cal-over" aria-label="Обзор недели">
-          <div class="card">
-            <p class="cap">Загрузка недели</p>
-            <div class="bars">
-              {#each load as l (l.d.ymd)}
-                <div class="bar" title="{l.d.short}: занято {cal.hoursLabel(l.min)} из 12">
-                  <span class="h">{cal.hoursLabel(l.min)}</span>
-                  <span class="b" class:today={l.d.isToday} class:weekend={l.d.weekend} style="height: {Math.max(3, Math.round((l.min / maxLoad) * 56))}px"></span>
-                  <span class="w" class:today={l.d.isToday}>{l.d.short}</span>
+        <section class="cal-over" class:shut={!overOpen} aria-label="Обзор недели">
+          <button type="button" class="ov-tog" aria-expanded={overOpen} onclick={() => (overOpen = !overOpen)} title={overOpen ? 'Свернуть обзор недели' : 'Показать обзор недели'}>
+            Обзор недели
+            <svg viewBox="0 0 24 24" aria-hidden="true" class:flip={!overOpen}><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          {#if overOpen}
+            <div class="ov-cards">
+              <div class="card">
+                <p class="cap">Загрузка недели</p>
+                <div class="bars">
+                  {#each load as l (l.d.ymd)}
+                    <div class="bar" title="{l.d.short}: занято {cal.hoursLabel(l.min)} из 12">
+                      <span class="h">{cal.hoursLabel(l.min)}</span>
+                      <span class="b" class:today={l.d.isToday} class:weekend={l.d.weekend} style="height: {Math.max(3, Math.round((l.min / maxLoad) * 40))}px"></span>
+                      <span class="w" class:today={l.d.isToday}>{l.d.short}</span>
+                    </div>
+                  {/each}
                 </div>
-              {/each}
-            </div>
-            <p class="note">{loadNote}</p>
-          </div>
-
-          <div class="card">
-            <p class="cap">Сроки и даты недели</p>
-            {#each upcoming.slice(0, 6) as u (u.id)}
-              <div class="up">
-                {@render mark(u)}
-                {#if u.kind === 'task'}
-                  <button type="button" class="tx link k-{u.kind}" class:done={u.done} class:over={u.overdue} onclick={() => openItem(u)}>{u.title}</button>
-                {:else}
-                  <span class="tx k-{u.kind}">{u.title}</span>
-                {/if}
-                <span class="when" class:today={u.day === today} class:gold={u.kind === 'birthday'}>{cal.whenLabel(u.day)}</span>
+                <p class="note" title={loadNote}>{loadNote}</p>
               </div>
-            {:else}
-              <p class="note" style="margin: 0">На этой неделе сроков и праздников нет.</p>
-            {/each}
-            {#if upcoming.length > 6}<p class="note">и ещё {upcoming.length - 6}</p>{/if}
-          </div>
 
-          <div class="card coon-card">
-            <Coon pose={coon.pose} size={104} />
-            <div class="coon-text">
-              <p class="cap" style="margin: 0">Енот на орбите</p>
-              <p class="tip">{coon.text}</p>
-              {#if coon.cta}<button class="sp-btn" type="button" style="align-self: flex-start; min-height: 30px" disabled={planning} onclick={coonAction}>{coon.cta}</button>{/if}
+              <div class="card">
+                <p class="cap">Сроки и даты недели{upcoming.length ? ` · ${upcoming.length}` : ''}</p>
+                {#each upcoming.slice(0, UP_MAX) as u (u.id)}
+                  <div class="up">
+                    {@render mark(u)}
+                    {#if u.kind === 'task'}
+                      <button type="button" class="tx link k-{u.kind}" class:done={u.done} class:over={u.overdue} onclick={() => openItem(u)}>{u.title}</button>
+                    {:else}
+                      <span class="tx k-{u.kind}">{u.title}</span>
+                    {/if}
+                    <span class="when" class:today={u.day === today} class:gold={u.kind === 'birthday'}>{cal.whenLabel(u.day)}</span>
+                  </div>
+                {:else}
+                  <p class="note" style="margin: 0">На этой неделе сроков и праздников нет.</p>
+                {/each}
+                {#if upcoming.length > UP_MAX}<p class="note more">и ещё {upcoming.length - UP_MAX}</p>{/if}
+              </div>
+
+              <div class="card coon-card">
+                <Coon pose={coon.pose} size={64} />
+                <div class="coon-text">
+                  <p class="cap" style="margin: 0">Енот на орбите</p>
+                  <p class="tip">{coon.text}</p>
+                  {#if coon.cta}<button class="sp-btn" type="button" style="align-self: flex-start; min-height: 28px" disabled={planning} onclick={coonAction}>{coon.cta}</button>{/if}
+                </div>
+              </div>
             </div>
-          </div>
+          {:else}
+            <p class="ov-line" title={coon.text}>{loadNote}{upcoming.length ? ` · сроков и дат: ${upcoming.length}` : ''}</p>
+            {#if coon.cta}<button class="sp-btn" type="button" style="min-height: 28px" disabled={planning} title={coon.text} onclick={coonAction}>{coon.cta}</button>{/if}
+          {/if}
         </section>
       {:else}
         <CalMonth days={dayObjs} month={selMonth} {show} onpick={pick} onopenhabits={openHabits} onmove={moveItem} />

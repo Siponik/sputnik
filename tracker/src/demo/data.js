@@ -12,7 +12,26 @@ export const seedLists = () => [
   { id: 'Lme', title: 'Личное' },
   { id: 'Lhome', title: 'Дела по дому' },
   { id: 'Lhab', title: 'Привычки' },
+  { id: 'Lload', title: 'Тест · нагрузка' },
 ];
+
+// «Тест · нагрузка» — плотная неделя (как тестовая сфера пользователя, ~80 задач): проверка вёрстки календаря.
+// Сроки — по дням текущей недели (пн = mon), часть со временем (слой ниже), часть выполнена или просрочена.
+const mon = -((new Date().getDay() + 6) % 7);
+const LOAD = [
+  ['Попс', 0, 1], ['Доработка окна создания', 0, 1], ['Просроченный отчёт по багам', 0], ['Тест Спутника: ревью', 0],
+  ['Фиксы', 1, 1], ['Переделать енота: голова в шлеме', 1, 1], ['Пропсы для таверны', 1], ['Стикерпак для Telegram', 1], ['Меч рыцаря', 1],
+  ['Разобрать почту за неделю', 2], ['Обложка для подкаста', 2], ['Продлить страховку', 2], ['Купить молоко и хлеб', 2], ['Витамины', 2],
+  ['Полить цветы', 2], ['Английский: 20 минут', 2], ['Ответить продюсеру по срокам', 2], ['Иконки интерфейса, пак 2', 2], ['Бочка с элем', 2],
+  ['Анатомия для художников', 2], ['Отправить Клоду ноты', 2], ['Скетч персонажа', 2], ['Счёт за свет', 2],
+  ['Ревью сцены от М.', 3], ['Скамья лоуполи', 3], ['Созвон с арт-директором', 3], ['Рендер витрины', 3], ['Ретопология сапога', 3],
+  ['Подготовить бриф', 4], ['Еженедельный отчёт', 4], ['Набор пропсов «Кузня»', 4], ['Записаться к стоматологу', 4], ['Текстуры сундука', 4],
+  ['Концепт локации', 5], ['Таверна · вывеска', 5], ['Новый стилус для планшета', 5], ['Уборка мастерской', 5],
+  ['Онбординг нового клиента', 6], ['Фонарь на столбе', 6], ['План на следующую неделю', 6], ['Бэкап проектов', 6],
+];
+const SLOTS = { 'Тест Спутника: ревью': ['16:00', '17:00'], 'Ответить продюсеру по срокам': ['11:00', '11:30'], 'Иконки интерфейса, пак 2': ['14:00', '17:00'],
+  'Бочка с элем': ['18:00', '20:00'], 'Анатомия для художников': ['20:00', '21:00'], 'Отправить Клоду ноты': ['23:00', '23:45'],
+  'Созвон с арт-директором': ['15:00', '16:00'], 'Рендер витрины': ['10:00', '13:00'], 'Еженедельный отчёт': ['09:00', '10:00'], 'Уборка мастерской': ['12:00', '14:00'] };
 
 let k = 0;
 const T = (title, o = {}) => ({ id: o.id ?? 't' + ++k, title, status: o.done ? 'completed' : 'needsAction', updated: iso(0),
@@ -66,6 +85,7 @@ export function seedTasks() {
       T('Забрать химчистку', { id: 'h23', done: 3 }), T('Позвонить в ЖЭК', { id: 'h24', done: 4 }), T('Заказать воду', { id: 'h25', done: 6 }),
     ],
     Lhab: [T('Скетч 15 минут', { id: 'h1' }), T('Зарядка', { id: 'h2' })],
+    Lload: LOAD.map(([title, d, done], i) => T(title, { id: 'z' + i, due: mon + d, ...(done ? { done: 1 } : {}) })),
   };
 }
 
@@ -74,7 +94,7 @@ export function seedLayer() {
   const L = (o) => ({ ...o, t });
   return {
     version: 1,
-    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }),
+    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }), Lload: L({ template: 'work', sphere: 'sTest' }),
       Lhome: L({ template: 'personal', view: 'stickers', sphere: 'sMe', topics: [
         { id: 'docs', name: 'Документы', color: 'clay' }, { id: 'buy', name: 'Покупки', color: 'gold' },
         { id: 'call', name: 'Звонки', color: 'work' }, { id: 'health', name: 'Здоровье', color: 'study' },
@@ -97,11 +117,13 @@ export function seedLayer() {
       h08: L({ topic: 'health', remind: { kind: 'lead', min: 60 } }), h09: L({ topic: 'health' }),
       h10: L({ topic: 'home', pin: true, repeat: { every: 'month' } }), h11: L({ topic: 'home' }), h12: L({ topic: 'home' }),
       h13: L({ topic: 'home', repeat: { every: 'month' } }),
+      ...Object.fromEntries(LOAD.map(([title], i) => [title, i]).filter(([title]) => SLOTS[title])
+        .map(([title, i]) => ['z' + i, L({ slot: { s: SLOTS[title][0], e: SLOTS[title][1] } })])),
     },
     habits: {}, log: {}, cals: {}, templates: {}, templatesEdit: {},
     // Сферы — как на макетах «Создать» (Create.dc.html): Работа · Творчество · Личное.
     spheres: { sWork: L({ name: 'Работа', color: 'work', icon: 'case', order: 0 }), sArt: L({ name: 'Творчество', color: 'clay', icon: 'brush', order: 0.5 }),
-      sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }) },
+      sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }), sTest: L({ name: 'Тест', color: 'study', icon: 'star', order: 2 }) },
     settings: { setup: L({ done: true }) },
   };
 }

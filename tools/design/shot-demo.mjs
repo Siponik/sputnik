@@ -13,6 +13,7 @@
 //   shots/create-работа.png  ↔ design/screens/ref/create-работа.png   (канбан)
 //   shots/create-3D.png      ↔ design/screens/ref/create-3D.png       (конвейер)
 //   shots/create-куда.png, create-событие.png, create-др.png ↔ design/screens/ref/create-список-событие-др.png
+//   shots/calendar-week*.png — неделя календаря на плотной неделе («Тест · нагрузка»), своего макета нет
 //   shots/*-light.png       — то же в светлой теме
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -68,6 +69,11 @@ for (const theme of ['dark', 'light']) {
     await shot(p, 'stickers-when' + sfx);
     await p.keyboard.press('KeyG');
   }
+  // Календарь, неделя: плотная неделя из списка «Тест · нагрузка» (весь день с «+ ещё», сетка, обзор недели).
+  await tab(p, 'Календарь');
+  await shot(p, 'calendar-week' + sfx);
+  const more = p.locator('.ad-more').first();
+  if (await more.count()) { await more.click(); await shot(p, 'calendar-week-allday' + sfx); await p.locator('.ad-fold').click(); }
   // Окно «Создать» v2: три случая, как Create.dc.html (demo = личное / работа / 3D), и CreateMore.dc.html.
   await tab(p, 'Сегодня');
   const create = async (line, name, extra) => {
@@ -102,6 +108,15 @@ for (const theme of ['dark', 'light']) {
     await p.locator('.cr-fld').fill('1997');
   });
   await p.keyboard.press('Escape');
+  await p.close();
+}
+// Большой экран, как у пользователя (1920×1080): неделя целиком.
+{
+  const p = await b.newPage({ viewport: { width: 1920, height: 1040 }, colorScheme: 'dark' });
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(URL); await p.waitForTimeout(1200);
+  await tab(p, 'Календарь');
+  await shot(p, 'calendar-week-1920');
   await p.close();
 }
 await b.close();

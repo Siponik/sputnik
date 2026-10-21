@@ -1,12 +1,22 @@
 <script>
+  import { untrack } from 'svelte';
   import { fromMin, toMin, typeColor, nowMin } from './calendar.js';
 
-  // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты; draft — черновик { day, time } из формы панели дня.
-  let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose, onmove = null } = $props();
+  // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты в полосы (клик по полосе — onexpand раскрывает её часы); draft — черновик { day, time } из формы панели дня.
+  let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose, onmove = null, onexpand = null } = $props();
 
   const hasAllday = $derived(days.some((d) => d.allday.length));
+  // «Весь день» не съедает сетку: в свёрнутом виде по AD_MAX строк на день (открытые выше выполненных), остальное — «+ ещё N».
+  const AD_MAX = 3;
+  let adOpen = $state(false);
+  const adRows = $derived(days.map((d) => {
+    const all = [...d.allday].sort((a, b) => !!a.done - !!b.done);
+    const cut = !adOpen && all.length > AD_MAX ? AD_MAX - 1 : all.length; // строка «+ ещё» занимает место последней
+    return { shown: all.slice(0, cut), more: all.length - cut };
+  }));
+  const adMany = $derived(days.some((d) => d.allday.length > AD_MAX));
   const nowTop = $derived((clock, layout.yAt(nowMin())));
-  const slots = $derived(Array.from({ length: 24 }, (_, h) => ({ h, top: layout.Y[h], ht: layout.HT[h], t: String(h).padStart(2, '0') + ':00' })));
+  const slots = $derived(Array.from({ length: 24 }, (_, h) => ({ h, top: layout.Y[h], ht: layout.HT[h], t: String(h).padStart(2, '0') + ':00' })).filter((sl) => layout.busy[sl.h]));
 
   // Перетаскивание задачи: в сетку — новый день и время (длительность сохраняется), в «весь день» — день без времени.
   let drag = $state(null); // { it, dur }
@@ -40,6 +50,19 @@
     if (day !== it.day || s !== it.s) onmove(it, day, s);
   }
   const endDrag = () => (drag = drop = null);
+
+  // Сетка с прокруткой (fit): при открытии недели — к текущему часу, на другой неделе — к первой записи.
+  let fitEl = $state(null);
+  let scrolledFor = '';
+  $effect(() => {
+    const key = days[0]?.ymd;
+    if (!fitEl || !fit || !avail || key === scrolledFor) return;
+    scrolledFor = key;
+    if (fitEl.scrollHeight <= fitEl.clientHeight) return;
+    const tops = days.flatMap((d) => d.blocks.map((b) => b.top));
+    const y = days.some((d) => d.isToday) ? untrack(() => nowTop) - fitEl.clientHeight / 3 : (tops.length ? Math.min(...tops) - 24 : 0);
+    fitEl.scrollTop = Math.max(0, y);
+  });
 
   const dotClass = (x) => (!x.sched ? 'off' : x.done ? 'done' : x.isToday ? 'now' : 'plan');
 </script>
@@ -93,12 +116,15 @@
   {/if}
 
   {#if hasAllday}
-    <div class="wk wk-allday">
-      <span class="lbl" style="padding-top: 10px">весь день</span>
-      {#each days as d (d.ymd)}
+    <div class="wk wk-allday" class:open={adOpen}>
+      <span class="lbl ad-lbl">
+        весь день
+        {#if adMany && adOpen}<button type="button" class="ad-fold" onclick={() => (adOpen = false)}>свернуть</button>{/if}
+      </span>
+      {#each days as d, di (d.ymd)}
         <div class="adcol" class:sel={d.isSel} class:drop={drop && drop.day === d.ymd && drop.s === null}
           ondragover={(e) => over(e, d.ymd, false)} ondrop={put} role="group" aria-label="Весь день, {d.title}">
-          {#each d.allday as a (a.id)}
+          {#each adRows[di].shown as a (a.id)}
             <div class="ad k-{a.kind}" class:done={a.done} class:lift={drag?.it.id === a.id}
               draggable={a.kind === 'task' && !a.done && !!onmove} ondragstart={(e) => startDrag(e, { ...a, day: d.ymd })} ondragend={endDrag}
               style="--c: {a.type ? typeColor(a.type) : 'var(--ink-soft)'}">
@@ -110,13 +136,16 @@
               {/if}
             </div>
           {/each}
+          {#if adRows[di].more}
+            <button type="button" class="ad-more" onclick={() => (adOpen = true)} title="Показать все задачи «весь день» на неделе">+ ещё {adRows[di].more}</button>
+          {/if}
         </div>
       {/each}
     </div>
   {/if}
 
   <!-- В режиме fit обёртка занимает остаток высоты; её высоту календарь отдаёт в hourLayout. -->
-  <div class="wk-fit" class:on={fit} bind:clientHeight={avail}>
+  <div class="wk-fit" class:on={fit} bind:clientHeight={avail} bind:this={fitEl}>
   <div class="wk wk-grid">
     <div class="hours" style="height: {layout.height}px">
       {#each layout.labels as l (l.key)}<span class="lbl" class:small={l.small} style="top: {l.top}px">{l.text}</span>{/each}
@@ -124,7 +153,10 @@
     {#each days as d (d.ymd)}
       <div class="col" class:sel={d.isSel} style="height: {layout.height}px"
         ondragover={(e) => over(e, d.ymd, true)} ondrop={put} role="group" aria-label={d.title}>
-        {#each layout.bands as bd (bd.top)}<div class="band" style="top: {bd.top}px; height: {bd.h}px"></div>{/each}
+        {#each layout.bands as bd (bd.a)}
+          <button type="button" class="band" tabindex="-1" title="Пусто {bd.text} — раскрыть" aria-label="Раскрыть часы {bd.text}"
+            style="top: {bd.top}px; height: {bd.h}px" onclick={() => onexpand?.(bd.a, bd.b)}></button>
+        {/each}
         {#each layout.lines as y (y)}<div class="hline" style="top: {y}px"></div>{/each}
         {#each slots as sl (sl.h)}
           <button type="button" class="slot" data-t={sl.ht > 20 ? '+ ' + sl.t : ''} tabindex="-1" aria-label="Добавить на {d.title}, {sl.t}"

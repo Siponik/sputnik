@@ -8,35 +8,46 @@ export const GRID_START = 9 * 60;
 export const GRID_END = 21 * 60;
 export const HOUR_PX = 40; // час, где за неделю что-то есть
 export const HOUR_EMPTY = 12; // пустой час — сжат
+export const BAND_MAX = 36; // полоса пустых часов подряд — не выше
 
 /** Высоты часов сетки недели: занятые часы (и hot — текущий, черновик, свободное окно) — 40 px, пустые — 12 px.
  *  Y[h] — верх часа h, yAt(минуты) — координата, bands — подряд идущие пустые часы, lines — линии между обычными часами. */
 export function hourLayout(timedItems, hot = [], fit = 0) {
-  const busyH = new Set(hot);
+  const busy = Array(24).fill(false);
+  for (const h of hot) if (h >= 0 && h < 24) busy[h] = true;
   for (const it of timedItems) {
     const a = Math.max(0, Math.floor(it.s / 60)), b = Math.min(24, Math.ceil(Math.max(it.e, it.s + 30) / 60));
-    for (let q = a; q < b; q++) busyH.add(q);
+    for (let q = a; q < b; q++) busy[q] = true;
   }
-  // fit — высота, в которую надо уложить сутки (окно на весь экран): занятые часы растягиваются или сжимаются (26–72 px).
+  // Подряд идущие пустые часы — одна полоса: 12 px на час, но вся полоса не выше BAND_MAX (ночь 00–09 не съедает сетку).
+  const runs = [];
+  for (let h = 0; h < 24;) {
+    if (busy[h]) { h++; continue; }
+    const a = h;
+    while (h < 24 && !busy[h]) h++;
+    runs.push({ a, b: h, h: Math.min((h - a) * HOUR_EMPTY, BAND_MAX) });
+  }
+  const nBusy = busy.filter(Boolean).length;
+  // fit — высота, в которую надо уложить сутки (окно на весь экран): занятые часы растягиваются или сжимаются (30–72 px).
   let full = HOUR_PX;
-  if (fit > 0 && busyH.size) full = Math.max(26, Math.min(72, Math.floor((fit - (24 - busyH.size) * HOUR_EMPTY) / busyH.size)));
+  if (fit > 0 && nBusy) full = Math.max(30, Math.min(72, Math.floor((fit - runs.reduce((n, r) => n + r.h, 0)) / nBusy)));
   const HT = [], Y = [0];
-  for (let q = 0; q < 24; q++) { HT[q] = busyH.has(q) ? full : HOUR_EMPTY; Y[q + 1] = Y[q] + HT[q]; }
+  for (const r of runs) for (let q = r.a; q < r.b; q++) HT[q] = r.h / (r.b - r.a);
+  for (let q = 0; q < 24; q++) { if (busy[q]) HT[q] = full; Y[q + 1] = Math.round((Y[q] + HT[q]) * 100) / 100; }
   const yAt = (min) => { const m = Math.max(0, Math.min(1440, min)); const hh = Math.min(23, Math.floor(m / 60)); return Y[hh] + ((m - hh * 60) / 60) * HT[hh]; };
   const labels = [], lines = [], bands = [];
-  for (let h = 0; h < 24;) {
-    if (HT[h] !== HOUR_EMPTY) {
-      labels.push({ key: `h${h}`, text: `${String(h).padStart(2, '0')}:00`, top: h === 0 ? 2 : Y[h] - 7, small: false });
-      if (h > 0 && HT[h - 1] !== HOUR_EMPTY) lines.push(Y[h]);
-      h++;
-      continue;
-    }
-    const a = h;
-    while (h < 24 && HT[h] === HOUR_EMPTY) h++;
-    bands.push({ top: Y[a], h: Y[h] - Y[a] });
-    labels.push({ key: `b${a}`, text: `${String(a).padStart(2, '0')}–${String(h === 24 ? 0 : h).padStart(2, '0')}`, top: Y[a] + (Y[h] - Y[a]) / 2 - 7, small: true });
+  for (let h = 0; h < 24; h++) {
+    if (!busy[h]) continue;
+    labels.push({ key: `h${h}`, text: `${String(h).padStart(2, '0')}:00`, top: h === 0 ? 2 : Y[h] - 7, small: false });
+    if (h > 0 && busy[h - 1]) lines.push(Y[h]);
   }
-  return { HT, Y, yAt, height: Y[24], labels, lines, bands };
+  for (const r of runs) {
+    const text = `${String(r.a).padStart(2, '0')}–${String(r.b === 24 ? 0 : r.b).padStart(2, '0')}`;
+    bands.push({ top: Y[r.a], h: r.h, a: r.a, b: r.b, text });
+    // Узкой полосе (1–2 часа) подпись не помещается между соседними часами — она в подсказке полосы.
+    if (r.h >= BAND_MAX) labels.push({ key: `b${r.a}`, text, top: Y[r.a] + r.h / 2 - 7, small: true });
+  }
+  return { HT, Y, yAt, height: Y[24], labels, lines, bands, busy };
 }
 
 export const WD_SHORT = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
