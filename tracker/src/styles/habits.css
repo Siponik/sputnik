@@ -25,10 +25,7 @@
 .hmark svg { opacity: .5; }
 .hmark[aria-pressed="true"] { border-color: var(--gold); background: var(--gold); color: var(--bg); }
 .hmark[aria-pressed="true"] svg { opacity: 1; }
-.restbtn { height: 34px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px dashed var(--edge); background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; }
-.restbtn:hover { color: var(--ink); border-color: var(--ink-faint); }
-.restbtn[aria-pressed="true"] { border-color: var(--signal-done); color: var(--signal-done); }
-.pill:focus-visible, .hmark:focus-visible, .restbtn:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.pill:focus-visible, .hmark:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
 
 .cele { display: flex; flex-wrap: wrap; align-items: center; gap: 20px; padding: 14px 22px; border-radius: 14px; background: radial-gradient(120% 200% at 0% 50%, color-mix(in srgb, var(--gold) 22%, var(--raised)), var(--raised) 60%); border: 1px solid color-mix(in srgb, var(--gold) 55%, var(--edge)); }
 .cele .ct { flex: 1 1 320px; min-width: 0; }

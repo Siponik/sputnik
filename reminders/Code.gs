@@ -184,9 +184,17 @@ function send_(text, markup) {
   const token = props.getProperty('TELEGRAM_BOT_TOKEN');
   const chat = props.getProperty('TELEGRAM_CHAT_ID');
   if (!token || !chat) throw new Error('Добавь TELEGRAM_BOT_TOKEN и TELEGRAM_CHAT_ID в свойства скрипта');
-  UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+  const post = (body) => UrlFetchApp.fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
     method: 'post',
     contentType: 'application/json',
-    payload: JSON.stringify(Object.assign({ chat_id: chat, text: text, parse_mode: 'HTML', disable_web_page_preview: true }, markup ? { reply_markup: markup } : {})),
+    payload: JSON.stringify(Object.assign({ chat_id: chat, disable_web_page_preview: true }, body, markup ? { reply_markup: markup } : {})),
+    muteHttpExceptions: true,
   });
+  let r = post({ text: text, parse_mode: 'HTML' });
+  // Telegram не разобрал разметку (например, «<» в названии задачи) — шлём тем же текстом без тегов,
+  // иначе напоминание повторялось бы каждую минуту и так и не дошло.
+  if (r.getResponseCode() === 400 && /can't parse entities/i.test(r.getContentText())) {
+    r = post({ text: text.replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&') });
+  }
+  if (r.getResponseCode() !== 200) throw new Error('Telegram ' + r.getResponseCode() + ': ' + r.getContentText());
 }
