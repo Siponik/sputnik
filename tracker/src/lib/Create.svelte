@@ -365,12 +365,16 @@
     if (r) pickPos = `left: ${r.left}px; top: ${r.bottom + 6}px; width: ${r.width}px; max-height: ${Math.max(220, innerHeight - r.bottom - 22)}px`;
     tick().then(() => qInput?.focus());
   });
+  // Клавиши окна выбора не доходят до окна «Создать» (иначе Enter выбрал бы список и сразу создал задачу).
   function pickKey(ev) {
-    if (ev.key === 'ArrowDown') { ev.preventDefault(); sel = Math.min(flat.length - 1, sel + 1); }
-    else if (ev.key === 'ArrowUp') { ev.preventDefault(); sel = Math.max(-1, sel - 1); }
-    else if (ev.key === 'Enter') { ev.preventDefault(); const l = sel < 0 ? (q.trim() ? flat[0] : guess) : flat[sel]; if (l) pickList(l.id); }
-    else if (!q && /^Digit[1-9]$/.test(ev.code)) { ev.preventDefault(); const l = flat[ev.code.slice(5) - 1]; if (l) pickList(l.id); }
-    else if (ev.key === 'Escape') { ev.preventDefault(); ev.stopPropagation(); pickOpen = false; input?.focus(); }
+    let done = true;
+    if (ev.key === 'ArrowDown') sel = Math.min(flat.length - 1, sel + 1);
+    else if (ev.key === 'ArrowUp') sel = Math.max(-1, sel - 1);
+    else if (ev.key === 'Enter') { const l = sel < 0 ? (q.trim() ? flat[0] : guess) : flat[sel]; if (l) pickList(l.id); }
+    else if (!q && /^Digit[1-9]$/.test(ev.code) && !ev.altKey) { const l = flat[ev.code.slice(5) - 1]; if (l) pickList(l.id); }
+    else if (ev.key === 'Escape' || (ev.altKey && ev.code === 'KeyL')) { pickOpen = false; input?.focus(); }
+    else done = false;
+    if (done) { ev.preventDefault(); ev.stopPropagation(); }
   }
 </script>
 
@@ -490,7 +494,7 @@
           </button>
           {#if pickOpen}
             <button type="button" class="cr-pickback" aria-label="Закрыть выбор списка" onclick={() => (pickOpen = false)}></button>
-            <div class="cr-pick" style={pickPos} role="listbox" aria-label="Куда положить" tabindex="-1" onkeydown={pickKey} transition:pop>
+            <div class="cr-pick" style={pickPos} role="listbox" aria-label="Куда положить" tabindex="-1" transition:pop>
               <div class="cr-srch"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="M20 20l-4.5-4.5" /></svg>
                 <input bind:this={qInput} bind:value={q} placeholder="Найти список…" aria-label="Найти список" onkeydown={pickKey} /><kbd>Alt+L</kbd></div>
               {#if guess && !q}
