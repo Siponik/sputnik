@@ -80,9 +80,24 @@
   // ---------- выбор, переименование, меню ----------
   let sel = $state('');
   let editing = $state('');
+  // Окно задачи — только по клику на название; ждём чуть-чуть, чтобы двойной клик успел стать переименованием.
+  let openT;
+  function titleClick(e, t) {
+    e.stopPropagation();
+    sel = t.id;
+    clearTimeout(openT);
+    if (e.detail > 1) return;
+    openT = setTimeout(() => act.open(t), 220);
+  }
   let menu = $state(null);
   const selTask = $derived(shown.find((t) => t.id === sel) ?? null);
   const stickerEl = (id) => document.querySelector(`.stk[data-id="${id}"]`);
+  // autofocus не всегда успевает: фокус остаётся на стикере после двойного клика
+  async function startEdit(id) {
+    editing = id;
+    await tick();
+    stickerEl(id)?.querySelector('.t-edit')?.focus();
+  }
   async function focusSticker(id) {
     sel = id;
     await tick();
@@ -97,7 +112,7 @@
     const t = menu?.task;
     if (!t) return;
     if (name === 'open') act.open(t);
-    else if (name === 'rename') editing = t.id;
+    else if (name === 'rename') startEdit(t.id);
     else if (name === 'due') act.open(t, true);
     else if (name === 'priority') act.priority(t, arg);
     else if (name === 'list') act.moveList(t, arg);
@@ -191,7 +206,7 @@
       }
     } else if (e.key === ' ' || e.code === 'Space') { handled(); done(t); }
     else if (e.key === 'Enter') { handled(); act.open(t); }
-    else if (e.key === 'F2') { handled(); editing = t.id; }
+    else if (e.key === 'F2') { handled(); startEdit(t.id); }
     else if (e.code === 'KeyP' && !e.shiftKey) { handled(); act.pin(t); }
     else if (e.code === 'KeyN' && !e.shiftKey) { handled(); startAdd(lane.id); }
     else if (e.code === 'KeyD' && !e.shiftKey) { handled(); act.open(t, true); }
@@ -338,7 +353,7 @@
             style="--tc: {tp ? stk.topicColor(tp) : stk.MISC.c}; --rot: {tiltOf(t.id)}deg"
             aria-label="{t.title || 'Без названия'}{tp ? `, ${tp.name}` : ''}{isDone ? ', сделано' : ''}"
             in:receive={{ key: t.id, delay: k * 12 }} out:leave={{ key: t.id }}
-            onclick={() => { sel = t.id; act.open(t); }}
+            onclick={() => (sel = t.id)}
             onfocus={() => (sel = t.id)}
             oncontextmenu={(e) => { e.preventDefault(); openMenu(t, null, { x: e.clientX, y: e.clientY }); }}
             ondragstart={(e) => dragStart(e, t)} ondragend={dragEnd}>
@@ -349,8 +364,8 @@
               <input class="t-edit" value={t.title} aria-label="Название" autofocus onclick={(e) => e.stopPropagation()}
                 onkeydown={(e) => renameKey(e, t)} onblur={(e) => finishRename(t, e.currentTarget.value)} />
             {:else}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="t" ondblclick={(e) => { e.stopPropagation(); editing = t.id; }}>{t.title || 'Без названия'}</div>
+              <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+              <div class="t" onclick={(e) => titleClick(e, t)} ondblclick={(e) => { e.stopPropagation(); clearTimeout(openT); startEdit(t.id); }}>{t.title || 'Без названия'}</div>
             {/if}
             {#if note}<p class="d">{note}</p>{/if}
             <div class="ft">
