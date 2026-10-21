@@ -31,6 +31,7 @@
   import * as meta from './lib/meta.js';
   import { whenText } from './lib/when.js';
   import * as repeat from './lib/repeat.js';
+  import * as stickers from './lib/stickers.js';
   import * as reminders from './lib/reminders.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -573,7 +574,42 @@
     moveList: (t, dest) => moveToList(t, dest, activeId),
     duplicate: (t) => duplicateTask(t, activeId),
     remove: (t) => removeUndo(t, activeId),
+    // ---------- стикеры (lib/Stickers.svelte) ----------
+    done: (t, d, onundo) => doneUndo(t, d, activeId, onundo),
+    pin: (t) => { touch('tasks', t.id, { pin: !lay.tasks?.[t.id]?.pin }); saveLayer(); },
+    topic: (t, id) => topicUndo(t, id, activeId),
+    when: (t, target) => whenUndo(t, target, activeId),
+    add: ({ title, due, slot, layer }) => quickCreate({ title, listId: activeId, due, slot, layer }, true),
+    topics: (topics) => { touch('lists', activeId, { topics }); saveLayer(); },
+    set: (patch) => { touch('lists', activeId, patch); saveLayer(); },
   };
+  /** Стикер сделан / возвращён: плашка «Сделано: «…» · Отменить». */
+  async function doneUndo(t, d, listId, onundo) {
+    const ok = await toggle(t, d, listId, true);
+    if (!ok || !d) return;
+    say(`Сделано: «${t.title || 'Без названия'}»`, () => { onundo?.(); const cur = findTask(listId, t.id); if (cur) toggle(cur, false, listId, true); });
+  }
+  function topicUndo(t, id, listId) {
+    const prev = lay.tasks?.[t.id]?.topic ?? null;
+    if (prev === id) return;
+    touch('tasks', t.id, { topic: id });
+    saveLayer();
+    const name = stickers.topicsOf(lay.lists?.[listId]).find((x) => x.id === id)?.name ?? stickers.MISC.name;
+    say(`«${t.title || 'Без названия'}» → ${name}`, () => { touch('tasks', t.id, { topic: prev }); saveLayer(); });
+  }
+  /** Перенос по срокам: сегодня / на неделе / когда-нибудь. Время (slot) и напоминания идут за сроком. */
+  async function whenUndo(t, target, listId) {
+    const today = api.ymd(new Date());
+    const cur = api.dueToYmd(t.due) || null;
+    const next = stickers.whenDue(target, cur, today);
+    if (next === cur) return;
+    try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(next) })); }
+    catch (e) { say('Не удалось перенести: ' + e); return; }
+    const where = { today: 'сегодня', week: next ? api.humanDue(api.ymdToDue(next)) : 'на неделе', later: 'когда-нибудь' }[target];
+    say(`«${t.title || 'Без названия'}» → ${where}`, async () => {
+      try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(cur) })); } catch (e) { say('Не удалось вернуть срок: ' + e); }
+    });
+  }
   const boardFold = $derived(lay.settings?.fold?.[activeId] ?? {});
   function foldCol(col, v) {
     const all = lay.settings?.fold ?? {};
@@ -1131,7 +1167,7 @@
             onedit={() => (sphereEditOpen = true)} onaddlist={() => newListIn(curSphere.id)}
             onopenlist={openList} onopentask={(t, listId) => (openRef = { listId, id: t.id })} />
         {:else if view === 'archive'}
-          <Archive lists={boardLists} tasksByList={tasks} {activeId}
+          <Archive lists={boardLists} tasksByList={tasks} {activeId} jar={(listId) => viewFor(listId) === 'stickers'}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
@@ -1142,7 +1178,7 @@
             view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
             onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
-            act={boardAct} lists={boardLists.filter((l) => l.id !== activeId)} sphereName={spheres.find((s) => s.id === sphereOf(activeId, lay))?.name ?? ''} fold={boardFold} onfold={foldCol}
+            act={boardAct} layList={lay.lists?.[activeId] ?? {}} lists={boardLists.filter((l) => l.id !== activeId)} sphereName={spheres.find((s) => s.id === sphereOf(activeId, lay))?.name ?? ''} fold={boardFold} onfold={foldCol}
             onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}

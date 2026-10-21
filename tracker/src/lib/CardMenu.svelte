@@ -6,7 +6,8 @@
   import { PRIORITIES } from './meta.js';
 
   // at — { x, y } точка привязки (правый верхний угол карточки или курсор); expand — сразу раскрыть подменю ('list' для M).
-  let { at, cols = [], cur = '', priority = null, lists = [], expand = '', onaction, onclose } = $props();
+  // Стикеры: pinned (true/false) — пункт «Закрепить P», topics — подменю «Тема ▸» (topic — текущая).
+  let { at, cols = [], cur = '', priority = null, lists = [], expand = '', pinned = null, topics = [], topic = '', onaction, onclose } = $props();
   let sub = $state(untrack(() => expand));
   let el = $state(null);
   // Не вылезать за окно: если не помещается снизу или справа — сдвигаем.
@@ -52,6 +53,18 @@
     {#if sub === 'stage'}
       <div class="cm-sub">
         {#each cols as c, i (c.id)}<button type="button" role="menuitemradio" aria-checked={cur === c.id} onclick={() => act('stage', c.id)}><span class="num">{i + 1}</span>{c.name}</button>{/each}
+      </div>
+    {/if}
+  {/if}
+  {#if pinned != null}
+    <button type="button" role="menuitem" onclick={() => act('pin')}>{pinned ? 'Открепить' : 'Закрепить'}<kbd>P</kbd></button>
+  {/if}
+  {#if topics.length}
+    <button type="button" role="menuitem" aria-expanded={sub === 'topic'} onclick={() => toggle('topic')}>Тема {sub === 'topic' ? '▾' : '▸'}<kbd>Alt+← →</kbd></button>
+    {#if sub === 'topic'}
+      <div class="cm-sub">
+        {#each topics as tp (tp.id)}<button type="button" role="menuitemradio" aria-checked={topic === tp.id} onclick={() => act('topic', tp.id)}>{tp.name}</button>{/each}
+        <button type="button" role="menuitemradio" aria-checked={!topics.some((tp) => tp.id === topic)} onclick={() => act('topic', null)}>Без темы</button>
       </div>
     {/if}
   {/if}

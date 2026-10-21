@@ -9,6 +9,7 @@
   import { isArchived, ARCHIVE_AFTER_DAYS, colColor } from './templates.js';
   import Conveyor from './Conveyor.svelte';
   import ListView from './ListView.svelte';
+  import Stickers from './Stickers.svelte';
   import { startOfWeek, addDays } from './calendar.js';
   import { priorityRank } from './meta.js';
   import * as keys from './keys.js';
@@ -22,14 +23,17 @@
   // act — действия над задачей из App: open(t, pick), rename, stage (с «Отменить»), priority, order(ids), moveList,
   // duplicate, remove (с «Отменить»). fold — свёрнутые колонки этого списка { colId: true }, onfold(colId, v).
   // lists — другие списки (для «В другой список»).
-  let { list, tasks, template, colOf, typeOf, layTasks, project = null, remindOf = () => '', view = 'kanban',
+  // layList — запись списка в слое (для «Стикеров»: темы, раскладка).
+  let { list, tasks, template, colOf, typeOf, layTasks, layList = {}, project = null, remindOf = () => '', view = 'kanban',
     act, lists = [], fold = {}, onfold, sphereName = '',
     oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
 
+  // Три основных вида; «Список» — только у списка, где он выбран (в редакторе шаблонов).
   const VIEW_TABS = $derived([
     { id: 'kanban', name: 'Канбан' }, { id: 'pipe', name: 'Конвейер' },
     ...(template.view === 'pipe' || template.fields.includes('stage') ? [{ id: 'gallery', name: 'Галерея' }] : []),
-    { id: 'list', name: 'Список' },
+    { id: 'stickers', name: 'Стикеры' },
+    ...(view === 'list' ? [{ id: 'list', name: 'Список' }] : []),
   ]);
   const fields = $derived(template.fields ?? []);
   const FILTERS = [
@@ -254,6 +258,18 @@
   </div>
 {/snippet}
 
+{#snippet viewTabs()}
+  <div class="seg3" role="group" aria-label="Вид доски">
+    {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
+  </div>
+{/snippet}
+
+{#if view === 'stickers'}
+<div class="page bd stk-page">
+  <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs}
+    headLine="{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»" {onedittemplate} {onarchive} />
+</div>
+{:else}
 <div class="page bd">
   <!-- Шапка по design/screens/Kanban.dc.html: сфера · шаблон над названием, справа фильтры и вид. -->
   <header class="bd-head">
@@ -268,9 +284,7 @@
       {/each}
       <span class="tb-sep" aria-hidden="true"></span>
       <!-- Шаблон списка выбирается только при создании (« + Новый список»), здесь не меняется. Вид — меняется. -->
-      <div class="seg3" role="group" aria-label="Вид доски">
-        {#each VIEW_TABS as v (v.id)}<button type="button" aria-pressed={view === v.id} onclick={() => onview(v.id)}>{v.name}</button>{/each}
-      </div>
+      {@render viewTabs()}
     </div>
   </header>
 
@@ -360,6 +374,7 @@
   </footer>
   {/if}
 </div>
+{/if}
 
 {#if menu}
   {@const mt = top.find((t) => t.id === menu.task.id) ?? menu.task}
