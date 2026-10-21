@@ -39,6 +39,7 @@
   import * as inbox from './lib/inbox.js';
   import * as layerSync from './lib/layer.js';
   import * as shell from './lib/shell.js';
+  import StatusPop from './lib/StatusPop.svelte';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -145,13 +146,17 @@
 
   // Любое изменение задач или напоминаний — через 3 с обновляем файл для облака (если список поменялся).
   let publishTimer;
+  let remStat = $state({ at: null, n: 0, err: '' }); // файл напоминаний — для «Состояния»
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
     const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log)];
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
-      reminders.publish(items, { task: remindDefaults.task }).catch((e) => {
+      reminders.publish(items, { task: remindDefaults.task }).then((wrote) => {
+        if (wrote || !remStat.at) remStat = { at: new Date(), n: items.length, err: '' };
+      }).catch((e) => {
+        remStat = { ...remStat, err: 'не удалось передать: ' + e };
         if (!publishWarned) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
       });
     }, 3000);
@@ -281,13 +286,14 @@
   // ---------- обновление из приложения ----------
 
   let version = $state('');
-  let upd = $state({ found: null, busy: false, progress: 0, err: '', note: '', later: false });
+  let upd = $state({ found: null, busy: false, progress: 0, err: '', note: '', later: false, checkedAt: null });
   async function checkUpdate(manual = false) {
     if (upd.busy) return;
     upd.err = '';
     upd.note = manual ? 'Проверяю…' : '';
     try {
       upd.found = await updater.findUpdate();
+      upd.checkedAt = new Date();
       upd.later = false;
       upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
     } catch (e) {
@@ -409,7 +415,7 @@
     start();
     updater.currentVersion().then((v) => (version = v));
     // Обновления: через полминуты после запуска и дальше раз в 6 часов.
-    const updFirst = setTimeout(() => checkUpdate(), 30e3);
+    const updFirst = setTimeout(() => checkUpdate(), import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
     const updTimer = setInterval(() => checkUpdate(), 6 * 3600e3);
     const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
     const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
@@ -1122,6 +1128,8 @@
 
   // «Состояние» в шапке: три точки (Google, между компьютерами, версия) и время последней синхронизации.
   let statOpen = $state(false);
+  let statBtn = $state(null);
+  function openSettings() { helpOpen = true; } // до окна настроек (шаг 6) — хотя бы клавиши
   const stat = $derived(shell.statusDots({ sync, offline, cloud, upd }));
 </script>
 
@@ -1158,7 +1166,7 @@
       <button class="hd-find" type="button" title="Поиск по задачам и разделам (Ctrl+K или /)" aria-label="Найти" onclick={() => (searchOpen = true)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg><span class="lbl">Найти</span><kbd>Ctrl K</kbd>
       </button>
-      <button class="hd-stat" type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
+      <button class="hd-stat" bind:this={statBtn} type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
         onclick={() => (statOpen = !statOpen)}>
         <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && syncFlash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
       </button>
@@ -1193,10 +1201,10 @@
     {/if}
 
     {#if offline}
-      <div class="offline" role="alert">
-        <Coon pose="oops" size={48} />
-        <p><b>Нет связи с Google.</b> Попробую снова через минуту — ничего не потеряется, отметки сохранены на этом компьютере.</p>
-        <button class="sp-btn" type="button" style="min-height: 30px" disabled={sync.busy} onclick={refresh}>Повторить сейчас</button>
+      <div class="offline1" role="alert">
+        <Coon pose="oops" size={34} />
+        <p><b>Нет связи с Google.</b> Повторю через минуту — всё, что сделаешь сейчас, сохранится и уйдёт само.</p>
+        <button class="st-mini" type="button" disabled={sync.busy} onclick={refresh}>Повторить</button>
       </div>
     {/if}
 
@@ -1360,6 +1368,12 @@
       onclose={() => (quick = null)} />
   {/if}
 
+  {#if statOpen}
+    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remStat} notes={shell.notesOf(upd.found?.notes)}
+      onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
+      oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
+      onclose={() => (statOpen = false)} />
+  {/if}
   {#if searchOpen}
     <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />
   {/if}

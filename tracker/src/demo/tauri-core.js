@@ -89,7 +89,11 @@ export async function invoke(cmd, args = {}) {
     case 'layer_write': layer = structuredClone(args.data); return null;
     case 'login': case 'logout': case 'save_client_secret': return null;
     case 'gapi': {
+      // window.__demo = { offline: true } — «нет связи», { login: true } — нет права на скрытую папку Drive (слой).
+      const d = globalThis.__demo ?? {};
+      if (d.offline) throw 'error sending request for url (демо: нет связи)';
       const u = new URL(args.url);
+      if (d.login && u.pathname.includes('/drive/v3/') && /appDataFolder|spaces=appData/.test(args.url)) throw '403 insufficient scope (демо)';
       const q = u.searchParams;
       if (u.host === 'tasks.googleapis.com') return tasksApi(args.method, u.pathname.replace('/tasks/v1/', ''), q, args.body);
       if (u.pathname.includes('/drive/v3/')) return driveApi(args.method, u.pathname, q, args.body);

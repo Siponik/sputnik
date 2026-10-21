@@ -49,3 +49,40 @@
   .hd-find .lbl, .hd-find kbd, .hd-stat .lbl { display: none; }
   .hd-tab { padding: 0 10px; }
 }
+
+/* Поповеры шапки: «Состояние», «Что нового» (каталог анимаций, п. 5 — pop от кнопки) */
+.st-pop { position: fixed; z-index: 30; padding: 8px; border-radius: 16px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 18px 44px rgba(0, 0, 0, .45); display: flex; flex-direction: column; gap: 2px; box-sizing: border-box; }
+:root[data-theme="light"] .st-pop { box-shadow: 0 18px 44px rgba(46, 44, 39, .16); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .st-pop { box-shadow: 0 18px 44px rgba(46, 44, 39, .16); } }
+.st-pop h5 { margin: 6px 8px; font: 600 11px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.st-row { display: flex; align-items: flex-start; gap: 11px; padding: 10px; border-radius: 11px; }
+.st-row:hover { background: var(--wash); }
+.st-row .ic { flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); }
+.st-row .ic svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.st-row .tx { flex: 1; min-width: 0; }
+.st-row .tx b { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.st-row .tx span { display: block; font-size: 12.5px; line-height: 17px; color: var(--ink-faint); overflow-wrap: anywhere; }
+.st-row .tx span[data-s="ok"] { color: var(--signal-done); }
+.st-row .tx span[data-s="w"] { color: var(--gold); }
+.st-row .tx span[data-s="c"] { color: var(--clay); }
+.st-row .tx span[data-s="e"] { color: var(--signal-overdue); }
+.st-mini { flex: none; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 600 12px/1 var(--font-sans); cursor: pointer; align-self: center; white-space: nowrap; }
+.st-mini:hover { border-color: var(--ink-faint); }
+.st-mini:disabled { opacity: .5; cursor: default; }
+.st-mini.pri { background: var(--clay); border-color: var(--clay); color: var(--on-clay); }
+.st-mini.pri:hover { filter: brightness(1.06); }
+.st-mini.ghost { border: 0; background: none; color: var(--ink-faint); }
+.st-mini.ghost:hover { color: var(--ink); }
+.st-pop hr { border: 0; height: 1px; background: var(--hairline); margin: 4px 6px; }
+.st-lnk { display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 10px; border: 0; border-radius: 9px; background: none; font: 400 13px/1 var(--font-sans); color: var(--ink-soft); cursor: pointer; text-align: left; }
+.st-lnk:hover { background: var(--wash); color: var(--ink); }
+.st-lnk kbd { margin-left: auto; font: 500 10.5px/1 var(--font-mono); color: var(--ink-faint); }
+.st-notes { margin: 2px 10px 6px 51px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); }
+.st-notes li::before { content: "✦ "; color: var(--clay); }
+.st-bar { margin: 4px 10px 8px 51px; height: 5px; border-radius: 5px; background: var(--hairline); overflow: hidden; }
+.st-bar i { display: block; height: 100%; background: var(--clay); border-radius: 5px; transition: width .3s; }
+
+/* Нет связи с Google: одна строка под шапкой, енот oops 34 px, «Повторить» справа */
+.offline1 { display: flex; align-items: center; gap: 12px; flex: none; padding: 6px 20px; background: color-mix(in srgb, var(--signal-overdue) 10%, var(--bg)); border-bottom: 1px solid var(--hairline); font-size: 13px; color: var(--ink-soft); white-space: nowrap; overflow: hidden; }
+.offline1 p { margin: 0; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.offline1 b { color: var(--ink); }

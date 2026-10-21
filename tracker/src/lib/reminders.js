@@ -233,7 +233,7 @@ async function ensureFolder() {
  *  defaults — напоминания по умолчанию ({ task: [минуты] }): по ним бот ставит напоминания задачам, созданным в Telegram. */
 export async function publish(items, defaults = null) {
   const body = JSON.stringify({ items, defaults });
-  if (body === lastBody) return;
+  if (body === lastBody) return false;
   if (!fileId) fileId = await findByProp('reminders');
   if (!fileId) {
     const parent = await ensureFolder();
@@ -242,4 +242,5 @@ export async function publish(items, defaults = null) {
   }
   await gapi('PATCH', `${UPLOAD}/files/${fileId}?uploadType=media`, { version: 1, updated: new Date().toISOString(), items, ...(defaults ? { defaults } : {}) });
   lastBody = body;
+  return true;
 }

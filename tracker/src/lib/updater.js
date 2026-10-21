@@ -8,7 +8,7 @@ export const currentVersion = () => getVersion().catch(() => '');
 
 /** Есть ли новая версия: { version, notes, update } или null. В режиме разработки обновлений нет. */
 export async function findUpdate() {
-  if (import.meta.env.DEV) return null;
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'demo') return null;
   const update = await check({ timeout: 30000 });
   return update ? { version: update.version, notes: update.body ?? '', update } : null;
 }
