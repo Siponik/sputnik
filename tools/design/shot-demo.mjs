@@ -6,6 +6,9 @@
 //   shots/kanban.png        ↔ design/screens/ref/kanban-обычный.png
 //   shots/kanban-menu.png   ↔ design/screens/ref/kanban-меню.png
 //   shots/conveyor.png      ↔ design/screens/ref/conveyor.png   (первая строка раскрыта)
+//   shots/stickers.png      ↔ design/screens/ref/stickers-по-темам.png
+//   shots/stickers-when.png ↔ design/screens/ref/stickers-по-срокам.png
+//   shots/stickers-light.png ↔ design/screens/ref/stickers-светлая.png
 //   shots/*-light.png       — то же в светлой теме
 import { mkdirSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -49,6 +52,18 @@ for (const theme of ['dark', 'light']) {
   await shot(p, 'conveyor-closed' + sfx);
   await p.getByText('Башня lowpoly', { exact: true }).first().click();
   await shot(p, 'conveyor' + sfx);
+  await list(p, 'Дела по дому');
+  await shot(p, 'stickers' + sfx);
+  if (await p.locator('.stk').count()) {
+    // «Сделано» — штамп на стикере «Позвонить бабушке» (до улёта в баночку 2 с)
+    await p.locator('.stk', { hasText: 'Позвонить бабушке' }).locator('.ck').click();
+    await p.waitForTimeout(300);
+    await p.screenshot({ path: `${out}/stickers-done${sfx}.png` }); console.log('   stickers-done' + sfx);
+    await p.waitForTimeout(2600);
+    await p.keyboard.press('KeyG');
+    await shot(p, 'stickers-when' + sfx);
+    await p.keyboard.press('KeyG');
+  }
   await p.close();
 }
 await b.close();

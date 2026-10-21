@@ -1,4 +1,4 @@
-// Демо-данные — те же задачи, что на макетах design/screens/Kanban.dc.html и Conveyor.dc.html,
+// Демо-данные — те же задачи, что на макетах design/screens/Kanban.dc.html, Conveyor.dc.html и Stickers.dc.html,
 // чтобы скриншот трекера можно было положить рядом с design/screens/ref/*.png.
 const day = (d) => { const x = new Date(); x.setHours(0, 0, 0, 0); x.setDate(x.getDate() + d); return x; };
 const due = (d) => { const x = day(d); return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}T00:00:00.000Z`; };
@@ -10,6 +10,7 @@ export const seedLists = () => [
   { id: 'Lwork', title: 'Иконки для клиента' },
   { id: 'L3d', title: '3D-проекты' },
   { id: 'Lme', title: 'Личное' },
+  { id: 'Lhome', title: 'Дела по дому' },
   { id: 'Lhab', title: 'Привычки' },
 ];
 
@@ -45,6 +46,25 @@ export function seedTasks() {
       T('Записаться к стоматологу', { id: 'p1', due: 2 }),
       T('Купить подарок маме', { id: 'p2', due: 5 }),
     ],
+    // «Дела по дому» = Stickers.dc.html (вид «Стикеры»), макет снят в среду — сроки относительно сегодня.
+    Lhome: [
+      T('Продлить полис ОСАГО', { id: 'h01', due: -1 }),
+      T('Поменять резину', { id: 'h02', notes: 'шиномонтаж у дома, записаться', due: 12 }),
+      T('Забрать посылку с Озона', { id: 'h03', notes: 'код 4417', due: 0 }),
+      T('Подарок маме', { id: 'h04', notes: 'сертификат в спа или плед', due: 3 }),
+      T('Лампочки в коридор', { id: 'h05', due: 4 }),
+      T('Позвонить бабушке', { id: 'h06', due: 0 }),
+      T('Вернуть книгу Саше', { id: 'h07', due: 1 }),
+      T('Записаться к стоматологу', { id: 'h08', due: 2 }),
+      T('Записаться в зал', { id: 'h09' }),
+      T('Оплатить интернет', { id: 'h10', due: 0 }),
+      T('Почистить ноутбук от пыли', { id: 'h11' }),
+      T('Разобрать фото с поездки', { id: 'h12' }),
+      T('Фильтр в кофемашине', { id: 'h13' }),
+      // сделано за неделю — «баночка»
+      T('Вынести коробки', { id: 'h20', done: 1 }), T('Купить корм коту', { id: 'h21', done: 1 }), T('Счётчики воды', { id: 'h22', done: 2 }),
+      T('Забрать химчистку', { id: 'h23', done: 3 }), T('Позвонить в ЖЭК', { id: 'h24', done: 4 }), T('Заказать воду', { id: 'h25', done: 6 }),
+    ],
     Lhab: [T('Скетч 15 минут', { id: 'h1' }), T('Зарядка', { id: 'h2' })],
   };
 }
@@ -54,7 +74,11 @@ export function seedLayer() {
   const L = (o) => ({ ...o, t });
   return {
     version: 1,
-    lists: { Lwork: L({ template: 'work' }), L3d: L({ template: 'asset3d', view: 'pipe' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }) },
+    lists: { Lwork: L({ template: 'work' }), L3d: L({ template: 'asset3d', view: 'pipe' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }),
+      Lhome: L({ template: 'personal', view: 'stickers', sphere: 'sMe', topics: [
+        { id: 'docs', name: 'Документы', color: 'clay' }, { id: 'buy', name: 'Покупки', color: 'gold' },
+        { id: 'call', name: 'Звонки', color: 'work' }, { id: 'health', name: 'Здоровье', color: 'study' },
+        { id: 'home', name: 'Дом', color: 'personal' }] }) },
     tasks: {
       w1: L({ priority: 1, type: 'work' }),
       w2: L({ priority: 3 }),
@@ -67,8 +91,15 @@ export function seedLayer() {
       a2: L({ priority: 2, status: 'blockout', project: 'Башня', stageAt: { refs: ago(9), blockout: ago(6) } }),
       a3: L({ priority: 2, status: 'textures', project: 'Таверна', stageAt: { textures: ago(2) } }),
       a4: L({ priority: 3, status: 'sculpt', project: 'Личное', stageAt: { sculpt: ago(9) } }),
+      h01: L({ topic: 'docs', pin: true, remind: { kind: 'lead', min: 60 } }), h02: L({ topic: 'docs' }),
+      h03: L({ topic: 'buy', pin: true, slot: { s: '20:00', e: '21:00' } }), h04: L({ topic: 'buy' }), h05: L({ topic: 'buy' }),
+      h06: L({ topic: 'call', slot: { s: '19:00', e: '19:30' } }), h07: L({ topic: 'call' }),
+      h08: L({ topic: 'health', remind: { kind: 'lead', min: 60 } }), h09: L({ topic: 'health' }),
+      h10: L({ topic: 'home', pin: true, repeat: { every: 'month' } }), h11: L({ topic: 'home' }), h12: L({ topic: 'home' }),
+      h13: L({ topic: 'home', repeat: { every: 'month' } }),
     },
-    habits: {}, log: {}, cals: {}, templates: {}, templatesEdit: {}, spheres: {},
+    habits: {}, log: {}, cals: {}, templates: {}, templatesEdit: {},
+    spheres: { sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }) },
     settings: { setup: L({ done: true }) },
   };
 }

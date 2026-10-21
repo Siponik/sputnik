@@ -118,6 +118,34 @@ export function cardCrossfade() {
   });
 }
 
+/**
+ * Стикеры: перелёт при смене раскладки (send/receive, 260 мс, сдвиг старта 12 мс по порядку — параметр delay);
+ * новый стикер без пары — поворот от 0° к своему наклону и scale .9 → 1 (--ease-pop, 220 мс).
+ */
+export function stickerCrossfade() {
+  return svelteCrossfade({
+    duration: () => (level() === 'full' ? 260 : 0),
+    easing: easeOut,
+    fallback: (node) => {
+      const lv = level();
+      if (lv === 'off') return { duration: 0 };
+      if (lv === 'min') return { duration: 120, css: (k) => `opacity: ${k}` };
+      const rot = parseFloat(node.style.getPropertyValue('--rot')) || 0;
+      return { duration: 220, easing: easePop, css: (k) => `opacity: ${Math.min(1, k * 2)}; transform: rotate(${rot * k}deg) scale(${0.9 + 0.1 * k})` };
+    },
+  });
+}
+
+/** Сделанный стикер уменьшается и летит в «баночку» (el — цель), 420 мс --ease-in. */
+export function toJar(node, { el = null } = {}) {
+  const lv = level();
+  if (lv === 'off' || !el) return { duration: 0 };
+  if (lv === 'min') return { duration: 100, css: (k) => `opacity: ${k}` };
+  const a = node.getBoundingClientRect(), b = el.getBoundingClientRect();
+  const dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+  return { duration: 420, easing: easeIn, css: (k, u) => `opacity: ${0.3 + 0.7 * k}; transform: translate(${u * dx}px, ${u * dy}px) scale(${1 - 0.85 * u})` };
+}
+
 /** Длительность для animate:flip — 0, если движение выключено или «минимум». */
 export const flipMs = () => (level() === 'full' ? 220 : 0);
 

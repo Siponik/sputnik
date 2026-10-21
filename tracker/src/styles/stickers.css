@@ -1,0 +1,99 @@
+/* Вид «Стикеры» (design/screens/Stickers.dc.html, docs/design-v2.md — «Простые дела: вид «Стикеры»»). Всё под .stk-page. */
+.stk-page { gap: 18px; padding-bottom: 90px; }
+
+/* ---------- шапка: «По темам | По срокам», меню ⋯ ---------- */
+.stk-page .grpsw { display: flex; align-items: center; padding: 3px; border-radius: 999px; background: var(--wash); border: 1px solid var(--edge); cursor: pointer; color: inherit; font: inherit; }
+.stk-page .grpsw span { height: 28px; padding: 0 12px; border-radius: 999px; display: inline-flex; align-items: center; gap: 6px; font: 500 12.5px/1 var(--font-sans); color: var(--ink-soft); transition: background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out); }
+.stk-page .grpsw span.on { background: var(--clay); color: var(--on-clay); }
+.stk-page .grpsw svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.stk-page .grpsw:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.stk-page .stk-more { position: relative; }
+.stk-page .stk-more .hb svg { fill: currentColor; stroke: none; }
+.stk-page .cmenu.stk-hm { position: absolute; right: 0; top: 32px; width: 220px; }
+
+/* ---------- стена ---------- */
+.stk-page .wall { display: grid; grid-template-columns: repeat(var(--lanes, 5), minmax(200px, 1fr)); gap: 22px 20px; align-items: start; padding: 8px 4px 20px; overflow-x: auto; }
+.stk-page .wall.when { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px 28px; padding: 20px 16px; }
+.stk-page .lane { display: flex; flex-direction: column; gap: 18px; min-width: 0; border-radius: 18px; outline: 1.5px solid transparent; outline-offset: 6px; transition: outline-color var(--dur-1) var(--ease-out); }
+.stk-page .lane.drop { outline-color: var(--clay); }
+.stk-page .wall.when .lane { padding: 12px 12px 16px; margin: -12px; background: color-mix(in srgb, var(--wash) 55%, transparent); outline-offset: 0; }
+.stk-page .wall.when .lane:first-child { background: color-mix(in srgb, var(--clay) 7%, var(--wash)); }
+.stk-page .lh { display: flex; align-items: center; gap: 8px; padding: 0 4px 2px; font: 600 12.5px/1 var(--font-sans); letter-spacing: .06em; text-transform: uppercase; color: var(--ink-soft); }
+.stk-page .lh i { width: 9px; height: 9px; border-radius: 3px; background: var(--tc); }
+.stk-page .lh b { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); letter-spacing: 0; }
+.stk-page .lh .lh-sub { font: 400 12px/1 var(--font-sans); letter-spacing: 0; text-transform: none; color: var(--ink-faint); margin-left: auto; }
+.stk-page .lh.big { font: 600 17px/1 var(--font-display); letter-spacing: 0; text-transform: none; color: var(--ink); }
+.stk-page .stack { display: flex; flex-direction: column; gap: 18px; }
+.stk-page .wall.when .stack { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px 16px; align-items: start; }
+
+/* ---------- стикер ---------- */
+.stk-page .stk { position: relative; display: flex; flex-direction: column; gap: 10px; min-height: 118px; padding: 20px 16px 14px; border-radius: 4px 4px 14px 4px;
+  background: color-mix(in srgb, var(--tc) 24%, var(--raised)); color: var(--ink);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .25), 0 8px 18px rgba(0, 0, 0, .22); transform: rotate(var(--rot, 0deg)); cursor: pointer;
+  transition: transform var(--dur-2) var(--ease-pop), box-shadow var(--dur-2) var(--ease-out), opacity var(--dur-3) var(--ease-out); }
+.stk-page .stk:hover:not(.ghost), .stk-page .stk.lift { transform: rotate(0deg) translateY(-3px) scale(1.02); box-shadow: 0 2px 0 rgba(0, 0, 0, .25), 0 16px 30px rgba(0, 0, 0, .32); z-index: 2; }
+.stk-page .stk.lift { box-shadow: 0 18px 36px rgba(0, 0, 0, .45); }
+.stk-page .stk.ghost { opacity: .35; }
+.stk-page .stk:focus-visible, .stk-page .stk.sel:focus { outline: 2px solid var(--clay); outline-offset: 3px; }
+.stk-page .stk::before { content: ""; position: absolute; top: -8px; left: 50%; width: 64px; height: 18px; margin-left: -32px; background: color-mix(in srgb, var(--ink) 16%, transparent); border-radius: 2px; transform: rotate(-2deg); }
+.stk-page .stk.pin::before { display: none; }
+.stk-page .pinmark { position: absolute; top: -9px; left: 50%; margin-left: -8px; width: 16px; height: 16px; border-radius: 50%; background: var(--clay); box-shadow: 0 2px 4px rgba(0, 0, 0, .4), inset -2px -2px 0 rgba(0, 0, 0, .15); }
+.stk-page .stk .tagl { display: inline-flex; align-items: center; gap: 5px; font: 600 10.5px/1 var(--font-sans); letter-spacing: .07em; text-transform: uppercase; color: color-mix(in srgb, var(--tc) 70%, var(--ink)); }
+.stk-page .stk .tagl i { width: 6px; height: 6px; border-radius: 2px; background: var(--tc); }
+.stk-page .stk .t { font: 600 16px/21px var(--font-display); letter-spacing: .005em; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+.stk-page .stk .t-edit { width: 100%; padding: 2px 4px; margin: -3px -5px; border: 1px solid var(--clay); border-radius: 4px; background: color-mix(in srgb, var(--bg) 40%, transparent); color: var(--ink); font: 600 16px/21px var(--font-display); }
+.stk-page .stk .d { margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stk-page .stk .ft { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: auto; min-width: 0; }
+.stk-page .stk .due { font: 500 12px/1 var(--font-sans); color: var(--ink-soft); white-space: nowrap; }
+.stk-page .stk .due.late { color: var(--signal-overdue); }
+.stk-page .stk .due.soon { color: var(--clay); }
+.stk-page .stk .stg { font: 500 10.5px/1 var(--font-sans); padding: 3px 6px; border-radius: 5px; border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); color: var(--ink-soft); white-space: nowrap; }
+.stk-page .stk .ck { margin-left: auto; flex: none; width: 26px; height: 26px; border-radius: 50%; border: 1.8px solid color-mix(in srgb, var(--ink) 40%, transparent); background: none; cursor: pointer; display: grid; place-items: center; color: transparent; padding: 0;
+  transition: background var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out), color var(--dur-1) var(--ease-out); }
+.stk-page .stk .ck svg { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.stk-page .stk .ck:hover { border-color: var(--signal-done); color: var(--signal-done); background: color-mix(in srgb, var(--signal-done) 12%, transparent); }
+.stk-page .stk .ck[aria-pressed="true"] { border-color: var(--signal-done); background: var(--signal-done); color: var(--bg); }
+.stk-page .stk .ck:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.stk-page .stk.done { opacity: .55; }
+.stk-page .stk.done .t { text-decoration: line-through; }
+.stk-page .stamp { position: absolute; right: 22px; bottom: 44px; padding: 4px 10px; border: 2px solid var(--signal-done); border-radius: 8px; color: var(--signal-done); font: 700 13px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; transform: rotate(-12deg); background: color-mix(in srgb, var(--bg) 40%, transparent); pointer-events: none;
+  animation: stamp-in 180ms var(--ease-pop) both; }
+@keyframes stamp-in { from { opacity: 0; transform: rotate(-12deg) scale(1.4); } }
+.stk-page .stk-ph { min-height: 96px; border-radius: 4px 4px 14px 4px; border: 1.5px dashed var(--clay); background: color-mix(in srgb, var(--clay) 8%, transparent); }
+
+/* ---------- новый стикер ---------- */
+.stk-page .stk-new { display: flex; flex-direction: column; gap: 8px; min-height: 96px; padding: 16px; border-radius: 4px 4px 14px 4px; border: 1.5px dashed color-mix(in srgb, var(--tc) 60%, var(--edge)); background: none; color: var(--ink-faint); font: 500 13px/1.3 var(--font-sans); cursor: text; text-align: left; }
+.stk-page .stk-new:hover { color: var(--ink); border-style: solid; }
+.stk-page .stk-new:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.stk-page .stk-new.open { background: color-mix(in srgb, var(--tc) 14%, var(--raised)); border-style: solid; color: var(--ink); cursor: default; }
+.stk-page .stk-new textarea { width: 100%; min-height: 52px; border: 0; padding: 0; background: none; resize: none; outline: none; color: var(--ink); font: 600 16px/21px var(--font-display); }
+.stk-page .stk-new-hint { font-size: 12px; color: var(--ink-faint); }
+
+/* ---------- баночка ---------- */
+.stk-page .basket { position: fixed; right: 28px; bottom: 24px; z-index: 5; display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 10px; border-radius: 16px; background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shadow-lift); cursor: pointer; color: var(--ink); text-align: left; font: inherit; }
+.stk-page .basket:hover { border-color: var(--ink-faint); }
+.stk-page .basket:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.stk-page .basket .jar { width: 38px; height: 38px; border-radius: 10px; background: color-mix(in srgb, var(--signal-done) 16%, var(--wash)); display: grid; place-items: center; font: 700 15px/1 var(--font-mono); color: var(--signal-done); overflow: hidden; }
+.stk-page .basket > span:last-child { font-size: 13px; line-height: 17px; }
+.stk-page .basket small { display: block; font-size: 12px; color: var(--ink-faint); }
+.stk-page .stk-hint { padding-right: 240px; }
+
+/* ---------- окно «Темы» ---------- */
+.dialog.tpx { width: min(480px, calc(100% - 32px)); gap: 14px; }
+.dialog.tpx h2 { margin: 0; }
+.dialog.tpx .hint { margin: 0; font-size: 13px; color: var(--ink-soft); }
+.tpx-rows { display: flex; flex-direction: column; gap: 8px; }
+.tpx-row { display: flex; align-items: center; gap: 8px; }
+.tpx-row input { flex: 1; min-width: 0; height: 34px; padding: 0 10px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); color: var(--ink); }
+.tpx-row .muted { font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
+.tpx-c { width: 22px; height: 22px; flex: none; border-radius: 6px; border: 0; background: var(--tc); cursor: pointer; }
+.tpx-c:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.dialog.tpx .actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+/* ---------- светлая тема: бумага теплее, тень мягче ---------- */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .stk-page .stk { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 1px 0 rgba(46, 44, 39, .08), 0 8px 18px rgba(46, 44, 39, .10); }
+}
+
+/* ---------- движение: при «минимум» и «выкл» наклон остаётся, но без подъёма ---------- */
+[data-motion="min"] .stk-page .stk:hover, [data-motion="off"] .stk-page .stk:hover { transform: rotate(var(--rot, 0deg)); }
