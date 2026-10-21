@@ -236,13 +236,15 @@
       const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
       const ls = await api.listLists();
       const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
+      // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
+      // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
+      await syncLayer();
       lists = ls;
       // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
       tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
-      // Первый обмен слоем — до того, как трекер сам что-то в него допишет (дата начала привычек, поля из «Входящих»):
-      // иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
-      if (!cloud.at) await syncLayer();
+      // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
+      // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
       ensureHabitMeta();
       events = await api.eventsForDay().catch(() => []);
       inboxSt = await api.inboxStatus().catch(() => inboxSt);
@@ -471,6 +473,9 @@
         const day = repeat.nextDue(rule, api.dueToYmd(task.due), api.ymd(new Date()));
         if (!day) continue;
         try {
+          // Копию мог уже сделать другой компьютер — тогда только ссылаемся на неё (иначе на двух ПК задачи двоились).
+          const have = repeat.existingNext(tasks[listId], task, day);
+          if (have) { touch('tasks', task.id, { repeatNext: have.id, repeatAt: Date.now() }); saveLayer(); continue; }
           const r = await api.createTask(listId, { title: task.title, notes: task.notes ?? '', due: api.ymdToDue(day) });
           tasks[listId] = [r, ...(tasks[listId] ?? [])];
           const L = lay.tasks?.[task.id] ?? {};

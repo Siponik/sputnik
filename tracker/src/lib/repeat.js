@@ -57,6 +57,15 @@ export function dueRepeats(lists, tasks, layTasks) {
   return out;
 }
 
+/**
+ * Следующая копия уже есть в Google — её сделал другой компьютер (или этот, но слой ещё не записан):
+ * задача с тем же названием и сроком day в этом же списке. Тогда не создаём вторую, а ссылаемся на неё.
+ */
+export function existingNext(list = [], task, day) {
+  const name = (task.title ?? '').trim();
+  return list.find((x) => x.id !== task.id && !x.parent && !x.deleted && (x.title ?? '').trim() === name && (x.due ?? '').slice(0, 10) === day) ?? null;
+}
+
 /** Поля слоя, которые переходят к следующей задаче. Этап, учёт времени и порядок начинаются заново. */
 export const CARRY = ['type', 'priority', 'project', 'slot', 'remind', 'repeat', 'client', 'money', 'tags', 'topic', 'pin'];
 
