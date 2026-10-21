@@ -20,11 +20,13 @@
   import * as api from './lib/api.js';
   import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
-  import { spheresFrom, sphereOf, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
+  import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
   import SphereView from './lib/SphereView.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
   import SphereFilter from './lib/SphereFilter.svelte';
+  import Side from './lib/Side.svelte';
+  import Settings from './lib/Settings.svelte';
   import ItemMenu from './lib/ItemMenu.svelte';
   import ConfirmDelete from './lib/ConfirmDelete.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
@@ -38,6 +40,9 @@
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
   import * as layerSync from './lib/layer.js';
+  import * as shell from './lib/shell.js';
+  import StatusPop from './lib/StatusPop.svelte';
+  import Popover from './lib/Popover.svelte';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -144,14 +149,19 @@
 
   // Любое изменение задач или напоминаний — через 3 с обновляем файл для облака (если список поменялся).
   let publishTimer;
+  let remStat = $state({ at: null, n: 0, err: '' }); // файл напоминаний — для «Состояния»
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log)];
+    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log), ...(botTest ? [botTest] : [])];
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
-      reminders.publish(items, { task: remindDefaults.task }).catch((e) => {
-        if (!publishWarned) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
+      reminders.publish(items, { task: remindDefaults.task }).then((wrote) => {
+        if (wrote || !remStat.at) remStat = { at: new Date(), n: items.length, err: '' };
+      }).catch((e) => {
+        remStat = { ...remStat, err: 'не удалось передать: ' + e };
+        // Нет связи — об этом уже говорит полоса под шапкой; ошибку видно в «Состоянии».
+        if (!publishWarned && !api.isOffline(String(e))) { publishWarned = true; say('Не удалось передать напоминания на Google Drive: ' + e); }
       });
     }, 3000);
   });
@@ -187,7 +197,7 @@
       } catch (e) {
         if (layerSync.needsLogin(e)) {
           cloud = { state: 'login', at: null, err: String(e) };
-          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново (внизу левой колонки на «Доске»).');
+          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново: «Состояние» в шапке → «Войти».');
         } else cloud = { ...cloud, state: 'err', err: String(e) };
       } finally {
         cloudRun = null;
@@ -205,9 +215,6 @@
       if (cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
     } catch (e) { say('Не удалось войти: ' + e); }
   }
-  const cloudLabel = $derived(cloud.state === 'busy' ? 'Синхронизирую слой…'
-    : cloud.state === 'ok' ? `Слой на Drive · ${cloud.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-    : cloud.state === 'err' ? 'Слой не синхронизирован' : '');
 
   // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
   function ensureHabitMeta() {
@@ -255,6 +262,9 @@
     api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
+    let last = null;
+    try { last = localStorage.getItem('sp.lastView'); } catch {}
+    if (phase !== 'ready') view = shell.startView(lay.settings?.start?.v, last);
     phase = 'ready';
     await refresh();
   }
@@ -280,14 +290,14 @@
   // ---------- обновление из приложения ----------
 
   let version = $state('');
-  let upd = $state({ found: null, busy: false, progress: 0, err: '', note: '', later: false });
+  let upd = $state({ found: null, busy: false, progress: 0, err: '', fail: '', note: '', checkedAt: null });
   async function checkUpdate(manual = false) {
     if (upd.busy) return;
     upd.err = '';
     upd.note = manual ? 'Проверяю…' : '';
     try {
       upd.found = await updater.findUpdate();
-      upd.later = false;
+      upd.checkedAt = new Date();
       upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
     } catch (e) {
       upd.note = '';
@@ -295,11 +305,22 @@
     }
   }
   async function installUpdate() {
+    if (!upd.found || upd.busy) return;
     upd.busy = true;
-    upd.err = '';
+    upd.err = ''; upd.fail = '';
+    upd.progress = 0;
     try { await updater.install(upd.found, (p) => (upd.progress = p)); }
-    catch (e) { upd.err = 'Не удалось обновиться: ' + e; upd.busy = false; }
+    catch (e) { upd.fail = 'Не удалось обновиться: ' + e; upd.busy = false; }
   }
+  // Чип «✦ Версия …» в шапке: «Вечером» — напомнить в 20:00, «Пропустить» — не показывать для этой версии
+  // (точка «версия» в «Состоянии» остаётся). settings.update = { skip, remindAt, auto, night }.
+  const updPref = $derived(lay.settings?.update ?? {});
+  let nowMin = $state(Date.now()); // раз в минуту: «Вечером» наступило, ночная установка
+  const updChip = $derived(upd.busy || shell.showUpdChip(upd.found, updPref, nowMin));
+  let updOpen = $state(false);
+  let updBtn = $state(null);
+  function updLater() { touch('settings', 'update', { remindAt: shell.eveningAt() }); saveLayer(); updOpen = false; say('Напомню про обновление вечером, в 20:00'); }
+  function updSkip() { touch('settings', 'update', { skip: upd.found.version, remindAt: null }); saveLayer(); updOpen = false; say(`Версию ${upd.found.version} пропускаю — поставить можно в «Состоянии»`); }
 
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
@@ -314,8 +335,11 @@
   // Экран может сам принять быстрое добавление (на «Сегодня» — строка сверху), иначе открываем окно «Создать».
   let quickLine = null;
   // fromKey — нажали N / Ctrl+N: на «Сегодня» это строка быстрого добавления. Кнопка «Создать» всегда открывает окно.
+  let habitForm = null; // «Создать» на «Привычках» — форма новой привычки (Habits регистрирует)
   function newTask(fromKey = false) {
-    if (!boardLists.length || openRef || newList) return;
+    if (openRef || newList) return;
+    if (view === 'habits' && habitForm) { habitForm(); return; }
+    if (!boardLists.length) return;
     if (fromKey && quickLine?.()) return;
     quick = {};
   }
@@ -362,11 +386,16 @@
     const to = i < 0 ? (dir > 0 ? 0 : order.length - 1) : (i + dir + order.length) % order.length;
     activeId = order[to].id;
     boardProject = null;
-    tick().then(() => document.querySelector('.side .lst.on')?.scrollIntoView({ block: 'nearest' }));
+    tick().then(() => document.querySelector('.sd .sd-lst.on')?.scrollIntoView({ block: 'nearest' }));
   }
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Comma') { e.preventDefault(); if (settingsTab) settingsTab = null; else if (!keys.overlay()) openSettings(); return; }
+    const onBoard = view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates';
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyB' && onBoard) { e.preventDefault(); togglePin(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
+    if (e.key === 'Escape' && onBoard && !keys.overlay() && sideApi?.hide()) { e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') { e.preventDefault(); if (!keys.overlay() && !helpOpen) searchOpen = true; return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
@@ -385,8 +414,8 @@
       case 'KeyE': stepView(1); break;
       case 'KeyN': e.preventDefault(); newTask(true); break;
       case 'KeyR': refresh(); break;
-      case 'BracketLeft': if (view === 'board' || view === 'archive') stepList(-1); break;
-      case 'BracketRight': if (view === 'board' || view === 'archive') stepList(1); break;
+      case 'BracketLeft': if (view === 'board' || view === 'archive') { sideApi?.peek(); stepList(-1); } break;
+      case 'BracketRight': if (view === 'board' || view === 'archive') { sideApi?.peek(); stepList(1); } break;
       case 'KeyF':
         if (view === 'board' || view === 'archive') {
           e.preventDefault();
@@ -405,12 +434,19 @@
     start();
     updater.currentVersion().then((v) => (version = v));
     // Обновления: через полминуты после запуска и дальше раз в 6 часов.
-    const updFirst = setTimeout(() => checkUpdate(), 30e3);
-    const updTimer = setInterval(() => checkUpdate(), 6 * 3600e3);
+    // «Проверять самому» (settings.update.auto) выключено — только вручную.
+    const autoCheck = () => { if (lay.settings?.update?.auto !== false) checkUpdate(); };
+    const updFirst = setTimeout(autoCheck, import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
+    const updTimer = setInterval(autoCheck, 6 * 3600e3);
+    // «Ставить ночью»: компьютер не спит в 3:00 и есть версия — ставим.
+    const minTimer = setInterval(() => {
+      nowMin = Date.now();
+      if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
+    }, 60e3);
     const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
     const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
     window.addEventListener('focus', onFocus);
-    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); window.removeEventListener('focus', onFocus); };
+    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); window.removeEventListener('focus', onFocus); };
   });
 
   function replace(listId, updated) {
@@ -511,11 +547,6 @@
   // ---------- анимации: settings.motion = full | min | off ----------
   const motionPref = $derived(lay.settings?.motion?.v ?? 'full');
   $effect(() => motion.setMotion(motionPref));
-  function cycleMotion() {
-    const i = motion.LEVELS.findIndex((l) => l.id === motionPref);
-    touch('settings', 'motion', { v: motion.LEVELS[(i + 1) % motion.LEVELS.length].id });
-    saveLayer();
-  }
 
   // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
 
@@ -568,7 +599,8 @@
       const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
       tasks[listId] = a; tasks[dest] = b;
       say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
-    } catch (e) { say('Не удалось перенести в другой список: ' + e); }
+      return r?.id ?? t.id;
+    } catch (e) { say('Не удалось перенести в другой список: ' + e); return null; }
   }
   const boardAct = {
     open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
@@ -634,17 +666,37 @@
     }
     return Object.entries(n).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
   });
-  // «Начни с …» — первая открытая задача по сроку (без срока — в конце).
-  const boardTip = $derived.by(() => {
+  // Советы енота (2–3 для текущей доски): «Начни с …», лимит колонки, разбор входящих. Ссылка под советом — делает то, что
+  // предлагает енот. «×» — скрыть до завтра (settings.tipHide), совсем — Настройки → Вид → «Енот-советчик» (settings.tips).
+  const boardTips = $derived.by(() => {
     const open = (tasks[activeId] ?? []).filter((t) => !t.parent && t.status !== 'completed');
-    if (!open.length) return 'Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке.';
-    // Сначала просроченное, потом приоритет, потом срок (meta.pickNext).
+    const cols = templateFor(activeId).cols;
     const today = api.ymd(new Date());
-    const first = meta.pickNext(open.map((task) => ({ task })), lay.tasks, today).task;
-    const why = meta.nextReason(first, lay.tasks, today, api.humanDue);
-    const head = `Начни с «${first.title || 'Без названия'}»${why ? ` — ${why}` : ''}`;
-    return `${head}${head.endsWith('.') ? '' : '.'} Остальное подождёт.`; // «18 окт.» уже с точкой
+    // Сначала просроченное, потом приоритет, потом срок (meta.pickNext).
+    const task = open.length ? meta.pickNext(open.map((t) => ({ task: t })), lay.tasks, today).task : null;
+    const first = task ? { task, why: meta.nextReason(task, lay.tasks, today, api.humanDue) } : null;
+    return shell.boardTips({ open, cols, colOf: (t) => colOf(t, cols), first });
   });
+  const tipsOn = $derived(lay.settings?.tips?.v !== false && lay.settings?.tipHide?.v !== api.ymd(new Date(nowMin)));
+  function hideTips() { touch('settings', 'tipHide', { v: api.ymd(new Date()) }); saveLayer(); say('Советы спрятаны до завтра', () => { touch('settings', 'tipHide', { v: null }); saveLayer(); }); }
+  async function runTip(t) {
+    if (t.kind === 'task') openRef = { listId: activeId, id: t.ref };
+    else if (t.kind === 'new') newTask();
+    else if (t.kind === 'col') {
+      const name = templateFor(activeId).cols.find((c) => c.id === t.ref)?.name;
+      const el = [...document.querySelectorAll('.bcol, .colz')].find((x) => x.getAttribute('aria-label') === name || x.getAttribute('aria-label') === `Развернуть колонку ${name}`);
+      el?.scrollIntoView({ behavior: motion.level() === 'full' ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+      el?.animate?.([{ boxShadow: '0 0 0 2px var(--clay)' }, { boxShadow: '0 0 0 2px transparent' }], { duration: 900 });
+    }
+  }
+
+  // ---------- левая колонка: закреплена / откреплена (settings.sidePin), Ctrl+B ----------
+  const sidePinned = $derived(lay.settings?.sidePin?.v !== false);
+  let sideApi = null;
+  function togglePin() {
+    touch('settings', 'sidePin', { v: !sidePinned });
+    saveLayer();
+  }
 
   // ---------- шаблоны досок ----------
 
@@ -744,10 +796,15 @@
     const at = e.type === 'contextmenu' && e.clientX ? { x: e.clientX, y: e.clientY } : { x: r.left + 24, y: r.bottom };
     sideMenu = { at, kind, id };
   }
-  const menuKey = (kind, id) => (e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') openSideMenu(e, kind, id); };
 
+  // «＋» в заголовке «Сферы»: новый список или новая сфера.
+  function openAddMenu(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    sideMenu = { at: { x: r.left, y: r.bottom + 4 }, kind: 'add', id: null };
+  }
   const sideItems = $derived.by(() => {
     if (!sideMenu) return [];
+    if (sideMenu.kind === 'add') return [{ id: 'list', label: 'Новый список' }, { id: 'sphere', label: 'Новая сфера' }];
     if (sideMenu.kind === 'sphere') return [
       { id: 'open', label: 'Открыть сферу' },
       { id: 'edit', label: 'Изменить сферу' },
@@ -762,7 +819,9 @@
 
   function sideAction(a) {
     const { kind, id } = sideMenu;
-    if (kind === 'sphere') {
+    if (kind === 'add') {
+      if (a === 'list') newListIn(null); else createSphere();
+    } else if (kind === 'sphere') {
       if (a === 'open') openSphere(id);
       else if (a === 'edit') { openSphere(id); sphereEditOpen = true; }
       else if (a === 'delete') askDeleteSphere(id);
@@ -910,8 +969,14 @@
     if (patches.length) saveLayer();
   }
 
-  function acceptInbox(items) {
-    for (const x of items) touch('tasks', x.task.id, { inbox: 'accepted' });
+  /** Принять входящие; dest — другой список, чем выбрал Claude («→ список» на «Сегодня»): сначала перенос. */
+  async function acceptInbox(items) {
+    for (const x of items) {
+      let id = x.task.id;
+      if (x.dest && x.dest !== x.listId) id = (await moveToList(x.task, x.dest, x.listId)) ?? id;
+      touch('tasks', x.task.id, { inbox: 'accepted' });
+      if (id !== x.task.id) touch('tasks', id, { inbox: 'accepted' });
+    }
     saveLayer();
     say(items.length > 1 ? `Принято задач: ${items.length}` : `«${items[0].task.title}» — принято`);
   }
@@ -1058,6 +1123,7 @@
     cele = { id: h.id, name: h.name, n, text };
     touch('habits', h.id, { cheer: { key: `${n}|${day}`, n, text, at: new Date().toISOString() } });
     if (view !== 'habits') say(`🎉 Новая веха: ${text}`);
+    if (lay.settings?.notify?.v === false) return; // Настройки → Напоминания → «Уведомления Windows» выключены
     try {
       let ok = await notify.isPermissionGranted();
       if (!ok) ok = (await notify.requestPermission()) === 'granted';
@@ -1116,7 +1182,39 @@
     phase = 'setup';
   }
 
-  const syncLabel = $derived(sync.busy ? 'Синхронизация…' : sync.err ? 'Нет связи с Google' : sync.at ? `Синхронизировано · ${sync.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}` : 'Ещё не синхронизировано');
+  // «Состояние» в шапке: три точки (Google, между компьютерами, версия) и время последней синхронизации.
+  let statOpen = $state(false);
+  let statBtn = $state(null);
+  // ---------- Настройки (⚙ в шапке, Ctrl+,): всё из старого низа левой колонки ----------
+  let settingsTab = $state(null); // null — окно закрыто
+  function openSettings(tab = 'look') { statOpen = false; updOpen = false; settingsTab = tab; }
+  function setPref(key, patch) { touch('settings', key, patch); saveLayer(); }
+  function hideList(id, hide) { touch('lists', id, { hidden: hide }); saveLayer(); }
+  async function hideCal(id, hide) {
+    touch('cals', id, { hidden: hide });
+    saveLayer();
+    api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((x) => lay.cals[x]?.hidden));
+    calReload++;
+    events = await api.eventsForDay().catch(() => events);
+  }
+  // «Проверить» бота: пункт test в файле напоминаний — Code.gs пришлёт его в Telegram в течение минуты.
+  let botTest = $state(null);
+  function testBot() {
+    botTest = { key: 'test-' + Date.now(), kind: 'test', title: 'Спутник: проверка связи — напоминания доходят ✓', fireAt: new Date().toISOString() };
+    say('Отправил проверку — сообщение придёт в Telegram в течение пары минут');
+  }
+  // Тема: settings.theme = system | dark | light → data-theme на <html> («как в Windows» — без атрибута).
+  const themePref = $derived(lay.settings?.theme?.v ?? 'system');
+  $effect(() => {
+    const el = document.documentElement;
+    if (themePref === 'dark' || themePref === 'light') el.setAttribute('data-theme', themePref);
+    else if (lay.settings?.theme) el.removeAttribute('data-theme');
+  });
+  // «Задачи без времени — во сколько» (settings.remindHour).
+  $effect(() => reminders.setDefaultTime(lay.settings?.remindHour?.v ?? '10:00'));
+  // «Где остановился» — последний раздел на этом компьютере (не в слое: у каждого компьютера свой).
+  $effect(() => { const v = section(view); try { localStorage.setItem('sp.lastView', v); } catch {} });
+  const stat = $derived(shell.statusDots({ sync, offline, cloud, upd }));
 </script>
 
 <svelte:window onkeydown={hotkey} />
@@ -1129,149 +1227,96 @@
   <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
-    <!-- Шапка — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. -->
-    <nav class="sp-tabs" aria-label="Разделы" data-tauri-drag-region>
+    <!-- Шапка 0.6 — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. Ничего не переносится. -->
+    <header class="sp-hd" data-tauri-drag-region>
       <Brand />
-      <button class="sp-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня <span class="n">· {todayCount}</span>{#if view === 'today'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь{#if view === 'calendar'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={['board', 'archive', 'templates', 'sphere'].includes(view)} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска{#if section(view) === 'board'}<span class="ink"></span>{/if}</button>
-      <button class="sp-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="n"> · {habitsLeft}</span>{/if}{#if view === 'habits'}<span class="ink"></span>{/if}</button>
-      <div class="right" data-tauri-drag-region>
-        <button class="sync" class:busy={sync.busy} class:flash={syncFlash} class:err={!!sync.err} type="button" onclick={refresh} title="Обновить сейчас">
-          <span class="dot"></span>{syncLabel}
+      <nav class="hd-tabs" aria-label="Разделы" style="display: contents">
+        <button class="hd-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня{#if todayCount}<span class="cnt hot" title="На сегодня и просрочено">{todayCount}</span>{/if}</button>
+        <button class="hd-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь</button>
+        <button class="hd-tab" role="tab" aria-selected={section(view) === 'board'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска</button>
+        <button class="hd-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="cnt" title="Осталось отметить сегодня">{habitsLeft}</span>{/if}</button>
+      </nav>
+      <span class="hd-sp" data-tauri-drag-region></span>
+      {#if updChip}
+        <button class="hd-upd" bind:this={updBtn} type="button" aria-expanded={updOpen} aria-haspopup="dialog" transition:motion.pop
+          title={upd.busy ? 'Ставлю обновление' : 'Что нового — и обновить'} onclick={() => (updOpen = !updOpen)}>
+          {#if upd.busy}Обновляю · {Math.round(upd.progress * 100)}%<span class="pr" style="width: {Math.round(upd.progress * 100)}%"></span>
+          {:else}✦ Версия {upd.found.version}{/if}
         </button>
-        {#if runRef}
-          <span class="timer-pill" role="status">
-            <button type="button" class="tp-open" title="Открыть задачу" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
-              <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
-            </button>
-            <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
-              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
-            </button>
-          </span>
-        {/if}
-        {#if inboxItems.length}
-          <button class="sp-btn sp-btn-ghost inbox-btn" type="button" title="Входящие от Claude — разобрать на «Сегодня»"
-            aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg>
-            <span class="n">{inboxItems.length}</span>
+      {/if}
+      {#if runRef}
+        <span class="timer-pill" role="status">
+          <button type="button" class="tp-open" title="Открыть задачу «{runRef.task.title || 'Без названия'}»" onclick={() => (openRef = { listId: runRef.listId, id: runRef.task.id })}>
+            <span class="tp-dot" aria-hidden="true"></span><b>{worktime.clock(nowTick - lay.tasks[runId].timer.start)}</b><span class="tp-t">{runRef.task.title || 'Без названия'}</span>
           </button>
-        {/if}
-        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Поиск по задачам (Ctrl+K)" aria-label="Поиск" onclick={() => (searchOpen = true)}><svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg></button>
-        <button class="sp-btn sp-btn-ghost keys-btn" type="button" title="Горячие клавиши (?)" aria-label="Горячие клавиши" onclick={() => (helpOpen = true)}>?</button>
-        <button class="sp-btn sp-btn-primary" type="button" style="min-height: 32px" disabled={!boardLists.length} title={boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'} onclick={() => newTask()}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
+          <button type="button" class="tp-stop" title="Остановить таймер" aria-label="Остановить таймер" onclick={() => toggleTimer(runId)}>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5" /></svg>
+          </button>
+        </span>
+      {/if}
+      <button class="hd-find" type="button" title="Поиск по задачам и разделам (Ctrl+K или /)" aria-label="Найти" onclick={() => (searchOpen = true)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5" /><path d="M16 16l4.5 4.5" /></svg><span class="lbl">Найти</span><kbd>Ctrl K</kbd>
+      </button>
+      <button class="hd-stat" bind:this={statBtn} type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
+        onclick={() => (statOpen = !statOpen)}>
+        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && syncFlash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
+      </button>
+      {#if inboxItems.length}
+        <button class="hd-ib" type="button" title="Входящие от Claude · {inboxItems.length} — разобрать на «Сегодня»"
+          aria-label="Входящие от Claude, {inboxItems.length}" onclick={openInbox}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg><span class="b">{inboxItems.length}</span>
         </button>
-      </div>
+      {/if}
+      <button class="hd-ib" type="button" aria-expanded={!!settingsTab} title="Настройки · Ctrl+," aria-label="Настройки" onclick={() => openSettings()}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+        {#if upd.found}<span class="b dot" aria-hidden="true"></span>{/if}
+      </button>
+      <button class="hd-create" type="button" disabled={view !== 'habits' && !boardLists.length}
+        title={view === 'habits' ? 'Новая привычка' : boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'}
+        onclick={() => newTask()}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>Создать
+      </button>
       <WinControls />
-    </nav>
+    </header>
 
-    {#if (upd.found && !upd.later) || upd.err}
-      <div class="upd" role="status">
-        {#if upd.err}
-          <p class="err">{upd.err}</p>
-          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.err = '')}>Скрыть</button>
-        {:else if upd.busy}
-          <p><b>Ставлю Спутник {upd.found.version}…</b> Окно установки закроется само, приложение перезапустится.</p>
-          <span class="upd-bar"><span style="width: {Math.round(upd.progress * 100)}%"></span></span>
-        {:else}
-          <p><b>Вышла версия {upd.found.version}.</b> Обновление займёт меньше минуты, данные никуда не денутся.</p>
-          <button class="sp-btn sp-btn-primary" type="button" style="min-height: 30px" onclick={installUpdate}>Обновить</button>
-          <button class="sp-btn sp-btn-ghost" type="button" style="min-height: 30px" onclick={() => (upd.later = true)}>Позже</button>
-        {/if}
+    {#if upd.fail}
+      <div class="upd" role="alert">
+        <p class="err">{upd.fail}</p>
+        <button class="st-mini" type="button" onclick={installUpdate}>Ещё раз</button>
+        <button class="st-mini ghost" type="button" onclick={() => (upd.fail = '')}>Скрыть</button>
       </div>
     {/if}
 
     {#if offline}
-      <div class="offline" role="alert">
-        <Coon pose="oops" size={48} />
-        <p><b>Нет связи с Google.</b> Попробую снова через минуту — ничего не потеряется, отметки сохранены на этом компьютере.</p>
-        <button class="sp-btn" type="button" style="min-height: 30px" disabled={sync.busy} onclick={refresh}>Повторить сейчас</button>
+      <div class="offline1" role="alert">
+        <Coon pose="oops" size={34} />
+        <p><b>Нет связи с Google.</b> Повторю через минуту — всё, что сделаешь сейчас, сохранится и уйдёт само.</p>
+        <button class="st-mini" type="button" disabled={sync.busy} onclick={refresh}>Повторить</button>
       </div>
     {/if}
 
     <div class="body">
-      {#if view === 'board' || view === 'archive' || view === 'sphere'}
-      <aside class="side">
-        <!-- Сферы: значок, название, открытых задач; внутри — списки с меткой шаблона. Без сферы — внизу. -->
-        <div class="sph-side">
-          <h4>Сферы</h4>
-          {#snippet listRow(l)}
-            <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}
-              oncontextmenu={(e) => openSideMenu(e, 'list', l.id)} onkeydown={menuKey('list', l.id)}>
-              <span class="lt">{l.title}</span><span class="n">{openCount(l)}</span>
-            </button>
-          {/snippet}
-          {#each spheres as sp (sp.id)}
-            {@const folded = !!lay.settings?.sphereFold?.[sp.id]}
-            {@const sl = boardLists.filter((l) => sphereOf(l.id, lay) === sp.id)}
-            <div class="sph-row">
-              <button type="button" class="chev" aria-label={folded ? 'Развернуть сферу' : 'Свернуть сферу'} aria-expanded={!folded} onclick={() => foldSphere(sp.id, !folded)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true" class:closed={folded}><path d="M6 9l6 6 6-6" /></svg>
-              </button>
-              <button type="button" class="sph" aria-current={view === 'sphere' && activeSphere === sp.id} onclick={() => openSphere(sp.id)}
-                oncontextmenu={(e) => openSideMenu(e, 'sphere', sp.id)} onkeydown={menuKey('sphere', sp.id)}>
-                <SphereIcon sphere={sp} size={26} /><span class="sn">{sp.name}</span><span class="n">{sl.reduce((n, l) => n + openCount(l), 0)}</span>
-              </button>
-            </div>
-            {#if !folded}{#each sl as l (l.id)}{@render listRow(l)}{/each}{/if}
-          {/each}
-          {#if noSphereLists.length}
-            {#if spheres.length}<p class="nos">Без сферы</p>{/if}
-            {#each noSphereLists as l (l.id)}{@render listRow(l)}{/each}
-          {/if}
-          {#if !boardLists.length}<p class="empty">Списков пока нет.</p>{/if}
-          <div class="side-add">
-            <button class="item add" type="button" onclick={() => newListIn(null)}><span>+ Новый список</span></button>
-            <button class="item add" type="button" onclick={createSphere}><span>＋ Сфера</span></button>
-          </div>
-        </div>
-        {#if projects.length && view === 'board'}
-          <div>
-            <h4>Проекты</h4>
-            {#each projects as [p, n] (p)}
-              <button class="item" class:on={boardProject === p} type="button" aria-pressed={boardProject === p} onclick={() => (boardProject = boardProject === p ? null : p)}>
-                <span>{p}</span><span class="n">{n}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-        <div class="side-nav">
-          <button type="button" class="lst" onclick={() => (view = 'templates')}>Шаблоны досок →</button>
-          <button type="button" class="lst" class:on={view === 'archive'} onclick={() => (view = 'archive')}>Архив</button>
-        </div>
-        {#if view === 'board' && activeList}
-          <div class="side-tip">
-            <Coon pose="think" size={96} />
-            <p>{boardTip}</p>
-          </div>
-        {/if}
-        <div class="foot">
-          <span>Спутник {version}</span>
-          <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
-          {#if upd.note}<span>{upd.note}</span>{/if}
-          <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
-          <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
-          {#if cloud.state === 'login'}
-            <button type="button" title="Нужно новое право: скрытая папка Спутника на Google Drive" onclick={cloudLogin}>Синхронизация: войти заново</button>
-          {:else if cloudLabel}
-            <span title={cloud.err || 'Статусы, типы, время задач, привычки и настройки — общие для всех компьютеров'}>{cloudLabel}</span>
-          {/if}
-          <button type="button" onclick={logout}>Выйти из Google</button>
-        </div>
-      </aside>
+      {#if view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates'}
+        <Side {spheres} listsOf={sphereLists} noSphere={noSphereLists} count={openCount} viewOf={viewFor} {activeId}
+          current={view} {activeSphere} folded={(id) => !!lay.settings?.sphereFold?.[id]}
+          {projects} project={boardProject} tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
+          pinned={sidePinned} hold={!!sideMenu}
+          onlist={openList} onsphere={openSphere} onfold={foldSphere} onmenu={openSideMenu} onadd={openAddMenu}
+          onproject={(p) => (boardProject = p)} ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
+          onshow={() => openSettings('show')} onpin={togglePin} ontip={runTip} ontiphide={hideTips}
+          onregister={(api) => (sideApi = api)} />
       {/if}
 
       <div class="main">
         {#snippet sphFilter()}<SphereFilter {spheres} value={sphereFilter} onchange={(v) => (sphereFilter = v)} />{/snippet}
         {#if view === 'today'}
-          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layLists={lay.lists} log={lay.log} {habits}
+          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
             oncreate={(p, loud = false) => quickCreate(p, !loud)} onreschedule={rescheduleMany} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
-            onregister={(fn) => (quickLine = fn)}
+            onregister={(fn) => (quickLine = fn)} onlearn={learnRoute} onfull={(line) => { if (boardLists.length) quick = { line }; }}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />
         {:else if view === 'calendar'}
           <Calendar lists={shownLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
@@ -1283,7 +1328,7 @@
             oncreatetask={(p) => quickCreate(p)}
             oncreateevent={createEvent} filter={sphFilter} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} {cele} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
+          <Habits {habits} log={lay.log} {cele} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
@@ -1341,7 +1386,7 @@
     <!-- Окно «Создать» v2: с доски «Куда» по умолчанию — эта доска; из других разделов — по словам. -->
     <Create lists={boardLists} listId={view === 'board' && boardLists.some((l) => l.id === activeId) ? activeId : null}
       from={view === 'board' && boardProject ? { project: boardProject } : {}}
-      day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
+      day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''} line={quick.line ?? ''}
       layer={lay} tasksByList={tasks}
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange} loadCalendars={api.calendarsAll}
       {remindDefaults} onremindDefault={setRemindDefault}
@@ -1350,6 +1395,38 @@
       onclose={() => (quick = null)} />
   {/if}
 
+  {#if updOpen && updChip}
+    <Popover anchor={updBtn} width={344} label="Обновление" onclose={() => (updOpen = false)}>
+      <h5>{upd.busy ? `Ставлю ${upd.found.version}` : `Что нового в ${upd.found.version}`}</h5>
+      {#if shell.notesOf(upd.found.notes).length}
+        <ul class="st-notes" style="margin-left: 10px">{#each shell.notesOf(upd.found.notes) as n, i (i)}<li>{n}</li>{/each}</ul>
+      {/if}
+      {#if upd.busy}
+        <div class="st-bar" style="margin-left: 10px"><i style="width: {Math.round(upd.progress * 100)}%"></i></div>
+        <p class="upd-note">Скачиваю… окно установки закроется само, Спутник перезапустится. Данные не пострадают.</p>
+      {:else}
+        <div class="upd-acts">
+          <button type="button" class="st-mini pri" onclick={installUpdate}>Обновить сейчас</button>
+          <button type="button" class="st-mini" onclick={updLater}>Вечером</button>
+          <button type="button" class="st-mini ghost" onclick={updSkip}>Пропустить</button>
+        </div>
+      {/if}
+    </Popover>
+  {/if}
+  {#if statOpen}
+    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remStat} notes={shell.notesOf(upd.found?.notes)}
+      onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
+      oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
+      onclose={() => (statOpen = false)} />
+  {/if}
+  {#if settingsTab}
+    <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
+      hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
+      {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults}
+      onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
+      onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
+      oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />
+  {/if}
   {#if searchOpen}
     <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />
   {/if}
@@ -1364,7 +1441,7 @@
   {/if}
 
   {#if sideMenu}
-    <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : 'Действия со списком'} items={sideItems}
+    <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : sideMenu.kind === 'add' ? 'Создать' : 'Действия со списком'} items={sideItems}
       onaction={sideAction} onclose={() => (sideMenu = null)} />
   {/if}
   {#if askDel}

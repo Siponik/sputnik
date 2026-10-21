@@ -1,6 +1,6 @@
 /* Окно «Создать» v2 (lib/Create.svelte, макеты design/screens/Create.dc.html, CreateMore.dc.html).
    Все классы с префиксом cr- — общие имена (.main, .side, .row, .c, даже .cr в views.css) уже заняты. */
-.cr-back { background: rgba(0, 0, 0, .42); }
+.cr-back { background: rgba(0, 0, 0, .62); }
 .cr-win { position: fixed; z-index: 11; left: 0; right: 0; margin: 0 auto; top: max(24px, min(92px, 8vh));
   width: min(900px, calc(100% - 32px)); max-height: calc(100% - 48px); display: grid; grid-template-columns: minmax(0, 1fr) 300px;
   border-radius: 20px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; }
@@ -190,3 +190,8 @@
   :root:not([data-theme="dark"]) .cr-pick { box-shadow: 0 20px 44px rgba(46, 44, 39, .14); }
   :root:not([data-theme="dark"]) .cr-pvst { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 8px 18px rgba(46, 44, 39, .1); }
 }
+/* то же, когда светлая тема выбрана в Настройках */
+:root[data-theme="light"] .cr-back { background: rgba(46, 44, 39, .22); }
+:root[data-theme="light"] .cr-win { box-shadow: 0 30px 70px rgba(46, 44, 39, .2); }
+:root[data-theme="light"] .cr-pick { box-shadow: 0 20px 44px rgba(46, 44, 39, .14); }
+:root[data-theme="light"] .cr-pvst { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 8px 18px rgba(46, 44, 39, .1); }

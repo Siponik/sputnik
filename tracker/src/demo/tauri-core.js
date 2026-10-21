@@ -1,7 +1,7 @@
 // Демо-режим (npm run demo): трекер открывается в обычном браузере, без Tauri и без Google.
 // Подменяет invoke(): Google Tasks и Calendar — выдуманные данные в памяти, слой — в памяти (?fresh — сначала).
 // Нужен, чтобы видеть экран и сравнивать с макетами (design/screens/ref/*.png). Ничего не уходит в сеть.
-import { seedLists, seedTasks, seedLayer } from './data.js';
+import { seedLists, seedTasks, seedLayer, seedInbox } from './data.js';
 
 const lists = seedLists();
 const tasks = seedTasks(); // { listId: [task] }
@@ -59,7 +59,11 @@ function tasksApi(method, path, q, body) {
 function calApi(method, path, q, body) {
   if (/^users\/me\/calendarList/.test(path)) {
     return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
-      { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' }] };
+      { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' },
+      { id: 'queue@demo', summary: 'Спутник · входящие', backgroundColor: '#888888', accessRole: 'owner' }] };
+  }
+  if (path.startsWith('calendars/queue%40demo/') || path.startsWith('calendars/queue@demo/')) {
+    return { items: q.get('timeMin')?.startsWith('2029') ? [{ id: 'st', summary: 'Спутник · статус', description: JSON.stringify(seedInbox()) }] : [] };
   }
   if (method === 'POST') return { id: 'E' + n++, ...body };
   return { items: [] };
@@ -88,8 +92,14 @@ export async function invoke(cmd, args = {}) {
     case 'layer_read': return structuredClone(layer);
     case 'layer_write': layer = structuredClone(args.data); return null;
     case 'login': case 'logout': case 'save_client_secret': return null;
+    case 'backups_last': return new Date().toISOString().slice(0, 10);
+    case 'open_place': console.info('[demo] открыть', args.place); return null;
     case 'gapi': {
+      // window.__demo = { offline: true } — «нет связи», { login: true } — нет права на скрытую папку Drive (слой).
+      const d = globalThis.__demo ?? {};
+      if (d.offline) throw 'error sending request for url (демо: нет связи)';
       const u = new URL(args.url);
+      if (d.login && u.pathname.includes('/drive/v3/') && /appDataFolder|spaces=appData/.test(args.url)) throw '403 insufficient scope (демо)';
       const q = u.searchParams;
       if (u.host === 'tasks.googleapis.com') return tasksApi(args.method, u.pathname.replace('/tasks/v1/', ''), q, args.body);
       if (u.pathname.includes('/drive/v3/')) return driveApi(args.method, u.pathname, q, args.body);

@@ -1,7 +1,7 @@
 // Напоминания (lib/reminders.js): когда срабатывают и что уходит в файл для бота.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fireAt, collect, defaultMins, defaultRule, minsToRule, rulesOf, leadsText } from '../src/lib/reminders.js';
+import { fireAt, setDefaultTime, collect, defaultMins, defaultRule, minsToRule, rulesOf, leadsText } from '../src/lib/reminders.js';
 
 const local = (y, m, d, hh = 0, mm = 0) => new Date(y, m - 1, d, hh, mm);
 const task = (due, extra = {}) => ({ id: 't1', title: 'Рендер', due: `${due}T00:00:00.000Z`, status: 'needsAction', ...extra });
@@ -57,4 +57,13 @@ test('collect: события и дни рождения с напоминани
   assert.equal(b.title, 'Аня');
   assert.equal(b.due, '2099-05-01');
   assert.equal(b.lead, 'В день рождения');
+});
+
+test('«Задачи без времени — во сколько» (Настройки): без времени напоминание идёт от выбранного часа', () => {
+  setDefaultTime('09:00');
+  try {
+    assert.deepEqual(fireAt({ kind: 'lead', min: 0 }, task('2026-10-21')), local(2026, 10, 21, 9, 0));
+    assert.deepEqual(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21'), { s: '15:00', e: '16:00' }), local(2026, 10, 21, 14, 0));
+  } finally { setDefaultTime(null); }
+  assert.deepEqual(fireAt({ kind: 'lead', min: 0 }, task('2026-10-21')), local(2026, 10, 21, 10, 0));
 });

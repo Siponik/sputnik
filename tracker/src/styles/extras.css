@@ -31,8 +31,6 @@
 .upd p { margin: 0; flex: 1 1 320px; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
 .upd p b { color: var(--ink); }
 .upd p.err { color: var(--signal-overdue); }
-.upd-bar { flex: 0 0 200px; height: 6px; border-radius: 6px; background: var(--hairline); overflow: hidden; }
-.upd-bar span { display: block; height: 100%; background: var(--signal-done); }
 .side .foot button:disabled { opacity: .5; cursor: default; }
 
 

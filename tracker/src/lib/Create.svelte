@@ -18,7 +18,7 @@
   // умная строка → «Куда» (lib/route.js) → поля по виду доски → превью справа. Событие и день рождения — в Google Календаре.
   // Вызовы как у прежнего окна: кнопка «Новая задача», N / Ctrl+N; listId — открытая доска, from — колонка/тема/проект места вызова.
   let {
-    lists, listId = null, from = {}, day = '', s = '', e = '',
+    lists, listId = null, from = {}, day = '', s = '', e = '', line = '',
     layer = {}, tasksByList = {},
     dueDays = new Set(), loadEvents = null, loadCalendars = null,
     remindDefaults = { task: [], event: [], birthday: [] }, onremindDefault = null,
@@ -37,9 +37,9 @@
   const TYPE_TAG = { asset: 'creative', work: 'work', client: 'work', study: 'study', personal: 'personal', 'ассет': 'creative', 'работа': 'work', 'клиент': 'work', 'учеба': 'study', 'учёба': 'study', 'личное': 'personal' };
 
   // ---------- состояние ----------
-  const init = untrack(() => ({ list: listId, day, s, e, from: { ...from }, rem: { ...remindDefaults } }));
+  const init = untrack(() => ({ list: listId, day, s, e, from: { ...from }, rem: { ...remindDefaults }, line }));
   let kind = $state('task');
-  let text = $state('');
+  let text = $state(init.line); // Shift+Enter в строке «Сегодня» — текст оттуда
   let off = $state({}); // куски, возвращённые в текст крестиком: when, prio, at, tag, topic, project
   let manualList = $state(null);
   let manualTopic = $state(init.from.topic ?? null);

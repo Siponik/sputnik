@@ -13,6 +13,12 @@
 //   shots/create-работа.png  ↔ design/screens/ref/create-работа.png   (канбан)
 //   shots/create-3D.png      ↔ design/screens/ref/create-3D.png       (конвейер)
 //   shots/create-куда.png, create-событие.png, create-др.png ↔ design/screens/ref/create-список-событие-др.png
+//   Версия 0.6.0 (docs/release-0.6.0.md):
+//   shots/shell.png, shell-свёрнуто.png, shell-наведение.png ↔ design/screens/ref/shell-обычный/свёрнуто/наведение.png
+//   shots/shell-состояние.png, shell-обновление.png, shell-нет-связи.png ↔ ref/shell-состояние/обновление/нет связи.png
+//   shots/settings-вид.png, settings-напоминания.png, settings-клавиши.png ↔ ref/settings-*.png
+//   shots/today.png ↔ ref/today-0.6.png (строка с «Понял:», привычки, входящие — today-низ.png)
+//   shots/header-1180.png, header-1920.png — шапка в одну строку на узком и широком окне
 //   shots/calendar-week*.png — неделя календаря на плотной неделе («Тест · нагрузка»), своего макета нет
 //   shots/*-light.png       — то же в светлой теме
 import { mkdirSync } from 'node:fs';
@@ -37,7 +43,7 @@ async function page(theme) {
 }
 const shot = async (p, name) => { await p.waitForTimeout(500); await p.screenshot({ path: `${out}/${name}.png` }); console.log('  ', name); };
 const tab = (p, name) => p.getByRole('button', { name, exact: false }).or(p.getByRole('tab', { name })).first().click();
-const list = (p, name) => p.locator('aside, nav, .side').getByText(name, { exact: true }).first().click();
+const list = (p, name) => p.locator('aside').getByText(name, { exact: true }).first().click();
 
 for (const theme of ['dark', 'light']) {
   const sfx = theme === 'light' ? '-light' : '';
@@ -108,6 +114,60 @@ for (const theme of ['dark', 'light']) {
     await p.locator('.cr-fld').fill('1997');
   });
   await p.keyboard.press('Escape');
+  // 0.6: «Сегодня» — умная строка, привычки «таблетками», входящие от Claude
+  await p.waitForTimeout(300);
+  await p.locator('.qa input').fill('скетч таверны 17:00');
+  await shot(p, 'today' + sfx);
+  await p.locator('.qa input').fill('');
+  await p.locator('.inbox').scrollIntoViewIfNeeded();
+  await shot(p, 'today-низ' + sfx);
+  // 0.6: «Состояние», настройки
+  await p.locator('.hd-stat').click();
+  await shot(p, 'shell-состояние' + sfx);
+  await p.keyboard.press('Escape');
+  for (const [tabName, name] of [['Вид', 'вид'], ['Напоминания', 'напоминания'], ['Клавиши', 'клавиши']]) {
+    if (!(await p.locator('.stg-win').count())) await p.keyboard.press('Control+Comma');
+    await p.locator('.stg-win nav button', { hasText: tabName }).first().click();
+    await shot(p, 'settings-' + name + sfx);
+  }
+  await p.keyboard.press('Escape');
+  // 0.6: левая колонка — закреплена, свёрнута (Ctrl+B), выезд при наведении
+  await tab(p, 'Доска');
+  await p.waitForTimeout(400);
+  await list(p, 'Иконки для клиента');
+  await shot(p, 'shell' + sfx);
+  await p.keyboard.press('Control+KeyB');
+  await shot(p, 'shell-свёрнуто' + sfx);
+  await p.locator('aside.sd.rail').hover();
+  await p.waitForTimeout(400);
+  await shot(p, 'shell-наведение' + sfx);
+  await p.mouse.move(900, 500);
+  await p.keyboard.press('Control+KeyB');
+  await p.close();
+}
+// 0.6: вышла новая версия (подменённый check(), ?upd=) и «Нет связи»
+{
+  const p = await b.newPage({ viewport: { width: 1440, height: 900 }, colorScheme: 'dark' });
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(URL + '?upd=0.6.4'); await p.waitForTimeout(2500);
+  await p.locator('.hd-upd').click();
+  await shot(p, 'shell-обновление');
+  await p.keyboard.press('Escape');
+  await p.evaluate(() => { window.__demo = { offline: true }; });
+  await p.keyboard.press('KeyR');
+  await p.waitForTimeout(1500);
+  await shot(p, 'shell-нет-связи');
+  await p.close();
+}
+// 0.6: шапка в одну строку на 1180 и 1920 px
+for (const w of [1180, 1920]) {
+  const p = await b.newPage({ viewport: { width: w, height: 300 }, colorScheme: 'dark' });
+  p.on('pageerror', (e) => errors.push(e.message));
+  await p.goto(URL); await p.waitForTimeout(1200);
+  const h = await p.locator('.sp-hd').evaluate((el) => el.getBoundingClientRect().height);
+  const over = await p.locator('.sp-hd').evaluate((el) => el.scrollWidth > el.clientWidth);
+  if (h > 60 || over) errors.push(`шапка при ${w} px: высота ${h}, вылезает: ${over}`);
+  await p.screenshot({ path: `${out}/header-${w}.png`, clip: { x: 0, y: 0, width: w, height: 56 } }); console.log('   header-' + w);
   await p.close();
 }
 // Большой экран, как у пользователя (1920×1080): неделя целиком.

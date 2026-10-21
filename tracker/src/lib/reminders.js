@@ -58,7 +58,9 @@ export const rulesOf = (r) => (!r ? [] : Array.isArray(r) ? r : [r]);
 export const leadName = (min, kind = 'task') => leadsFor(kind).find((l) => l.min === min)?.name ?? LEADS.find((l) => l.min === min)?.name ?? `За ${min} мин`;
 /** «за день и за час» */
 export const leadsText = (mins, kind = 'task') => mins.slice().sort((a, b) => b - a).map((m) => leadName(m, kind).toLowerCase()).join(' и ');
-export const DEFAULT_TIME = '10:00';
+export let DEFAULT_TIME = '10:00';
+/** Настройки → Напоминания → «Задачи без времени — во сколько» (settings.remindHour, 9:00 / 10:00 / 12:00). */
+export function setDefaultTime(t) { DEFAULT_TIME = /^\d\d:\d\d$/.test(t ?? '') ? t : '10:00'; }
 
 /** Момент срабатывания или null. slot — время задачи из слоя ({ s, e } или null). */
 export function fireAt(remind, task, slot = null) {
@@ -233,7 +235,7 @@ async function ensureFolder() {
  *  defaults — напоминания по умолчанию ({ task: [минуты] }): по ним бот ставит напоминания задачам, созданным в Telegram. */
 export async function publish(items, defaults = null) {
   const body = JSON.stringify({ items, defaults });
-  if (body === lastBody) return;
+  if (body === lastBody) return false;
   if (!fileId) fileId = await findByProp('reminders');
   if (!fileId) {
     const parent = await ensureFolder();
@@ -242,4 +244,5 @@ export async function publish(items, defaults = null) {
   }
   await gapi('PATCH', `${UPLOAD}/files/${fileId}?uploadType=media`, { version: 1, updated: new Date().toISOString(), items, ...(defaults ? { defaults } : {}) });
   lastBody = body;
+  return true;
 }

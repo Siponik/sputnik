@@ -1,6 +1,6 @@
 // Помощник сборки трекера в GitHub Actions (.github/workflows/tracker-build.yml).
 //   node tools/ci/tracker-release.mjs prepare <номер сборки>
-//       версия 0.5.<N> в tauri.conf.json; без ключа подписи (секрет TAURI_SIGNING_PRIVATE_KEY) — без файлов обновления,
+//       версия 0.6.<N> в tauri.conf.json; без ключа подписи (секрет TAURI_SIGNING_PRIVATE_KEY) — без файлов обновления,
 //       чтобы сборка не падала, пока секреты не заведены.
 //   node tools/ci/tracker-release.mjs latest <номер сборки> <путь к .msi> <заметка>
 //       пишет latest.json для обновления из приложения (рядом с .msi должен лежать .msi.sig).
@@ -14,7 +14,7 @@ const CONF = join(root, 'tracker', 'src-tauri', 'tauri.conf.json');
 const REPO = 'Siponik/sputnik'; // репозиторий публичный — приложение читает релизы без пароля
 const [cmd, run, ...rest] = process.argv.slice(2);
 if (!/^\d+$/.test(run ?? '')) throw new Error('Нужен номер сборки');
-const version = `0.5.${run}`;
+const version = `0.6.${run}`;
 
 if (cmd === 'prepare') {
   const conf = JSON.parse(readFileSync(CONF, 'utf8'));
