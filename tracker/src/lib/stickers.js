@@ -126,9 +126,9 @@ export function lanes(tasks, { group = 'topic', topics = DEFAULT_TOPICS, layTask
  * если пусто везде — показываем все, чтобы было куда приклеить первый. По срокам — всегда три.
  * Возвращает { shown, hidden } — hidden идут кнопками «＋ в тему».
  */
-export function visibleLanes(all, { group = 'topic', keep = '' } = {}) {
+export function visibleLanes(all, { group = 'topic', keep = null } = {}) {
   if (group === 'when' || all.every((l) => !l.items.length)) return { shown: all, hidden: [] };
-  const vis = (l) => l.items.length > 0 || (keep !== '' && l.id === keep);
+  const vis = (l) => l.items.length > 0 || (keep != null && l.id === keep);
   return { shown: all.filter(vis), hidden: all.filter((l) => !vis(l)) };
 }
 

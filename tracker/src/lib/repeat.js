@@ -58,7 +58,7 @@ export function dueRepeats(lists, tasks, layTasks) {
 }
 
 /** Поля слоя, которые переходят к следующей задаче. Этап, учёт времени и порядок начинаются заново. */
-export const CARRY = ['type', 'priority', 'project', 'slot', 'remind', 'repeat', 'client', 'money', 'tags'];
+export const CARRY = ['type', 'priority', 'project', 'slot', 'remind', 'repeat', 'client', 'money', 'tags', 'topic', 'pin'];
 
 // Повтор словами в строке быстрого добавления и в боте: «полить цветы каждую неделю», «отчёт по будням».
 const WORDS = [
