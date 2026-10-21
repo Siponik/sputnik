@@ -63,3 +63,96 @@ test('«Вечером» — в 20:00 сегодня, а после 20:00 — з
   assert.equal(new Date(shell.eveningAt(at)).getHours(), 20);
   assert.equal(new Date(shell.eveningAt(new Date(2026, 9, 21, 21))).getDate(), 22);
 });
+
+// ---------- колонка доски ----------
+
+function fakeTimers() {
+  let now = 0, id = 0;
+  const q = new Map();
+  return {
+    setTimeout: (fn, ms) => { q.set(++id, { fn, at: now + ms }); return id; },
+    clearTimeout: (i) => q.delete(i),
+    tick(ms) {
+      now += ms;
+      for (const [i, t] of [...q].sort((a, b) => a[1].at - b[1].at)) if (t.at <= now) { q.delete(i); t.fn(); }
+    },
+  };
+}
+
+test('колонка выезжает через 150 мс наведения и уезжает через 300 мс после ухода', () => {
+  const tm = fakeTimers();
+  const log = [];
+  const s = shell.slider({ set: (v) => log.push(v), timers: tm });
+  s.enter(); tm.tick(140); assert.equal(s.open, false);
+  tm.tick(20); assert.equal(s.open, true);
+  s.leave(); tm.tick(290); assert.equal(s.open, true);
+  tm.tick(20); assert.equal(s.open, false);
+  assert.deepEqual(log, [true, false]);
+});
+
+test('мышь вернулась раньше 300 мс — колонка остаётся; быстрый проход мимо — не выезжает', () => {
+  const tm = fakeTimers();
+  const s = shell.slider({ timers: tm });
+  s.enter(); tm.tick(200); s.leave(); tm.tick(200); s.enter(); tm.tick(500);
+  assert.equal(s.open, true);
+  s.leave(); tm.tick(100); assert.equal(s.open, true);
+  const s2 = shell.slider({ timers: tm });
+  s2.enter(); tm.tick(100); s2.leave(); tm.tick(500);
+  assert.equal(s2.open, false);
+});
+
+test('пока открыт фильтр или меню — не уезжает; отпустили — уезжает через 300 мс', () => {
+  const tm = fakeTimers();
+  const s = shell.slider({ timers: tm });
+  s.show(); s.hold(true); s.leave(); tm.tick(1000);
+  assert.equal(s.open, true);
+  s.hold(false); tm.tick(299); assert.equal(s.open, true);
+  tm.tick(2); assert.equal(s.open, false);
+});
+
+test('анимации выключены — выезд и уход мгновенные; Esc — убрать сразу', () => {
+  const tm = fakeTimers();
+  const s = shell.slider({ timers: tm });
+  s.instant(true);
+  s.enter(); assert.equal(s.open, true);
+  s.leave(); assert.equal(s.open, false);
+  s.show(); s.hold(true); s.hide(); assert.equal(s.open, false);
+});
+
+test('фильтр «Список…»: по спискам и сферам, ё = е, первый — для Enter', () => {
+  const sp = [{ id: 'w', name: 'Работа' }, { id: 'p', name: 'Личное' }];
+  const L = { w: [{ id: 'a', title: 'Иконки для клиента' }, { id: 'b', title: 'Заказы' }], p: [{ id: 'c', title: 'Дела по дому' }] };
+  const listsOf = (id) => L[id];
+  const none = [{ id: 'd', title: 'Ёлка' }];
+  const all = shell.filterSide('', sp, listsOf, none);
+  assert.equal(all.spheres.length, 2);
+  const r = shell.filterSide('зак', sp, listsOf, none);
+  assert.deepEqual(r.spheres.map((x) => x.lists.map((l) => l.id)), [['b']]);
+  assert.equal(r.first.id, 'b');
+  assert.deepEqual(shell.filterSide('работа', sp, listsOf, none).spheres[0].lists.map((l) => l.id), ['a', 'b']);
+  assert.equal(shell.filterSide('елка', sp, listsOf, none).first.id, 'd');
+  assert.equal(shell.filterSide('нет такого', sp, listsOf, none).first, null);
+});
+
+test('советы енота: с чего начать, лимит колонки, разбор входящих; пустая доска — один совет', () => {
+  const cols = [{ id: 'inbox', name: 'Входящие' }, { id: 'doing', name: 'В работе', limit: 3 }, { id: 'review', name: 'На ревью' }, { id: 'done', name: 'Готово' }];
+  const t = (id, col) => ({ id, title: id, col });
+  const open = [t('a', 'inbox'), t('b', 'inbox'), t('c', 'inbox'), t('d', 'doing'), t('e', 'doing')];
+  const tips = shell.boardTips({ open, cols, colOf: (x) => x.col, first: { task: open[0], why: 'просрочено с вчера' } });
+  assert.deepEqual(tips.map((x) => x.id), ['first', 'limit', 'inbox']);
+  assert.equal(tips[0].text, 'Начни с «a» — просрочено с вчера. Остальное подождёт.');
+  assert.equal(tips[1].text, '«В работе» уже 2 из 3 — закончи одну, прежде чем брать новую.');
+  assert.deepEqual([tips[1].kind, tips[1].ref, tips[1].act], ['col', 'doing', 'К «В работе»']);
+  const empty = shell.boardTips({ open: [], cols, colOf: () => 'inbox', first: null });
+  assert.equal(empty.length, 1);
+  assert.equal(empty[0].kind, 'new');
+});
+
+test('[ ] выдвигают колонку на время: мышь не на ней — уезжает сама', () => {
+  const tm = fakeTimers();
+  const s = shell.slider({ timers: tm });
+  s.peek(1500); assert.equal(s.open, true);
+  tm.tick(1400); s.peek(1500); tm.tick(1400); assert.equal(s.open, true);
+  tm.tick(200); assert.equal(s.open, false);
+  s.enter(); tm.tick(200); s.peek(1500); tm.tick(5000); assert.equal(s.open, true);
+});

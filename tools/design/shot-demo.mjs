@@ -37,7 +37,7 @@ async function page(theme) {
 }
 const shot = async (p, name) => { await p.waitForTimeout(500); await p.screenshot({ path: `${out}/${name}.png` }); console.log('  ', name); };
 const tab = (p, name) => p.getByRole('button', { name, exact: false }).or(p.getByRole('tab', { name })).first().click();
-const list = (p, name) => p.locator('aside, nav, .side').getByText(name, { exact: true }).first().click();
+const list = (p, name) => p.locator('aside').getByText(name, { exact: true }).first().click();
 
 for (const theme of ['dark', 'light']) {
   const sfx = theme === 'light' ? '-light' : '';

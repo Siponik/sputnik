@@ -95,3 +95,84 @@
 .upd-acts .st-mini { height: 34px; }
 .upd-acts .st-mini.pri { padding: 0 16px; }
 .upd-note { margin: 0 10px 8px; font-size: 12.5px; line-height: 17px; color: var(--ink-faint); }
+
+/* ---------- Левая колонка доски 0.6: прокрутка · совет · док; закреп / полоса 64 px / выезд поверх доски ---------- */
+.body { position: relative; }
+.sd { width: 248px; flex: none; display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--hairline); background: color-mix(in srgb, var(--wash) 45%, var(--bg)); --sd-bg: color-mix(in srgb, var(--wash) 45%, var(--bg)); }
+.sd-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 16px 12px 24px; display: flex; flex-direction: column; gap: 2px;
+  /* мягкое затухание внизу прокрутки — видно, что есть ещё */
+  -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
+.sd-h4 { display: flex; align-items: center; justify-content: space-between; margin: 0 6px 8px; font: 600 11px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.sd-h4.sd-sub { margin-top: 14px; }
+.sd-h4 .tools { display: flex; gap: 2px; align-items: center; }
+.sd-h4 .tools button, .sd-pin { width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center; border: 0; background: none; color: var(--ink-faint); font: 500 15px/1 var(--font-sans); cursor: pointer; padding: 0; }
+.sd-h4 .tools button:hover, .sd-pin:hover { background: var(--wash); color: var(--ink); }
+.sd-pin svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sd-pin.on { color: var(--clay); }
+.sd-flt { display: flex; align-items: center; gap: 7px; height: 30px; margin: 0 2px 10px; padding: 0 9px; border-radius: 9px; border: 1px solid var(--hairline); background: var(--bg); color: var(--ink-faint); font-size: 12.5px; flex: none; }
+.sd-flt:focus-within { border-color: var(--clay); }
+.sd-flt svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.sd-flt input { flex: 1; min-width: 0; border: 0; background: none; padding: 0; color: var(--ink); font: 400 12.5px/1 var(--font-sans); outline: none; }
+.sd-flt input::placeholder { color: var(--ink-faint); }
+.sd-flt kbd { font: 500 10px/1 var(--font-mono); color: var(--ink-faint); }
+.sd-sph-row { position: relative; display: flex; align-items: center; }
+.sd-sph { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 8px; border: 0; border-radius: 9px; background: none; font: 600 13.5px/1 var(--font-sans); color: var(--ink); cursor: pointer; text-align: left; }
+.sd-sph:hover { background: var(--wash); }
+.sd-sph[aria-current="true"] { background: var(--raised); box-shadow: inset 2px 0 0 var(--clay); }
+.sd-sph .sn, .sd-lst .lt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sd-sph .n, .sd-lst .n { margin-left: auto; font: 400 12px/1 var(--font-mono); color: var(--ink-faint); }
+/* свернуть сферу — стрелка вместо числа при наведении на строку */
+.sd-chev { position: absolute; right: 4px; top: 5px; width: 24px; height: 24px; display: grid; place-items: center; border: 0; padding: 0; border-radius: 7px; background: var(--wash); color: var(--ink-soft); cursor: pointer; opacity: 0; }
+.sd-sph-row:hover .sd-chev, .sd-chev:focus-visible, .sd-chev[aria-expanded="false"] { opacity: 1; }
+.sd-chev[aria-expanded="false"] { background: none; }
+.sd-sph-row:has(.sd-chev[aria-expanded="false"]) .sd-sph .n { visibility: hidden; }
+.sd-sph-row:hover .sd-sph .n { visibility: hidden; }
+.sd-chev svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform var(--dur-1) var(--ease-out); }
+.sd-chev svg.closed { transform: rotate(-90deg); }
+.sd-lst { width: 100%; flex: none; display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 8px 0 18px; border: 0; border-radius: 9px; background: none; font: 500 13.5px/1 var(--font-sans); color: var(--ink-soft); cursor: pointer; text-align: left; }
+.sd-lst:hover { background: var(--wash); color: var(--ink); }
+.sd-lst.on { background: var(--raised); color: var(--ink); box-shadow: inset 2px 0 0 var(--clay); }
+.sd-lst svg { width: 13px; height: 13px; fill: none; stroke: var(--ink-faint); stroke-width: 2; flex: none; }
+.sd-lst.prj { padding-left: 14px; }
+.sd-lst.prj.on { box-shadow: inset 2px 0 0 var(--gold); }
+.sd-empty { margin: 8px 8px 0; font-size: 12.5px; color: var(--ink-faint); }
+.sd-sph:focus-visible, .sd-lst:focus-visible, .sd button:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
+/* совет енота — прибит к низу, всегда виден */
+.sd-tip { flex: none; margin: 0 12px 10px; display: flex; align-items: flex-start; gap: 8px; padding: 9px 6px 9px 4px; border-radius: 14px; background: var(--raised); border: 1px solid var(--edge); overflow: hidden; }
+.sd-tip .coon { flex: none; }
+.sd-tip .tx { flex: 1; min-width: 0; margin: 0; font-size: 12.5px; line-height: 17px; color: var(--ink-soft); display: -webkit-box; -webkit-box-orient: vertical; animation: sd-tip-in var(--dur-2) var(--ease-out); }
+.sd-tip .tx b { display: block; color: var(--ink); font-weight: 600; margin-bottom: 2px; }
+@keyframes sd-tip-in { from { opacity: 0; transform: translateX(var(--dx, 8px)); } }
+.sd-tip .act { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; padding: 0; border: 0; background: none; color: var(--clay); font: 600 12px/1 var(--font-sans); cursor: pointer; }
+.sd-tip .act:hover { text-decoration: underline; }
+.sd-tip .nx { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.sd-tip .nx button { width: 22px; height: 22px; border: 0; border-radius: 6px; background: none; color: var(--ink-faint); cursor: pointer; font: 500 13px/1 var(--font-sans); padding: 0; }
+.sd-tip .nx button:hover { background: var(--wash); color: var(--ink); }
+/* док */
+.sd-dock { flex: none; display: flex; gap: 4px; padding: 8px 12px 12px; border-top: 1px solid var(--hairline); }
+.sd-dock button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; height: 52px; border: 0; border-radius: 10px; background: none; color: var(--ink-soft); font: 500 11px/1 var(--font-sans); cursor: pointer; }
+.sd-dock button:hover, .sd-dock button[aria-current="true"] { background: var(--wash); color: var(--ink); }
+.sd-dock svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+/* откреплена: полоса 64 px */
+.sd.rail { width: 64px; }
+.sd.rail .sd-scroll { padding: 14px 10px 8px; align-items: center; gap: 6px; -webkit-mask-image: none; mask-image: none; }
+.sd.rail .exp { width: 40px; height: 30px; border-radius: 9px; flex: none; }
+.sd-rb { position: relative; width: 40px; height: 40px; flex: none; border-radius: 12px; border: 0; padding: 0; background: color-mix(in srgb, var(--sc) 16%, transparent); color: var(--sc); display: grid; place-items: center; cursor: pointer; }
+.sd-rb.plain { --sc: var(--ink-soft); }
+.sd-rb svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.sd-rb.on { box-shadow: 0 0 0 2px var(--clay); }
+.sd-rb .n { position: absolute; right: -4px; bottom: -4px; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 999px; background: var(--raised); border: 1px solid var(--edge); font: 600 9.5px/14px var(--font-mono); color: var(--ink-soft); box-sizing: border-box; }
+.sd-rsep { width: 24px; height: 1px; background: var(--hairline); margin: 4px 0; flex: none; }
+.sd-coon { position: relative; flex: none; margin: 0 auto 8px; width: 46px; height: 46px; border-radius: 14px; border: 1px solid var(--edge); background: var(--raised); display: grid; place-items: center; cursor: pointer; overflow: hidden; padding: 0; }
+.sd-coon b { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--gold); }
+.sd.rail .sd-dock { flex-direction: column; padding: 8px 10px 12px; }
+.sd.rail .sd-dock button { height: 40px; gap: 0; }
+/* выехала поверх доски — доска не сдвигается */
+.sd.over { position: absolute; left: 0; top: 0; bottom: 0; z-index: 5; box-shadow: 12px 0 32px rgba(0, 0, 0, .45); border-right: 1px solid var(--edge); background: color-mix(in srgb, var(--wash) 60%, var(--bg)); animation: sd-slide var(--dur-2) var(--ease-out); }
+@keyframes sd-slide { from { transform: translateX(-184px); opacity: .6; } }
+[data-motion="off"] .sd.over, [data-motion="off"] .sd-tip .tx { animation: none; }
+[data-motion="min"] .sd.over { animation-name: sd-fade; }
+@keyframes sd-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sd.over, .sd-tip .tx { animation: none; } }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .sd.over { box-shadow: 12px 0 32px rgba(46, 44, 39, .14); } }
+:root[data-theme="light"] .sd.over { box-shadow: 12px 0 32px rgba(46, 44, 39, .14); }

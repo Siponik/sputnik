@@ -25,6 +25,7 @@
   import SphereView from './lib/SphereView.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
   import SphereFilter from './lib/SphereFilter.svelte';
+  import Side from './lib/Side.svelte';
   import ItemMenu from './lib/ItemMenu.svelte';
   import ConfirmDelete from './lib/ConfirmDelete.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
@@ -383,11 +384,15 @@
     const to = i < 0 ? (dir > 0 ? 0 : order.length - 1) : (i + dir + order.length) % order.length;
     activeId = order[to].id;
     boardProject = null;
-    tick().then(() => document.querySelector('.side .lst.on')?.scrollIntoView({ block: 'nearest' }));
+    tick().then(() => document.querySelector('.sd .sd-lst.on')?.scrollIntoView({ block: 'nearest' }));
   }
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
+    const onBoard = view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates';
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyB' && onBoard) { e.preventDefault(); togglePin(); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
+    if (e.key === 'Escape' && onBoard && !keys.overlay() && sideApi?.hide()) { e.preventDefault(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') { e.preventDefault(); if (!keys.overlay() && !helpOpen) searchOpen = true; return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
@@ -406,8 +411,8 @@
       case 'KeyE': stepView(1); break;
       case 'KeyN': e.preventDefault(); newTask(true); break;
       case 'KeyR': refresh(); break;
-      case 'BracketLeft': if (view === 'board' || view === 'archive') stepList(-1); break;
-      case 'BracketRight': if (view === 'board' || view === 'archive') stepList(1); break;
+      case 'BracketLeft': if (view === 'board' || view === 'archive') { sideApi?.peek(); stepList(-1); } break;
+      case 'BracketRight': if (view === 'board' || view === 'archive') { sideApi?.peek(); stepList(1); } break;
       case 'KeyF':
         if (view === 'board' || view === 'archive') {
           e.preventDefault();
@@ -662,17 +667,37 @@
     }
     return Object.entries(n).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
   });
-  // «Начни с …» — первая открытая задача по сроку (без срока — в конце).
-  const boardTip = $derived.by(() => {
+  // Советы енота (2–3 для текущей доски): «Начни с …», лимит колонки, разбор входящих. Ссылка под советом — делает то, что
+  // предлагает енот. «×» — скрыть до завтра (settings.tipHide), совсем — Настройки → Вид → «Енот-советчик» (settings.tips).
+  const boardTips = $derived.by(() => {
     const open = (tasks[activeId] ?? []).filter((t) => !t.parent && t.status !== 'completed');
-    if (!open.length) return 'Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке.';
-    // Сначала просроченное, потом приоритет, потом срок (meta.pickNext).
+    const cols = templateFor(activeId).cols;
     const today = api.ymd(new Date());
-    const first = meta.pickNext(open.map((task) => ({ task })), lay.tasks, today).task;
-    const why = meta.nextReason(first, lay.tasks, today, api.humanDue);
-    const head = `Начни с «${first.title || 'Без названия'}»${why ? ` — ${why}` : ''}`;
-    return `${head}${head.endsWith('.') ? '' : '.'} Остальное подождёт.`; // «18 окт.» уже с точкой
+    // Сначала просроченное, потом приоритет, потом срок (meta.pickNext).
+    const task = open.length ? meta.pickNext(open.map((t) => ({ task: t })), lay.tasks, today).task : null;
+    const first = task ? { task, why: meta.nextReason(task, lay.tasks, today, api.humanDue) } : null;
+    return shell.boardTips({ open, cols, colOf: (t) => colOf(t, cols), first });
   });
+  const tipsOn = $derived(lay.settings?.tips?.v !== false && lay.settings?.tipHide?.v !== api.ymd(new Date(nowMin)));
+  function hideTips() { touch('settings', 'tipHide', { v: api.ymd(new Date()) }); saveLayer(); say('Советы спрятаны до завтра', () => { touch('settings', 'tipHide', { v: null }); saveLayer(); }); }
+  async function runTip(t) {
+    if (t.kind === 'task') openRef = { listId: activeId, id: t.ref };
+    else if (t.kind === 'new') newTask();
+    else if (t.kind === 'col') {
+      const name = templateFor(activeId).cols.find((c) => c.id === t.ref)?.name;
+      const el = [...document.querySelectorAll('.bcol, .colz')].find((x) => x.getAttribute('aria-label') === name || x.getAttribute('aria-label') === `Развернуть колонку ${name}`);
+      el?.scrollIntoView({ behavior: motion.level() === 'full' ? 'smooth' : 'auto', block: 'nearest', inline: 'center' });
+      el?.animate?.([{ boxShadow: '0 0 0 2px var(--clay)' }, { boxShadow: '0 0 0 2px transparent' }], { duration: 900 });
+    }
+  }
+
+  // ---------- левая колонка: закреплена / откреплена (settings.sidePin), Ctrl+B ----------
+  const sidePinned = $derived(lay.settings?.sidePin?.v !== false);
+  let sideApi = null;
+  function togglePin() {
+    touch('settings', 'sidePin', { v: !sidePinned });
+    saveLayer();
+  }
 
   // ---------- шаблоны досок ----------
 
@@ -774,8 +799,14 @@
   }
   const menuKey = (kind, id) => (e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') openSideMenu(e, kind, id); };
 
+  // «＋» в заголовке «Сферы»: новый список или новая сфера.
+  function openAddMenu(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    sideMenu = { at: { x: r.left, y: r.bottom + 4 }, kind: 'add', id: null };
+  }
   const sideItems = $derived.by(() => {
     if (!sideMenu) return [];
+    if (sideMenu.kind === 'add') return [{ id: 'list', label: 'Новый список' }, { id: 'sphere', label: 'Новая сфера' }];
     if (sideMenu.kind === 'sphere') return [
       { id: 'open', label: 'Открыть сферу' },
       { id: 'edit', label: 'Изменить сферу' },
@@ -790,7 +821,9 @@
 
   function sideAction(a) {
     const { kind, id } = sideMenu;
-    if (kind === 'sphere') {
+    if (kind === 'add') {
+      if (a === 'list') newListIn(null); else createSphere();
+    } else if (kind === 'sphere') {
       if (a === 'open') openSphere(id);
       else if (a === 'edit') { openSphere(id); sphereEditOpen = true; }
       else if (a === 'delete') askDeleteSphere(id);
@@ -1147,7 +1180,7 @@
   // «Состояние» в шапке: три точки (Google, между компьютерами, версия) и время последней синхронизации.
   let statOpen = $state(false);
   let statBtn = $state(null);
-  function openSettings() { helpOpen = true; } // до окна настроек (шаг 6) — хотя бы клавиши
+  function openSettings(tab) { if (tab === 'show') choosing = true; else helpOpen = true; } // до окна настроек (шаг 6)
   const stat = $derived(shell.statusDots({ sync, offline, cloud, upd }));
 </script>
 
@@ -1226,75 +1259,15 @@
     {/if}
 
     <div class="body">
-      {#if view === 'board' || view === 'archive' || view === 'sphere'}
-      <aside class="side">
-        <!-- Сферы: значок, название, открытых задач; внутри — списки с меткой шаблона. Без сферы — внизу. -->
-        <div class="sph-side">
-          <h4>Сферы</h4>
-          {#snippet listRow(l)}
-            <button class="lst" class:on={(view === 'board' || view === 'archive') && l.id === activeId} type="button" onclick={() => openList(l.id)}
-              oncontextmenu={(e) => openSideMenu(e, 'list', l.id)} onkeydown={menuKey('list', l.id)}>
-              <span class="lt">{l.title}</span><span class="n">{openCount(l)}</span>
-            </button>
-          {/snippet}
-          {#each spheres as sp (sp.id)}
-            {@const folded = !!lay.settings?.sphereFold?.[sp.id]}
-            {@const sl = boardLists.filter((l) => sphereOf(l.id, lay) === sp.id)}
-            <div class="sph-row">
-              <button type="button" class="chev" aria-label={folded ? 'Развернуть сферу' : 'Свернуть сферу'} aria-expanded={!folded} onclick={() => foldSphere(sp.id, !folded)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true" class:closed={folded}><path d="M6 9l6 6 6-6" /></svg>
-              </button>
-              <button type="button" class="sph" aria-current={view === 'sphere' && activeSphere === sp.id} onclick={() => openSphere(sp.id)}
-                oncontextmenu={(e) => openSideMenu(e, 'sphere', sp.id)} onkeydown={menuKey('sphere', sp.id)}>
-                <SphereIcon sphere={sp} size={26} /><span class="sn">{sp.name}</span><span class="n">{sl.reduce((n, l) => n + openCount(l), 0)}</span>
-              </button>
-            </div>
-            {#if !folded}{#each sl as l (l.id)}{@render listRow(l)}{/each}{/if}
-          {/each}
-          {#if noSphereLists.length}
-            {#if spheres.length}<p class="nos">Без сферы</p>{/if}
-            {#each noSphereLists as l (l.id)}{@render listRow(l)}{/each}
-          {/if}
-          {#if !boardLists.length}<p class="empty">Списков пока нет.</p>{/if}
-          <div class="side-add">
-            <button class="item add" type="button" onclick={() => newListIn(null)}><span>+ Новый список</span></button>
-            <button class="item add" type="button" onclick={createSphere}><span>＋ Сфера</span></button>
-          </div>
-        </div>
-        {#if projects.length && view === 'board'}
-          <div>
-            <h4>Проекты</h4>
-            {#each projects as [p, n] (p)}
-              <button class="item" class:on={boardProject === p} type="button" aria-pressed={boardProject === p} onclick={() => (boardProject = boardProject === p ? null : p)}>
-                <span>{p}</span><span class="n">{n}</span>
-              </button>
-            {/each}
-          </div>
-        {/if}
-        <div class="side-nav">
-          <button type="button" class="lst" onclick={() => (view = 'templates')}>Шаблоны досок →</button>
-          <button type="button" class="lst" class:on={view === 'archive'} onclick={() => (view = 'archive')}>Архив</button>
-        </div>
-        {#if view === 'board' && activeList}
-          <div class="side-tip">
-            <Coon pose="think" size={96} />
-            <p>{boardTip}</p>
-          </div>
-        {/if}
-        <div class="foot">
-          <span>Спутник {version}</span>
-          <button type="button" disabled={upd.busy} onclick={() => checkUpdate(true)}>Проверить обновления</button>
-          {#if upd.note}<span>{upd.note}</span>{/if}
-          <button type="button" onclick={() => (choosing = true)}>Что показывать</button>
-          <button type="button" title="Анимации интерфейса: полные / минимум / выкл" onclick={cycleMotion}>Анимации: {motion.LEVELS.find((l) => l.id === motionPref)?.name}</button>
-          {#if cloud.state === 'login'}
-            <button type="button" title="Нужно новое право: скрытая папка Спутника на Google Drive" onclick={cloudLogin}>Синхронизация: войти заново</button>
-          {:else if cloudLabel}
-            <span title={cloud.err || 'Статусы, типы, время задач, привычки и настройки — общие для всех компьютеров'}>{cloudLabel}</span>
-          {/if}
-          <button type="button" onclick={logout}>Выйти из Google</button>
-        </div>
-      </aside>
+      {#if view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates'}
+        <Side {spheres} listsOf={sphereLists} noSphere={noSphereLists} count={openCount} viewOf={viewFor} {activeId}
+          current={view} {activeSphere} folded={(id) => !!lay.settings?.sphereFold?.[id]}
+          {projects} project={boardProject} tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
+          pinned={sidePinned} hold={!!sideMenu}
+          onlist={openList} onsphere={openSphere} onfold={foldSphere} onmenu={openSideMenu} onadd={openAddMenu}
+          onproject={(p) => (boardProject = p)} ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
+          onshow={() => openSettings('show')} onpin={togglePin} ontip={runTip} ontiphide={hideTips}
+          onregister={(api) => (sideApi = api)} />
       {/if}
 
       <div class="main">
@@ -1423,7 +1396,7 @@
   {/if}
 
   {#if sideMenu}
-    <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : 'Действия со списком'} items={sideItems}
+    <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : sideMenu.kind === 'add' ? 'Создать' : 'Действия со списком'} items={sideItems}
       onaction={sideAction} onclose={() => (sideMenu = null)} />
   {/if}
   {#if askDel}
