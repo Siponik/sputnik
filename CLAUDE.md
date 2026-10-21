@@ -34,7 +34,7 @@
 ## Устройство трекера
 
 - `tracker/src-tauri/src/google.rs` — вход в Google (OAuth для установленных приложений, PKCE, loopback 127.0.0.1), токен в `token.json` в папке настроек, команда `gapi(method, url, body)` (только `*.googleapis.com`), автообновление токена.
-- `tracker/src-tauri/src/lib.rs` — команды `layer_read` / `layer_write`.
+- `tracker/src-tauri/src/lib.rs` — команды `layer_read` / `layer_write`. Резервные копии слоя (`src/backup.rs`): раз в день перед первой записью — `backups/layer-ГГГГ-ММ-ДД.json` в папке настроек, хранятся 14; испорченный `layer.json` откладывается как `layer.broken.json`, слой читается из свежей целой копии. Проверка модуля без Tauri: `rustc --edition 2021 --test src/backup.rs`.
 - Ключ Google Cloud (проект `sputnik-512107`, клиент Desktop app): пользователь выбирает `client_secret.json` при первом запуске, приложение копирует его в папку настроек. Файл лежит в `D:\Project\sputnik\client_secret.json` и исключён `.gitignore` — никогда не коммитить и не выводить содержимое.
 - Фронтенд: `src/App.svelte` (состояние, синхронизация раз в 2 мин), `lib/Board.svelte` (канбан inbox/doing/review/done, перетаскивание), `lib/Today.svelte`, `lib/TaskDrawer.svelte`, `lib/Setup.svelte`, `lib/api.js`.
 - В окне Tauri `dragDropEnabled: false`, иначе HTML-перетаскивание не работает на Windows.
