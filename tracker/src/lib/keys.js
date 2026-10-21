@@ -5,7 +5,7 @@
 export const typing = (e) => !!e.target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 /** Открыто окно поверх экрана (задача, «Создать», новый список, подсказка). */
-export const overlay = () => !!document.querySelector('.drawer, .dialog, .dtp, .cmenu');
+export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu');
 
 /** Одиночная клавиша без Ctrl/Alt/Win (Shift разрешён только там, где он часть знака, например «?»). */
 export const plain = (e) => !e.ctrlKey && !e.altKey && !e.metaKey;
@@ -65,6 +65,13 @@ export const HOTKEYS = [
   ] },
   { group: 'Привычки', keys: [
     ['Shift+1 … 9', 'Отметить привычку по порядку'],
+  ] },
+  { group: 'Окно «Создать»', keys: [
+    ['Enter · Ctrl+Enter', 'Создать (в подзадачах Enter — новый пункт)'],
+    ['Shift+Enter', 'Создать и сразу следующую: список, тема или колонка и «когда» остаются'],
+    ['Alt+L', 'Куда положить: поиск, ↑ ↓ Enter, цифры 1–9'],
+    ['Alt+1 / 2 / 3', 'Задача · событие · день рождения'],
+    ['Tab', 'По полям'],
   ] },
   { group: 'Окно задачи', keys: [
     ['Alt+← / Alt+→', 'Предыдущий / следующий этап'],

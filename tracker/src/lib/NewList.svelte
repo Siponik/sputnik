@@ -1,17 +1,19 @@
 <script>
   import { fade, pop } from './motion.js';
+  import { untrack } from 'svelte';
   import { BUILTIN, VIEWS } from './templates.js';
 
   // templates — встроенные (с правками) и свои шаблоны (templatesFrom).
   // BLANK — «Пустой шаблон»: App создаёт свой шаблон «Надо → Делаю → Готово» и сразу открывает его настройку.
-  let { templates = BUILTIN, oncreate, onclose } = $props();
+  let { templates = BUILTIN, name = '', oncreate, onclose } = $props();
   const BLANK = '__blank';
   const TEMPLATES = $derived(templates);
   const viewName = (t) => VIEWS.find((v) => v.id === t.view)?.name ?? 'Канбан';
 
   let tpl = $state(BUILTIN[0].id);
-  let title = $state(BUILTIN[0].title ?? '');
-  let touched = false;
+  // name — название из окна «Создать» («＋ Новый список «…»»): его не подменяем названием шаблона.
+  let title = $state(untrack(() => name) || (BUILTIN[0].title ?? ''));
+  let touched = !!untrack(() => name);
   let busy = $state(false);
 
   function pick(t) {

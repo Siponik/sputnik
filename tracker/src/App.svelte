@@ -14,7 +14,7 @@
   import NewList from './lib/NewList.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import Calendar from './lib/Calendar.svelte';
-  import QuickAdd from './lib/QuickAdd.svelte';
+  import Create from './lib/Create.svelte';
   import Coon from './lib/Coon.svelte';
   import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
@@ -50,9 +50,11 @@
   let inboxSt = $state(null); // статус «Входящих от Claude»
   let openRef = $state(null); // { listId, id }
   let newList = $state(false);
+  let newListName = $state(''); // название из окна «Создать»
   let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
   let sync = $state({ busy: false, err: '', at: null });
   let toast = $state('');
+  let toastLabel = $state('Отменить');
   let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
   let toastTimer;
 
@@ -85,9 +87,11 @@
   let toastUndo = $state(null);
   let toastN = $state(0); // номер плашки — заново запускает полоску-таймер
   let toastLeft = 0, toastStart = 0;
-  function say(msg, undo = null) {
+  /** Плашка внизу; undo — действие кнопки (по умолчанию «Отменить», label — другая подпись, например «Открыть»). */
+  function say(msg, undo = null, label = 'Отменить') {
     toast = msg;
     toastUndo = undo;
+    toastLabel = label;
     toastN++;
     toastLeft = 6000;
     resumeToast();
@@ -836,6 +840,7 @@
       activeId = l.id;
       view = blank ? 'templates' : 'board';
       newList = false;
+      newListName = '';
     } catch (e) { say('Не удалось создать список: ' + e); }
   }
 
@@ -972,10 +977,18 @@
   let calReload = $state(0); // календарю — перечитать события
 
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
-  async function quickCreate({ title, listId, due, slot, layer = null, notes = '' }, quiet = false) {
+  async function quickCreate({ title, listId, due, slot, layer = null, notes = '', subs = [] }, quiet = false) {
     try {
       const r = await api.createTask(listId, { title, ...(notes ? { notes } : {}), ...(due ? { due: api.ymdToDue(due) } : {}) });
       tasks[listId] = [r, ...(tasks[listId] ?? [])];
+      // Подзадачи (окно «Создать»): Google ставит новую подзадачу первой — создаём с конца, чтобы порядок сохранился.
+      for (const sb of [...subs].reverse()) {
+        try {
+          const c = await api.createTask(listId, { title: sb.title }, r.id);
+          tasks[listId] = [...(tasks[listId] ?? []), c];
+          if (sb.stage) touch('tasks', c.id, { stage: sb.stage });
+        } catch (e) { say('Не все подзадачи добавились: ' + e); break; }
+      }
       // remind в layer — выбор в окне «Создать» (null — без напоминания); нет поля — напоминание по умолчанию.
       layer = { ...(layer ?? {}) };
       if (layer.remind === undefined) layer.remind = remindDefault;
@@ -988,6 +1001,21 @@
       if (!quiet) say(`«${title}» — добавлено${due ? ` на ${whenText(due, slot).date.toLowerCase()}${slot ? `, ${slot.s}` : ''}` : ' на доску'}${bell}`);
       return r.id;
     } catch (e) { say('Не удалось создать задачу: ' + e); return false; }
+  }
+
+  /** Окно «Создать»: задача создаётся тихо, потом — плашка «Создано в «…» · Открыть». */
+  async function createFromWindow(p, quiet = false) {
+    const id = await quickCreate(p, true);
+    if (id && !quiet) {
+      const l = lists.find((x) => x.id === p.listId);
+      say(`Создано в «${l?.title ?? ''}»`, () => { openRef = { listId: p.listId, id }; }, 'Открыть');
+    }
+    return id;
+  }
+  /** Окно «Создать» выучило слова (ручной выбор списка или темы) — settings.route. */
+  function learnRoute(patch) {
+    touch('settings', 'route', patch);
+    saveLayer();
   }
 
   /** Новый срок сразу нескольким задачам (на «Сегодня» — «Всё на сегодня»), с «Отменить». items — [{ task, list }]. */
@@ -1310,11 +1338,16 @@
   {/if}
 
   {#if quick}
-    <QuickAdd lists={boardLists} listId={boardLists.some((l) => l.id === activeId) ? activeId : null}
+    <!-- Окно «Создать» v2: с доски «Куда» по умолчанию — эта доска; из других разделов — по словам. -->
+    <Create lists={boardLists} listId={view === 'board' && boardLists.some((l) => l.id === activeId) ? activeId : null}
+      from={view === 'board' && boardProject ? { project: boardProject } : {}}
       day={quick.day ?? ''} s={quick.s ?? ''} e={quick.e ?? ''}
-      dueDays={dueDaysExcept()} loadEvents={api.eventsRange}
+      layer={lay} tasksByList={tasks}
+      dueDays={dueDaysExcept()} loadEvents={api.eventsRange} loadCalendars={api.calendarsAll}
       {remindDefaults} onremindDefault={setRemindDefault}
-      oncreate={quickCreate} oncreateevent={createEvent} oncreatebirthday={createBirthday} onclose={() => (quick = null)} />
+      oncreate={createFromWindow} oncreateevent={createEvent} oncreatebirthday={createBirthday}
+      onlearn={learnRoute} onnewlist={(name) => { quick = null; newListName = name; newList = true; }}
+      onclose={() => (quick = null)} />
   {/if}
 
   {#if searchOpen}
@@ -1339,7 +1372,7 @@
   {/if}
 
   {#if newList}
-    <NewList templates={allTemplates} oncreate={createList} onclose={() => { newList = false; newListSphere = null; }} />
+    <NewList templates={allTemplates} name={newListName} oncreate={createList} onclose={() => { newList = false; newListSphere = null; newListName = ''; }} />
   {/if}
 {/if}
 
@@ -1347,7 +1380,7 @@
   <div class="toast" role="status" onmouseenter={pauseToast} onmouseleave={resumeToast}>
     {#key toastN}<span class="timer" aria-hidden="true"></span>{/key}
     <span>{toast}</span>
-    {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>Отменить</button>{/if}
+    {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>{toastLabel}</button>{/if}
     <button type="button" onclick={() => { toast = ''; toastUndo = null; }}>Скрыть</button>
   </div>
 {/if}
