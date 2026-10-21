@@ -60,8 +60,8 @@ function remindersTick_() {
     if (!at || at > now || sent[item.key]) continue;
     // Если Telegram не ответил, не отмечаем — попробуем через минуту.
     // События и дни рождения выполненными не бывают — проверяем только задачи.
-    // Привычки тоже: отмеченную трекер просто убирает из файла.
-    const isEvent = item.kind === 'event' || item.kind === 'birthday' || item.kind === 'habit';
+    // Привычки тоже: отмеченную трекер просто убирает из файла. 'test' — «Проверить» в настройках трекера.
+    const isEvent = item.kind === 'event' || item.kind === 'birthday' || item.kind === 'habit' || item.kind === 'test';
     if (now - at <= LATE_LIMIT_MS && (isEvent || stillOpen_(item))) {
       try { send_(format_(item), remindButtons_(item)); } catch (e) { console.error(e); continue; }
     }
@@ -83,7 +83,7 @@ const REM_KEEP = 40;
 const SNOOZE_MIN = 60;
 
 function remindButtons_(item) {
-  if (item.kind === 'milestone') return null;
+  if (item.kind === 'milestone' || item.kind === 'test') return null;
   const props = PropertiesService.getScriptProperties();
   const seq = +(props.getProperty('REM_SEQ') || 0) + 1;
   props.setProperty('REM_SEQ', String(seq));

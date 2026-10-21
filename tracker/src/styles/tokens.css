@@ -29,3 +29,14 @@
     color-scheme: light;
   }
 }
+/* Настройки → Вид → Тема: «Светлая» ставит data-theme="light", «Тёмная» — "dark", «Как в Windows» — без атрибута. */
+:root[data-theme="light"] {
+  --bg: #FCFCFB; --wash: #F5F4F0; --raised: #FFFFFF; --hairline: #E4E3DC; --edge: #E1E1DF;
+  --ink: #2E2C27; --ink-soft: #6B6A63; --ink-faint: #8A897F;
+  --clay: #AD4F2C; --clay-soft: #FBEEE7; --on-clay: #FFFFFF;
+  --gold: #8F5A00; --gold-soft: #FBF1DF;
+  --signal-overdue: #B42318; --signal-done: #1F6A80;
+  --type-work: #2F5DA8; --type-study: #6D4AA5; --type-personal: #3E6B31;
+  --shadow-lift: 0 6px 18px rgba(46, 44, 39, .14);
+  color-scheme: light;
+}

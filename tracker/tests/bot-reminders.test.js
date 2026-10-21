@@ -85,3 +85,14 @@ test('трекер посчитал то же напоминание — соо�
   at('2026-10-21T13:01:30Z'); ctx.remindersTick_();
   assert.equal(sent().length, 1);
 });
+
+test('«Проверить» в настройках трекера: пункт test уходит сразу, без кнопок и проверки задачи', () => {
+  const { ctx, props } = setup({ fileItems: [{ key: 'test-1', kind: 'test', title: 'Рендер: проверка связи', fireAt: '2026-10-20T09:59:00Z' }] });
+  const calls = [];
+  ctx.UrlFetchApp.fetch = (url, o) => { calls.push(JSON.parse(o.payload)); return { getResponseCode: () => 200, getContentText: () => '{"ok":true}' }; };
+  ctx.remindersTick_();
+  assert.equal(calls.length, 1);
+  assert.match(calls[0].text, /проверка связи/);
+  assert.equal(calls[0].reply_markup, undefined);
+  assert.ok(JSON.parse(props.SENT)['test-1']);
+});

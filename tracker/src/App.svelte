@@ -20,12 +20,13 @@
   import * as api from './lib/api.js';
   import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
-  import { spheresFrom, sphereOf, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
+  import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
   import SphereView from './lib/SphereView.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
   import SphereFilter from './lib/SphereFilter.svelte';
   import Side from './lib/Side.svelte';
+  import Settings from './lib/Settings.svelte';
   import ItemMenu from './lib/ItemMenu.svelte';
   import ConfirmDelete from './lib/ConfirmDelete.svelte';
   import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
@@ -152,7 +153,7 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log)];
+    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log), ...(botTest ? [botTest] : [])];
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       reminders.publish(items, { task: remindDefaults.task }).then((wrote) => {
@@ -195,7 +196,7 @@
       } catch (e) {
         if (layerSync.needsLogin(e)) {
           cloud = { state: 'login', at: null, err: String(e) };
-          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново (внизу левой колонки на «Доске»).');
+          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново: «Состояние» в шапке → «Войти».');
         } else cloud = { ...cloud, state: 'err', err: String(e) };
       } finally {
         cloudRun = null;
@@ -213,9 +214,6 @@
       if (cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
     } catch (e) { say('Не удалось войти: ' + e); }
   }
-  const cloudLabel = $derived(cloud.state === 'busy' ? 'Синхронизирую слой…'
-    : cloud.state === 'ok' ? `Слой на Drive · ${cloud.at.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`
-    : cloud.state === 'err' ? 'Слой не синхронизирован' : '');
 
   // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
   function ensureHabitMeta() {
@@ -263,6 +261,9 @@
     api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
+    let last = null;
+    try { last = localStorage.getItem('sp.lastView'); } catch {}
+    if (phase !== 'ready') view = shell.startView(lay.settings?.start?.v, last);
     phase = 'ready';
     await refresh();
   }
@@ -389,6 +390,7 @@
   async function hotkey(e) {
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Comma') { e.preventDefault(); if (settingsTab) settingsTab = null; else if (!keys.overlay()) openSettings(); return; }
     const onBoard = view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates';
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyB' && onBoard) { e.preventDefault(); togglePin(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
@@ -544,11 +546,6 @@
   // ---------- анимации: settings.motion = full | min | off ----------
   const motionPref = $derived(lay.settings?.motion?.v ?? 'full');
   $effect(() => motion.setMotion(motionPref));
-  function cycleMotion() {
-    const i = motion.LEVELS.findIndex((l) => l.id === motionPref);
-    touch('settings', 'motion', { v: motion.LEVELS[(i + 1) % motion.LEVELS.length].id });
-    saveLayer();
-  }
 
   // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
 
@@ -797,7 +794,6 @@
     const at = e.type === 'contextmenu' && e.clientX ? { x: e.clientX, y: e.clientY } : { x: r.left + 24, y: r.bottom };
     sideMenu = { at, kind, id };
   }
-  const menuKey = (kind, id) => (e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') openSideMenu(e, kind, id); };
 
   // «＋» в заголовке «Сферы»: новый список или новая сфера.
   function openAddMenu(e) {
@@ -1119,6 +1115,7 @@
     cele = { id: h.id, name: h.name, n, text };
     touch('habits', h.id, { cheer: { key: `${n}|${day}`, n, text, at: new Date().toISOString() } });
     if (view !== 'habits') say(`🎉 Новая веха: ${text}`);
+    if (lay.settings?.notify?.v === false) return; // Настройки → Напоминания → «Уведомления Windows» выключены
     try {
       let ok = await notify.isPermissionGranted();
       if (!ok) ok = (await notify.requestPermission()) === 'granted';
@@ -1180,7 +1177,35 @@
   // «Состояние» в шапке: три точки (Google, между компьютерами, версия) и время последней синхронизации.
   let statOpen = $state(false);
   let statBtn = $state(null);
-  function openSettings(tab) { if (tab === 'show') choosing = true; else helpOpen = true; } // до окна настроек (шаг 6)
+  // ---------- Настройки (⚙ в шапке, Ctrl+,): всё из старого низа левой колонки ----------
+  let settingsTab = $state(null); // null — окно закрыто
+  function openSettings(tab = 'look') { statOpen = false; updOpen = false; settingsTab = tab; }
+  function setPref(key, patch) { touch('settings', key, patch); saveLayer(); }
+  function hideList(id, hide) { touch('lists', id, { hidden: hide }); saveLayer(); }
+  async function hideCal(id, hide) {
+    touch('cals', id, { hidden: hide });
+    saveLayer();
+    api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((x) => lay.cals[x]?.hidden));
+    calReload++;
+    events = await api.eventsForDay().catch(() => events);
+  }
+  // «Проверить» бота: пункт test в файле напоминаний — Code.gs пришлёт его в Telegram в течение минуты.
+  let botTest = $state(null);
+  function testBot() {
+    botTest = { key: 'test-' + Date.now(), kind: 'test', title: 'Спутник: проверка связи — напоминания доходят ✓', fireAt: new Date().toISOString() };
+    say('Отправил проверку — сообщение придёт в Telegram в течение пары минут');
+  }
+  // Тема: settings.theme = system | dark | light → data-theme на <html> («как в Windows» — без атрибута).
+  const themePref = $derived(lay.settings?.theme?.v ?? 'system');
+  $effect(() => {
+    const el = document.documentElement;
+    if (themePref === 'dark' || themePref === 'light') el.setAttribute('data-theme', themePref);
+    else if (lay.settings?.theme) el.removeAttribute('data-theme');
+  });
+  // «Задачи без времени — во сколько» (settings.remindHour).
+  $effect(() => reminders.setDefaultTime(lay.settings?.remindHour?.v ?? '10:00'));
+  // «Где остановился» — последний раздел на этом компьютере (не в слое: у каждого компьютера свой).
+  $effect(() => { const v = section(view); try { localStorage.setItem('sp.lastView', v); } catch {} });
   const stat = $derived(shell.statusDots({ sync, offline, cloud, upd }));
 </script>
 
@@ -1234,6 +1259,10 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h4l2 3h4l2-3h4M5 5h14l1 8v6H4v-6z" /></svg><span class="b">{inboxItems.length}</span>
         </button>
       {/if}
+      <button class="hd-ib" type="button" aria-expanded={!!settingsTab} title="Настройки · Ctrl+," aria-label="Настройки" onclick={() => openSettings()}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3h0a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8v0a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" /></svg>
+        {#if upd.found}<span class="b dot" aria-hidden="true"></span>{/if}
+      </button>
       <button class="hd-create" type="button" disabled={view !== 'habits' && !boardLists.length}
         title={view === 'habits' ? 'Новая привычка' : boardLists.length ? 'Новая задача, событие или день рождения (N или Ctrl+N)' : 'Сначала создай список на доске'}
         onclick={() => newTask()}>
@@ -1381,6 +1410,14 @@
       onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
       oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
       onclose={() => (statOpen = false)} />
+  {/if}
+  {#if settingsTab}
+    <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
+      hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
+      {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults}
+      onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
+      onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
+      oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />
   {/if}
   {#if searchOpen}
     <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />

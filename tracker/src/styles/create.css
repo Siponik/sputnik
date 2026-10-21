@@ -190,3 +190,8 @@
   :root:not([data-theme="dark"]) .cr-pick { box-shadow: 0 20px 44px rgba(46, 44, 39, .14); }
   :root:not([data-theme="dark"]) .cr-pvst { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 8px 18px rgba(46, 44, 39, .1); }
 }
+/* то же, когда светлая тема выбрана в Настройках */
+:root[data-theme="light"] .cr-back { background: rgba(46, 44, 39, .22); }
+:root[data-theme="light"] .cr-win { box-shadow: 0 30px 70px rgba(46, 44, 39, .2); }
+:root[data-theme="light"] .cr-pick { box-shadow: 0 20px 44px rgba(46, 44, 39, .14); }
+:root[data-theme="light"] .cr-pvst { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 8px 18px rgba(46, 44, 39, .1); }

@@ -6,6 +6,11 @@ const CAL = 'https://www.googleapis.com/calendar/v3';
 
 export const gapi = (method, url, body = null) => invoke('gapi', { method, url, body });
 
+/** Дата последней резервной копии слоя (ГГГГ-ММ-ДД) или null. */
+export const backupsLast = () => invoke('backups_last').catch(() => null);
+/** Открыть папку резервных копий ('backups') или релизы на GitHub ('releases'). */
+export const openPlace = (place) => invoke('open_place', { place });
+
 export const auth = {
   status: () => invoke('auth_status'),
   saveSecret: (contents) => invoke('save_client_secret', { contents }),

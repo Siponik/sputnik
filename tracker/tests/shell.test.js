@@ -156,3 +156,33 @@ test('[ ] выдвигают колонку на время: мышь не на 
   tm.tick(200); assert.equal(s.open, false);
   s.enter(); tm.tick(200); s.peek(1500); tm.tick(5000); assert.equal(s.open, true);
 });
+
+// ---------- Настройки ----------
+
+test('найти настройку: по заголовку, пояснению и словам для поиска; ё = е', () => {
+  assert.deepEqual(shell.searchSettings('тема').map((r) => r.id), ['theme']);
+  assert.deepEqual(shell.searchSettings('тёмная').map((r) => r.id), ['theme']);
+  assert.equal(shell.searchSettings('ночью')[0].tab, 'upd');
+  assert.deepEqual(shell.searchSettings('резервн').map((r) => r.id), ['backup']);
+  assert.deepEqual(shell.searchSettings('  '), []);
+  assert.deepEqual(shell.searchSettings('нет такой настройки'), []);
+  assert.ok(shell.searchSettings('телеграм').some((r) => r.id === 'bot'));
+});
+
+test('каждая строка поиска — на существующей вкладке', () => {
+  const tabs = new Set(shell.SETTINGS_TABS.map((t) => t.id));
+  for (const r of shell.SETTINGS_INDEX) assert.ok(tabs.has(r.tab), r.id);
+});
+
+test('↑ ↓ по вкладкам — по кругу', () => {
+  assert.equal(shell.stepTab('look', 1), 'show');
+  assert.equal(shell.stepTab('look', -1), 'keys');
+  assert.equal(shell.stepTab('keys', 1), 'look');
+});
+
+test('открывать при запуске: Сегодня / Доска / где остановился', () => {
+  assert.equal(shell.startView(undefined, 'board'), 'today');
+  assert.equal(shell.startView('board', 'habits'), 'board');
+  assert.equal(shell.startView('last', 'habits'), 'habits');
+  assert.equal(shell.startView('last', 'templates'), 'today');
+});

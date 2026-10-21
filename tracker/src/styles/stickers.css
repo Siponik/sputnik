@@ -102,3 +102,4 @@
 
 /* ---------- движение: при «минимум» и «выкл» наклон остаётся, но без подъёма ---------- */
 [data-motion="min"] .stk-page .stk:hover, [data-motion="off"] .stk-page .stk:hover { transform: rotate(var(--rot, 0deg)); }
+:root[data-theme="light"] .stk-page .stk { background: color-mix(in srgb, var(--tc) 18%, #FFFDF6); box-shadow: 0 1px 0 rgba(46, 44, 39, .08), 0 8px 18px rgba(46, 44, 39, .10); }

@@ -88,6 +88,8 @@ export async function invoke(cmd, args = {}) {
     case 'layer_read': return structuredClone(layer);
     case 'layer_write': layer = structuredClone(args.data); return null;
     case 'login': case 'logout': case 'save_client_secret': return null;
+    case 'backups_last': return new Date().toISOString().slice(0, 10);
+    case 'open_place': console.info('[demo] открыть', args.place); return null;
     case 'gapi': {
       // window.__demo = { offline: true } — «нет связи», { login: true } — нет права на скрытую папку Drive (слой).
       const d = globalThis.__demo ?? {};

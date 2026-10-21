@@ -153,3 +153,60 @@ export function boardTips({ open, cols, colOf, first }) {
   }
   return tips.slice(0, 3);
 }
+
+// ---------- Настройки: вкладки и поиск «Найти настройку» ----------
+
+export const SETTINGS_TABS = [
+  { id: 'look', name: 'Вид' },
+  { id: 'show', name: 'Что показывать' },
+  { id: 'rem', name: 'Напоминания' },
+  { id: 'sync', name: 'Синхронизация' },
+  { id: 'upd', name: 'Обновления' },
+  { id: 'keys', name: 'Клавиши' },
+];
+
+/** Строки настроек для поиска: заголовок и пояснение (то, что видно на экране), плюс слова, которыми их ищут. */
+export const SETTINGS_INDEX = [
+  { tab: 'look', id: 'theme', title: 'Тема', hint: 'Тёмная — основная. «Как в Windows» переключается вместе с системой.', also: 'светлая цвет оформление' },
+  { tab: 'look', id: 'motion', title: 'Анимации', hint: '«Минимум» — только мягкое появление. «Выкл» — всё сразу.', also: 'движение' },
+  { tab: 'look', id: 'start', title: 'Открывать при запуске', hint: 'Какой раздел показывать первым', also: 'старт' },
+  { tab: 'look', id: 'tips', title: 'Енот-советчик', hint: 'Советы внизу колонки доски', also: 'совет подсказки' },
+  { tab: 'show', id: 'lists', title: 'Списки задач', hint: 'Какие списки видны на доске, в «Сегодня» и в календаре', also: 'скрыть показывать' },
+  { tab: 'show', id: 'cals', title: 'Календари', hint: 'Какие календари Google показывать', also: 'скрыть показывать дни рождения праздники' },
+  { tab: 'rem', id: 'bot', title: 'Telegram-бот', hint: 'Файл напоминаний и проверка связи', also: 'телеграм бот проверить' },
+  { tab: 'rem', id: 'rtask', title: 'Задачи — по умолчанию', hint: 'Напоминание, которое ставится новой задаче со сроком' },
+  { tab: 'rem', id: 'revent', title: 'События', hint: 'Напоминание о событии по умолчанию' },
+  { tab: 'rem', id: 'rbday', title: 'Дни рождения', hint: 'Напоминание о дне рождения по умолчанию' },
+  { tab: 'rem', id: 'rhour', title: 'Задачи без времени', hint: 'Во сколько напоминать, если у задачи только дата' },
+  { tab: 'rem', id: 'notify', title: 'Уведомления Windows', hint: 'Вехи привычек; основное — в боте' },
+  { tab: 'sync', id: 'acct', title: 'Google-аккаунт', hint: 'Задачи, календарь, скрытая папка', also: 'выйти войти почта' },
+  { tab: 'sync', id: 'google', title: 'Google Задачи и Календарь', hint: 'Обновляется само раз в 2 минуты', also: 'обновить синхронизация' },
+  { tab: 'sync', id: 'cloud', title: 'Между компьютерами', hint: 'Слой Спутника в скрытой папке на Drive', also: 'синхронизация второй компьютер' },
+  { tab: 'sync', id: 'backup', title: 'Резервные копии', hint: 'Каждый день, хранятся 14', also: 'бэкап копия папка' },
+  { tab: 'upd', id: 'ver', title: 'Версия Спутника', hint: 'Обновить или проверить обновления', also: 'обновление' },
+  { tab: 'upd', id: 'auto', title: 'Проверять самому', hint: 'Через 30 секунд после запуска и раз в 6 часов', also: 'обновления автоматически' },
+  { tab: 'upd', id: 'night', title: 'Ставить ночью', hint: 'Если компьютер включён — обновится в 3:00 без вопросов', also: 'обновления' },
+  { tab: 'upd', id: 'all', title: 'Все версии', hint: 'Список изменений на GitHub', also: 'релизы' },
+  { tab: 'keys', id: 'keys', title: 'Клавиши', hint: 'Горячие клавиши — работают и в русской раскладке', also: 'сочетания хоткеи' },
+];
+
+const norm = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
+/** Найти настройку: все слова запроса — в заголовке, пояснении или словах для поиска. Порядок — как на экране. */
+export function searchSettings(query, index = SETTINGS_INDEX) {
+  const words = norm(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return [];
+  return index.filter((r) => { const t = norm(`${r.title} ${r.hint ?? ''} ${r.also ?? ''}`); return words.every((w) => t.includes(w)); });
+}
+
+/** ↑ ↓ по вкладкам настроек. */
+export function stepTab(cur, dir, tabs = SETTINGS_TABS) {
+  const i = tabs.findIndex((t) => t.id === cur);
+  return tabs[(i + dir + tabs.length) % tabs.length].id;
+}
+
+/** С какого раздела открыться: settings.start = today | board | last; last — где остановился (если раздел ещё есть). */
+export function startView(pref, last, views = ['today', 'calendar', 'board', 'habits']) {
+  if (pref === 'board') return 'board';
+  if (pref === 'last' && views.includes(last)) return last;
+  return 'today';
+}
