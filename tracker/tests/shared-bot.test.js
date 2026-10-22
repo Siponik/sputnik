@@ -106,3 +106,21 @@ test('/today и /week — по снимку трекера, в часовом п
   assert.equal(agenda([], 'Europe/Moscow', now), 'На сегодня задач нет 🌙');
   assert.match(format({ kind: 'event', title: 'Встреча', start: '2026-10-22T12:30:00Z' }, 'Europe/Moscow'), /22 окт\., 15:30/);
 });
+
+test('трекер: сообщение боту → задача; снимок недели для /today', async () => {
+  const { fromText, snapshot } = await import('../src/lib/sharedbot.js');
+  const lists = [{ id: 'A', title: 'Дом' }, { id: 'B', title: 'Работа' }];
+  const today = new Date(2026, 9, 22, 10, 0);
+  const t = fromText('купить корм завтра 18:00 @работа\nвзять большой', { lists, layer: {}, tasks: {}, today });
+  assert.equal(t.title, 'Купить корм');
+  assert.equal(t.listId, 'B');
+  assert.equal(t.due, '2026-10-23');
+  assert.deepEqual(t.slot, { s: '18:00', e: '19:00' });
+  assert.equal(t.notes, 'взять большой');
+  assert.equal(fromText('полить цветы', { lists, layer: {}, tasks: {}, today }).due, null); // без даты — без срока
+  const snap = snapshot(lists, {
+    A: [{ id: '1', title: 'Скоро', due: '2026-10-24T00:00:00.000Z' }, { id: '2', title: 'Далеко', due: '2026-11-20T00:00:00.000Z' }, { id: '3', title: 'Сделано', due: '2026-10-22T00:00:00.000Z', status: 'completed' }],
+    B: [{ id: '4', title: 'Созвон', due: '2026-10-22T00:00:00.000Z' }],
+  }, { 4: { slot: { s: '15:00' } } }, today);
+  assert.deepEqual(snap, [{ title: 'Созвон', due: '2026-10-22', time: '15:00', list: 'Работа' }, { title: 'Скоро', due: '2026-10-24', list: 'Дом' }]);
+});

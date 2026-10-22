@@ -1,5 +1,7 @@
 // Общий Telegram-бот Спутника на Cloudflare Workers. Логика — logic.js, хранилище — store.js (D1).
-// Секреты воркера: BOT_TOKEN (токен от @BotFather), TG_SECRET (проверка, что вебхук зовёт Telegram).
+// Секреты воркера: BOT_TOKEN (токен от @BotFather), TG_SECRET (проверка, что вебхук зовёт Telegram),
+// OWNER_CHAT и OWNER_HOOK — чат владельца и адрес его личного бота на Apps Script (reminders/Bot.gs, doPost):
+// бот у них общий, и сообщения владельца уходят туда, как раньше.
 // Выкладка и настройка — bot/README.md.
 
 import { onUpdate, link, putState, tick, sha256 } from './logic.js';
@@ -24,7 +26,7 @@ function telegram(env) {
 }
 
 export default {
-  async fetch(req, env) {
+  async fetch(req, env, ctx) {
     const url = new URL(req.url);
     if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
     const store = d1Store(env.DB);
@@ -33,7 +35,14 @@ export default {
       if (url.pathname === '/ping') return json({ ok: true, bot: env.BOT_NAME ?? '' });
       if (url.pathname === '/tg' && req.method === 'POST') {
         if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('нет', { status: 403 });
-        await onUpdate(await req.json(), { store, tg });
+        const u = await req.json();
+        const chat = String(u.message?.chat?.id ?? u.callback_query?.message?.chat?.id ?? u.callback_query?.from?.id ?? '');
+        if (env.OWNER_CHAT && env.OWNER_HOOK && chat === String(env.OWNER_CHAT)) {
+          // Apps Script отвечает несколько секунд — Telegram не ждёт, пересылаем в фоне.
+          ctx.waitUntil(fetch(env.OWNER_HOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) }).catch((e) => console.error('Личный бот: ' + e)));
+          return new Response('ok');
+        }
+        await onUpdate(u, { store, tg });
         return new Response('ok');
       }
       if (url.pathname === '/link' && req.method === 'POST') {

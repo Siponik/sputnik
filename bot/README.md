@@ -29,3 +29,15 @@ Invoke-RestMethod "https://api.telegram.org/bot$tok/setWebhook" -Method Post -Bo
 
 `bot-token.txt` (токен от @BotFather) исключён `.gitignore` и в репозиторий не попадает.
 Таблицы уже созданы; заново — `npx wrangler d1 execute sputnik-bot --remote --file schema.sql`.
+
+## Личный бот владельца
+
+Бот один: тот же, что у личного бота на Apps Script. Вебхук Telegram смотрит на воркер, а сообщения из чата
+владельца (`OWNER_CHAT`) воркер пересылает в Apps Script (`OWNER_HOOK` — прежний адрес вебхука
+`https://script.google.com/macros/s/…/exec?k=…`, взять из `getWebhookInfo` до переключения). Всё личное
+(задачи в Google, /review, /time, сводка) работает как раньше. `apps-script.yml` вебхук на *.workers.dev не трогает.
+
+```
+"<id чата>" | npx wrangler secret put OWNER_CHAT
+"<прежний адрес вебхука>" | npx wrangler secret put OWNER_HOOK
+```

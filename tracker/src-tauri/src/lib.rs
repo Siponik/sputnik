@@ -67,6 +67,8 @@ fn open_place(app: tauri::AppHandle, place: String) -> Result<(), String> {
             dir.into_os_string()
         }
         "releases" => "https://github.com/Siponik/sputnik/releases".into(),
+        // Общий бот — то же имя, что BOT_NAME в src/lib/sharedbot.js.
+        "telegram" => "https://t.me/SputnikTasksBot".into(),
         _ => return Err("Неизвестное место".into()),
     };
     #[cfg(target_os = "windows")]

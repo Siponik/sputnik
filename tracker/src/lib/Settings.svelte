@@ -6,10 +6,12 @@
   import * as shell from './shell.js';
   import { settingsKeys } from './keys.js';
   import { calendarsAll, backupsLast, openPlace } from './api.js';
+  import { BOT_NAME } from './sharedbot.js';
 
   let {
     tab: tab0 = 'look', settings = {}, lists = [], hiddenLists = [], hiddenCals = [], sphereName = () => '',
     version = '', upd, sync, offline = false, cloud, rem = null, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
+    tgbot = null, tgStat = { err: '' }, ontglink, ontgtest, ontgunlink,
     onset, onhidelist, onhidecal, onremind, ontestbot, onlogout, onrefresh, oncloudlogin, oninstall, oncheck, onclose,
   } = $props();
 
@@ -57,6 +59,19 @@
   const dupPicked = $derived(dupExtra.filter((x) => !dupSkip.has(x.id)));
   const dupToggle = (id) => { const s = new Set(dupSkip); s.has(id) ? s.delete(id) : s.add(id); dupSkip = s; };
   const dupDay = (d) => (d ? d.split('-').reverse().slice(0, 2).join('.') : 'без срока');
+
+  // Общий бот: код из /start → «Подключить».
+  let tgCode = $state('');
+  let tgBusy = $state(false);
+  let tgErr = $state('');
+  const tgOn = $derived(!!tgbot?.key && !tgStat?.unlinked);
+  const tgLine = $derived(tgOn ? `подключён${tgbot.name ? ` · ${tgbot.name}` : ''}${tgStat?.err ? ` · ${tgStat.err}` : ' · напоминания и задачи текстом'}`
+    : tgErr || (tgStat?.unlinked ? 'чат отключили в боте — подключи заново' : `открой @${BOT_NAME}, отправь /start и введи код`));
+  async function doLink() {
+    if (tgBusy || tgCode.replace(/\D/g, '').length !== 6) return;
+    tgBusy = true; tgErr = '';
+    try { await ontglink(tgCode); tgCode = ''; } catch (e) { tgErr = String(e.message ?? e); } finally { tgBusy = false; }
+  }
 
   const CHIPS = {
     task: [[0, 'в начало'], [15, '15 мин'], [60, 'за час'], [1440, 'за день']],
@@ -160,7 +175,16 @@
         </div>
       {:else if tab === 'rem'}
         <div class="stg-grp">
-          <div class="it" class:hit={hit.has('bot')}>{@render tx('bot', 'Telegram-бот', r.cls === 'ok' ? `работает · ${r.text.replace('файл обновлён', 'файл напоминаний обновлён в')}` : r.text, r.cls)}
+          <div class="it" class:hit={hit.has('tgbot')}>{@render tx('tgbot', 'Telegram', tgLine, tgOn && !tgStat?.err ? 'ok' : tgErr || tgStat?.err ? 'warn' : '')}
+            {#if tgOn}
+              <button type="button" class="stg-btn" onclick={ontgtest}>Проверить</button>
+              <button type="button" class="stg-btn dng" onclick={ontgunlink}>Отключить</button>
+            {:else}
+              <button type="button" class="stg-btn" onclick={() => openPlace('telegram')}>Открыть бота</button>
+              <input class="stg-code" inputmode="numeric" maxlength="7" placeholder="код" aria-label="Код из бота" bind:value={tgCode} onkeydown={(e) => e.key === 'Enter' && doLink()} />
+              <button type="button" class="stg-btn pri" disabled={tgBusy || tgCode.replace(/\D/g, '').length !== 6} onclick={doLink}>{tgBusy ? 'Подключаю…' : 'Подключить'}</button>
+            {/if}</div>
+          <div class="it" class:hit={hit.has('bot')}>{@render tx('bot', 'Свой бот (Apps Script)', r.cls === 'ok' ? `работает · ${r.text.replace('файл обновлён', 'файл напоминаний обновлён в')}` : r.text, r.cls)}
             <button type="button" class="stg-btn" onclick={ontestbot} title="Пришлёт в Telegram сообщение «проверка связи» в течение минуты">Проверить</button></div>
           <div class="it" class:hit={hit.has('rtask')}>{@render tx('rtask', 'Задачи — по умолчанию', 'ставится новой задаче со сроком')}
             <div class="stg-chips">{#each CHIPS.task as [m, l] (m)}<button type="button" class="c" aria-pressed={remind.task?.includes(m)} onclick={() => toggleLead('task', m)}>{l}</button>{/each}</div></div>

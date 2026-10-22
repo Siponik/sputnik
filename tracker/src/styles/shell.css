@@ -228,6 +228,7 @@
 .stg-btn:hover { border-color: var(--ink-faint); }
 .stg-btn:disabled { opacity: .5; cursor: default; }
 .stg-btn.pri { background: var(--clay); border-color: var(--clay); color: var(--on-clay); }
+.stg-code { flex: none; width: 76px; height: 32px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--edge); background: var(--sunken, var(--raised)); color: var(--ink); font: 600 13px/1 var(--font-mono, var(--font-sans)); letter-spacing: .08em; text-align: center; }
 .stg-btn.dng { color: var(--signal-overdue); background: none; }
 .stg-sw:focus-visible, .stg-btn:focus-visible, .stg-seg button:focus-visible, .stg-chips .c:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
 .stg-lbl { font: 600 11px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); margin: 2px 2px -8px; padding: 2px 0; border-radius: 4px; }

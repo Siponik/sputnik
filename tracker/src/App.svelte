@@ -39,6 +39,7 @@
   import { findDupes } from './lib/dupes.js';
   import * as stickers from './lib/stickers.js';
   import * as reminders from './lib/reminders.js';
+  import * as sharedbot from './lib/sharedbot.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
   import * as layerSync from './lib/layer.js';
@@ -156,8 +157,13 @@
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
     const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log), ...(botTest ? [botTest] : [])];
+    const tgKey = lay.settings?.tgbot?.key;
+    const week = tgKey ? sharedbot.snapshot(boardLists, tasks, lay.tasks) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
+      // Общий бот (lib/sharedbot.js) — те же напоминания, кроме проверки личного бота, и задачи на неделю для /today.
+      if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week).then(() => (tgStat = { ...tgStat, err: '' }))
+        .catch((e) => (tgStat = { ...tgStat, err: String(e.message ?? e), unlinked: !!e.unlinked }));
       reminders.publish(items, { task: remindDefaults.task }).then((wrote) => {
         if (wrote || !remStat.at) remStat = { at: new Date(), n: items.length, err: '' };
       }).catch((e) => {
@@ -252,6 +258,7 @@
       await loadRemindEvents();
       pullInboxLayer();
       await rollRepeats();
+      await pullTg();
       sync.at = new Date();
       syncLayer();
     } catch (e) {
@@ -1232,6 +1239,51 @@
     calReload++;
     events = await api.eventsForDay().catch(() => events);
   }
+  // ---------- общий Telegram-бот (lib/sharedbot.js) ----------
+  let tgStat = $state({ at: null, err: '', unlinked: false });
+  /** Что человек написал боту: новые задачи и «✓ Готово» под напоминаниями. Не вышло — останется до следующего раза. */
+  async function pullTg() {
+    const key = lay.settings?.tgbot?.key;
+    if (!key) return;
+    try {
+      const r = await sharedbot.inbox(key);
+      const ok = [];
+      let added = 0;
+      for (const x of r.items ?? []) {
+        if (x.type === 'add') {
+          const t = sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
+          if (t) { if (!(await quickCreate(t, true))) continue; added++; }
+        } else if (x.type === 'done') {
+          const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
+          if (task && task.status !== 'completed' && !(await toggle(task, true, x.listId, true))) continue;
+        }
+        ok.push(x.id);
+      }
+      if (ok.length) await sharedbot.ack(key, ok);
+      if (added) say(added === 1 ? 'Из Telegram — новая задача' : `Из Telegram — новых задач: ${added}`);
+      tgStat = { at: new Date(), err: '', unlinked: false };
+    } catch (e) { tgStat = { ...tgStat, err: String(e.message ?? e), unlinked: !!e.unlinked }; }
+  }
+  /** Код из бота → привязка. Ошибку показывает «Настройки» (поэтому бросаем дальше). */
+  async function tgLink(code) {
+    const key = lay.settings?.tgbot?.key ?? sharedbot.newKey();
+    const r = await sharedbot.link(code, key);
+    sharedbot.forget();
+    touch('settings', 'tgbot', { key, name: r.name ?? '', at: Date.now() });
+    saveLayer();
+    tgStat = { at: new Date(), err: '', unlinked: false };
+    say('Telegram подключён ✓ — напоминания придут туда');
+  }
+  async function tgTest() {
+    try { await sharedbot.test(lay.settings?.tgbot?.key); say('Отправил проверку — загляни в Telegram'); }
+    catch (e) { say('Бот не ответил: ' + (e.message ?? e)); }
+  }
+  async function tgUnlink() {
+    await sharedbot.unlink(lay.settings?.tgbot?.key).catch(() => {});
+    touch('settings', 'tgbot', { key: null, name: '', at: null });
+    saveLayer();
+    say('Telegram отключён');
+  }
   // «Проверить» бота: пункт test в файле напоминаний — Code.gs пришлёт его в Telegram в течение минуты.
   let botTest = $state(null);
   function testBot() {
@@ -1459,6 +1511,7 @@
       hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
       {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
       onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
+      tgbot={lay.settings?.tgbot} {tgStat} ontglink={tgLink} ontgtest={tgTest} ontgunlink={tgUnlink}
       onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
       oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />
   {/if}
