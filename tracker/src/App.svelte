@@ -49,6 +49,7 @@
   import * as sh from './lib/sharedcore.js';
   import ShareSphere from './lib/ShareSphere.svelte';
   import * as shell from './lib/shell.js';
+  import { accentCss } from './lib/accent.js';
   import StatusPop from './lib/StatusPop.svelte';
   import Popover from './lib/Popover.svelte';
 
@@ -1775,6 +1776,19 @@
     const el = document.documentElement;
     if (themePref === 'dark' || themePref === 'light') el.setAttribute('data-theme', themePref);
     else if (lay.settings?.theme) el.removeAttribute('data-theme');
+  });
+  // Акцент: settings.accent.v = набор или свой «#RRGGBB» → <style id="sp-accent"> поверх токенов (lib/accent.js).
+  // Пока слой грузится — цвет с прошлого запуска (localStorage sp.accent), чтобы не мигала глина.
+  let accentLast = null;
+  try { accentLast = localStorage.getItem('sp.accent'); } catch {}
+  const accentPref = $derived(phase === 'loading' ? accentLast : lay.settings?.accent?.v ?? null);
+  $effect(() => {
+    const css = accentCss(accentPref);
+    if (phase !== 'loading') try { accentPref ? localStorage.setItem('sp.accent', accentPref) : localStorage.removeItem('sp.accent'); } catch {}
+    let el = document.getElementById('sp-accent');
+    if (!css) { el?.remove(); return; }
+    if (!el) { el = document.createElement('style'); el.id = 'sp-accent'; document.head.appendChild(el); }
+    el.textContent = css;
   });
   // «Задачи без времени — во сколько» (settings.remindHour).
   $effect(() => reminders.setDefaultTime(lay.settings?.remindHour?.v ?? '10:00'));

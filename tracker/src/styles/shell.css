@@ -241,6 +241,20 @@
 /* Порядок вкладок шапки (Настройки → Вид): пилюли под заголовком, во всю ширину */
 .stg-grp .it.wide { flex-wrap: wrap; gap: 10px 14px; }
 .stg-grp .it.wide .tx { flex: 1 1 0; }
+/* Акцент: кружки наборов + «Свой…» (input type=color под кружком). В светлой теме кружок показывает светлый оттенок. */
+.stg-acc { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; align-items: flex-start; }
+.stg-acc .s { --sw: var(--d); position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; width: 60px; padding: 0; border: 0; background: none; color: var(--ink-soft); font: 500 11.5px/1.2 var(--font-sans); cursor: pointer; }
+.stg-acc .s::before { content: ""; width: 30px; height: 30px; border-radius: 50%; background: var(--sw); box-shadow: 0 0 0 2px var(--bg), 0 0 0 3px transparent; transition: box-shadow var(--dur-1) var(--ease-out), transform var(--dur-1) var(--ease-out); }
+.stg-acc .s:hover::before { transform: scale(1.08); }
+.stg-acc .s:hover { color: var(--ink); }
+.stg-acc .s[aria-checked="true"], .stg-acc .s.on { color: var(--ink); }
+.stg-acc .s[aria-checked="true"]::before, .stg-acc .s.on::before { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--sw); }
+.stg-acc .own::before { background: conic-gradient(from 90deg, #E8766E, #E0A04A, #A8B85A, #5DBB98, #6E9EE8, #A68BE8, #E07A9B, #E8766E); }
+.stg-acc .own.on::before { background: var(--sw); }
+.stg-acc .own input { position: absolute; left: 15px; top: 0; width: 30px; height: 30px; opacity: 0; cursor: pointer; border: 0; padding: 0; }
+.stg-acc .s:focus-visible, .stg-acc .own:focus-within { outline: 2px solid var(--clay); outline-offset: 2px; border-radius: 8px; }
+:root[data-theme="light"] .stg-acc .s { --sw: var(--l); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .stg-acc .s { --sw: var(--l); } }
 .stg-ord { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; align-items: center; }
 .stg-ord .o { display: inline-flex; align-items: center; height: 30px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--ink); cursor: grab; user-select: none; transition: border-color var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out); }
 .stg-ord .o.drag { opacity: .45; cursor: grabbing; }

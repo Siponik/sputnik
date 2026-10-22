@@ -7,6 +7,7 @@
   import { settingsKeys } from './keys.js';
   import { calendarsAll, backupsLast, openPlace } from './api.js';
   import { BOT_NAME } from './sharedbot.js';
+  import { ACCENTS, accentOf } from './accent.js';
 
   let {
     tab: tab0 = 'look', settings = {}, lists = [], hiddenLists = [], hiddenCals = [], sphereName = () => '',
@@ -25,6 +26,10 @@
   const v = (k, d) => settings?.[k]?.v ?? d;
   const theme = $derived(v('theme', 'system'));
   const motionV = $derived(v('motion', 'full'));
+  // Акцент: набор (id) или свой цвет «#RRGGBB»; Глина — по умолчанию, хранится как null.
+  const accentV = $derived(v('accent', 'clay') ?? 'clay');
+  const accentCur = $derived(accentOf(accentV));
+  const setAccent = (x) => onset('accent', { v: x === 'clay' ? null : x });
   const start = $derived(v('start', 'today'));
   // Порядок вкладок шапки: перетащить пилюлю или стрелками ‹ ›; хранится в settings.tabs.v и ездит со слоем.
   const tabs = $derived(shell.tabOrder(settings?.tabs?.v));
@@ -157,6 +162,18 @@
         <div class="stg-grp">
           <div class="it" class:hit={hit.has('theme')}>{@render tx('theme', 'Тема', 'Тёмная — основная. «Как в Windows» переключается вместе с системой.')}
             {@render seg([['system', 'Как в Windows'], ['dark', 'Тёмная'], ['light', 'Светлая']], theme, (x) => onset('theme', { v: x }))}</div>
+          <div class="it wide" class:hit={hit.has('accent')}>{@render tx('accent', 'Акцент', 'Цвет кнопок, выделения и подсветки. В светлой теме оттенок сам становится темнее, чтобы читался.')}
+            <div class="stg-acc" role="radiogroup" aria-label="Акцентный цвет">
+              {#each ACCENTS as a (a.id)}
+                <button type="button" class="s" role="radio" aria-checked={accentCur.id === a.id} title={a.name} aria-label={a.name}
+                  style="--d: {a.dark}; --l: {a.light}" onclick={() => setAccent(a.id)}><span>{a.name}</span></button>
+              {/each}
+              <label class="s own" class:on={accentCur.id === 'custom'} title="Свой цвет" style="--d: {accentCur.dark}; --l: {accentCur.light}">
+                <input type="color" aria-label="Свой цвет" value={accentCur.id === 'custom' ? accentV : accentCur.dark}
+                  onchange={(e) => setAccent(e.currentTarget.value.toUpperCase())} />
+                <span>Свой…</span>
+              </label>
+            </div></div>
           <div class="it" class:hit={hit.has('motion')}>{@render tx('motion', 'Анимации', '«Минимум» — только мягкое появление. «Выкл» — всё сразу.')}
             {@render seg([['full', 'Полные'], ['min', 'Минимум'], ['off', 'Выкл']], motionV, (x) => onset('motion', { v: x }))}</div>
           <div class="it prev-row"><div class="stg-prev {motionV}"><span class="card"></span><span>так будут двигаться карточки</span></div></div>
