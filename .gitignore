@@ -13,3 +13,8 @@ tracker/src-tauri/gen/
 # Архив навыка для загрузки в claude.ai
 skills/*.zip
 tracker/shots/
+
+# Общий бот (bot/): токен Telegram — только в секретах Cloudflare
+bot-token.txt
+bot/.wrangler/
+bot/node_modules/
