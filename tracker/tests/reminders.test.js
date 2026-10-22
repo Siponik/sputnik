@@ -67,3 +67,12 @@ test('«Задачи без времени — во сколько» (Настр
   } finally { setDefaultTime(null); }
   assert.deepEqual(fireAt({ kind: 'lead', min: 0 }, task('2026-10-21')), local(2026, 10, 21, 10, 0));
 });
+
+test('«Задачи без времени — не напоминать»: молчат только «до начала» у задач без времени', () => {
+  setDefaultTime('off');
+  try {
+    assert.equal(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21')), null);
+    assert.deepEqual(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21'), { s: '15:00', e: '16:00' }), local(2026, 10, 21, 14, 0));
+    assert.deepEqual(fireAt({ kind: 'before', days: 1, time: '09:00' }, task('2026-10-21')), local(2026, 10, 20, 9, 0));
+  } finally { setDefaultTime(null); }
+});

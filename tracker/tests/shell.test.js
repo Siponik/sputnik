@@ -186,3 +186,14 @@ test('открывать при запуске: Сегодня / Доска / г
   assert.equal(shell.startView('last', 'habits'), 'habits');
   assert.equal(shell.startView('last', 'templates'), 'today');
 });
+
+test('свой бот (Apps Script): только у владельца, у кого скрипт ведёт «Входящие»', () => {
+  assert.deepEqual(shell.ownBot({}, null), { show: false, on: false });
+  assert.deepEqual(shell.ownBot({}, { processed: [] }), { show: true, on: true });
+  assert.deepEqual(shell.ownBot({ ownBot: { v: false } }, { processed: [] }), { show: true, on: false });
+  assert.deepEqual(shell.ownBot({ ownBot: { v: true } }, null), { show: true, on: true });
+  assert.equal(shell.remindLine({ shared: true, linked: true }).cls, 'ok');
+  assert.equal(shell.remindLine({ shared: true, linked: false }).cls, 'w');
+  assert.equal(shell.remindLine({ shared: true, linked: true, err: 'нет связи' }).text, 'нет связи');
+  assert.ok(shell.searchSettings('отключить').some((r) => r.id === 'rhour'));
+});

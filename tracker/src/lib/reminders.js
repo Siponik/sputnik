@@ -59,15 +59,21 @@ export const leadName = (min, kind = 'task') => leadsFor(kind).find((l) => l.min
 /** «за день и за час» */
 export const leadsText = (mins, kind = 'task') => mins.slice().sort((a, b) => b - a).map((m) => leadName(m, kind).toLowerCase()).join(' и ');
 export let DEFAULT_TIME = '10:00';
-/** Настройки → Напоминания → «Задачи без времени — во сколько» (settings.remindHour, 9:00 / 10:00 / 12:00). */
-export function setDefaultTime(t) { DEFAULT_TIME = /^\d\d:\d\d$/.test(t ?? '') ? t : '10:00'; }
+/** «Задачи без времени — не напоминать»: правила «до начала» у задачи без времени молчат. */
+export let NO_TIME_OFF = false;
+/** Настройки → Напоминания → «Задачи без времени» (settings.remindHour: 9:00 / 10:00 / 12:00 или 'off' — не напоминать).
+ *  При 'off' DEFAULT_TIME остаётся 10:00: им пользуются дни рождения и свои правила «за N дней в ЧЧ:ММ». */
+export function setDefaultTime(t) {
+  NO_TIME_OFF = t === 'off';
+  DEFAULT_TIME = /^\d\d:\d\d$/.test(t ?? '') ? t : '10:00';
+}
 
 /** Момент срабатывания или null. slot — время задачи из слоя ({ s, e } или null). */
 export function fireAt(remind, task, slot = null) {
   if (!remind) return null;
   if (remind.kind === 'lead') {
     const ymd = dueToYmd(task.due);
-    if (!ymd) return null;
+    if (!ymd || (!slot?.s && NO_TIME_OFF)) return null;
     const [y, m, d] = ymd.split('-').map(Number);
     const [hh, mm] = (slot?.s || DEFAULT_TIME).split(':').map(Number);
     return new Date(y, m - 1, d, hh, mm - (remind.min || 0));

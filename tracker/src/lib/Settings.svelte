@@ -10,7 +10,7 @@
 
   let {
     tab: tab0 = 'look', settings = {}, lists = [], hiddenLists = [], hiddenCals = [], sphereName = () => '',
-    version = '', upd, sync, offline = false, cloud, rem = null, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
+    version = '', upd, sync, offline = false, cloud, rem = null, ownBot = { show: false, on: false }, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
     tgbot = null, tgStat = { err: '' }, ontglink, ontgtest, ontgunlink,
     onset, onhidelist, onhidecal, onremind, ontestbot, onlogout, onrefresh, oncloudlogin, oninstall, oncheck, onclose,
   } = $props();
@@ -76,7 +76,7 @@
   const CHIPS = {
     task: [[0, 'в начало'], [15, '15 мин'], [60, 'за час'], [1440, 'за день']],
     event: [[15, '15 мин'], [60, 'за час'], [1440, 'за день']],
-    birthday: [[0, 'в день'], [1440, 'за день'], [10080, 'за неделю']],
+    birthday: [[0, 'в день'], [1440, 'за день'], [10080, 'за неделю'], [43200, 'за месяц']],
   };
   function toggleLead(kind, min) {
     const now = remind[kind] ?? [];
@@ -184,16 +184,19 @@
               <input class="stg-code" inputmode="numeric" maxlength="7" placeholder="код" aria-label="Код из бота" bind:value={tgCode} onkeydown={(e) => e.key === 'Enter' && doLink()} />
               <button type="button" class="stg-btn pri" disabled={tgBusy || tgCode.replace(/\D/g, '').length !== 6} onclick={doLink}>{tgBusy ? 'Подключаю…' : 'Подключить'}</button>
             {/if}</div>
-          <div class="it" class:hit={hit.has('bot')}>{@render tx('bot', 'Свой бот (Apps Script)', r.cls === 'ok' ? `работает · ${r.text.replace('файл обновлён', 'файл напоминаний обновлён в')}` : r.text, r.cls)}
-            <button type="button" class="stg-btn" onclick={ontestbot} title="Пришлёт в Telegram сообщение «проверка связи» в течение минуты">Проверить</button></div>
+          {#if ownBot.show}
+            <div class="it" class:hit={hit.has('bot')}>{@render tx('bot', 'Свой бот (Apps Script)', !ownBot.on ? 'выключен — напоминания только через общий бот' : `${r.cls === 'ok' ? `работает · ${r.text.replace('файл обновлён', 'файл напоминаний обновлён в')}` : r.text}${tgOn ? ' · с общим ботом напоминания придут дважды' : ''}`, ownBot.on ? (tgOn ? 'w' : r.cls) : '')}
+              {#if ownBot.on}<button type="button" class="stg-btn" onclick={ontestbot} title="Пришлёт в Telegram сообщение «проверка связи» в течение минуты">Проверить</button>{/if}
+              {@render sw(ownBot.on, (x) => onset('ownBot', { v: x }), 'Свой бот (Apps Script)')}</div>
+          {/if}
           <div class="it" class:hit={hit.has('rtask')}>{@render tx('rtask', 'Задачи — по умолчанию', 'ставится новой задаче со сроком')}
             <div class="stg-chips">{#each CHIPS.task as [m, l] (m)}<button type="button" class="c" aria-pressed={remind.task?.includes(m)} onclick={() => toggleLead('task', m)}>{l}</button>{/each}</div></div>
           <div class="it" class:hit={hit.has('revent')}>{@render tx('revent', 'События', '')}
             <div class="stg-chips">{#each CHIPS.event as [m, l] (m)}<button type="button" class="c" aria-pressed={remind.event?.includes(m)} onclick={() => toggleLead('event', m)}>{l}</button>{/each}</div></div>
           <div class="it" class:hit={hit.has('rbday')}>{@render tx('rbday', 'Дни рождения', '')}
             <div class="stg-chips">{#each CHIPS.birthday as [m, l] (m)}<button type="button" class="c" aria-pressed={remind.birthday?.includes(m)} onclick={() => toggleLead('birthday', m)}>{l}</button>{/each}</div></div>
-          <div class="it" class:hit={hit.has('rhour')}>{@render tx('rhour', 'Задачи без времени', 'во сколько напоминать, если у задачи только дата')}
-            {@render seg([['09:00', '9:00'], ['10:00', '10:00'], ['12:00', '12:00']], remindHour, (x) => onset('remindHour', { v: x }))}</div>
+          <div class="it" class:hit={hit.has('rhour')}>{@render tx('rhour', 'Задачи без времени', remindHour === 'off' ? 'не напоминать, если у задачи только дата' : 'во сколько напоминать, если у задачи только дата')}
+            {@render seg([['off', 'выкл'], ['09:00', '9:00'], ['10:00', '10:00'], ['12:00', '12:00']], remindHour, (x) => onset('remindHour', { v: x }))}</div>
           <div class="it" class:hit={hit.has('notify')}>{@render tx('notify', 'Уведомления Windows', 'вехи привычек; основное — в боте')}
             {@render sw(notifyOn, (x) => onset('notify', { v: x }), 'Уведомления Windows')}</div>
         </div>
