@@ -4,7 +4,7 @@
 // бот у них общий, и сообщения владельца уходят туда, как раньше.
 // Выкладка и настройка — bot/README.md.
 
-import { onUpdate, link, putState, tick, sha256 } from './logic.js';
+import { onUpdate, link, putState, tick, sha256, MAX_STATE } from './logic.js';
 import { d1Store } from './store.js';
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
@@ -48,14 +48,19 @@ export default {
         return new Response('ok');
       }
       if (url.pathname === '/link' && req.method === 'POST') {
-        const r = await link(await req.json(), { store, tg });
+        const r = await link(await req.json(), { store, tg, ip: req.headers.get('CF-Connecting-IP') ?? '' });
         return json(r.body, r.status);
       }
       // Дальше — только трекер с ключом, который он получил при привязке.
       const key = (req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, '');
       const user = key.length >= 32 ? await store.userByKey(await sha256(key)) : null;
       if (!user) return json({ error: 'Бот не подключён', unlinked: true }, 401);
-      if (url.pathname === '/state' && req.method === 'PUT') { const r = await putState(user.chat, await req.json(), { store }); return json(r.body, r.status); }
+      if (url.pathname === '/state' && req.method === 'PUT') {
+        const text = await req.text();
+        if (text.length > MAX_STATE) return json({ error: 'Слишком большой список' }, 413);
+        const r = await putState(user.chat, JSON.parse(text), { store });
+        return json(r.body, r.status);
+      }
       if (url.pathname === '/inbox' && req.method === 'GET') return json({ items: await store.inbox(user.chat), muted: !!user.muted });
       if (url.pathname === '/ack' && req.method === 'POST') { await store.ack(user.chat, ((await req.json()).ids ?? []).map(Number)); return json({ ok: true }); }
       if (url.pathname === '/test' && req.method === 'POST') { await tg('sendMessage', { chat_id: user.chat, text: 'Спутник: проверка связи — напоминания доходят ✓' }); return json({ ok: true }); }

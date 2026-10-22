@@ -6,6 +6,7 @@ import { onUpdate, link, putState, tick, agenda, format, sha256 } from '../../bo
 function memStore() {
   const users = new Map(), codes = new Map(), inbox = [], sent = [];
   let seq = 0;
+  const tries = [];
   return {
     users, inbox, sent,
     user: async (chat) => users.get(chat) ?? null,
@@ -25,6 +26,8 @@ function memStore() {
     unmarkSent: async (chat, id) => { const i = sent.findIndex((s) => s.id === id); if (i >= 0) sent.splice(i, 1); },
     sentById: async (chat, id) => { const s = sent.find((x) => x.id === id && x.chat === chat); return s ? { item: s.item } : null; },
     purge: async () => {},
+    tries: async (ip, since) => tries.filter((t) => t.ip === ip && t.at > since).length,
+    addTry: async (ip, at) => { tries.push({ ip, at }); },
     addInbox: async (chat, body) => { inbox.push({ id: inbox.length + 1, chat, ...body }); },
   };
 }
@@ -43,6 +46,15 @@ test('привязка: /start → код → трекер вводит код �
   assert.equal(store.users.get('5').tz, 'Asia/Yekaterinburg');
   // код одноразовый
   assert.equal((await link({ code: '550000', key }, { store, tg })).status, 404);
+});
+
+test('перебор кодов: после 10 неверных с одного адреса — ждать час', async () => {
+  const store = memStore(), { tg } = tgLog();
+  await onUpdate(msg('/start'), { store, tg, rand: () => 0.5 });
+  const key = 'k'.repeat(40), now = Date.now();
+  for (let i = 0; i < 10; i++) assert.equal((await link({ code: String(100000 + i), key }, { store, tg, ip: 'x', now })).status, 404);
+  assert.equal((await link({ code: '550000', key }, { store, tg, ip: 'x', now })).status, 429);
+  assert.equal((await link({ code: '550000', key }, { store, tg, ip: 'y', now })).status, 200);
 });
 
 test('текст в чат — задача во «входящие» трекера; без привязки — просим /start', async () => {

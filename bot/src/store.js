@@ -39,7 +39,12 @@ export function d1Store(db) {
     async markSent(chat, item, now) { const r = await run('INSERT INTO sent (chat, key, item, at) VALUES (?, ?, ?, ?)', chat, item.key, JSON.stringify(item), now); return r.meta.last_row_id; },
     unmarkSent: (chat, id) => run('DELETE FROM sent WHERE chat = ? AND id = ?', chat, id),
     async sentById(chat, id) { const r = await one('SELECT item FROM sent WHERE chat = ? AND id = ?', chat, id); return r ? { item: JSON.parse(r.item) } : null; },
-    purge: (before) => run('DELETE FROM sent WHERE at < ?', before),
+    async purge(before) {
+      await run('DELETE FROM sent WHERE at < ?', before);
+      await run('DELETE FROM tries WHERE at < ?', Date.now() - 3600e3);
+    },
+    async tries(ip, since) { return (await one('SELECT COUNT(*) AS n FROM tries WHERE ip = ? AND at > ?', ip, since))?.n ?? 0; },
+    addTry: (ip, at) => run('INSERT INTO tries (ip, at) VALUES (?, ?)', ip, at),
     addInbox: (chat, body) => run('INSERT INTO inbox (chat, body, at) VALUES (?, ?, ?)', chat, JSON.stringify(body), Date.now()),
     async inbox(chat) { return (await all('SELECT id, body FROM inbox WHERE chat = ? ORDER BY id LIMIT 100', chat)).map((r) => ({ id: r.id, ...JSON.parse(r.body) })); },
     async ack(chat, ids) { for (const id of ids) await run('DELETE FROM inbox WHERE chat = ? AND id = ?', chat, id); },
