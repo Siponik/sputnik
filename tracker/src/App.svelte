@@ -392,12 +392,15 @@
     { id: 'habits', kind: 'Раздел', name: 'Привычки', view: 'habits', alias: ['habits'] },
     { id: 'archive', kind: 'Раздел', name: 'Архив', view: 'archive' },
     { id: 'templates', kind: 'Раздел', name: 'Шаблоны досок', view: 'templates' },
+    ...habits.map((h) => ({ id: 'hab-' + h.id, kind: 'Привычка', name: h.name, view: 'habits', habitId: h.id })),
     ...boardLists.map((l) => ({ id: l.id, kind: 'Список', name: l.title, listId: l.id, n: (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length })),
   ]);
   function searchGo(p) {
     searchOpen = false;
     if (p.listId) { activeId = p.listId; boardProject = null; go('board'); } else go(p.view);
+    if (p.habitId) habitOpen = { id: p.habitId }; // привычка из поиска — сразу её панель
   }
+  let habitOpen = $state(null);
   function searchOpenTask(listId, id) { searchOpen = false; openRef = { listId, id }; }
   const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
   /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
@@ -1950,7 +1953,7 @@
             oncreatetask={(p) => quickCreate(p)}
             oncreateevent={createEvent} filter={sphFilter} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} {cele} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onday={setHabitDay} onclosecele={() => (cele = null)}
+          <Habits {habits} log={lay.log} {cele} open={habitOpen} onopened={() => (habitOpen = null)} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onday={setHabitDay} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}

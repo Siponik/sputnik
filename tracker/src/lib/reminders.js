@@ -228,7 +228,7 @@ export function habitItems(habits, log, now = new Date()) {
         key: `habit|${h.id}|${day}`,
         kind: 'habit',
         title: h.name,
-        note: '',
+        note: h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '',
         list: 'Привычки',
         due: '',
         fireAt: at.toISOString(),

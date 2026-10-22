@@ -12,7 +12,7 @@
 
   // habits: [{ id, name, days, time, part, perWeek, goal, icon, color, remind, tipHide, createdAt }]; log — отметки из слоя;
   // cele — свежая веха { id, text, n }.
-  let { habits, log, cele = null, ontoggle, onday, onclosecele, oncreate, onupdate, ondelete, onregister } = $props();
+  let { habits, log, cele = null, open = null, onopened, ontoggle, onday, onclosecele, oncreate, onupdate, ondelete, onregister } = $props();
 
   const WEEK = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
   const now = new Date();
@@ -82,6 +82,8 @@
 
   // Панель привычки, окно привычки, удаление.
   let openId = $state(null);
+  // Привычка из поиска Ctrl+K: App передаёт { id } — открыть её панель (новый объект — даже ту же второй раз).
+  $effect(() => { if (open?.id) { openId = open.id; mode = 'today'; onopened?.(); } });
   const openH = $derived(habits.find((h) => h.id === openId) ?? null);
   let edit = $state(null); // null | { habit } | { preset }
   let delId = $state(null);
