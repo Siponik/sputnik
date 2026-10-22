@@ -1,4 +1,5 @@
 <script>
+  import Avatar from './Avatar.svelte';
   // Карточка канбана (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер»).
   // Галочки нет: выполнено = последняя колонка. Слева полоска приоритета, ряд чипов, справа сверху — → · срок · ⋯.
   // Клик по названию — открыть окно задачи, по остальной карточке — только выбрать. Двойной клик по названию или F2 — переименовать.
@@ -9,8 +10,10 @@
 
   // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет, тип. Подзадачи «☑ 3 из 5» — всегда, если они есть (как на макете). extra — запись слоя (клиент, сумма).
   let { task, subs = [], remind = '', type = '', priority = null, fields = [], extra = null, next = null,
-    selected = false, editing = false, ghost = false,
+    selected = false, editing = false, ghost = false, assignee = undefined, mine = false, onwho,
     onopen, onadvance, ondue, onmenu, onselect, onrename, onstartedit, onendedit, ondragstart, ondragend } = $props();
+  // assignee: undefined — сфера не общая (кружка нет), null — без исполнителя, иначе участник (memberOf).
+  const shared = $derived(assignee !== undefined);
   const show = (f) => (fields.length ? fields.includes(f) : ['due', 'prio', 'type', 'subtasks'].includes(f));
   // Учёт времени: набранное (без идущего таймера — его часы на шапке), идёт ли таймер сейчас.
   const worked = $derived(extra?.spent >= 1 ? fmtMin(spentMin({ spent: extra.spent })) : '');
@@ -49,6 +52,12 @@
     onstartedit?.(task);
   }
 </script>
+
+{#snippet whoBtn()}
+  <button type="button" class="sh-who" title={assignee ? `${assignee.name} · сменить · I` : 'Без исполнителя · выбрать · I'}
+    aria-label={assignee ? `Исполнитель ${assignee.name}, сменить` : 'Выбрать исполнителя'} onclick={stop((e) => onwho?.(task, e.currentTarget))}>
+    <Avatar m={assignee} size={24} me={mine} title={assignee?.name ?? 'Без исполнителя'} /></button>
+{/snippet}
 
 <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <article
@@ -112,6 +121,9 @@
       {/if}
       {#if remind && !done}<span class="chip" title="Напоминание">🔔 {remind}</span>{/if}
       {#if rep}<span class="chip" title="Повторяется {rep}">↻ {rep}</span>{/if}
+      {#if shared}{@render whoBtn()}{/if}
     </div>
+  {:else if shared}
+    <div class="kc-wb">{@render whoBtn()}</div>
   {/if}
 </article>

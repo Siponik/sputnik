@@ -1,6 +1,8 @@
 <script>
   import SharedTag from './SharedTag.svelte';
   import ShareBits from './ShareBits.svelte';
+  import WhoPick from './WhoPick.svelte';
+  import { memberOf, whoOf, whoCounts } from './sharedcore.js';
   // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
   // Одна выбранная карточка (обводка clay): клик по названию — окно задачи, по карточке — выбрать, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
@@ -122,10 +124,16 @@
     act.order(ids);
   }
 
+  // Исполнитель в общей сфере: кружок на карточке и клавиша I открывают выбор (WhoPick).
+  let whoPick = $state(null); // { t, anchor }
+  const assigneeOf = (t) => (share ? memberOf(share.people, whoOf(layTasks?.[t.id])) : undefined);
+  const counts = $derived(share ? whoCounts(tasks, layTasks) : {});
+  function pickWho(t, anchor) { if (share) whoPick = { t, anchor }; }
+
   // Клавиши доски (канбан): стрелки, Enter, F2, Alt+…, D, M, Ctrl+D, Del, Esc, Shift+F10.
   // Ловим на фазе погружения, чтобы цифры и стрелки не уходили в общие клавиши приложения.
   function onKey(e) {
-    if (view !== 'kanban' || menu || editing || keys.typing(e) || keys.overlay()) return;
+    if (view !== 'kanban' || menu || whoPick || editing || keys.typing(e) || keys.overlay()) return;
     const handled = () => { e.preventDefault(); e.stopPropagation(); };
     const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     if (!selTask) {
@@ -176,6 +184,7 @@
     } else if (e.key === 'Enter') { handled(); act.open(t); }
     else if (e.key === 'F2') { handled(); editing = t.id; }
     else if (e.code === 'KeyD' && !e.shiftKey) { handled(); act.open(t, true); }
+    else if (e.code === 'KeyI' && !e.shiftKey && share) { handled(); pickWho(t, document.querySelector(`.kc[data-id="${t.id}"] .sh-who`)); }
     else if (e.code === 'KeyM' && !e.shiftKey) { handled(); openMenu(t, document.querySelector(`.kc[data-id="${t.id}"]`), 'list'); }
     else if (e.key === 'Delete') {
       handled();
@@ -249,6 +258,11 @@
 </script>
 
 <svelte:window onkeydowncapture={onKey} />
+
+{#if whoPick && share}
+  <WhoPick anchor={whoPick?.anchor} people={share?.people ?? []} me={share?.me ?? ''} cur={whoOf(layTasks?.[whoPick?.t.id])} {counts}
+    onpick={(w) => { const t = whoPick.t; whoPick = null; act.who(t, w); focusCard(t.id); }} onclose={() => (whoPick = null)} />
+{/if}
 
 {#snippet compose()}
   <div class="compose">
@@ -344,6 +358,7 @@
             next={isDoneCol ? null : next} selected={sel === task.id} editing={editing === task.id} ghost={dragId === task.id}
             onopen={(t) => act.open(t)} onadvance={(t) => act.stage(t, next.id)} ondue={(t) => act.open(t, true)}
             onmenu={(t, el) => openMenu(t, el)} onselect={(t) => (sel = t.id)}
+            assignee={assigneeOf(task)} mine={!!share && whoOf(layTasks?.[task.id]) === share.me} onwho={pickWho}
             onstartedit={(t) => (editing = t.id)} onendedit={() => (editing = '')} onrename={(t, title) => act.rename(t, title)}
             ondragstart={dragStart} ondragend={dragEnd} />
           </div>

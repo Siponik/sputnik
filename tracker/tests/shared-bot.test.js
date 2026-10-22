@@ -117,6 +117,7 @@ test('/today и /week — по снимку трекера, в часовом п
   assert.match(w, /сб, 24 окт\.[\s\S]*09:00 Спортзал/);
   assert.equal(agenda([], 'Europe/Moscow', now), 'На сегодня задач нет 🌙');
   assert.match(format({ kind: 'event', title: 'Встреча', start: '2026-10-22T12:30:00Z' }, 'Europe/Moscow'), /22 окт\., 15:30/);
+  assert.match(format({ kind: 'assigned', title: 'Сундук', note: 'Аня отдаёт тебе задачу', list: 'Ассеты' }, 'Europe/Moscow'), /^👤 <b>Сундук<\/b>\nАня отдаёт/);
 });
 
 test('трекер: сообщение боту → задача; снимок недели для /today', async () => {
