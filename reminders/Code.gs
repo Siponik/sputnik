@@ -83,7 +83,7 @@ const REM_KEEP = 40;
 const SNOOZE_MIN = 60;
 
 function remindButtons_(item) {
-  if (item.kind === 'milestone' || item.kind === 'test') return null;
+  if (item.kind === 'milestone' || item.kind === 'test' || item.kind === 'assigned') return null;
   const props = PropertiesService.getScriptProperties();
   const seq = +(props.getProperty('REM_SEQ') || 0) + 1;
   props.setProperty('REM_SEQ', String(seq));
@@ -153,7 +153,7 @@ function format_(item) {
     return '⏰ <b>' + esc_(item.title) + '</b>\nПривычка · ' + Utilities.formatDate(new Date(item.fireAt), 'Europe/Moscow', 'H:mm');
   }
   // Веха серии привычки (трекер кладёт её с kind: 'milestone') — без колокольчика, эмодзи уже в заголовке.
-  const lines = [(item.kind === 'milestone' ? '' : '🔔 ') + '<b>' + esc_(item.title) + '</b>'];
+  const lines = [(item.kind === 'milestone' ? '' : item.kind === 'assigned' ? '👤 ' : '🔔 ') + '<b>' + esc_(item.title) + '</b>'];
   if (item.due) {
     const p = item.due.split('-').map(Number);
     lines.push('Срок: ' + p[2] + ' ' + MONTHS[p[1] - 1]);

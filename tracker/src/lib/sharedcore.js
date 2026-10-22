@@ -20,7 +20,7 @@ export const PREFIX = 'sh:'; // id общих списков — sh:<ключ>, 
 export const NOTES_MAX = 6000; // описание события у Google не бесконечное
 
 // Поля слоя, которые у каждого участника свои: напоминания, таймер и учёт времени, решение по «Входящим».
-const OWN_TASK = new Set(['t', 'gone', 'timer', 'spent', 'remind', 'inbox', 'pulled', 'cheer']);
+const OWN_TASK = new Set(['t', 'gone', 'timer', 'spent', 'remind', 'inbox', 'pulled', 'cheer', 'given']);
 const OWN_LIST = new Set(['t', 'gone', 'hidden', 'sphere']);
 export const SPHERE_FIELDS = ['name', 'color', 'icon'];
 
@@ -332,4 +332,94 @@ export function parseEmails(text) {
     (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? ok : bad).push(e);
   }
   return { ok: [...new Set(ok)], bad };
+}
+
+// ---------- шаг 3: выбор исполнителя, «Изменения», «тебе отдали» ----------
+
+const fold = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е').trim();
+
+/** Участник по почте (или «бывший» — убранный: кружок без цвета, имя из почты). */
+export function memberOf(people, email) {
+  if (!email) return null;
+  return people.find((p) => p.email === email)
+    ?? { email, name: nameOf(email), letter: nameOf(email)[0], color: 'var(--ink-faint)', joined: true, gone: true };
+}
+
+/**
+ * Строки поповера «Кому отдать…»: «Я» первым, остальные участники, «Без исполнителя» последним.
+ * q — поиск по имени и почте; n — открытых задач у человека (counts[email], ничьих — counts['']).
+ * Цифра строки (1–9, 0 — без исполнителя) — key.
+ */
+export function whoOptions(people, me, q = '', counts = {}) {
+  const f = fold(q);
+  const hit = (p) => !f || fold(p.name).includes(f) || fold(p.email).includes(f) || (p.email === me && 'я'.startsWith(f));
+  const ppl = [...people.filter((p) => p.email === me), ...people.filter((p) => p.email !== me)].filter(hit);
+  const rows = ppl.map((p, i) => ({ email: p.email, m: p, label: p.email === me ? 'Я' : p.name,
+    note: p.joined ? '' : 'ещё не принял', n: counts[p.email] ?? 0, key: i < 9 ? String(i + 1) : '' }));
+  if (!f || 'без исполнителя'.includes(f) || 'никто'.includes(f)) rows.push({ email: null, m: null, label: 'Без исполнителя', note: '', n: counts[''] ?? 0, key: '0' });
+  return rows;
+}
+
+/** Цифра на клавиатуре → почта исполнителя (undefined — такой строки нет, null — без исполнителя). */
+export function whoByDigit(people, me, d) {
+  if (d === '0') return null;
+  const row = whoOptions(people, me).find((r) => r.key === d && r.email);
+  return row ? row.email : undefined;
+}
+
+/** «@аня» в умной строке → участник, если имя или почта начинаются с этого слова (иначе null — значит, это список). */
+export function memberByWord(people, word) {
+  const w = fold(word).replace(/^@/, '');
+  if (!w) return null;
+  return people.find((p) => fold(p.name) === w) ?? people.find((p) => fold(p.name).startsWith(w) || fold(p.email.split('@')[0]).startsWith(w)) ?? null;
+}
+
+/**
+ * Последнее изменение записи: кто (by — последний, кто писал), когда (at, мс) и какие поля поменял той же правкой.
+ */
+export function editOf(rec) {
+  const by = rec?.f?.by;
+  if (!by) return null;
+  // ft.by не растёт, пока правит один и тот же человек, поэтому «когда» — самое свежее поле, а его правка — поля рядом.
+  const ts = Object.entries(rec.ft ?? {}).filter(([n]) => n !== 'by');
+  const at = Math.max(0, ...ts.map(([, t]) => t));
+  if (!at) return null;
+  const fields = ts.filter(([, t]) => at - t < 3000).map(([n]) => n);
+  return { by, at, fields, col: rec.f.$status ?? null, who: rec.f.$who ?? null };
+}
+
+/** Строка «Изменения» в окне задачи: «Аня · перенос в «Блокаут» · 12:40»; свои правки не показываем. */
+export function changeText(ed, people, me, colName = (c) => c, now = Date.now()) {
+  if (!ed || ed.by === me) return '';
+  const who = memberOf(people, ed.by)?.name ?? nameOf(ed.by);
+  const f = new Set(ed.fields);
+  let what = 'правка';
+  if (f.has('status')) what = 'отметка «сделано»';
+  else if (f.has('$status')) what = `перенос${ed.col ? ` в «${colName(ed.col)}»` : ''}`;
+  else if (f.has('$who')) what = ed.who ? `отдано: ${ed.who === me ? 'тебе' : memberOf(people, ed.who).name}` : 'снят исполнитель';
+  else if (f.has('title')) what = 'новое название';
+  else if (f.has('due')) what = 'новый срок';
+  else if (f.has('notes')) what = 'заметка';
+  const when = seenText(ed.at, now).replace(/^сегодня в /, '');
+  return `${who} · ${what} · ${when}`;
+}
+
+/**
+ * Задачу отдали мне: в записи исполнитель — я, раньше был не я, и поменял это не я.
+ * base — запись, какой мы её видели в прошлый раз (null — новая запись).
+ */
+export function assignedToMe(base, rec, me) {
+  if (!me || !rec || kindOf(rec.k) !== 'task') return false;
+  return rec.f.$who === me && base?.f?.$who !== me && rec.f.by && rec.f.by !== me && rec.f.status !== 'completed';
+}
+
+/** Открытых задач у каждого исполнителя (для поповера): { почта: n, '': ничьих }. */
+export function whoCounts(tasks, layTasks) {
+  const out = {};
+  for (const t of tasks) {
+    if (t.parent || t.status === 'completed') continue;
+    const w = whoOf(layTasks?.[t.id]) ?? '';
+    out[w] = (out[w] ?? 0) + 1;
+  }
+  return out;
 }

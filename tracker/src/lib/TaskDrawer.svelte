@@ -1,4 +1,7 @@
 <script>
+  import Avatar from './Avatar.svelte';
+  import WhoPick from './WhoPick.svelte';
+  import { memberOf } from './sharedcore.js';
   import { untrack } from 'svelte';
   import { fly, fade, pop } from './motion.js';
   import { dueToYmd, ymdToDue, ymd } from './api.js';
@@ -17,6 +20,7 @@
     spent = 0, running = false, ontimer = null, // учёт времени: минут набрано, идёт ли таймер
     pick = false, // сразу открыть окно «Когда» (клавиша D, кнопка срока на карточке)
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
+    share = null, onwho = null, // общая сфера: { people, me, who, change } — исполнитель и последнее чужое изменение
     onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
 
   // Напоминания: несколько «до начала» (кнопки) и одно «в своё время» (за N дней в ЧЧ:ММ или точная дата).
@@ -84,7 +88,15 @@
     if (r.remind !== undefined) onremind(r.remind);
   }
 
+  // ---------- исполнитель (общая сфера) ----------
+  let whoBtn = $state(null);
+  let whoOpen = $state(false);
+  const whoM = $derived(share ? memberOf(share.people, share.who) : null);
+  const typingIn = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? '') || e.target?.isContentEditable;
+
   function key(e) {
+    if (whoOpen) return; // Esc и цифры — у поповера исполнителя
+    if (share && e.code === 'KeyI' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !typingIn(e)) { e.preventDefault(); whoOpen = true; return; }
     if (document.querySelector('.keyhelp, .dtp')) return; // открыто окно поверх — Esc закроет его, а не задачу
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); close(); return; }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
@@ -113,6 +125,22 @@
     <div style="display: flex; align-items: flex-start; gap: 12px">
       <input class="title-input" bind:value={title} onblur={saveTitle} onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()} aria-label="Название" />
     </div>
+
+    {#if share}
+      <div class="field">
+        <span>Исполнитель</span>
+        <div>
+          <button bind:this={whoBtn} type="button" class="sh-whof" class:mine={share.who && share.who === share.me} title="Сменить · I" onclick={() => (whoOpen = true)}>
+            <Avatar m={whoM} size={24} me={!!share.who && share.who === share.me} />{whoM ? (share.who === share.me ? 'Я' : whoM.name) : 'Без исполнителя'}</button>
+          <span class="sh-whoh">I — сменить</span>
+        </div>
+      </div>
+      {#if share.change}<div class="field"><span>Изменения</span><span class="sh-chg">{share.change}</span></div>{/if}
+      {#if whoOpen}
+        <WhoPick anchor={whoBtn} people={share.people} me={share.me} cur={share.who} counts={share.counts ?? {}}
+          onpick={(w) => { whoOpen = false; onwho(w); whoBtn?.focus(); }} onclose={() => (whoOpen = false)} />
+      {/if}
+    {/if}
 
     <div class="field">
       <label for="f-status">{cols.length > 4 ? 'Этап' : 'Статус'}</label>

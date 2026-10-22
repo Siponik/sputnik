@@ -13,6 +13,8 @@
   import DateTimePicker from './DateTimePicker.svelte';
   import RemindChips from './RemindChips.svelte';
   import Coon from './Coon.svelte';
+  import Avatar from './Avatar.svelte';
+  import { memberByWord } from './sharedcore.js';
 
   // Окно «Создать» v2 (docs/design-v2.md — «Окно «Создать» v2», макеты design/screens/Create.dc.html и CreateMore.dc.html):
   // умная строка → «Куда» (lib/route.js) → поля по виду доски → превью справа. Событие и день рождения — в Google Календаре.
@@ -22,6 +24,7 @@
     layer = {}, tasksByList = {},
     dueDays = new Set(), loadEvents = null, loadCalendars = null,
     remindDefaults = { task: [], event: [], birthday: [] }, onremindDefault = null,
+    peopleOf = () => [], me = '', // общая сфера: участники списка (пусто — сфера личная или в ней никого, кроме владельца)
     oncreate, oncreateevent, oncreatebirthday, onlearn = null, onnewlist = null, onclose,
   } = $props();
 
@@ -79,8 +82,16 @@
     return p.tag && !knownTag(p.tag) ? parseLine(text, { today: new Date(), off: { ...off, tag: true } }) : p;
   });
 
+  // «@аня» — участник какой-нибудь общей сферы, а не список: в «Куда» не идёт, ставит исполнителя.
+  const allPeople = $derived.by(() => {
+    const seen = new Map();
+    for (const l of lists) for (const p of peopleOf(l.id)) if (!seen.has(p.email)) seen.set(p.email, p);
+    return [...seen.values()];
+  });
+  const atWho = $derived(parsed.at ? memberByWord(allPeople, parsed.at) : null);
+
   // Пересчёт «Куда» — с задержкой 150 мс после ввода.
-  const routeSrc = $derived([parsed.at ? `@${parsed.at}` : '', parsed.tag ? `#${parsed.tag}` : '', parsed.rest].join(' '));
+  const routeSrc = $derived([parsed.at && !atWho ? `@${parsed.at}` : '', parsed.tag ? `#${parsed.tag}` : '', parsed.rest].join(' '));
   let routeText = $state(untrack(() => routeSrc));
   $effect(() => {
     const v = routeSrc;
@@ -94,6 +105,12 @@
   const why = $derived(manualList ? 'выбрано вручную' : destR.why ?? 'текущая доска');
   const alts = $derived(ranked.filter((r) => r.listId !== dest).slice(0, 2).map((r) => lists.find((l) => l.id === r.listId)).filter(Boolean));
   const view = $derived(viewOf(dest, layer));
+  // «Кто делает» (только в общей сфере): undefined — не выбирали руками; по умолчанию — @имя из строки или «Никто».
+  const destPeople = $derived(peopleOf(dest));
+  let manualWho = $state(undefined);
+  const who = $derived(!destPeople.length ? null : manualWho !== undefined ? manualWho
+    : atWho && destPeople.some((p) => p.email === atWho.email) ? atWho.email : null);
+  const whoRows = $derived([...destPeople.filter((p) => p.email === me), ...destPeople.filter((p) => p.email !== me)]);
   const tpl = $derived(templateOf(layer?.lists?.[dest]?.template, layer));
   const spheres = $derived(spheresFrom(layer));
   const sphereFor = (id) => spheres.find((x) => x.id === sphereOf(id, layer)) ?? null;
@@ -144,7 +161,8 @@
     if (parsed.day || parsed.time) out.push({ k: 'when', l: [parsed.day ? cr.shortDay(parsed.day) : 'сегодня', parsed.time].filter(Boolean).join(' · ') });
     if (parsed.repeat) out.push({ k: 'repeat', l: REPEATS.find((r) => r.id === parsed.repeat.every)?.short ?? '' });
     if (parsed.priority) { const p = PRIORITIES.find((x) => x.id === parsed.priority); out.push({ k: 'prio', l: `${p.mark} ${p.label.toLowerCase()}`, c: parsed.priority === 1 ? 'var(--clay)' : parsed.priority === 2 ? 'var(--gold)' : 'var(--ink-faint)' }); }
-    if (parsed.at) out.push({ k: 'at', l: destR.why?.startsWith('указано @') ? `список: ${destList?.title}` : `@${parsed.at} — нет такого списка` });
+    if (parsed.at && atWho) out.push({ k: 'at', l: destPeople.some((p) => p.email === atWho.email) ? `делает: ${atWho.email === me ? 'я' : atWho.name}` : `@${parsed.at} — не в этой сфере` });
+    else if (parsed.at) out.push({ k: 'at', l: destR.why?.startsWith('указано @') ? `список: ${destList?.title}` : `@${parsed.at} — нет такого списка` });
     if (tagTopic) out.push({ k: 'tag', l: `тема: ${tagTopic.name}`, c: topicColor(tagTopic) });
     else if (tagType) out.push({ k: 'tag', l: `тип: ${TYPES.find((t) => t.id === tagType)?.label}`, c: `var(--type-${tagType})` });
     if (kind === 'task' && autoTopic && !manualTopic) { const t = topics.find((x) => x.id === autoTopic); out.push({ k: 'topic', l: `тема: ${t.name}`, c: topicColor(t), auto: true, title: `Тема угадана ${destR.topicWhy ?? ''}` }); }
@@ -296,6 +314,7 @@
     if (priority) lay.priority = priority;
     if (repeatRule) lay.repeat = repeatRule;
     lay.remind = remRules;
+    if (who) lay.who = who;
     let subList = subs.map((x) => ({ title: x }));
     if (view === 'stickers') { if (topic) lay.topic = topic; if (pin) lay.pin = true; }
     if (view === 'kanban' || view === 'list') {
@@ -531,6 +550,16 @@
       {#key view}
       <div class="cr-block" aria-label="Для {view}" in:fade={{ duration: 140 }}>
         <div class="cr-lbl">{view === 'stickers' ? 'Для стикера' : view === 'pipe' ? 'Для конвейера' : view === 'list' ? 'Для списка' : 'Для канбана'}</div>
+        {#if destPeople.length}
+          <div class="cr-row"><span>Кто делает</span>
+            <div class="cr-chips">
+              {#each whoRows as p (p.email)}
+                <button type="button" class="cr-c cr-who" aria-pressed={who === p.email} onclick={() => (manualWho = p.email)}><Avatar m={p} size={20} me={p.email === me} />{p.email === me ? 'Я' : p.name}</button>
+              {/each}
+              <button type="button" class="cr-c cr-who" aria-pressed={!who} onclick={() => (manualWho = null)}><Avatar m={null} size={20} />Никто</button>
+            </div>
+          </div>
+        {/if}
         {#if view === 'stickers'}
           <div class="cr-row"><span>Тема</span>
             <div class="cr-chips">

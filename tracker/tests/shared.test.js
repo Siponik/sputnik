@@ -238,3 +238,66 @@ test('участник: когда позвали и когда был — в с
   assert.equal(m.seen, 500);
   assert.equal(m.invited, 100);
 });
+
+// ---------- шаг 3 ----------
+test('whoOptions: я первым, без исполнителя последним, поиск и цифры', () => {
+  const ppl = [
+    { email: 'me@x.com', name: 'Сипоник', joined: true, owner: true },
+    { email: 'anya@x.com', name: 'Аня', joined: true },
+    { email: 'max@x.com', name: 'Макс', joined: false },
+  ];
+  const rows = sh.whoOptions([ppl[1], ppl[0], ppl[2]], 'me@x.com', '', { 'anya@x.com': 2 });
+  assert.deepEqual(rows.map((r) => r.label), ['Я', 'Аня', 'Макс', 'Без исполнителя']);
+  assert.deepEqual(rows.map((r) => r.key), ['1', '2', '3', '0']);
+  assert.equal(rows[1].n, 2);
+  assert.equal(rows[2].note, 'ещё не принял');
+  assert.deepEqual(sh.whoOptions(ppl, 'me@x.com', 'ма').map((r) => r.label), ['Макс']);
+  assert.deepEqual(sh.whoOptions(ppl, 'me@x.com', 'без').map((r) => r.label), ['Без исполнителя']);
+  assert.equal(sh.whoByDigit(ppl, 'me@x.com', '2'), 'anya@x.com');
+  assert.equal(sh.whoByDigit(ppl, 'me@x.com', '0'), null);
+  assert.equal(sh.whoByDigit(ppl, 'me@x.com', '7'), undefined);
+});
+
+test('memberByWord: @аня — участник, @работа — не участник', () => {
+  const ppl = [{ email: 'anya.k@x.com', name: 'Аня' }, { email: 'max@x.com', name: 'Макс' }, { email: 'olga@x.com', name: 'Оля' }];
+  assert.equal(sh.memberByWord(ppl, '@аня').email, 'anya.k@x.com');
+  assert.equal(sh.memberByWord(ppl, 'ма').email, 'max@x.com');
+  assert.equal(sh.memberByWord(ppl, 'olg').email, 'olga@x.com');
+  assert.equal(sh.memberByWord(ppl, 'работа'), null);
+  assert.equal(sh.memberByWord(ppl, '@'), null);
+});
+
+test('editOf и changeText: кто и что поменял', () => {
+  let r = sh.make('t0000000000000001', { title: 'Стойка', $status: 'refs' }, 1000);
+  r = sh.edit(r, { by: 'me@x.com' }, 1001);
+  assert.equal(sh.changeText(sh.editOf(r), [], 'me@x.com'), '');
+  const at = new Date(2026, 9, 22, 12, 40).getTime();
+  r = sh.edit(r, { $status: 'block' }, at);
+  r = sh.edit(r, { by: 'anya@x.com' }, at + 1);
+  const ed = sh.editOf(r);
+  assert.deepEqual(ed.fields, ['$status']);
+  const ppl = [{ email: 'anya@x.com', name: 'Аня' }];
+  assert.equal(sh.changeText(ed, ppl, 'me@x.com', (c) => (c === 'block' ? 'Блокаут' : c), at + 60e3), 'Аня · перенос в «Блокаут» · 12:40');
+  r = sh.edit(r, { $who: 'me@x.com' }, at + 5000);
+  r = sh.edit(r, { by: 'anya@x.com' }, at + 5001);
+  assert.equal(sh.changeText(sh.editOf(r), ppl, 'me@x.com', undefined, at + 60e3), 'Аня · отдано: тебе · 12:40');
+});
+
+test('assignedToMe: только когда отдал другой и раньше было не мне', () => {
+  const base = sh.make('t0000000000000002', { title: 'A', $who: 'anya@x.com', by: 'anya@x.com' }, 1);
+  const rec = sh.edit(base, { $who: 'me@x.com', by: 'anya@x.com' }, 2);
+  assert.equal(sh.assignedToMe(base, rec, 'me@x.com'), true);
+  assert.equal(sh.assignedToMe(rec, rec, 'me@x.com'), false);
+  assert.equal(sh.assignedToMe(base, sh.edit(rec, { by: 'me@x.com' }, 3), 'me@x.com'), false);
+  assert.equal(sh.assignedToMe(null, rec, 'me@x.com'), true);
+  assert.equal(sh.assignedToMe(base, sh.edit(rec, { status: 'completed' }, 3), 'me@x.com'), false);
+  assert.equal(sh.assignedToMe(base, sh.make('m0000000000000001', { $who: 'me@x.com', by: 'a' }, 1), 'me@x.com'), false);
+});
+
+test('whoCounts и memberOf', () => {
+  const tasks = [{ id: 'a' }, { id: 'b' }, { id: 'c', status: 'completed' }, { id: 'd', parent: 'a' }, { id: 'e' }];
+  const L = { a: { who: 'x@y.z' }, b: { who: 'x@y.z' }, c: { who: 'x@y.z' } };
+  assert.deepEqual(sh.whoCounts(tasks, L), { 'x@y.z': 2, '': 1 });
+  assert.equal(sh.memberOf([], 'gone@y.z').gone, true);
+  assert.equal(sh.memberOf([], null), null);
+});

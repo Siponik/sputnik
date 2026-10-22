@@ -1,5 +1,5 @@
 <script>
-  import { onMount, tick, flushSync } from 'svelte';
+  import { onMount, tick, flushSync, untrack } from 'svelte';
   import * as motion from './lib/motion.js';
   import * as keys from './lib/keys.js';
   import KeyHelp from './lib/KeyHelp.svelte';
@@ -161,7 +161,8 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log), ...(botTest ? [botTest] : [])];
+    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log),
+      ...reminders.assignedItems(boardLists, tasks, lay.tasks), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
     const week = tgKey ? sharedbot.snapshot(boardLists, tasks, lay.tasks) : null;
@@ -642,6 +643,7 @@
     notes: async (t, notes) => { try { replace(activeId, await api.patchTask(activeId, t.id, { notes })); } catch (e) { say('Не удалось сохранить заметку: ' + e); } },
     stage: (t, col) => stageUndo(t, col, activeId),
     priority: (t, n) => { touch('tasks', t.id, { priority: n }); saveLayer(); },
+    who: (t, w) => setWho(t.id, w),
     order: (ids) => { ids.forEach((id, i) => touch('tasks', id, { ord: i })); saveLayer(); },
     moveList: (t, dest) => moveToList(t, dest, activeId),
     duplicate: (t) => duplicateTask(t, activeId),
@@ -858,9 +860,14 @@
       lay[sec][key] = { ...cur, ...patch, t: Math.max(cur.t ?? 0, t || Date.now()) };
       changed = true;
     };
+    const given = [];
+    const me = shared.myEmail();
     for (const { cal, k, base, rec } of changes) {
       if (!rec) continue;
       const kind = sh.kindOf(k), t = sh.lastTime(rec);
+      // Новую запись (base нет) считаем «отданной мне», только если её завели недавно — иначе при первом входе в сферу
+      // посыпались бы уведомления обо всех старых задачах.
+      if (sh.assignedToMe(base, rec, me) && (base || Date.now() - t < 15 * 60e3)) given.push({ cal, k, rec });
       if (kind === 'task') {
         const { toLayer, toRec } = sh.reconcile(lay.tasks?.[k], base, rec, 'task');
         if (Object.keys(toLayer).length) put('tasks', k, toLayer, t);
@@ -892,9 +899,51 @@
       const sid = sh.sphereId(cal);
       if (lay.spheres?.[sid] && !lay.spheres[sid].removed) { put('spheres', sid, { removed: true }); say(`Общей сферы «${lay.spheres[sid].name}» больше нет: её удалили или тебя убрали из участников`); }
     }
+    for (const g of given) {
+      const name = shared.people(g.cal).find((p) => p.email === g.rec.f.by)?.name ?? sh.nameOf(g.rec.f.by);
+      put('tasks', g.k, { given: { by: g.rec.f.by, name, at: new Date().toISOString() } });
+    }
     if (changed) saveLayer();
     shareVer++;
+    if (given.length) tellGiven(given);
     for (const [cal, k, p] of back) shared.patchRec(cal, k, p).catch(() => {});
+  }
+
+  /** Тебе отдали задачи: плашка в приложении и уведомление Windows (бот — через файл напоминаний, kind 'assigned'). */
+  async function tellGiven(given) {
+    const g = given[0], name = lay.tasks?.[g.k]?.given?.name ?? 'Участник';
+    const title = g.rec.f.title || 'Без названия';
+    const text = given.length === 1 ? `${name} отдаёт тебе «${title}»` : `Тебе отдали задач: ${given.length}`;
+    const lid = sh.listId(g.rec.f.list ?? '');
+    say(text, given.length === 1 && g.rec.f.list ? () => (openRef = { listId: lid, id: g.k }) : null, 'Открыть');
+    if (lay.settings?.notify?.v === false) return;
+    try {
+      let ok = await notify.isPermissionGranted();
+      if (!ok) ok = (await notify.requestPermission()) === 'granted';
+      if (ok) notify.sendNotification({ title: 'Спутник · тебе отдали задачу', body: given.length === 1 ? `${name}: ${title}` : text });
+    } catch { /* уведомления недоступны — плашка и бот всё равно скажут */ }
+  }
+
+  /** Окно задачи в общей сфере: исполнитель, последнее чужое изменение, счётчики для выбора. */
+  const drawerShare = $derived.by(() => {
+    void shareVer;
+    if (!openTask || !openRef || !sh.isSharedId(openRef.listId)) return null;
+    const sid = sphereOf(openRef.listId, lay);
+    if (!together(sid)) return null;
+    const cal = shared.calOfListId(openRef.listId), people = peopleOf(sid), me = shared.myEmail();
+    const rec = shared.storeOf(cal)?.recs?.[openTask.id];
+    const cols = templateFor(openRef.listId).cols;
+    return { people, me, who: sh.whoOf(lay.tasks?.[openTask.id]),
+      change: sh.changeText(sh.editOf(rec), people, me, (c) => cols.find((x) => x.id === c)?.name ?? c),
+      counts: sh.whoCounts(tasks[openRef.listId] ?? [], lay.tasks) };
+  });
+  // «Отдано тебе» гаснет, когда задачу открыли.
+  $effect(() => { if (openTask && lay.tasks?.[openTask.id]?.given) untrack(() => { touch('tasks', openTask.id, { given: null }); saveLayer(); }); });
+
+  /** Исполнитель задачи общей сферы (w — почта или null). «Отдано мне» снимается: сам выбрал. */
+  function setWho(id, w) {
+    touch('tasks', id, { who: w ?? null, ...(lay.tasks?.[id]?.given ? { given: null } : {}) });
+    saveLayer();
   }
 
   /** Правки слоя общих задач, списков и сфер — в их календари. */
@@ -1781,6 +1830,7 @@
       repeat={lay.tasks?.[openTask.id]?.repeat ?? null}
       pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
+      share={drawerShare} onwho={(w) => setWho(openTask.id, w)}
       spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
@@ -1801,6 +1851,7 @@
       {remindDefaults} onremindDefault={setRemindDefault}
       oncreate={createFromWindow} oncreateevent={createEvent} oncreatebirthday={createBirthday}
       onlearn={learnRoute} onnewlist={(name) => { quick = null; newListName = name; newList = true; }}
+      peopleOf={(lid) => { const sid = sphereOf(lid, lay); return sh.isSharedId(lid) && together(sid) ? peopleOf(sid) : []; }} me={meEmail}
       onclose={() => (quick = null)} />
   {/if}
 
