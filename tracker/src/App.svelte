@@ -23,6 +23,7 @@
   import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
   import SphereView from './lib/SphereView.svelte';
+  import ShareStates from './lib/ShareStates.svelte';
   import SphereEdit from './lib/SphereEdit.svelte';
   import SphereFilter from './lib/SphereFilter.svelte';
   import Side from './lib/Side.svelte';
@@ -161,7 +162,7 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = [...reminders.collect(boardLists, mineTasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log),
+    const items = [...reminders.collect(boardLists.filter((l) => !l.lost), mineTasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log),
       ...reminders.assignedItems(boardLists, tasks, lay.tasks), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
@@ -805,7 +806,8 @@
   const curSphere = $derived(spheres.find((s) => s.id === activeSphere) ?? null);
   const sphereLists = (sid) => boardLists.filter((l) => sphereOf(l.id, lay) === sid);
   // Списки для «Сегодня» и «Календаря» с учётом чипа сферы.
-  const shownLists = $derived(sphereFilter && spheres.some((s) => s.id === sphereFilter) ? sphereLists(sphereFilter) : boardLists);
+  // Списки сферы без доступа («нет доступа») в «Сегодня» и календарь не идут.
+  const shownLists = $derived((sphereFilter && spheres.some((s) => s.id === sphereFilter) ? sphereLists(sphereFilter) : boardLists).filter((l) => !l.lost));
 
   function openList(id) { activeId = id; boardProject = null; view = 'board'; }
   function openSphere(id) { activeSphere = id; view = 'sphere'; }
@@ -874,8 +876,9 @@
     };
     const given = [], closed = [];
     const me = shared.myEmail();
+    const active = new Set(shared.activeCalendars()); // приглашение до «Принять» в слой не попадает
     for (const { cal, k, base, rec } of changes) {
-      if (!rec) continue;
+      if (!rec || !active.has(cal)) continue;
       const kind = sh.kindOf(k), t = sh.lastTime(rec);
       // Новую запись (base нет) считаем «отданной мне», только если её завели недавно — иначе при первом входе в сферу
       // посыпались бы уведомления обо всех старых задачах.
@@ -896,10 +899,11 @@
         if (Object.keys(toRec).length) back.push([cal, k, toRec]);
       }
     }
-    // У каждой найденной сферы — запись в слое, у её списков — эта сфера.
-    for (const cal of shared.calendars()) {
+    // У каждой сферы, где я участник, — запись в слое, у её списков — эта сфера. Приглашения ждут «Принять».
+    for (const cal of shared.activeCalendars()) {
       const sid = sh.sphereId(cal);
       const S = lay.spheres?.[sid];
+      if (S?.noAccess) put('spheres', sid, { noAccess: false });
       if (!S || S.removed || S.gone || !S.shared) {
         const rec = shared.sphereRec(cal);
         put('spheres', sid, { name: rec?.f?.name ?? 'Общая сфера', color: rec?.f?.color ?? 'gold', icon: rec?.f?.icon ?? 'users',
@@ -907,10 +911,10 @@
       }
       for (const l of shared.lists().filter((x) => x.shared === cal)) if (lay.lists?.[l.id]?.sphere !== sid) put('lists', l.id, { sphere: sid });
     }
-    // Доступа к календарю больше нет: сферу удалил владелец или нас убрали.
+    // Доступа к календарю больше нет: сферу удалил владелец или нас убрали. Сфера остаётся бледной с «нет доступа».
     for (const cal of gone) {
       const sid = sh.sphereId(cal);
-      if (lay.spheres?.[sid] && !lay.spheres[sid].removed) { put('spheres', sid, { removed: true }); say(`Общей сферы «${lay.spheres[sid].name}» больше нет: её удалили или тебя убрали из участников`); }
+      if (lay.spheres?.[sid] && !lay.spheres[sid].removed) { put('spheres', sid, { noAccess: true }); say(`Нет доступа к сфере «${lay.spheres[sid].name}»: её удалили или тебя убрали из участников`); }
     }
     for (const g of given) {
       const name = shared.people(g.cal).find((p) => p.email === g.rec.f.by)?.name ?? sh.nameOf(g.rec.f.by);
@@ -947,6 +951,49 @@
   // «Сегодня» и календарь: из общих сфер — только мои и ничьи задачи (docs/design-v2.md, «Общие сферы» 5).
   const mineTasks = $derived((shareVer, sh.forMe(tasks, lay.tasks, meEmail, (lid) => sh.isSharedId(lid) && together(sphereOf(lid, lay)))));
 
+  // ---------- состояния общей сферы (docs/design-v2.md, «Общие сферы» 6) ----------
+  const invites = $derived((shareVer, shared.invites()));
+  async function acceptInvite(inv) {
+    try {
+      await shared.accept(inv.cal);
+      // Записи календаря уже скачаны, пока висело приглашение, — теперь кладём их в слой целиком.
+      applyShared({ changes: Object.values(shared.storeOf(inv.cal)?.recs ?? {}).map((rec) => ({ cal: inv.cal, k: rec.k, base: null, rec })), gone: [] }); await refresh(); say(`Ты в сфере «${inv.name}»`); }
+    catch (e) { say('Не удалось принять приглашение: ' + e); }
+  }
+  async function declineInvite(inv) {
+    try { await shared.decline(inv.cal); shareVer++; say(`Приглашение в «${inv.name}» отклонено`); }
+    catch (e) { say('Не получилось отказаться: ' + e); }
+  }
+  /** «Нет доступа» → «Убрать из колонки»: сфера и её списки уходят из колонки на этом компьютере. */
+  async function forgetSphere(sid) {
+    const cal = sh.calOfSphere(sid), name = lay.spheres?.[sid]?.name ?? '';
+    await shared.forget(cal);
+    touch('spheres', sid, { removed: true, noAccess: false });
+    saveLayer();
+    shareVer++;
+    if (activeSphere === sid) view = 'board';
+    await refresh();
+    say(`Сфера «${name}» убрана из колонки`);
+  }
+  function askAccess(sid) {
+    const cal = sh.calOfSphere(sid), owner = shared.people(cal).find((p) => p.owner);
+    navigator.clipboard?.writeText(sh.askAccessText(lay.spheres?.[sid]?.name ?? '', owner?.email ?? '')).then(() => say('Письмо владельцу скопировано — вставь его в почту'), () => say('Не удалось скопировать'));
+  }
+  /** Сколько моих правок ещё не видел самый «отставший» участник сферы (плашка над доской). */
+  function unseenOf(sid) {
+    void shareVer;
+    const cal = sh.calOfSphere(sid);
+    if (!cal || !together(sid)) return null;
+    const u = sh.unseenBy(shared.storeOf(cal)?.recs, peopleOf(sid), meEmail)[0];
+    return u && u.n >= 2 ? u : null;
+  }
+  /** Задача отдана, а Спутник исполнителя её ещё не забрал — «ждёт Аню». */
+  function waitOf(listId, taskId) {
+    void shareVer;
+    const cal = shared.calOfListId(listId);
+    return cal ? sh.waitingFor(shared.storeOf(cal)?.recs?.[taskId], shared.people(cal), meEmail) : null;
+  }
+
   /** Задача из строки «Сегодня» в общую сферу — сразу моя (в «Создать» по умолчанию «Никто»). */
   function mineByDefault(p) {
     if (!p?.listId || !sh.isSharedId(p.listId) || !together(sphereOf(p.listId, lay)) || p.layer?.who !== undefined) return p;
@@ -979,7 +1026,7 @@
   async function pushShared() {
     if (sharePushing) { await sharePushing; }
     sharePushing = (async () => {
-      for (const cal of shared.calendars()) {
+      for (const cal of shared.activeCalendars()) {
         const recs = shared.storeOf(cal)?.recs ?? {};
         for (const rec of Object.values(recs)) {
           const kind = sh.kindOf(rec.k);
@@ -992,7 +1039,7 @@
         }
       }
     })();
-    try { await sharePushing; } finally { sharePushing = null; }
+    try { await sharePushing; } finally { sharePushing = null; shareVer++; }
   }
 
   /** Раз в 30 с — изменения общих сфер (дёшево: Google отдаёт только новое). */
@@ -1792,6 +1839,9 @@
 
       <div class="main">
         {#snippet sphFilter()}<SphereFilter {spheres} value={sphereFilter} onchange={(v) => (sphereFilter = v)} />{/snippet}
+        {#if (view === 'today' || view === 'board') && invites.length}
+          <div class="sh-invs">{#each invites as inv (inv.cal)}<ShareStates kind="invite" invite={inv} onaccept={() => acceptInvite(inv)} ondecline={() => declineInvite(inv)} />{/each}</div>
+        {/if}
         {#if view === 'today'}
           <Today lists={shownLists} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
@@ -1816,6 +1866,8 @@
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
             onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
+        {:else if view === 'sphere' && curSphere?.noAccess}
+          <ShareStates kind="lost" sphere={curSphere.name} onask={() => askAccess(curSphere.id)} onforget={() => forgetSphere(curSphere.id)} />
         {:else if view === 'sphere' && curSphere}
           <SphereView sphere={curSphere} lists={sphereLists(curSphere.id)} tasksByList={tasks} {templateFor} {colOf}
             people={together(curSphere.id) ? peopleOf(curSphere.id) : []} me={meEmail} layTasks={lay.tasks}
@@ -1827,9 +1879,13 @@
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
+        {:else if activeList?.lost || lay.spheres?.[sphereOf(activeId, lay)]?.noAccess}
+          <ShareStates kind="lost" sphere={lay.spheres?.[sphereOf(activeId, lay)]?.name ?? activeList.title}
+            onask={() => askAccess(sphereOf(activeId, lay))} onforget={() => forgetSphere(sphereOf(activeId, lay))} />
         {:else if activeList}
           {#key activeId}
           <div class="board-swap" in:motion.fade={{ duration: 160 }}>
+          {#if unseenOf(sphereOf(activeId, lay))}<ShareStates kind="unseen" unseen={unseenOf(sphereOf(activeId, lay))} />{/if}
           <Board list={activeList} tasks={tasks[activeId] ?? []} template={templateFor(activeId)} {colOf} {remindOf} {typeOf}
             view={viewFor(activeId)} onview={(v) => { touch('lists', activeId, { view: v }); saveLayer(); }}
             ontoggle={(t, d) => toggle(t, d, activeId, true)}
@@ -1837,7 +1893,7 @@
             act={boardAct} layList={lay.lists?.[activeId] ?? {}} lists={boardLists.filter((l) => l.id !== activeId)} sphereName={spheres.find((s) => s.id === sphereOf(activeId, lay))?.name ?? ''}
             share={together(sphereOf(activeId, lay)) ? { people: peopleOf(sphereOf(activeId, lay)), me: meEmail, owner: shared.isOwner(sh.calOfSphere(sphereOf(activeId, lay))),
               oninvite: () => (sharePanel = { id: sphereOf(activeId, lay), mode: 'people' }),
-              mode: lay.settings?.whoFilter?.[activeId] ?? 'all', onmode: (m) => { touch('settings', 'whoFilter', { [activeId]: m }); saveLayer(); } } : null} fold={boardFold} onfold={foldCol}
+              mode: lay.settings?.whoFilter?.[activeId] ?? 'all', waitOf: (id) => waitOf(activeId, id), onmode: (m) => { touch('settings', 'whoFilter', { [activeId]: m }); saveLayer(); } } : null} fold={boardFold} onfold={foldCol}
             onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}

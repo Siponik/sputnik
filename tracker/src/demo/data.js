@@ -144,12 +144,12 @@ const key = (p, n) => p + String(n).padStart(16, '0');
 export function seedShared() {
   const t = Date.now() - 36e5;
   const R = (k, f) => make(k, f, t);
-  const member = (email, name, order, joined = true) => R(memberKey(email), { email, name, order, joined });
+  const member = (email, name, order, joined = true, seen = undefined) => R(memberKey(email), { email, name, order, joined, ...(seen ? { seen } : {}) });
   const task = (n, list, title, f = {}) => R(key('t', n), { list, title, notes: '', status: 'needsAction', pos: String(100 + n).padStart(20, '0'), ...f });
   const LA = key('l', 1), LT = key('l', 2), LB = key('l', 3);
   const tavern = [
     R(SPHERE_KEY, { name: 'Таверна', color: 'clay', icon: 'cube', owner: DEMO_ME }),
-    member(DEMO_ME, 'Сипоник', 0), member(ANYA, 'Аня', 1), member(MAX, 'Макс', 2), member(VIKA, 'Вика', 3, false),
+    member(DEMO_ME, 'Сипоник', 0), member(ANYA, 'Аня', 1, true, t), member(MAX, 'Макс', 2), member(VIKA, 'Вика', 3, false),
     R(LA, { title: 'Ассеты таверны', created: 1, $template: 'asset3d', $view: 'pipe' }),
     R(LT, { title: 'Задачи команды', created: 2, $template: 'work' }),
     task(1, LA, 'Стойка бармена', { due: due(0), $status: 'sculpt', $project: 'Таверна', $who: DEMO_ME, $priority: 1,
@@ -175,7 +175,16 @@ export function seedShared() {
     task(13, LB, 'Батарейки для пульта', { $topic: 'home' }),
     task(14, LB, 'Сыр к ужину', { $topic: 'food', $who: OLYA }),
   ];
+  // Приглашение: Аня позвала, я ещё не принял — плашка «Аня зовёт тебя в сферу» на «Сегодня» и доске.
+  const LC = key('l', 4);
+  const cafe = [
+    R(SPHERE_KEY, { name: 'Кафе «Ёж»', color: 'personal', icon: 'heart', owner: ANYA }),
+    member(ANYA, 'Аня', 0), member(MAX, 'Макс', 1), member(DEMO_ME, 'Сипоник', 2, false),
+    R(LC, { title: 'Меню и вывески', created: 1, $template: 'work' }),
+    task(21, LC, 'Логотип кафе', { $who: ANYA }), task(22, LC, 'Меню на доске', {}), task(23, LC, 'Табличка «открыто»', { $who: MAX }),
+  ];
   const cal = (id, summary, role, recs) => ({ id, summary, role, description: `${MARK} v1 — служебный календарь общей сферы Спутника.`, recs: recs.map(toEvent) });
   return [cal('tavern@group.calendar.google.com', 'Спутник · сфера Таверна', 'owner', tavern),
-    cal('family@group.calendar.google.com', 'Спутник · сфера Семья', 'writer', family)];
+    cal('family@group.calendar.google.com', 'Спутник · сфера Семья', 'writer', family),
+    cal('cafe@group.calendar.google.com', 'Спутник · сфера Кафе', 'writer', cafe)];
 }

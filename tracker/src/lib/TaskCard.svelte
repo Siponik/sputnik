@@ -10,7 +10,7 @@
 
   // fields — что показывать (шаблон → «На карточке»); пусто — срок, приоритет, тип. Подзадачи «☑ 3 из 5» — всегда, если они есть (как на макете). extra — запись слоя (клиент, сумма).
   let { task, subs = [], remind = '', type = '', priority = null, fields = [], extra = null, next = null,
-    selected = false, editing = false, ghost = false, assignee = undefined, mine = false, onwho,
+    selected = false, editing = false, ghost = false, assignee = undefined, mine = false, onwho, wait = null,
     onopen, onadvance, ondue, onmenu, onselect, onrename, onstartedit, onendedit, ondragstart, ondragend } = $props();
   // assignee: undefined — сфера не общая (кружка нет), null — без исполнителя, иначе участник (memberOf).
   const shared = $derived(assignee !== undefined);
@@ -53,6 +53,11 @@
   }
 </script>
 
+{#snippet waitChip()}
+  <span class="sh-wait" title="Отдано: {wait.name}. Изменение дойдёт при следующем обмене со сферой">
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>ждёт: {wait.name}</span>
+{/snippet}
+
 {#snippet whoBtn()}
   <button type="button" class="sh-who" title={assignee ? `${assignee.name} · сменить · I` : 'Без исполнителя · выбрать · I'}
     aria-label={assignee ? `Исполнитель ${assignee.name}, сменить` : 'Выбрать исполнителя'} onclick={stop((e) => onwho?.(task, e.currentTarget))}>
@@ -65,6 +70,7 @@
   class:done
   class:sel={selected}
   class:ghost
+  class:wait={!!wait}
   data-id={task.id}
   tabindex="0"
   style="--pc: {pc}"
@@ -121,9 +127,10 @@
       {/if}
       {#if remind && !done}<span class="chip" title="Напоминание">🔔 {remind}</span>{/if}
       {#if rep}<span class="chip" title="Повторяется {rep}">↻ {rep}</span>{/if}
+      {#if wait}{@render waitChip()}{/if}
       {#if shared}{@render whoBtn()}{/if}
     </div>
   {:else if shared}
-    <div class="kc-wb">{@render whoBtn()}</div>
+    <div class="kc-wb">{#if wait}{@render waitChip()}{/if}{@render whoBtn()}</div>
   {/if}
 </article>
