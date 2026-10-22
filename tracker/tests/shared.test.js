@@ -347,3 +347,50 @@ test('passText и nextHint', () => {
   const crew = sh.stageCrew({ who: 'me@x', stageWho: { refs: 'anya@x' } }, [{ id: 'refs' }, { id: 'sculpt' }, { id: 'uv' }], 'sculpt');
   assert.deepEqual(crew.map((r) => r.who), ['anya@x', 'me@x', null]);
 });
+
+// ---------- шаг 7 ----------
+test('isInvite и inviteInfo: приглашение, пока сам не принял', () => {
+  const me = 'me@x';
+  const recs = {
+    [sh.SPHERE_KEY]: sh.make(sh.SPHERE_KEY, { name: 'Кафе', owner: 'anya@x' }, 1),
+    [sh.memberKey('anya@x')]: sh.make(sh.memberKey('anya@x'), { email: 'anya@x', name: 'Аня', order: 0 }, 1),
+    [sh.memberKey(me)]: sh.make(sh.memberKey(me), { email: me, order: 1, joined: false }, 1),
+    l0000000000000001: sh.make('l0000000000000001', { title: 'Меню' }, 1),
+    t0000000000000001: sh.make('t0000000000000001', { title: 'А', list: 'l0000000000000001' }, 1),
+    t0000000000000002: sh.make('t0000000000000002', { title: 'Б', list: 'l0000000000000001', status: 'completed' }, 1),
+  };
+  const s = { cal: 'c', role: 'writer', recs };
+  assert.equal(sh.isInvite(s, me), true);
+  assert.equal(sh.isInvite({ ...s, accepted: true }, me), false);
+  assert.equal(sh.isInvite({ ...s, role: 'owner' }, me), false);
+  const joined = { ...s, recs: { ...recs, [sh.memberKey(me)]: sh.edit(recs[sh.memberKey(me)], { joined: true }, 2) } };
+  assert.equal(sh.isInvite(joined, me), false);
+  const info = sh.inviteInfo(s, me);
+  assert.equal(info.name, 'Кафе');
+  assert.equal(info.owner.email, 'anya@x');
+  assert.equal(info.lists, 1);
+  assert.equal(info.tasks, 1);
+  assert.deepEqual(info.people.map((p) => p.email), ['anya@x']);
+});
+
+test('waitingFor и unseenBy: правка ещё не дошла до участника', () => {
+  const me = 'me@x';
+  const ppl = [{ email: 'anya@x', name: 'Аня', joined: true, seen: 1000 }, { email: 'max@x', name: 'Макс', joined: true, seen: null }];
+  let r = sh.make('t0000000000000001', { title: 'А', by: me }, 500);
+  r = sh.edit(r, { $who: 'anya@x' }, 2000);
+  assert.equal(sh.waitingFor(r, ppl, me).email, 'anya@x');
+  assert.equal(sh.waitingFor(sh.edit(r, { $who: 'max@x' }, 3000), ppl, me), null); // Макс не отмечался — молчим
+  assert.equal(sh.waitingFor(sh.make('t0000000000000002', { $who: 'anya@x', by: me }, 900), ppl, me), null);
+  assert.equal(sh.waitingFor(sh.edit(r, { by: 'max@x' }, 2100), ppl, me), null);
+  const recs = { a: r, b: sh.make('t0000000000000003', { title: 'Б', by: me }, 1500), c: sh.make('t0000000000000004', { by: 'anya@x' }, 5000) };
+  assert.deepEqual(sh.unseenBy(recs, ppl, me).map((x) => [x.m.email, x.n]), [['anya@x', 2]]);
+});
+
+test('seenDue: раз в час или через 2 минуты, если пришли чужие правки', () => {
+  assert.equal(sh.seenDue(null, false, 0), true);
+  assert.equal(sh.seenDue(1, false, 60e3), false);
+  assert.equal(sh.seenDue(1, true, 60e3), false);
+  assert.equal(sh.seenDue(1, true, 122e3), true);
+  assert.equal(sh.seenDue(1, false, 36e5 + 2), true);
+  assert.match(sh.askAccessText('Таверна', 'o@x'), /Кому: o@x[\s\S]*«Таверна»/);
+});

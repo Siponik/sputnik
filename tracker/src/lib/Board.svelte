@@ -377,7 +377,7 @@
             next={isDoneCol ? null : next} selected={sel === task.id} editing={editing === task.id} ghost={dragId === task.id}
             onopen={(t) => act.open(t)} onadvance={(t) => act.stage(t, next.id)} ondue={(t) => act.open(t, true)}
             onmenu={(t, el) => openMenu(t, el)} onselect={(t) => (sel = t.id)}
-            assignee={assigneeOf(task)} mine={!!share && whoOf(layTasks?.[task.id]) === share.me} onwho={pickWho}
+            assignee={assigneeOf(task)} mine={!!share && whoOf(layTasks?.[task.id]) === share.me} onwho={pickWho} wait={share?.waitOf?.(task.id) ?? null}
             onstartedit={(t) => (editing = t.id)} onendedit={() => (editing = '')} onrename={(t, title) => act.rename(t, title)}
             ondragstart={dragStart} ondragend={dragEnd} />
           </div>

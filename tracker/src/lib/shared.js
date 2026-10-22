@@ -9,8 +9,9 @@ const CAL = 'https://www.googleapis.com/calendar/v3';
 const KEY = 'sp.shared';
 const enc = encodeURIComponent;
 
-/** stores[cal] = { cal, title, role, sync, recs: { ключ: запись }, pending: { ключ: 'w' | 'd' } }; me — почта входа.
- *  pending — правки, сделанные без связи: уходят первыми при следующем обмене. */
+/** stores[cal] = { cal, title, role, sync, recs: { ключ: запись }, pending: { ключ: 'w' | 'd' }, accepted, lost }; me — почта входа.
+ *  pending — правки, сделанные без связи: уходят первыми при следующем обмене.
+ *  accepted — сам вошёл (по коду или «Принять»), иначе это приглашение (core.isInvite); lost — доступа больше нет. */
 let stores = {};
 let me = '';
 try { const j = JSON.parse(localStorage.getItem(KEY) ?? 'null'); if (j?.stores) { stores = j.stores; me = j.me ?? ''; } } catch {}
@@ -20,6 +21,11 @@ function persist() { try { localStorage.setItem(KEY, JSON.stringify({ stores, me
 export function reset() { stores = {}; me = ''; persist(); }
 export const myEmail = () => me;
 export const calendars = () => Object.keys(stores);
+/** Календари сфер, в которых я участвую (без приглашений и без потерянных). */
+export const activeCalendars = () => Object.values(stores).filter((s) => !s.lost && !core.isInvite(s, me)).map((s) => s.cal);
+/** Приглашения: позвали, но я ещё не принял (плашка «X зовёт тебя в сферу»). */
+export const invites = () => Object.values(stores).filter((s) => !s.lost && core.isInvite(s, me)).map((s) => core.inviteInfo(s, me));
+export const isLost = (cal) => !!stores[cal]?.lost;
 export const storeOf = (cal) => stores[cal] ?? null;
 export const isOwner = (cal) => stores[cal]?.role === 'owner';
 /** Участники сферы по порядку, с цветами (sharedcore.membersOf). */
@@ -38,7 +44,8 @@ export const calOfListId = (id) => calOfList(core.listKey(id));
 
 /** Все списки общих сфер в виде списков Google Tasks. */
 export function lists() {
-  return Object.values(stores).flatMap((s) => core.listsOf(s.recs, s.cal));
+  return Object.values(stores).filter((s) => !core.isInvite(s, me))
+    .flatMap((s) => core.listsOf(s.recs, s.cal).map((l) => (s.lost ? { ...l, lost: true } : l)));
 }
 
 /** Задачи общего списка (id — sh:…). */
@@ -62,19 +69,25 @@ export async function pullAll({ discover = true } = {}) {
     : Object.values(stores).map((x) => ({ id: x.cal, summary: x.title, accessRole: x.role, description: core.MARK }));
   me = items.find((c) => c.primary)?.id ?? me;
   const found = items.filter(core.isSphereCal);
-  const gone = Object.keys(stores).filter((cal) => !found.some((c) => c.id === cal));
-  for (const cal of gone) delete stores[cal];
+  // Календаря больше нет в списке (владелец удалил сферу, нас убрали) — не забываем молча: сфера остаётся в колонке
+  // бледной с «нет доступа», пока человек сам её не уберёт. gone — те, что потеряны только что.
+  const gone = [];
+  const lose = (s) => { if (!s.lost) { s.lost = true; gone.push(s.cal); } };
+  if (discover) for (const s of Object.values(stores)) if (!found.some((c) => c.id === s.cal)) lose(s);
   const changes = [];
   for (const c of found) {
     const s = (stores[c.id] ??= { cal: c.id, title: c.summary, role: c.accessRole, sync: '', recs: {} });
+    if (s.lost && !discover) continue; // потерянные проверяем только при полном обходе
     s.role = c.accessRole;
     s.title = c.summary;
     s.pending ??= {};
     try {
       await flush(s);
-      changes.push(...(await pull(s)));
-      await markJoined(s);
-    } catch (e) { if (!/404|403/.test(String(e))) throw e; }
+      const got = await pull(s);
+      changes.push(...got);
+      s.lost = false;
+      if (!core.isInvite(s, me)) await markJoined(s, got);
+    } catch (e) { if (/404|403/.test(String(e))) lose(s); else throw e; }
   }
   persist();
   return { changes, gone };
@@ -166,11 +179,13 @@ async function flush(s) {
   persist();
 }
 
-/** Участник впервые видит сферу — отмечаем «принял приглашение» (владелец увидит, что он с нами); раз в час — «был тогда-то». */
-async function markJoined(s) {
+/** Участник впервые видит сферу — отмечаем «принял приглашение» (владелец увидит, что он с нами); «был тогда-то» — раз в час,
+ *  а если пришли чужие правки — через 2 минуты (по нему другие видят, дошло ли до нас, — «ждёт Аню»). */
+async function markJoined(s, got = []) {
   if (!me || !s.recs[core.SPHERE_KEY]) return;
   const k = core.memberKey(me), cur = s.recs[k];
-  const stale = !cur?.f?.seen || Date.now() - cur.f.seen > 36e5; // «последний раз в …» — не чаще раза в час
+  const foreign = got.some((c) => c.rec && c.rec.f.by && c.rec.f.by !== me && core.lastTime(c.rec) > (cur?.f?.seen ?? 0));
+  const stale = core.seenDue(cur?.f?.seen, foreign);
   if (cur?.f?.joined && !cur.f.removed && !stale) return;
   const next = cur ? core.edit(cur, { joined: true, removed: false, seen: Date.now() }) : core.make(k, { email: me, order: core.nextOrder(s.recs), joined: true, seen: Date.now() });
   await write(s.cal, next);
@@ -246,6 +261,7 @@ export async function createSphere({ name, color, icon }) {
 
 /** Удалить сферу у всех (владелец) или выйти из неё (участник). */
 export async function removeSphere(cal) {
+  if (stores[cal]?.lost) return forget(cal);
   if (isOwner(cal)) await gapi('DELETE', `${CAL}/calendars/${enc(cal)}`);
   else {
     const k = core.memberKey(me);
@@ -256,7 +272,7 @@ export async function removeSphere(cal) {
   persist();
 }
 
-/** Присоединиться к сфере по коду (id календаря), которым поделился владелец. */
+/** Присоединиться к сфере по коду (id календаря), которым поделился владелец. Вошёл сам — это уже не приглашение. */
 export async function join(code) {
   const id = code.trim();
   const c = await gapi('POST', `${CAL}/users/me/calendarList`, { id, selected: false, hidden: true });
@@ -265,7 +281,30 @@ export async function join(code) {
     const ev = await gapi('GET', `${CAL}/calendars/${enc(id)}/events/${core.SPHERE_KEY}`).catch(() => null);
     if (!core.fromEvent(ev)) throw new Error('Это не общая сфера Спутника');
   }
+  stores[id] = { ...(stores[id] ?? { cal: id, title: c.summary ?? '', role: c.accessRole ?? 'writer', sync: '', recs: {} }), accepted: true, lost: false };
+  persist();
   return id;
+}
+
+/** «Принять» приглашение: сфера появляется в колонке, владелец видит, что я с ними. */
+export async function accept(cal) {
+  const s = stores[cal];
+  if (!s) return;
+  s.accepted = true;
+  persist();
+  await gapi('PATCH', `${CAL}/users/me/calendarList/${enc(cal)}`, { selected: false, hidden: true }).catch(() => {});
+  await markJoined(s);
+  persist();
+}
+
+/** «Отказаться» от приглашения — как выйти из сферы. */
+export const decline = (cal) => removeSphere(cal);
+
+/** Сфера без доступа — «Убрать из колонки»: забыть её здесь (календаря у нас уже нет). */
+export async function forget(cal) {
+  await gapi('DELETE', `${CAL}/users/me/calendarList/${enc(cal)}`).catch(() => {});
+  delete stores[cal];
+  persist();
 }
 
 // ---------- участники (только владелец) ----------

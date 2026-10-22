@@ -498,3 +498,54 @@ export function nextHint(L, next, me, people) {
 export function stageCrew(L, cols, cur) {
   return cols.map((c) => ({ col: c, who: L?.stageWho?.[c.id] ?? (c.id === cur ? whoOf(L) : null) }));
 }
+
+// ---------- шаг 7: состояния — приглашение, «ещё не дошло», нет доступа ----------
+
+/** Приглашение, а не сфера: я не владелец, сам не входил (по коду или «Принять») и моя запись участника не «принял». */
+export function isInvite(store, me) {
+  if (!store || store.role === 'owner' || store.accepted) return false;
+  const r = store.recs?.[memberKey(me)];
+  return !(r?.f?.joined && !r.f.removed);
+}
+
+/** Что показать в плашке приглашения: кто зовёт, сколько списков и задач, участники. */
+export function inviteInfo(store, me) {
+  const recs = store?.recs ?? {};
+  const people = membersOf(recs);
+  const owner = people.find((p) => p.owner) ?? null;
+  const lists = Object.values(recs).filter((r) => kindOf(r.k) === 'list').length;
+  const tasks = Object.values(recs).filter((r) => kindOf(r.k) === 'task' && !r.f.parent && r.f.status !== 'completed').length;
+  return { cal: store?.cal, name: recs[SPHERE_KEY]?.f?.name ?? 'Общая сфера', owner, lists, tasks,
+    people: people.filter((p) => p.joined && p.email !== me) };
+}
+
+/**
+ * Задачу отдал я, а Спутник исполнителя с тех пор ни разу не обменивался со сферой (seen раньше, чем её отдали):
+ * карточка «ждёт Аню». Кто никогда не отмечался (seen нет) — не знаем, молчим.
+ */
+export function waitingFor(rec, people, me) {
+  const w = rec?.f?.$who;
+  if (!w || w === me || rec.f.by !== me) return null;
+  const m = people.find((p) => p.email === w);
+  if (!m || !m.joined || !m.seen) return null;
+  return (rec.ft?.$who ?? 0) > m.seen ? m : null;
+}
+
+/** Сколько моих правок ещё не видел каждый участник: [{ m, n }] по убыванию (только те, у кого n > 0). */
+export function unseenBy(recs, people, me) {
+  const mine = Object.values(recs ?? {}).filter((r) => (kindOf(r.k) === 'task' || kindOf(r.k) === 'list') && r.f.by === me);
+  return people.filter((p) => p.email !== me && p.joined && p.seen)
+    .map((m) => ({ m, n: mine.filter((r) => lastTime(r) > m.seen).length }))
+    .filter((x) => x.n > 0).sort((a, b) => b.n - a.n);
+}
+
+/** Пора ли отметить «был тогда-то»: раз в час, а если пришли чужие правки новее моей отметки — через 2 минуты. */
+export function seenDue(seen, foreignNewer, now = Date.now()) {
+  if (!seen) return true;
+  return now - seen > 36e5 || (foreignNewer && now - seen > 120e3);
+}
+
+/** Текст для «Попросить доступ»: письмо владельцу. */
+export function askAccessText(sphereName, ownerEmail) {
+  return `${ownerEmail ? `Кому: ${ownerEmail}\n` : ''}Тема: Доступ к сфере «${sphereName}» в Спутнике\n\nПривет! У меня пропал доступ к общей сфере «${sphereName}». Позови меня снова, пожалуйста: «Участники» → почта.`;
+}
