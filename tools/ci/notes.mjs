@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 
 const MAX = 8;
 
-/** Пункты раздела «Что нового» из описания PR: строки «- …», «* …», «• …» до следующего заголовка. */
+/** Пункты раздела «Что нового» из описания PR: строки «- …», «* …», «• …» до следующего заголовка или первой строки не-списка. */
 export function sectionItems(body) {
   const lines = String(body ?? '').split(/\r?\n/);
   const out = [];
@@ -20,9 +20,10 @@ export function sectionItems(body) {
       inside = /^#{1,6}\s*что нового/i.test(s);
       continue;
     }
-    if (!inside) continue;
+    if (!inside || !s || /^<!--/.test(s)) continue;
     const m = /^[-*•✦]\s+(.+)$/.exec(s);
     if (m) out.push(m[1].trim());
+    else if (out.length) inside = false; // раздел кончился и без заголовка: дальше обычный текст («**Что сделано:**» и т. п.)
   }
   return out.filter((s) => s && !/^<!--/.test(s));
 }
