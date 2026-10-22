@@ -209,3 +209,32 @@ test('исполнитель этапа ставится и снимается, 
 test('исполнитель и исполнители этапов — общие поля слоя, не личные', () => {
   assert.deepEqual(sh.sharedOf({ who: 'a', stageWho: { uv: 'b' }, remind: 1, t: 1 }, 'task'), { $who: 'a', $stageWho: { uv: 'b' } });
 });
+
+// ---------- шаг 2: окно участников ----------
+
+test('сфера «общая», только если в ней есть кто-то кроме владельца', () => {
+  assert.equal(sh.isTogether([{ owner: true }]), false);
+  assert.equal(sh.isTogether([{ owner: true }, { owner: false }]), true);
+});
+
+test('«последний раз»: сегодня, вчера, раньше — датой', () => {
+  const now = new Date(2026, 9, 22, 15, 0).getTime();
+  assert.equal(sh.seenText(new Date(2026, 9, 22, 12, 40).getTime(), now), 'сегодня в 12:40');
+  assert.equal(sh.seenText(new Date(2026, 9, 21, 9, 5).getTime(), now), 'вчера в 9:05');
+  assert.match(sh.seenText(new Date(2026, 9, 20, 9, 5).getTime(), now), /^20 окт/);
+  assert.equal(sh.seenText(null, now), '');
+});
+
+test('поле приглашения: несколько почт через запятую и пробел, без повторов, неверные отдельно', () => {
+  assert.deepEqual(sh.parseEmails('Anya.Art@gmail.com, max.3d@gmail.com; anya.art@gmail.com нет@'), { ok: ['anya.art@gmail.com', 'max.3d@gmail.com'], bad: ['нет@'] });
+  assert.deepEqual(sh.parseEmails(''), { ok: [], bad: [] });
+});
+
+test('участник: когда позвали и когда был — в списке участников', () => {
+  const recs = {};
+  const r = sh.make(sh.memberKey('a@x.ru'), { email: 'a@x.ru', order: 1, joined: true, seen: 500 }, 100);
+  recs[r.k] = r;
+  const [m] = sh.membersOf(recs);
+  assert.equal(m.seen, 500);
+  assert.equal(m.invited, 100);
+});

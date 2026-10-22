@@ -1,4 +1,6 @@
 <script>
+  import SharedTag from './SharedTag.svelte';
+  import ShareBits from './ShareBits.svelte';
   // Вид «Стикеры» — простые дела без этапов (design/screens/Stickers.dc.html, docs/design-v2.md — «Простые дела: вид «Стикеры»»).
   // Колонки по темам списка или по срокам (G). Стикер: клик — окно задачи, кружок — сделано (штамп, через 2 с в «баночку»),
   // 2×клик по названию / F2 — переименовать, правый клик / Shift+F10 — меню. Логика раскладки — lib/stickers.js.
@@ -14,7 +16,7 @@
   // layList — запись списка в слое (topics, group, sort); cols — колонки шаблона (для метки промежуточного этапа).
   // act — действия App (open, rename, priority, order, moveList, duplicate, remove, done, topic, pin, when, add, topics, set).
   // tabs — переключатель вида из доски; headLine — «Сфера · шаблон … » над названием.
-  let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '',
+  let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '', share = null, sphereName = '',
     onedittemplate, onarchive } = $props();
 
   const [send, receive] = stickerCrossfade();
@@ -300,8 +302,8 @@
 
 <header class="bd-head">
   <div class="bd-title">
-    <p>{headLine} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
-    <h1>{list?.title ?? 'Дела'}</h1>
+    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
+    <h1>{list?.title ?? 'Дела'}{#if share}<ShareBits {share} />{/if}</h1>
   </div>
   <div class="tb">
     <button type="button" class="grpsw" title="Разложить по-другому · G" aria-label={group === 'when' ? 'Сейчас по срокам. Разложить по темам' : 'Сейчас по темам. Разложить по срокам'} onclick={flipGroup}>
