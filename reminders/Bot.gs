@@ -13,12 +13,24 @@
 //   /now           — прислать ссылку на сводку сейчас
 //   /help          — список команд
 
-const BOT_VERSION = '4'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
+const BOT_VERSION = '5'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
 const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
 function setupBot() {
+  // Бот общий (bot/, Cloudflare Workers): у всех остальных — его короткое меню, а сводка, /time и задачи Google —
+  // только в чате владельца (TELEGRAM_CHAT_ID). Сводку получает только владелец: её шлёт этот скрипт, а не воркер.
   tg_('setMyCommands', {
+    commands: [
+      { command: 'today', description: 'Задачи на сегодня' },
+      { command: 'week', description: 'Задачи на неделю' },
+      { command: 'off', description: 'Не присылать напоминания' },
+      { command: 'on', description: 'Снова присылать напоминания' },
+      { command: 'help', description: 'Что я умею' },
+    ],
+  });
+  tg_('setMyCommands', {
+    scope: { type: 'chat', chat_id: PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_ID') },
     commands: [
       { command: 'today', description: 'Задачи на сегодня' },
       { command: 'week', description: 'Задачи на неделю по дням' },
