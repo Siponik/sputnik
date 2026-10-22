@@ -531,6 +531,8 @@
       if (!done) unrollRepeat(task, listId);
       if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
       if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
+      // Общая сфера: кто сделал — кружок на штампе «сделано» у всех.
+      if (sh.isSharedId(listId) && !task.parent && (lay.tasks?.[task.id]?.doneBy ?? null) !== (done ? meEmail : null)) { touch('tasks', task.id, { doneBy: done ? meEmail : null }); saveLayer(); }
       return true;
     } catch (e) { say('Не удалось отметить: ' + e); return false; }
   }
@@ -860,7 +862,7 @@
       lay[sec][key] = { ...cur, ...patch, t: Math.max(cur.t ?? 0, t || Date.now()) };
       changed = true;
     };
-    const given = [];
+    const given = [], closed = [];
     const me = shared.myEmail();
     for (const { cal, k, base, rec } of changes) {
       if (!rec) continue;
@@ -868,6 +870,7 @@
       // Новую запись (base нет) считаем «отданной мне», только если её завели недавно — иначе при первом входе в сферу
       // посыпались бы уведомления обо всех старых задачах.
       if (sh.assignedToMe(base, rec, me) && (base || Date.now() - t < 15 * 60e3)) given.push({ cal, k, rec });
+      if (kind === 'task' && base && base.f.status !== 'completed' && rec.f.status === 'completed' && rec.f.by && rec.f.by !== me && !rec.f.parent) closed.push({ cal, k, rec });
       if (kind === 'task') {
         const { toLayer, toRec } = sh.reconcile(lay.tasks?.[k], base, rec, 'task');
         if (Object.keys(toLayer).length) put('tasks', k, toLayer, t);
@@ -906,6 +909,13 @@
     if (changed) saveLayer();
     shareVer++;
     if (given.length) tellGiven(given);
+    else if (closed.length) {
+      // «Оля закрыла «…» · Вернуть» (docs/design-v2.md, «Общие сферы» 7).
+      const c = closed[0], lid = sh.listId(c.rec.f.list ?? '');
+      const name = shared.people(c.cal).find((p) => p.email === c.rec.f.by)?.name ?? sh.nameOf(c.rec.f.by);
+      say(closed.length === 1 ? `${name} · сделано «${c.rec.f.title || 'Без названия'}»` : `Участники закрыли задач: ${closed.length}`,
+        closed.length === 1 ? () => { const cur = findTask(lid, c.k); if (cur) toggle(cur, false, lid, true); } : null, 'Вернуть');
+    }
     for (const [cal, k, p] of back) shared.patchRec(cal, k, p).catch(() => {});
   }
 
