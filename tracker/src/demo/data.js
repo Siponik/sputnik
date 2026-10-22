@@ -87,9 +87,32 @@ export function seedTasks() {
       T('Вынести коробки', { id: 'h20', done: 1 }), T('Купить корм коту', { id: 'h21', done: 1 }), T('Счётчики воды', { id: 'h22', done: 2 }),
       T('Забрать химчистку', { id: 'h23', done: 3 }), T('Позвонить в ЖЭК', { id: 'h24', done: 4 }), T('Заказать воду', { id: 'h25', done: 6 }),
     ],
-    Lhab: [T('Скетч 15 минут', { id: 'h1' }), T('Зарядка', { id: 'h2' })],
+    Lhab: [T('Скетч 15 минут', { id: 'h1' }), T('Зарядка', { id: 'h2' }), T('Вода', { id: 'h3' }), T('Чтение', { id: 'h4' }),
+      T('Без телефона после 23:00', { id: 'h5' }), T('Английский 15 мин', { id: 'h6' })],
     Lload: LOAD.map(([title, d, done], i) => T(title, { id: 'z' + i, due: mon + d, ...(done ? { done: 1 } : {}) })),
   };
+}
+
+// Привычки как на макете «Привычки: карточки» (Habits.dc.html): серии, срыв, количество, «3 раза в неделю».
+function demoHabits(L) {
+  const habits = {
+    h1: L({ icon: 'pencil', color: 'gold', part: 'evening', time: '21:00', createdAt: ymd(-60) }),
+    h2: L({ icon: 'gym', color: 'clay', part: 'morning', createdAt: ymd(-40) }),
+    h3: L({ icon: 'cup', color: 'work', part: 'morning', goal: { n: 8, unit: 'стаканов' }, createdAt: ymd(-50) }),
+    h4: L({ icon: 'book', color: 'personal', part: 'evening', time: '22:30', createdAt: ymd(-45) }),
+    h5: L({ icon: 'moon', color: 'done', part: 'evening', time: '23:00', createdAt: ymd(-30) }),
+    h6: L({ icon: 'lang', color: 'study', part: 'any', perWeek: 3, createdAt: ymd(-35) }),
+  };
+  const log = {};
+  const put = (id, d, v) => { log[`${id}|${ymd(d)}`] = L(v); };
+  for (let d = -34; d <= -1; d++) put('h1', d, { done: true });
+  for (let d = -20; d <= 0; d++) if (d !== -12) put('h2', d, { done: true });
+  for (let d = -21; d <= -1; d++) put('h3', d, d === -5 ? { n: 5, done: false } : { n: 8, done: true });
+  put('h3', 0, { n: 5, done: false });
+  for (let d = -16; d <= -4; d++) if (d !== -14) put('h4', d, { done: true });
+  for (let d = -10; d <= -1; d++) if (d !== -3 && d !== -4) put('h5', d, { done: true });
+  for (const d of [-1, -3, -6, -8, -10, -13, -15, -17, -20, -22, -24]) put('h6', d, { done: true });
+  return { habits, log };
 }
 
 export function seedLayer() {
@@ -123,7 +146,7 @@ export function seedLayer() {
       ...Object.fromEntries(LOAD.map(([title], i) => [title, i]).filter(([title]) => SLOTS[title])
         .map(([title, i]) => ['z' + i, L({ slot: { s: SLOTS[title][0], e: SLOTS[title][1] } })])),
     },
-    habits: {}, log: {}, cals: {}, templates: {}, templatesEdit: {},
+    ...demoHabits(L), cals: {}, templates: {}, templatesEdit: {},
     // Сферы — как на макетах «Создать» (Create.dc.html): Работа · Творчество · Личное.
     spheres: { sWork: L({ name: 'Работа', color: 'work', icon: 'case', order: 0 }), sArt: L({ name: 'Творчество', color: 'clay', icon: 'brush', order: 0.5 }),
       sMe: L({ name: 'Личное', color: 'personal', icon: 'home', order: 1 }), sTest: L({ name: 'Тест', color: 'study', icon: 'star', order: 2 }) },
