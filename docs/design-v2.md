@@ -706,6 +706,8 @@ OAuth и проверка Google, конфликты при одновремен
 
 ## Привычки: карточки (утверждено 23.10)
 
+> Реализовано в трекере 22.10 ночью (бета): `lib/Habits.svelte`, `HabitPanel.svelte`, `HabitEdit.svelte`, логика — `habits.js`.
+
 Макеты — холст, страница «Привычки · карточки (A)»; файлы `design/screens/Habits.dc.html` (сегодня),
 `HabitsMonth.dc.html` (месяц), `HabitOpen.dc.html` (панель привычки), `HabitEdit.dc.html` (окно привычки),
 `HabitStates.dc.html` (веха, срыв, пусто). Прежние варианты (v3 с матрицей и тремя зонами, «список и панель»,
