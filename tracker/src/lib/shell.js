@@ -194,6 +194,7 @@ export const SETTINGS_TABS = [
 export const SETTINGS_INDEX = [
   { tab: 'look', id: 'theme', title: 'Тема', hint: 'Тёмная — основная. «Как в Windows» переключается вместе с системой.', also: 'светлая цвет оформление' },
   { tab: 'look', id: 'motion', title: 'Анимации', hint: '«Минимум» — только мягкое появление. «Выкл» — всё сразу.', also: 'движение' },
+  { tab: 'look', id: 'tabs', title: 'Порядок вкладок', hint: 'Сегодня, Календарь, Доска, Привычки — в каком порядке стоят в шапке. Клавиши 1–4 идут так же.', also: 'меню шапка разделы переставить порядок верхнее' },
   { tab: 'look', id: 'start', title: 'Открывать при запуске', hint: 'Какой раздел показывать первым', also: 'старт' },
   { tab: 'look', id: 'tips', title: 'Енот-советчик', hint: 'Советы внизу колонки доски', also: 'совет подсказки' },
   { tab: 'show', id: 'lists', title: 'Списки задач', hint: 'Какие списки видны на доске, в «Сегодня» и в календаре', also: 'скрыть показывать' },
@@ -230,6 +231,34 @@ export function stepTab(cur, dir, tabs = SETTINGS_TABS) {
   const i = tabs.findIndex((t) => t.id === cur);
   return tabs[(i + dir + tabs.length) % tabs.length].id;
 }
+
+// ---------- Порядок вкладок в шапке ----------
+
+/** Вкладки шапки в исходном порядке. Свой порядок — settings.tabs.v (массив id), синхронизируется со слоем. */
+export const VIEW_TABS = [
+  { id: 'today', name: 'Сегодня' },
+  { id: 'calendar', name: 'Календарь' },
+  { id: 'board', name: 'Доска' },
+  { id: 'habits', name: 'Привычки' },
+];
+
+/** Порядок вкладок из настройки: неизвестные и повторы отбрасываются, забытые (новые разделы) — в конец. */
+export function tabOrder(saved, tabs = VIEW_TABS) {
+  const ids = tabs.map((t) => t.id);
+  const out = (Array.isArray(saved) ? saved : []).filter((id, i, a) => ids.includes(id) && a.indexOf(id) === i);
+  return [...out, ...ids.filter((id) => !out.includes(id))];
+}
+
+/** Переставить вкладку id на место to (0…n−1). */
+export function moveTab(order, id, to) {
+  const rest = order.filter((x) => x !== id);
+  if (rest.length === order.length) return order.slice();
+  const i = Math.max(0, Math.min(rest.length, to));
+  return [...rest.slice(0, i), id, ...rest.slice(i)];
+}
+
+/** Порядок совпадает с исходным — настройку можно не хранить. */
+export const tabsDefault = (order, tabs = VIEW_TABS) => order.join() === tabs.map((t) => t.id).join();
 
 /** С какого раздела открыться: settings.start = today | board | last; last — где остановился (если раздел ещё есть). */
 export function startView(pref, last, views = ['today', 'calendar', 'board', 'habits']) {

@@ -26,6 +26,16 @@
   const theme = $derived(v('theme', 'system'));
   const motionV = $derived(v('motion', 'full'));
   const start = $derived(v('start', 'today'));
+  // Порядок вкладок шапки: перетащить пилюлю или стрелками ‹ ›; хранится в settings.tabs.v и ездит со слоем.
+  const tabs = $derived(shell.tabOrder(settings?.tabs?.v));
+  const tabName = (id) => shell.VIEW_TABS.find((t) => t.id === id)?.name ?? id;
+  const setTabs = (order) => onset('tabs', { v: shell.tabsDefault(order) ? null : order });
+  let dragTab = $state(null);
+  let overTab = $state(null);
+  function dropTab(i) {
+    if (dragTab) setTabs(shell.moveTab(tabs, dragTab, i));
+    dragTab = overTab = null;
+  }
   const tipsOn = $derived(v('tips', true) !== false);
   const remindHour = $derived(v('remindHour', '10:00'));
   const notifyOn = $derived(v('notify', true) !== false);
@@ -150,6 +160,22 @@
           <div class="it" class:hit={hit.has('motion')}>{@render tx('motion', 'Анимации', '«Минимум» — только мягкое появление. «Выкл» — всё сразу.')}
             {@render seg([['full', 'Полные'], ['min', 'Минимум'], ['off', 'Выкл']], motionV, (x) => onset('motion', { v: x }))}</div>
           <div class="it prev-row"><div class="stg-prev {motionV}"><span class="card"></span><span>так будут двигаться карточки</span></div></div>
+          <div class="it wide" class:hit={hit.has('tabs')}>{@render tx('tabs', 'Порядок вкладок', 'Перетащи или стрелками. Клавиши 1–4 идут так же.')}
+            {#if !shell.tabsDefault(tabs)}<button type="button" class="stg-btn" onclick={() => setTabs(shell.tabOrder())}>Как было</button>{/if}
+            <div class="stg-ord" role="list" aria-label="Порядок вкладок в шапке">
+              {#each tabs as id, i (id)}
+                <span class="o" role="listitem" draggable="true" class:drag={dragTab === id} class:over={overTab === id && dragTab !== id}
+                  ondragstart={(e) => { dragTab = id; e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', id); }}
+                  ondragover={(e) => { if (dragTab) { e.preventDefault(); overTab = id; } }}
+                  ondragleave={() => { if (overTab === id) overTab = null; }}
+                  ondrop={(e) => { e.preventDefault(); dropTab(i); }}
+                  ondragend={() => (dragTab = overTab = null)}>
+                  <button type="button" class="a" disabled={i === 0} aria-label="«{tabName(id)}» левее" title="Левее" onclick={() => setTabs(shell.moveTab(tabs, id, i - 1))}>‹</button>
+                  <b><small>{i + 1}</small>{tabName(id)}</b>
+                  <button type="button" class="a" disabled={i === tabs.length - 1} aria-label="«{tabName(id)}» правее" title="Правее" onclick={() => setTabs(shell.moveTab(tabs, id, i + 1))}>›</button>
+                </span>
+              {/each}
+            </div></div>
           <div class="it" class:hit={hit.has('start')}>{@render tx('start', 'Открывать при запуске', 'Какой раздел показывать первым')}
             {@render seg([['today', 'Сегодня'], ['board', 'Доска'], ['last', 'Где остановился']], start, (x) => onset('start', { v: x }))}</div>
           <div class="it" class:hit={hit.has('tips')}>{@render tx('tips', 'Енот-советчик', 'Советы внизу колонки доски')}

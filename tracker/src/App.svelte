@@ -363,7 +363,8 @@
     quick = {};
   }
   // Горячие клавиши (список — lib/keys.js и окно «?»).
-  const VIEWS = ['today', 'calendar', 'board', 'habits'];
+  // Порядок вкладок — свой из Настройки → Вид (settings.tabs), клавиши 1–4 и Q/E идут по нему же.
+  const VIEWS = $derived(shell.tabOrder(lay.settings?.tabs?.v));
   let helpOpen = $state(false);
   // Поиск Ctrl+K: задачи всех списков и быстрый переход по разделам и спискам.
   let searchOpen = $state(false);
@@ -1327,10 +1328,10 @@
     <header class="sp-hd" data-tauri-drag-region>
       <Brand />
       <nav class="hd-tabs" aria-label="Разделы" style="display: contents">
-        <button class="hd-tab" role="tab" aria-selected={view === 'today'} title="Клавиша 1 · Q / E — соседний раздел" onclick={() => go('today')}>Сегодня{#if todayCount}<span class="cnt hot" title="На сегодня и просрочено">{todayCount}</span>{/if}</button>
-        <button class="hd-tab" role="tab" aria-selected={view === 'calendar'} title="Клавиша 2 · Q / E — соседний раздел" onclick={() => go('calendar')}>Календарь</button>
-        <button class="hd-tab" role="tab" aria-selected={section(view) === 'board'} title="Клавиша 3 · Q / E — соседний раздел" onclick={() => go('board')}>Доска</button>
-        <button class="hd-tab" role="tab" aria-selected={view === 'habits'} title="Клавиша 4 · Q / E — соседний раздел" onclick={() => go('habits')}>Привычки{#if habitsLeft}<span class="cnt" title="Осталось отметить сегодня">{habitsLeft}</span>{/if}</button>
+        {#each VIEWS as id, i (id)}
+          {@const tab = shell.VIEW_TABS.find((t) => t.id === id)}
+          <button class="hd-tab" role="tab" aria-selected={section(view) === id} title="Клавиша {i + 1} · Q / E — соседний раздел" onclick={() => go(id)}>{tab.name}{#if id === 'today' && todayCount}<span class="cnt hot" title="На сегодня и просрочено">{todayCount}</span>{:else if id === 'habits' && habitsLeft}<span class="cnt" title="Осталось отметить сегодня">{habitsLeft}</span>{/if}</button>
+        {/each}
       </nav>
       <span class="hd-sp" data-tauri-drag-region></span>
       {#if updChip}
