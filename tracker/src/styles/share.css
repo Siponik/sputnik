@@ -121,7 +121,9 @@
 /* Конвейер в общей сфере (docs/design-v2.md, «Общие сферы» 8) */
 .cvr:has(.cv-who) { grid-template-columns: 20px minmax(170px, 1.05fr) minmax(0, 2.6fr) 80px 34px minmax(100px, auto); }
 .cvr .track .st { position: relative; overflow: visible; }
-.cvr .track .st .sw { position: absolute; top: -8px; right: -4px; line-height: 0; }
+/* Кружок исполнителя — по центру нижнего края ячейки: не залезает на соседний этап и не прячется под ним. */
+.cvr .track .st .sw { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; line-height: 0; pointer-events: none; }
+.cvr .track:has(.sw) + .days { margin-top: 12px; }
 .cvr .track .st .sw .sh-av { --ring: var(--raised); }
 .cvr .track .st.nxo { box-shadow: inset 0 0 0 1.5px var(--nc); color: var(--ink-soft); }
 .cvr .adv .sh-av { margin-left: 6px; vertical-align: middle; --ring: var(--raised); }
@@ -130,7 +132,9 @@
 .cv .grp .sh-av { --ring: var(--bg); }
 .sh-given { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 2px 8px 2px 3px; border-radius: 999px;
   background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); font: 600 11px/1.3 var(--font-sans); }
-.pn .cv-crew { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid var(--hairline); }
+/* «Кто на этапах» и «Как передаётся» — под подробностями этапа, над нижней строкой с кнопками. */
+.pn .cv-crew { grid-column: 1 / -1; order: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 1px solid var(--hairline); }
+.pn:has(.cv-crew) > .foot { order: 2; }
 .pn .cv-crew > section { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .pn .cv-crew > section + section { border-left: 1px solid var(--hairline); }
 .pn .cw { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; }
