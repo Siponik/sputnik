@@ -40,6 +40,7 @@
   import { findDupes } from './lib/dupes.js';
   import * as stickers from './lib/stickers.js';
   import * as reminders from './lib/reminders.js';
+  import * as pictures from './lib/previewDrive.js';
   import * as sharedbot from './lib/sharedbot.js';
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
@@ -662,6 +663,9 @@
     moveList: (t, dest) => moveToList(t, dest, activeId),
     duplicate: (t) => duplicateTask(t, activeId),
     remove: (t) => removeUndo(t, activeId),
+    preview: (t, file) => setPreview(t.id, file, t.title),
+    previewClear: (t) => clearPreview(t.id, t.title),
+    previewOff: () => previewOff(activeId),
     // ---------- стикеры (lib/Stickers.svelte) ----------
     done: (t, d, onundo) => doneUndo(t, d, activeId, onundo),
     pin: (t) => { touch('tasks', t.id, { pin: !lay.tasks?.[t.id]?.pin }); saveLayer(); },
@@ -1021,6 +1025,28 @@
   function setWho(id, w) {
     touch('tasks', id, { who: w ?? null, ...(lay.tasks?.[id]?.given ? { given: null } : {}) });
     saveLayer();
+  }
+
+  // ---------- картинка задачи (lib/preview.js, lib/previewDrive.js) ----------
+  /** Почему у задачи этого списка нельзя поставить картинку ('' — можно). */
+  const previewOff = (listId) => (sh.isSharedId(listId) ? 'В общей сфере картинки пока не ставятся — их не увидят другие участники.' : '');
+  /** Поставить или заменить картинку: маленькая копия — в слой, большая — на Drive. Старый файл убираем. */
+  async function setPreview(id, file, title) {
+    const old = lay.tasks?.[id]?.preview ?? null;
+    const p = await pictures.make(file, title);
+    touch('tasks', id, { preview: p });
+    saveLayer();
+    if (old?.file) pictures.remove(old.file);
+  }
+  /** Убрать картинку; «Отменить» 6 с — потом файл уходит и с Drive. */
+  function clearPreview(id, title) {
+    const old = lay.tasks?.[id]?.preview ?? null;
+    if (!old) return;
+    touch('tasks', id, { preview: null });
+    saveLayer();
+    let undone = false;
+    say(`Картинка убрана: «${title || 'Без названия'}»`, () => { undone = true; touch('tasks', id, { preview: old }); saveLayer(); });
+    setTimeout(() => { if (!undone && old.file && !lay.tasks?.[id]?.preview) pictures.remove(old.file); }, 7000);
   }
 
   /** Правки слоя общих задач, списков и сфер — в их календари. */
@@ -1926,6 +1952,8 @@
       repeat={lay.tasks?.[openTask.id]?.repeat ?? null}
       pick={!!openRef.pick} fields={templateFor(openRef.listId).fields} client={lay.tasks?.[openTask.id]?.client ?? ''} money={lay.tasks?.[openTask.id]?.money ?? ''}
       onlayer={(p) => { touch('tasks', openTask.id, p); saveLayer(); }}
+      preview={lay.tasks?.[openTask.id]?.preview ?? null} previewOff={previewOff(openRef.listId)}
+      onpreview={(f) => setPreview(openTask.id, f, openTask.title)} onpreviewclear={() => clearPreview(openTask.id, openTask.title)}
       share={drawerShare} onwho={(w) => setWho(openTask.id, w)}
       spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}

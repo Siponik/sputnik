@@ -136,6 +136,7 @@ function driveApi(method, path, q, body) {
   if (method === 'GET') return structuredClone(drive[id]?.data ?? null);
   if (method === 'POST') { const fid = 'F' + n++; drive[fid] = { name: body?.name, props: body?.appProperties, data: null }; return { id: fid }; }
   if (method === 'PATCH' && id) { drive[id] = { ...drive[id], data: structuredClone(body) }; return { id }; }
+  if (method === 'DELETE' && id) { delete drive[id]; return null; }
   return {};
 }
 
@@ -151,6 +152,17 @@ export async function invoke(cmd, args = {}) {
     case 'login': case 'logout': case 'save_client_secret': return null;
     case 'backups_last': return new Date().toISOString().slice(0, 10);
     case 'open_place': console.info('[demo] открыть', args.place); return null;
+    // Картинки задач (lib/previewDrive.js): файл на «Drive» — base64 в памяти.
+    case 'gapi_upload': {
+      const id = new URL(args.url).pathname.match(/\/files\/([^/?]+)/)?.[1];
+      if (id) drive[id] = { ...drive[id], bytes: args.data };
+      return { id };
+    }
+    case 'gapi_bytes': {
+      const id = new URL(args.url).pathname.match(/\/files\/([^/?]+)/)?.[1];
+      if (!drive[id]?.bytes) throw '404 File not found (демо)';
+      return drive[id].bytes;
+    }
     case 'gapi': {
       // window.__demo = { offline: true } — «нет связи», { login: true } — нет права на скрытую папку Drive (слой).
       const d = globalThis.__demo ?? {};
