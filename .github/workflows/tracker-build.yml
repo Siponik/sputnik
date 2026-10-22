@@ -26,6 +26,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # вся история и теги — для «Что нового» с прошлого релиза
 
       - uses: actions/setup-node@v4
         with:
@@ -79,7 +81,10 @@ jobs:
           HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
         run: |
           MSI=$(ls tracker/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          NOTE=$(git log -1 --format=%s)
+          # «Что нового»: разделы «## Что нового» из PR с прошлого релиза, иначе названия коммитов (tools/ci/notes.mjs).
+          TAGS=$(git tag -l 'tracker-*')
+          NOTE=$(node tools/ci/notes.mjs $TAGS)
+          echo "$NOTE"
           HELP="Первая установка: скачайте .msi ниже и запустите. Windows может предупредить, что издатель неизвестен: «Подробнее» → «Выполнить в любом случае». Дальше Спутник обновляется сам."
           if [ "$HAS_KEY" = "true" ]; then
             node tools/ci/tracker-release.mjs latest "$VER" "$MSI" "$NOTE"
