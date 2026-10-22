@@ -149,14 +149,15 @@
 /* превью справа */
 .cr-side { display: flex; flex-direction: column; gap: 14px; padding: 20px 20px 18px; background: var(--wash); border-left: 1px solid var(--hairline); min-height: 0; overflow-y: auto; }
 .cr-side h4 { margin: 0; font: 600 11.5px/1 var(--font-sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
-.cr-stage { position: relative; min-height: 216px; border-radius: 14px; background: color-mix(in srgb, var(--bg) 60%, transparent); border: 1px dashed var(--edge); display: grid; place-items: center; padding: 18px; }
-.cr-pvwrap { display: grid; place-items: center; width: 100%; }
-.cr-pvst { width: 190px; min-height: 120px; box-sizing: border-box; padding: 18px 14px 12px; border-radius: 4px 4px 14px 4px; background: color-mix(in srgb, var(--tc) 24%, var(--raised)); box-shadow: 0 8px 18px rgba(0, 0, 0, .25); transform: rotate(-1.2deg); display: flex; flex-direction: column; gap: 8px; position: relative; }
+.cr-stage { position: relative; min-height: 216px; border-radius: 14px; background: color-mix(in srgb, var(--bg) 60%, transparent); border: 1px dashed var(--edge); display: grid; place-items: center; padding: 18px; min-width: 0; overflow: hidden; }
+.cr-pvwrap { display: grid; place-items: center; width: 100%; min-width: 0; }
+/* карточки не шире сцены: ширина из макета — только верхний предел */
+.cr-pvst { width: 100%; max-width: 190px; min-height: 120px; box-sizing: border-box; padding: 18px 14px 12px; border-radius: 4px 4px 14px 4px; background: color-mix(in srgb, var(--tc) 24%, var(--raised)); box-shadow: 0 8px 18px rgba(0, 0, 0, .25); transform: rotate(-1.2deg); display: flex; flex-direction: column; gap: 8px; position: relative; }
 .cr-pvst::before { content: ""; position: absolute; top: -7px; left: 50%; width: 56px; height: 15px; margin-left: -28px; background: color-mix(in srgb, var(--ink) 16%, transparent); transform: rotate(-2deg); }
 .cr-pvst .t { font: 600 15px/20px var(--font-display); overflow-wrap: anywhere; }
 .cr-pvst .f { margin-top: auto; display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-soft); }
 .cr-pvst .f i { margin-left: auto; width: 22px; height: 22px; border-radius: 50%; border: 1.6px solid color-mix(in srgb, var(--ink) 40%, transparent); }
-.cr-pvkc { width: 236px; box-sizing: border-box; position: relative; padding: 11px 12px 11px 14px; border-radius: 11px; background: var(--raised); border: 1px solid var(--edge); display: flex; flex-direction: column; gap: 7px; }
+.cr-pvkc { width: 100%; max-width: 236px; box-sizing: border-box; position: relative; padding: 11px 12px 11px 14px; border-radius: 11px; background: var(--raised); border: 1px solid var(--edge); display: flex; flex-direction: column; gap: 7px; }
 .cr-pvkc.p1::before, .cr-pvkc.p2::before, .cr-pvkc.p3::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--ink-faint); }
 .cr-pvkc.p1::before { background: var(--clay); }
 .cr-pvkc.p2::before { background: var(--gold); }
@@ -164,10 +165,11 @@
 .cr-pvkc .mt { display: flex; flex-wrap: wrap; gap: 6px; }
 .cr-pvkc .mt span { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--edge); font: 500 11.5px/1 var(--font-sans); color: var(--ink-soft); }
 .cr-pvkc .mt span.soon { color: var(--clay); border-color: color-mix(in srgb, var(--clay) 45%, var(--edge)); }
-.cr-pvcv { width: 250px; box-sizing: border-box; padding: 12px; border-radius: 12px; background: var(--raised); border: 1px solid var(--edge); display: flex; flex-direction: column; gap: 9px; }
+.cr-pvcv { width: 100%; max-width: 250px; box-sizing: border-box; padding: 12px; border-radius: 12px; background: var(--raised); border: 1px solid var(--edge); display: flex; flex-direction: column; gap: 9px; }
 .cr-pvcv .h { display: flex; align-items: center; gap: 10px; }
 .cr-pvcv .th { flex: none; width: 36px; height: 36px; border-radius: 9px; background: repeating-linear-gradient(135deg, var(--wash) 0 6px, var(--hairline) 6px 12px); display: grid; place-items: center; font: 700 10px/1 var(--font-mono); color: var(--ink-faint); }
-.cr-pvcv b { font-size: 14px; }
+.cr-pvcv .h > div { min-width: 0; }
+.cr-pvcv b { font-size: 14px; overflow-wrap: anywhere; }
 .cr-pvcv small { display: block; font-size: 11.5px; color: var(--ink-faint); }
 .cr-pvcv .tr { display: flex; gap: 2px; }
 .cr-pvcv .tr span { flex: 1; height: 7px; border-radius: 2px; background: var(--hairline); }
