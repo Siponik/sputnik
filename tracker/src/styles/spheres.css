@@ -74,3 +74,19 @@
 .sph-sel svg { position: absolute; right: 9px; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .t-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .t-top .date { margin: 0; }
+
+/* Общая сфера: окно «Участники» и «Войти по коду» (lib/ShareSphere.svelte). Простой вид до макета. */
+.dialog.shr { width: min(480px, calc(100% - 32px)); gap: 14px; padding: 20px 22px; }
+.dialog.shr h2 { margin: 0; }
+.shr-add { display: flex; gap: 8px; }
+.shr-add input { flex: 1; min-width: 0; padding: 7px 10px; border-radius: var(--radius-md); border: 1px solid var(--hairline); background: var(--bg); }
+.shr-add input:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
+.shr-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.shr-list li { display: flex; align-items: center; gap: 10px; min-height: 34px; padding: 0 10px; border-radius: 8px; background: var(--wash); }
+.shr-who { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.shr-role { color: var(--ink-soft); font-size: 12px; }
+.shr-x { padding: 2px 8px; font-size: 12px; }
+.shr-code { display: flex; gap: 8px; align-items: center; }
+.shr-code code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--ink-soft); }
+.shr-err { margin: 0; color: var(--signal-overdue); font-size: 13px; }
+.sd-shared { color: var(--gold); display: inline-flex; margin-left: 4px; vertical-align: -2px; }

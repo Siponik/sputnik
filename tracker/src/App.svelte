@@ -43,6 +43,9 @@
   import { typeOfTemplate } from './lib/calendar.js';
   import * as inbox from './lib/inbox.js';
   import * as layerSync from './lib/layer.js';
+  import * as shared from './lib/shared.js';
+  import * as sh from './lib/sharedcore.js';
+  import ShareSphere from './lib/ShareSphere.svelte';
   import * as shell from './lib/shell.js';
   import StatusPop from './lib/StatusPop.svelte';
   import Popover from './lib/Popover.svelte';
@@ -183,6 +186,8 @@
     try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить: ' + e); }
     clearTimeout(cloudTimer);
     cloudTimer = setTimeout(syncLayer, 4000);
+    clearTimeout(sharePushTimer);
+    if (shared.calendars().length) sharePushTimer = setTimeout(pushShared, 1500);
   }
 
   // ---------- слой между компьютерами (lib/layer.js) ----------
@@ -246,11 +251,14 @@
     try {
       const t0 = Date.now();
       const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
+      // Общие сферы (календари) — до списков: их списки и задачи api берёт из того, что забрали здесь.
+      const shr = await shared.pullAll().catch((e) => { if (api.isOffline(e)) throw e; shareErr = String(e); return null; });
       const ls = await api.listLists();
       const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
       // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
       // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
       await syncLayer();
+      if (shr) applyShared(shr);
       lists = ls;
       // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
       tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
@@ -799,8 +807,14 @@
     sphereEditOpen = true;
   }
   function updateSphere(patch) { if (!activeSphere) return; touch('spheres', activeSphere, patch); saveLayer(); }
-  function toggleListSphere(listId, on) { touch('lists', listId, { sphere: on ? activeSphere : null }); saveLayer(); }
+  function toggleListSphere(listId, on) {
+    // Общая сфера: список переезжает в её календарь (или из неё — пока нельзя); из общей в обычную — тоже нельзя.
+    if (isSharedSphere(activeSphere)) return toggleSharedList(listId, on, activeSphere);
+    if (sh.isSharedId(listId)) { say('Список в общей сфере — его нельзя перенести в другую сферу.'); return; }
+    touch('lists', listId, { sphere: on ? activeSphere : null }); saveLayer();
+  }
   function deleteSphere(id = activeSphere) {
+    if (isSharedSphere(id)) { askLeaveSphere(id); return; }
     for (const l of sphereLists(id)) touch('lists', l.id, { sphere: null });
     touch('spheres', id, { removed: true });
     saveLayer();
@@ -810,6 +824,228 @@
     say('Сфера удалена, списки — в «Без сферы»');
   }
   function newListIn(sid) { newListSphere = sid; newList = true; }
+
+  // ---------- общие сферы (lib/shared.js, lib/sharedcore.js) ----------
+  // Сфера в своём Google Календаре, которым владелец делится по почте. Её списки и задачи api.js отдаёт как обычные,
+  // а поля слоя (колонка, этап, тема, приоритет…) сводим с записями календаря здесь: забрали — в слой, поменяли слой — в календарь.
+  let shareErr = $state('');
+  let sharePushTimer;
+  let sharePushing = null;
+  let sharePanel = $state(null); // id общей сферы, у которой открыто окно «Участники»
+  let joinOpen = $state(false);
+  const isSharedSphere = (sid) => !!sid && sh.isSharedId(sid);
+
+  /** Записи календарей, которые пришли или поменялись, — в слой; что поменяли здесь, пока их не было, — обратно. */
+  function applyShared({ changes, gone }) {
+    let changed = false;
+    const back = [];
+    const put = (sec, key, patch, t) => {
+      lay[sec] ??= {};
+      const cur = lay[sec][key] ?? {};
+      lay[sec][key] = { ...cur, ...patch, t: Math.max(cur.t ?? 0, t || Date.now()) };
+      changed = true;
+    };
+    for (const { cal, k, base, rec } of changes) {
+      if (!rec) continue;
+      const kind = sh.kindOf(k), t = sh.lastTime(rec);
+      if (kind === 'task') {
+        const { toLayer, toRec } = sh.reconcile(lay.tasks?.[k], base, rec, 'task');
+        if (Object.keys(toLayer).length) put('tasks', k, toLayer, t);
+        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
+      } else if (kind === 'list') {
+        const id = sh.listId(k);
+        const { toLayer, toRec } = sh.reconcile(lay.lists?.[id], base, rec, 'list');
+        if (Object.keys(toLayer).length) put('lists', id, toLayer, t);
+        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
+      } else if (kind === 'sphere') {
+        const { toLayer, toRec } = sh.reconcileSphere(lay.spheres?.[sh.sphereId(cal)], base, rec);
+        if (Object.keys(toLayer).length) put('spheres', sh.sphereId(cal), toLayer, t);
+        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
+      }
+    }
+    // У каждой найденной сферы — запись в слое, у её списков — эта сфера.
+    for (const cal of shared.calendars()) {
+      const sid = sh.sphereId(cal);
+      const S = lay.spheres?.[sid];
+      if (!S || S.removed || S.gone || !S.shared) {
+        const rec = shared.sphereRec(cal);
+        put('spheres', sid, { name: rec?.f?.name ?? 'Общая сфера', color: rec?.f?.color ?? 'gold', icon: rec?.f?.icon ?? 'users',
+          order: S?.order ?? Math.max(0, ...spheres.map((x) => x.order ?? 0)) + 1, removed: false, gone: undefined, shared: { cal } });
+      }
+      for (const l of shared.lists().filter((x) => x.shared === cal)) if (lay.lists?.[l.id]?.sphere !== sid) put('lists', l.id, { sphere: sid });
+    }
+    // Доступа к календарю больше нет: сферу удалил владелец или нас убрали.
+    for (const cal of gone) {
+      const sid = sh.sphereId(cal);
+      if (lay.spheres?.[sid] && !lay.spheres[sid].removed) { put('spheres', sid, { removed: true }); say(`Общей сферы «${lay.spheres[sid].name}» больше нет: её удалили или тебя убрали из участников`); }
+    }
+    if (changed) saveLayer();
+    for (const [cal, k, p] of back) shared.patchRec(cal, k, p).catch(() => {});
+  }
+
+  /** Правки слоя общих задач, списков и сфер — в их календари. */
+  async function pushShared() {
+    if (sharePushing) { await sharePushing; }
+    sharePushing = (async () => {
+      for (const cal of shared.calendars()) {
+        const recs = shared.storeOf(cal)?.recs ?? {};
+        for (const rec of Object.values(recs)) {
+          const kind = sh.kindOf(rec.k);
+          const L = kind === 'task' ? lay.tasks?.[rec.k] : kind === 'list' ? lay.lists?.[sh.listId(rec.k)] : lay.spheres?.[sh.sphereId(cal)];
+          if (!L) continue;
+          const { toRec } = kind === 'sphere' ? sh.reconcileSphere(L, rec, rec) : sh.reconcile(L, rec, rec, kind);
+          if (!Object.keys(toRec).length) continue;
+          try { await shared.patchRec(cal, rec.k, toRec); shareErr = ''; }
+          catch (e) { shareErr = String(e); if (!api.isOffline(e)) say('Не удалось передать правку в общую сферу: ' + e); return; }
+        }
+      }
+    })();
+    try { await sharePushing; } finally { sharePushing = null; }
+  }
+
+  /** Раз в 30 с — изменения общих сфер (дёшево: Google отдаёт только новое). */
+  async function shareTick() {
+    if (phase !== 'ready' || sync.busy || !shared.calendars().length || document.hidden) return;
+    const t0 = Date.now();
+    const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
+    let r;
+    try { r = await shared.pullAll({ discover: false }); shareErr = ''; } catch (e) { shareErr = String(e); return; }
+    if (!r.changes.length && !r.gone.length) return;
+    applyShared(r);
+    const shl = shared.lists();
+    lists = [...lists.filter((l) => !sh.isSharedId(l.id)), ...shl];
+    for (const l of shl) tasks[l.id] = fresh.keepLocal(shared.tasks(l.id), tasks[l.id], before[l.id], touchedAt, t0);
+    for (const id of Object.keys(tasks)) if (sh.isSharedId(id) && !shl.some((l) => l.id === id)) delete tasks[id];
+  }
+  onMount(() => { const h = setInterval(shareTick, 30e3); return () => clearInterval(h); });
+
+  /** Перенести списки обычной сферы в общий календарь: задачи с подзадачами и полями слоя, потом удалить их из Google Tasks. */
+  async function moveListsToShared(cal, sid, ls) {
+    const def = await api.defaultListId().catch(() => null);
+    for (const l of ls) {
+      if (l.id === def) { say(`«${l.title}» — основной список Google Tasks, его перенести нельзя. Убери его из сферы и попробуй снова.`); return false; }
+    }
+    for (const l of ls) {
+      say(`Переношу «${l.title}» в общую сферу…`);
+      const L = lay.lists?.[l.id] ?? {};
+      const { t: _t, gone: _g, hidden: _h, sphere: _s, ...listLayer } = L;
+      const nl = await shared.createList(cal, l.title, listLayer);
+      const all = tasks[l.id] ?? (await api.listTasks(l.id));
+      const own = (id) => { const T = lay.tasks?.[id] ?? {}; return Object.fromEntries(['remind', 'spent', 'timer', 'inbox', 'pulled'].filter((k) => T[k] != null).map((k) => [k, T[k]])); };
+      const shareable = (id) => Object.fromEntries(Object.entries(sh.sharedOf(lay.tasks?.[id], 'task')).map(([k, v]) => [k.slice(1), v]));
+      const ids = new Map();
+      const body = (x) => ({ title: x.title, notes: x.notes ?? '', ...(x.due ? { due: x.due } : {}), status: x.status, ...(x.completed ? { completed: x.completed } : {}) });
+      // По порядку Google: первые сверху остаются сверху.
+      const byPos = (a, b) => (b.position || '').localeCompare(a.position || '');
+      for (const x of all.filter((x) => !x.parent).sort(byPos)) {
+        const r = await shared.createTask(nl.id, body(x), null, shareable(x.id));
+        ids.set(x.id, r.id);
+        lay.tasks ??= {};
+        lay.tasks[r.id] = { ...sh.layerOf(shared.storeOf(cal).recs[r.id]), ...own(x.id), t: Date.now() };
+      }
+      for (const x of all.filter((x) => x.parent && ids.has(x.parent)).sort(byPos)) {
+        const r = await shared.createTask(nl.id, body(x), ids.get(x.parent), shareable(x.id));
+        lay.tasks[r.id] = { ...sh.layerOf(shared.storeOf(cal).recs[r.id]), ...own(x.id), t: Date.now() };
+      }
+      lay.lists[nl.id] = { ...listLayer, sphere: sid, t: Date.now() };
+      await api.deleteList(l.id);
+      layerSync.forgetList(lay, l.id, all.map((x) => x.id));
+      lists = [...lists.filter((x) => x.id !== l.id), nl];
+      delete tasks[l.id];
+      tasks[nl.id] = shared.tasks(nl.id);
+      if (activeId === l.id) activeId = nl.id;
+    }
+    return true;
+  }
+
+  function askMakeShared(id) {
+    const sp = spheres.find((s) => s.id === id);
+    if (!sp) return;
+    const ls = sphereLists(id);
+    const n = ls.reduce((a, l) => a + (tasks[l.id] ?? []).filter((t) => !t.parent).length, 0);
+    askDel = {
+      title: `Сделать сферу «${sp.name}» общей?`,
+      text: (ls.length ? `${ls.length} ${plural(ls.length, ['список', 'списка', 'списков'])} (${n} ${plural(n, ['задача', 'задачи', 'задач'])}) переедут из Google Tasks в общий календарь сферы. ` : '')
+        + 'Потом можно позвать людей по почте — они увидят сферу в своём Спутнике и смогут менять задачи.',
+      note: 'В приложении Google Tasks и на телефоне этих задач больше не будет — только в Спутнике. Напоминания останутся.',
+      yes: 'Сделать общей',
+      danger: false,
+      run: () => makeShared(id),
+    };
+  }
+
+  async function makeShared(id) {
+    const sp = spheres.find((s) => s.id === id);
+    if (!sp) return;
+    const ls = sphereLists(id);
+    try {
+      say(`Создаю общую сферу «${sp.name}»…`);
+      const cal = await shared.createSphere({ name: sp.name, color: sp.color, icon: sp.icon });
+      const sid = sh.sphereId(cal);
+      touch('spheres', sid, { name: sp.name, color: sp.color, icon: sp.icon, order: sp.order, removed: false, shared: { cal } });
+      touch('spheres', id, { removed: true });
+      if (activeSphere === id) activeSphere = sid;
+      if (sphereFilter === id) sphereFilter = sid;
+      const ok = await moveListsToShared(cal, sid, ls);
+      await saveLayer();
+      if (ok) { say(`Сфера «${sp.name}» теперь общая`, () => (sharePanel = sid), 'Позвать людей'); }
+    } catch (e) { saveLayer(); say('Не удалось сделать сферу общей: ' + e); }
+  }
+
+  /** Список — в общую сферу (с переносом) или из неё (пока нельзя). */
+  async function toggleSharedList(listId, on, sid) {
+    if (!on) { say('Вынести список из общей сферы пока нельзя — его можно удалить или перенести задачи в другой список.'); return; }
+    const l = boardLists.find((x) => x.id === listId);
+    if (!l) return;
+    if (sh.isSharedId(listId)) { say('Список уже в другой общей сфере.'); return; }
+    askDel = {
+      title: `Перенести «${l.title}» в общую сферу?`,
+      text: 'Его задачи переедут из Google Tasks в общий календарь сферы — их увидят все участники.',
+      note: 'В приложении Google Tasks и на телефоне этого списка больше не будет.',
+      yes: 'Перенести',
+      danger: false,
+      run: async () => {
+        try { if (await moveListsToShared(sh.calOfSphere(sid), sid, [l])) say(`«${l.title}» — в общей сфере`); }
+        catch (e) { say('Не удалось перенести список: ' + e); }
+        saveLayer();
+      },
+    };
+  }
+
+  function askLeaveSphere(id) {
+    const sp = spheres.find((s) => s.id === id);
+    const cal = sh.calOfSphere(id);
+    if (!sp || !cal) return;
+    const owner = shared.isOwner(cal);
+    askDel = {
+      title: owner ? `Удалить общую сферу «${sp.name}»?` : `Выйти из сферы «${sp.name}»?`,
+      text: owner ? 'Она удалится у всех участников вместе со списками и задачами.' : 'Сфера пропадёт из твоего Спутника, у остальных останется. Вернуться можно, если владелец позовёт снова.',
+      note: owner ? 'Вернуть будет нельзя.' : '',
+      yes: owner ? 'Удалить у всех' : 'Выйти',
+      run: async () => {
+        try { await shared.removeSphere(cal); }
+        catch (e) { say((owner ? 'Не удалось удалить сферу: ' : 'Не удалось выйти: ') + e); return; }
+        const gone = lists.filter((l) => l.shared === cal);
+        for (const l of gone) { layerSync.forgetList(lay, l.id, (tasks[l.id] ?? []).map((t) => t.id)); delete tasks[l.id]; }
+        lists = lists.filter((l) => l.shared !== cal);
+        touch('spheres', id, { removed: true });
+        saveLayer();
+        if (view === 'sphere' && activeSphere === id) view = 'board';
+        if (gone.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+        say(owner ? 'Общая сфера удалена' : 'Ты вышел из сферы');
+      },
+    };
+  }
+
+  async function joinSphere(code) {
+    try {
+      await shared.join(code);
+      joinOpen = false;
+      await refresh();
+      const sid = sh.sphereId(code.trim());
+      if (lay.spheres?.[sid]) { openSphere(sid); say(`Ты в сфере «${lay.spheres[sid].name}»`); }
+    } catch (e) { say('Не удалось присоединиться: ' + (/404|403/.test(String(e)) ? 'нет доступа — попроси владельца позвать тебя по почте' : e)); }
+  }
 
   // ---------- меню левой колонки (правый клик по списку или сфере) и удаление ----------
 
@@ -831,15 +1067,25 @@
   }
   const sideItems = $derived.by(() => {
     if (!sideMenu) return [];
-    if (sideMenu.kind === 'add') return [{ id: 'list', label: 'Новый список' }, { id: 'sphere', label: 'Новая сфера' }];
-    if (sideMenu.kind === 'sphere') return [
-      { id: 'open', label: 'Открыть сферу' },
-      { id: 'edit', label: 'Изменить сферу' },
-      { id: 'delete', label: 'Удалить сферу…', danger: true, sep: true },
-    ];
+    if (sideMenu.kind === 'add') return [{ id: 'list', label: 'Новый список' }, { id: 'sphere', label: 'Новая сфера' }, { id: 'join', label: 'Войти в общую сферу…' }];
+    if (sideMenu.kind === 'sphere') {
+      const cal = sh.calOfSphere(sideMenu.id);
+      if (cal) return [
+        { id: 'open', label: 'Открыть сферу' },
+        { id: 'edit', label: 'Изменить сферу' },
+        { id: 'people', label: 'Участники…' },
+        shared.isOwner(cal) ? { id: 'leave', label: 'Удалить у всех…', danger: true, sep: true } : { id: 'leave', label: 'Выйти из сферы…', danger: true, sep: true },
+      ];
+      return [
+        { id: 'open', label: 'Открыть сферу' },
+        { id: 'edit', label: 'Изменить сферу' },
+        { id: 'share', label: 'Сделать общей…' },
+        { id: 'delete', label: 'Удалить сферу…', danger: true, sep: true },
+      ];
+    }
     return [
       { id: 'open', label: 'Открыть доску' },
-      ...(sphereOf(sideMenu.id, lay) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
+      ...(sphereOf(sideMenu.id, lay) && !sh.isSharedId(sideMenu.id) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
       { id: 'delete', label: 'Удалить список…', danger: true, sep: true },
     ];
   });
@@ -847,11 +1093,14 @@
   function sideAction(a) {
     const { kind, id } = sideMenu;
     if (kind === 'add') {
-      if (a === 'list') newListIn(null); else createSphere();
+      if (a === 'list') newListIn(null); else if (a === 'join') joinOpen = true; else createSphere();
     } else if (kind === 'sphere') {
       if (a === 'open') openSphere(id);
       else if (a === 'edit') { openSphere(id); sphereEditOpen = true; }
       else if (a === 'delete') askDeleteSphere(id);
+      else if (a === 'share') askMakeShared(id);
+      else if (a === 'people') sharePanel = id;
+      else if (a === 'leave') askLeaveSphere(id);
     } else {
       if (a === 'open') openList(id);
       else if (a === 'unsphere') { touch('lists', id, { sphere: null }); saveLayer(); say('Список — в «Без сферы»'); }
@@ -875,6 +1124,11 @@
   async function askDeleteList(id) {
     const l = boardLists.find((x) => x.id === id);
     if (!l) return;
+    if (sh.isSharedId(id)) {
+      const n = (tasks[id] ?? []).filter((t) => !t.parent).length;
+      askDel = { title: `Удалить список «${l.title}»?`, text: `Это список общей сферы: он удалится у всех участников${n ? ` вместе с задачами (${n})` : ''}.`, note: 'Вернуть будет нельзя.', yes: 'Удалить у всех', run: () => deleteList(id) };
+      return;
+    }
     // Основной список Google Tasks («Мои задачи») Google удалить не даёт — скажем заранее.
     try { if ((await api.defaultListId()) === id) { say(`«${l.title}» — основной список Google Tasks, его удалить нельзя. Можно скрыть: «Что показывать» внизу колонки.`); return; } }
     catch { /* не узнали — попробуем, Google сам откажет */ }
@@ -938,7 +1192,7 @@
     const blank = template === '__blank';
     if (blank) { template = 'tpl' + Date.now().toString(36); touch('templates', template, blankTemplate(title)); }
     try {
-      const l = await api.createList(title);
+      const l = isSharedSphere(newListSphere) ? await shared.createList(sh.calOfSphere(newListSphere), title, { template }) : await api.createList(title);
       touch('lists', l.id, newListSphere ? { template, sphere: newListSphere } : { template });
       newListSphere = null;
       saveLayer();
@@ -1542,8 +1796,15 @@
     <ItemMenu at={sideMenu.at} label={sideMenu.kind === 'sphere' ? 'Действия со сферой' : sideMenu.kind === 'add' ? 'Создать' : 'Действия со списком'} items={sideItems}
       onaction={sideAction} onclose={() => (sideMenu = null)} />
   {/if}
+  {#if sharePanel && spheres.some((x) => x.id === sharePanel)}
+    <ShareSphere sphere={spheres.find((x) => x.id === sharePanel)} cal={sh.calOfSphere(sharePanel)} {say} onclose={() => (sharePanel = null)} />
+  {/if}
+  {#if joinOpen}
+    <ShareSphere mode="join" {say} onjoin={joinSphere} onclose={() => (joinOpen = false)} />
+  {/if}
+
   {#if askDel}
-    <ConfirmDelete title={askDel.title} text={askDel.text} note={askDel.note} yes={askDel.yes} onconfirm={confirmDel} onclose={() => (askDel = null)} />
+    <ConfirmDelete title={askDel.title} text={askDel.text} note={askDel.note} yes={askDel.yes} danger={askDel.danger ?? true} onconfirm={confirmDel} onclose={() => (askDel = null)} />
   {/if}
 
   {#if newList}
