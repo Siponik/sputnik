@@ -238,6 +238,19 @@
 .stg-grp .li span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stg-grp .li small { color: var(--ink-faint); font-size: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .stg-grp .muted { color: var(--ink-faint); }
+/* Порядок вкладок шапки (Настройки → Вид): пилюли под заголовком, во всю ширину */
+.stg-grp .it.wide { flex-wrap: wrap; gap: 10px 14px; }
+.stg-grp .it.wide .tx { flex: 1 1 0; }
+.stg-ord { display: flex; flex-wrap: wrap; gap: 6px; flex: 1 1 100%; align-items: center; }
+.stg-ord .o { display: inline-flex; align-items: center; height: 30px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--ink); cursor: grab; user-select: none; transition: border-color var(--dur-2) var(--ease-out), opacity var(--dur-2) var(--ease-out); }
+.stg-ord .o.drag { opacity: .45; cursor: grabbing; }
+.stg-ord .o.over { border-color: var(--clay); box-shadow: -3px 0 0 -1px var(--clay); }
+.stg-ord .o b { font: 500 12.5px/1 var(--font-sans); padding: 0 2px; white-space: nowrap; }
+.stg-ord .o small { color: var(--ink-faint, var(--ink-soft)); font-size: 11px; margin-right: 5px; }
+.stg-ord .a { width: 24px; height: 28px; border: 0; background: none; color: var(--ink-soft); font: 600 15px/1 var(--font-sans); cursor: pointer; border-radius: 999px; }
+.stg-ord .a:hover:not(:disabled) { color: var(--clay); }
+.stg-ord .a:disabled { opacity: .25; cursor: default; }
+.stg-ord .a:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
 .stg-chips { display: flex; flex-wrap: wrap; gap: 6px; flex: none; max-width: 380px; justify-content: flex-end; }
 .stg-chips .c { width: auto; height: 28px; padding: 0 10px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); color: var(--ink-soft); font: 500 12px/1 var(--font-sans); cursor: pointer; }
 .stg-chips .c[aria-pressed="true"] { border-color: var(--clay); color: var(--ink); background: color-mix(in srgb, var(--clay) 12%, var(--raised)); }

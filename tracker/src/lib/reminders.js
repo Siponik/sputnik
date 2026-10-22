@@ -184,6 +184,30 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
   return items.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
 }
 
+/** «Тебе отдали задачу» в общей сфере (tasks[id].given = { by, name, at } — ставит App при обмене со сферой):
+ *  одно сообщение боту сразу, не позже суток. Без taskId — кнопки «✓ Готово» под ним нет. */
+export function assignedItems(lists, tasksByList, layTasks, now = Date.now()) {
+  const items = [];
+  for (const l of lists) {
+    for (const t of tasksByList[l.id] ?? []) {
+      const g = layTasks?.[t.id]?.given;
+      if (!g?.at || t.status === 'completed' || t.deleted) continue;
+      const at = new Date(g.at).getTime();
+      if (!(at > now - 864e5)) continue;
+      items.push({
+        key: `given|${t.id}|${g.at}`,
+        kind: 'assigned',
+        title: t.title || 'Без названия',
+        note: `${g.name || 'Участник'} отдаёт тебе задачу`,
+        list: l.title,
+        due: dueToYmd(t.due),
+        fireAt: new Date(at).toISOString(),
+      });
+    }
+  }
+  return items;
+}
+
 /** Напоминания о привычках со временем (habits[id].time) — на 7 дней вперёд, только по расписанию.
  *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
  *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
@@ -227,7 +251,7 @@ async function findByProp(value) {
   return r?.files?.[0]?.id ?? null;
 }
 
-async function ensureFolder() {
+export async function ensureFolder() {
   if (folderId) return folderId;
   folderId = await findByProp('folder');
   if (!folderId) {

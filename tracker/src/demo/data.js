@@ -134,3 +134,57 @@ export function seedLayer() {
 /** Статус «Входящих от Claude» (событие «Спутник · статус» в очереди): две задачи ждут «Принять / Отклонить». */
 export const seedInbox = () => ({ processed: { demo1: { ok: true, from: 'из утренней сводки', at: iso(0),
   created: [{ op: 'task.create', taskId: 'c1' }, { op: 'task.create', taskId: 'c2' }] } } });
+
+// Общие сферы (docs/design-v2.md, «Общие сферы»; макеты design/screens/Share*.dc.html): календари сфер с записями,
+// как их пишет lib/shared.js. Ты — владелец «Таверны» (с Аней и Максом, Вика ещё не приняла приглашение) и участник «Семьи» у Оли.
+import { make, toEvent, MARK, SPHERE_KEY, memberKey } from '../lib/sharedcore.js';
+export const DEMO_ME = 'siponik@gmail.com';
+const ANYA = 'anya@gmail.com', MAX = 'max@gmail.com', VIKA = 'vika@gmail.com', OLYA = 'olya@gmail.com';
+const key = (p, n) => p + String(n).padStart(16, '0');
+export function seedShared() {
+  const t = Date.now() - 36e5;
+  const R = (k, f) => make(k, f, t);
+  const member = (email, name, order, joined = true, seen = undefined) => R(memberKey(email), { email, name, order, joined, ...(seen ? { seen } : {}) });
+  const task = (n, list, title, f = {}) => R(key('t', n), { list, title, notes: '', status: 'needsAction', pos: String(100 + n).padStart(20, '0'), ...f });
+  const LA = key('l', 1), LT = key('l', 2), LB = key('l', 3);
+  const tavern = [
+    R(SPHERE_KEY, { name: 'Таверна', color: 'clay', icon: 'cube', owner: DEMO_ME }),
+    member(DEMO_ME, 'Сипоник', 0), member(ANYA, 'Аня', 1, true, t), member(MAX, 'Макс', 2), member(VIKA, 'Вика', 3, false),
+    R(LA, { title: 'Ассеты таверны', created: 1, $template: 'asset3d', $view: 'pipe' }),
+    R(LT, { title: 'Задачи команды', created: 2, $template: 'work' }),
+    task(1, LA, 'Стойка бармена', { due: due(0), $status: 'sculpt', $project: 'Таверна', $who: DEMO_ME, $priority: 1,
+      $stageWho: { refs: ANYA, blockout: DEMO_ME, sculpt: DEMO_ME, retopo: DEMO_ME, uv: MAX, textures: ANYA, render: ANYA },
+      $stageAt: { refs: ago(8), blockout: ago(6), sculpt: ago(3) } }),
+    task(2, LA, 'Сундук с золотом', { due: due(-1), $status: 'uv', $project: 'Таверна', $who: MAX, $stageWho: { refs: ANYA, blockout: ANYA, sculpt: DEMO_ME, retopo: DEMO_ME, textures: ANYA }, $stageAt: { uv: ago(2) } }),
+    task(3, LA, 'Вывеска таверны', { $status: 'refs', $project: 'Таверна' }),
+    task(4, LA, 'Лестница на 2 этаж', { due: due(8), $status: 'retopo', $project: 'Таверна', $who: DEMO_ME, $stageWho: { refs: ANYA, blockout: MAX, sculpt: MAX, uv: MAX }, $stageAt: { retopo: ago(1) } }),
+    task(5, LA, 'Пропсы: бочки и ящики', { due: due(1), $status: 'refs', $project: 'Таверна', $who: ANYA }),
+    task(6, LA, 'Стол и стулья', { status: 'completed', completed: new Date(ago(4)).toISOString(), $project: 'Таверна', $who: MAX }),
+    task(7, LT, 'Собрать референсы по свету', { due: due(2), $who: ANYA }),
+    task(8, LT, 'Созвон по сцене', { due: due(0), $status: 'doing', $slot: { s: '16:00', e: '16:30' }, $who: DEMO_ME }),
+    task(9, LT, 'Обновить ТЗ на мебель', { $status: 'review', $who: MAX }),
+    task(10, LT, 'Список звуков для таверны', {}),
+  ];
+  const family = [
+    R(SPHERE_KEY, { name: 'Семья', color: 'study', icon: 'star', owner: OLYA }),
+    member(OLYA, 'Оля', 0), member(DEMO_ME, 'Сипоник', 1),
+    R(LB, { title: 'Покупки', created: 1, $template: 'personal', $view: 'stickers',
+      $topics: [{ id: 'food', name: 'Еда', color: 'personal' }, { id: 'home', name: 'Дом', color: 'gold' }] }),
+    task(11, LB, 'Молоко и хлеб', { due: due(0), $topic: 'food', $who: DEMO_ME }),
+    task(12, LB, 'Подарок маме', { due: due(5), $topic: 'home', $who: OLYA }),
+    task(13, LB, 'Батарейки для пульта', { $topic: 'home' }),
+    task(14, LB, 'Сыр к ужину', { $topic: 'food', $who: OLYA }),
+  ];
+  // Приглашение: Аня позвала, я ещё не принял — плашка «Аня зовёт тебя в сферу» на «Сегодня» и доске.
+  const LC = key('l', 4);
+  const cafe = [
+    R(SPHERE_KEY, { name: 'Кафе «Ёж»', color: 'personal', icon: 'heart', owner: ANYA }),
+    member(ANYA, 'Аня', 0), member(MAX, 'Макс', 1), member(DEMO_ME, 'Сипоник', 2, false),
+    R(LC, { title: 'Меню и вывески', created: 1, $template: 'work' }),
+    task(21, LC, 'Логотип кафе', { $who: ANYA }), task(22, LC, 'Меню на доске', {}), task(23, LC, 'Табличка «открыто»', { $who: MAX }),
+  ];
+  const cal = (id, summary, role, recs) => ({ id, summary, role, description: `${MARK} v1 — служебный календарь общей сферы Спутника.`, recs: recs.map(toEvent) });
+  return [cal('tavern@group.calendar.google.com', 'Спутник · сфера Таверна', 'owner', tavern),
+    cal('family@group.calendar.google.com', 'Спутник · сфера Семья', 'writer', family),
+    cal('cafe@group.calendar.google.com', 'Спутник · сфера Кафе', 'writer', cafe)];
+}

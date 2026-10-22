@@ -1,0 +1,191 @@
+/* Общие сферы (docs/design-v2.md, «Общие сферы»; макеты design/screens/Share*.dc.html). Все классы — sh-*. */
+
+/* Кружок участника */
+.sh-av { position: relative; flex: none; width: var(--s, 24px); height: var(--s, 24px); border-radius: 50%; background: var(--ac); color: #1C1B19;
+  display: inline-grid; place-items: center; font: 700 calc(var(--s, 24px) * .46)/1 var(--font-sans); box-shadow: 0 0 0 2px var(--ring, var(--raised)); box-sizing: border-box; }
+.sh-av.me { box-shadow: 0 0 0 2px var(--ring, var(--raised)), 0 0 0 3.5px var(--clay); }
+.sh-av.none { background: none; border: 1.6px dashed var(--ink-faint); color: var(--ink-faint); box-shadow: none; font-weight: 500; }
+.sh-av.wait { opacity: .55; filter: grayscale(.6); }
+.sh-av.wait::after { content: ""; position: absolute; right: -2px; bottom: -2px; width: 9px; height: 9px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 0 2px var(--ring, var(--raised)); }
+.sh-av.more { --ac: var(--wash); color: var(--ink-soft); font-weight: 600; font-size: calc(var(--s, 24px) * .4); }
+.sh-stack { display: inline-flex; align-items: center; }
+.sh-stack .sh-av + .sh-av { margin-left: -7px; }
+
+/* Метка «общая» */
+.sh-tag { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border-radius: 999px; flex: none;
+  background: color-mix(in srgb, var(--signal-done) 14%, transparent); color: var(--signal-done); font: 600 10.5px/1 var(--font-sans); letter-spacing: .03em; vertical-align: middle; }
+.sh-tag svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.sh-tag.small { height: 18px; padding: 0 6px; font-size: 10px; }
+
+/* Окно «Сделать общей / Участники» */
+.dialog.sh-dlg { width: min(560px, calc(100% - 32px)); border-radius: 20px; gap: 16px; padding: 22px 24px 20px; }
+.sh-dlg h2 { margin: 0; font: 600 22px/28px var(--font-display); display: flex; align-items: center; gap: 10px; }
+.sh-dlg h2.sm { font-size: 18px; }
+.sh-dlg p.sh-s { margin: -8px 0 0; font-size: 13.5px; line-height: 20px; color: var(--ink-soft); }
+.sh-inv { display: flex; gap: 8px; }
+.sh-in { flex: 1; min-width: 0; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; min-height: 42px; padding: 6px 12px; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--edge); font-size: 14px; color: var(--ink); box-sizing: border-box; cursor: text; }
+.sh-in:focus-within { border: 1.5px solid var(--clay); padding: 5.5px 11.5px; }
+.sh-in input { flex: 1; min-width: 140px; border: 0; background: none; padding: 0; font: inherit; color: inherit; outline: none; }
+.sh-chip { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 4px; border-radius: 999px; background: var(--wash); font-size: 12.5px; }
+.sh-chip .sh-av { --ring: var(--wash); }
+.sh-chip button { width: 18px; height: 18px; border: 0; border-radius: 50%; background: none; color: var(--ink-faint); cursor: pointer; padding: 0; font-size: 13px; line-height: 1; }
+.sh-chip button:hover { color: var(--ink); background: var(--raised); }
+.sh-chip.bad { color: var(--signal-overdue); }
+.sh-lbl { margin: 0; font: 600 11px/1 var(--font-sans); letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.sh-what { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sh-what div { padding: 12px 14px; border-radius: 12px; background: var(--wash); font-size: 12.5px; line-height: 18px; color: var(--ink-soft); }
+.sh-what b { display: block; font-size: 13px; color: var(--ink); margin-bottom: 4px; }
+.sh-mem { display: flex; flex-direction: column; border-radius: 14px; border: 1px solid var(--hairline); background: var(--bg); max-height: 46vh; overflow: auto; }
+.sh-mr { display: flex; align-items: center; gap: 12px; min-height: 56px; padding: 8px 14px; border-bottom: 1px solid var(--hairline); }
+.sh-mr:last-child { border-bottom: 0; }
+.sh-mr .sh-av { --ring: var(--bg); }
+.sh-mr .tx { flex: 1; min-width: 0; }
+.sh-mr .tx b { display: block; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-mr .tx span { font-size: 12.5px; color: var(--ink-faint); }
+.sh-mr .tx span.w { color: var(--gold); }
+.sh-role { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; background: var(--wash); font: 500 12.5px/1 var(--font-sans); color: var(--ink-soft); white-space: nowrap; }
+.sh-role.own { background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); }
+.sh-ft { display: flex; align-items: center; gap: 8px; }
+.sh-ft .sp { flex: 1; }
+.sh-ft .hint { font-size: 12px; color: var(--ink-faint); }
+.sh-btn { height: 42px; padding: 0 16px; border-radius: 12px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 600 13.5px/1 var(--font-sans);
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; cursor: pointer; }
+.sh-btn:disabled { opacity: .5; cursor: default; }
+.sh-btn.pri { background: var(--clay); border-color: var(--clay); color: var(--on-clay); }
+.sh-btn.sm { height: 30px; padding: 0 11px; border-radius: 9px; font-size: 12px; }
+.sh-btn.ghost { background: none; border-color: transparent; color: var(--ink-soft); }
+.sh-btn.ghost:hover { color: var(--ink); background: var(--wash); }
+.sh-btn.dng { background: none; border-color: transparent; color: var(--signal-overdue); }
+.sh-err { margin: -6px 0 0; color: var(--signal-overdue); font-size: 12.5px; }
+.sh-note { margin: -6px 0 0; font-size: 12px; line-height: 17px; color: var(--ink-faint); }
+.sh-code { display: flex; gap: 8px; align-items: center; }
+.sh-code input { flex: 1; min-width: 0; height: 42px; padding: 0 12px; border-radius: 12px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 13px var(--font-mono); }
+.sh-code input:focus { outline: none; border: 1.5px solid var(--clay); }
+
+/* Колонка, шапка доски, экран «Сферы» */
+.sd-sph:has(.sh-stack) .sn { flex: 0 1 auto; }
+.sd-sph .sh-tag { margin-left: -3px; }
+.sd-sph .sh-stack { margin-left: auto; }
+.bd-path { display: inline-flex; align-items: center; gap: 6px; }
+.bd-share { display: inline-flex; align-items: center; gap: 10px; margin-left: 12px; vertical-align: middle; }
+.bd-share .sh-btn { font-family: var(--font-sans); height: 30px; padding: 0 11px; border-radius: 9px; font-size: 12px; }
+.sv-sh { display: flex; align-items: center; gap: 12px; }
+
+/* Выбор исполнителя (lib/WhoPick.svelte) */
+.sh-pick { display: flex; flex-direction: column; gap: 2px; }
+.sh-pq { height: 36px; margin-bottom: 4px; padding: 0 11px; border-radius: 10px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 400 13px/1 var(--font-sans); outline: none; }
+.sh-pq:focus { border-color: var(--clay); }
+.sh-po { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 9px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: 500 13.5px/1 var(--font-sans); cursor: pointer; text-align: left; }
+.sh-po.on { background: var(--wash); }
+.sh-po .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sh-po .ck { color: var(--clay); font-weight: 700; }
+.sh-po .nt { color: var(--ink-faint); font-size: 11.5px; }
+.sh-po .ct { color: var(--ink-faint); font: 400 11px/1 var(--font-mono); }
+.sh-po kbd { font: 500 10px/1 var(--font-mono); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--edge); color: var(--ink-faint); }
+.sh-pe { margin: 8px; color: var(--ink-faint); font-size: 12.5px; }
+
+/* Кружок исполнителя как кнопка (карточка, стикер, окно задачи) */
+.sh-who { flex: none; display: inline-flex; padding: 0; border: 0; background: none; border-radius: 50%; cursor: pointer; }
+.sh-who:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.kc .mt .sh-who, .kc .kc-wb .sh-who { margin-left: auto; }
+.kc-wb { display: flex; align-items: center; justify-content: flex-end; margin-top: 8px; }
+.sh-whof { display: inline-flex; align-items: center; gap: 8px; height: 34px; padding: 0 12px 0 5px; border-radius: 999px; border: 1px solid var(--edge); background: none; color: var(--ink); font: 600 13px/1 var(--font-sans); cursor: pointer; }
+.sh-whof.mine { border-color: var(--clay); }
+.sh-whof:hover { background: var(--wash); }
+.sh-whoh { color: var(--ink-faint); font-size: 12px; margin-left: 8px; }
+.sh-chg { color: var(--ink-soft); font-size: 13px; }
+.cr-c.cr-who { gap: 7px; padding-left: 5px; }
+.cr-c.cr-who[aria-pressed="true"] { border-color: var(--clay); }
+
+/* «Все / Мои / Без исполнителя» в шапке доски */
+.sh-seg { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border-radius: 12px; border: 1px solid var(--hairline); }
+.sh-seg button { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.sh-seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
+.sh-seg small { font: 400 11px/1 var(--font-mono); color: var(--ink-faint); }
+.sh-seg .sh-av { --ring: transparent; }
+
+/* Стикеры в общей сфере (docs/design-v2.md, «Общие сферы» 7) */
+.stk-page .stk.mine { box-shadow: inset 0 0 0 1.5px var(--clay), 0 8px 18px rgba(0, 0, 0, .28); }
+.stk-page .stk .sh-av { --ring: color-mix(in srgb, var(--tc) 30%, var(--bg)); }
+.sh-take { position: relative; display: inline-flex; align-items: center; }
+.sh-tk { display: none; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px; border-radius: 999px; border: 1px dashed var(--ink-faint);
+  background: color-mix(in srgb, var(--bg) 55%, transparent); color: var(--ink); font: 600 12px/1 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.stk:hover .sh-take .sh-who, .stk.sel .sh-take .sh-who { display: none; }
+.stk:hover .sh-take .sh-tk, .stk.sel .sh-take .sh-tk { display: inline-flex; }
+.stk-page .stamp .sh-av { margin-left: 6px; vertical-align: middle; transform: rotate(12deg); }
+.stk-page .lh.ppl { gap: 8px; }
+.stk-page .lh.ppl .sh-av { --ring: var(--bg); }
+.stk-page .bd-head .sh-seg { margin-right: 4px; }
+
+/* Конвейер в общей сфере (docs/design-v2.md, «Общие сферы» 8) */
+.cvr:has(.cv-who) { grid-template-columns: 20px minmax(170px, 1.05fr) minmax(0, 2.6fr) 80px 34px minmax(100px, auto); }
+.cvr .track .st { position: relative; overflow: visible; }
+/* Кружок исполнителя — по центру нижнего края ячейки: не залезает на соседний этап и не прячется под ним. */
+.cvr .track .st .sw { position: absolute; left: 50%; bottom: -9px; transform: translateX(-50%); z-index: 1; line-height: 0; pointer-events: none; }
+.cvr .track:has(.sw) + .days { margin-top: 12px; }
+.cvr .track .st .sw .sh-av { --ring: var(--raised); }
+.cvr .track .st.nxo { box-shadow: inset 0 0 0 1.5px var(--nc); color: var(--ink-soft); }
+.cvr .adv .sh-av { margin-left: 6px; vertical-align: middle; --ring: var(--raised); }
+.cv-sumrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cv-sumrow .cv-sum { flex: 1; }
+.cv .grp .sh-av { --ring: var(--bg); }
+.sh-given { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 2px 8px 2px 3px; border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); font: 600 11px/1.3 var(--font-sans); }
+/* «Кто на этапах» и «Как передаётся» — под подробностями этапа, над нижней строкой с кнопками. */
+.pn .cv-crew { grid-column: 1 / -1; order: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-top: 1px solid var(--hairline); }
+.pn:has(.cv-crew) > .foot { order: 2; }
+.pn .cv-crew > section { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pn .cv-crew > section + section { border-left: 1px solid var(--hairline); }
+.pn .cw { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; }
+.pn .cw.cur { background: var(--raised); }
+.pn .cw.cur .cn { color: var(--clay); font-weight: 600; }
+.pn .cw .cn { color: var(--ink-soft); }
+.pn .cw .cd { font: 400 11.5px/1 var(--font-mono); color: var(--ink-faint); }
+.pn .cwb { display: inline-flex; align-items: center; gap: 8px; justify-self: start; height: 30px; padding: 0 8px 0 2px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.pn .cwb:hover { background: var(--wash); }
+.pn .cwb i { font-style: normal; color: var(--ink-faint); font-size: 10px; }
+.pn .cwb .sh-av { --ring: var(--wash); }
+.pn .cv-ps { display: flex; align-items: center; gap: 9px; min-height: 28px; font-size: 13px; color: var(--ink-soft); }
+.pn .cv-ps .tx { flex: 1; min-width: 0; }
+.pn .cv-ps em { font: normal 400 11.5px/1 var(--font-mono); color: var(--ink-faint); }
+.pn .cv-ps.cv-nx { color: var(--ink-faint); }
+.pn .cv-ps .sh-av { --ring: var(--wash); }
+
+/* Состояния (lib/ShareStates.svelte) */
+.sh-st.inv { display: flex; align-items: center; gap: 16px; margin: 0 0 16px; padding: 14px 20px; border-radius: 16px;
+  background: color-mix(in srgb, var(--signal-done) 8%, var(--raised)); border: 1px solid color-mix(in srgb, var(--signal-done) 30%, var(--edge)); }
+.sh-st.inv .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sh-st.inv .tx b { font: 600 17px/1.25 var(--font-display); }
+.sh-st.inv .tx span { color: var(--ink-soft); font-size: 13px; }
+.sh-st .bt { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+.sh-st.uns { display: flex; align-items: center; gap: 12px; margin: 0 0 12px; padding: 10px 14px; border-radius: 12px;
+  background: color-mix(in srgb, var(--gold) 9%, var(--raised)); border: 1px solid color-mix(in srgb, var(--gold) 35%, var(--edge)); }
+.sh-st.uns p { margin: 0; font-size: 13px; line-height: 18px; color: var(--ink-soft); }
+.sh-st.uns b { color: var(--ink); }
+.sh-lost { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; text-align: center; min-height: 60vh; }
+.sh-lost h2 { margin: 6px 0 0; font: 600 26px/1.2 var(--font-display); }
+.sh-lost p { max-width: 460px; margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 21px; }
+.sh-lost .bt { display: flex; gap: 10px; margin-top: 6px; }
+.sh-lost small { color: var(--ink-faint); font-size: 12px; }
+.sd-sph.lost { opacity: .55; }
+.sd-sph .sd-lost { flex: none; margin-left: auto; color: var(--signal-overdue); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+/* Карточка «ждёт Аню»: правка ещё не дошла до исполнителя */
+.kc.wait { border-style: dashed; }
+.kc .sh-wait { display: inline-flex; align-items: center; gap: 4px; color: var(--gold); font: 600 11.5px/1 var(--font-sans); }
+.sh-invs { display: flex; flex-direction: column; padding: 16px 24px 0; }
+.sd-sph.lost .sn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.board-swap > .sh-st.uns { margin: 16px 24px 0; }
+/* «Как меня видят» — фото в кружке и редактор в окне «Участники». */
+.sh-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.sh-prof { padding: 12px 14px 4px; border-bottom: 1px solid var(--hairline); background: var(--wash); display: flex; flex-direction: column; gap: 10px; }
+.sh-prof .sh-lbl { margin: 0; }
+.sh-prof .sh-note { margin: 0; }
+.sh-pr-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sh-pr-row .sh-av { --ring: var(--wash); }
+.sh-pr-l { width: 44px; font-size: 12.5px; color: var(--ink-faint); }
+.sh-pr-name { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 500 14px/1 var(--font-sans); }
+.sh-pr-name:focus { outline: 2px solid var(--clay); outline-offset: -1px; }
+.sh-sw { width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--c); cursor: pointer; box-shadow: 0 0 0 2px var(--wash); }
+.sh-sw.on { box-shadow: 0 0 0 2px var(--wash), 0 0 0 4px var(--ink); }
+.sh-sw:focus-visible { outline: 2px solid var(--clay); outline-offset: 3px; }

@@ -5,7 +5,7 @@
 export const typing = (e) => !!e.target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 /** Открыто окно поверх экрана (задача, «Создать», новый список, подсказка). */
-export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win');
+export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win, .pvw');
 
 /** Одиночная клавиша без Ctrl/Alt/Win (Shift разрешён только там, где он часть знака, например «?»). */
 export const plain = (e) => !e.ctrlKey && !e.altKey && !e.metaKey;
@@ -14,7 +14,7 @@ export const plain = (e) => !e.ctrlKey && !e.altKey && !e.metaKey;
 // без него клавиша есть только в окне «?».
 export const HOTKEYS = [
   { group: 'Везде', keys: [
-    ['1–4 · Q / E', 'Сегодня · Календарь · Доска · Привычки; Q / E — предыдущий / следующий раздел', 'Разделы'],
+    ['1–4 · Q / E', 'Разделы по порядку вкладок в шапке (меняется в Настройки → Вид); Q / E — предыдущий / следующий раздел', 'Разделы'],
     ['N · Ctrl+N', 'Создать (на «Сегодня» — строка сверху, на «Привычках» — новая привычка)', 'Создать'],
     ['Ctrl+K · /', 'Поиск по всем задачам и переход к разделу или списку', 'Найти'],
     ['R', 'Синхронизировать с Google сейчас', 'Обновить'],

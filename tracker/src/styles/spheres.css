@@ -74,3 +74,5 @@
 .sph-sel svg { position: absolute; right: 9px; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .t-top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
 .t-top .date { margin: 0; }
+
+.sd-shared { color: var(--gold); display: inline-flex; margin-left: 4px; vertical-align: -2px; }

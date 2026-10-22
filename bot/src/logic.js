@@ -43,7 +43,7 @@ export function format(item, tz) {
     return [`📅 <b>${esc(item.title)}</b>`, when, ...(item.note ? [esc(item.note)] : [])].join('\n');
   }
   if (item.kind === 'habit') { const p = parts(new Date(item.fireAt), tz); return `⏰ <b>${esc(item.title)}</b>\nПривычка · ${p.hh}:${p.mm}`; }
-  const lines = [`${item.kind === 'milestone' || item.kind === 'test' ? '' : '🔔 '}<b>${esc(item.title)}</b>`];
+  const lines = [`${item.kind === 'milestone' || item.kind === 'test' ? '' : item.kind === 'assigned' ? '👤 ' : '🔔 '}<b>${esc(item.title)}</b>`];
   if (item.due) lines.push(`Срок: ${dayText(item.due)}`);
   if (item.note) lines.push(esc(item.note));
   if (item.list) lines.push(`<i>${esc(item.list)}</i>`);
@@ -177,7 +177,7 @@ export async function tick({ store, tg, now = Date.now() }) {
         const id = await store.markSent(u.chat, it, now);
         const row = [];
         if (it.taskId && it.listId && it.kind !== 'milestone' && it.kind !== 'habit') row.push({ text: '✓ Готово', callback_data: `d:${id}` });
-        if (it.kind !== 'milestone' && it.kind !== 'test') row.push({ text: '⏰ Через час', callback_data: `z:${id}` });
+        if (it.kind !== 'milestone' && it.kind !== 'test' && it.kind !== 'assigned') row.push({ text: '⏰ Через час', callback_data: `z:${id}` });
         try {
           await tg('sendMessage', { chat_id: u.chat, text: format(it, u.tz), parse_mode: 'HTML', disable_web_page_preview: true, ...(row.length ? { reply_markup: { inline_keyboard: [row] } } : {}) });
           n++;

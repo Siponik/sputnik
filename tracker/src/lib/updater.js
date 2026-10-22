@@ -1,7 +1,7 @@
 // Обновление из приложения: Tauri updater смотрит latest.json в последнем релизе Siponik/sputnik
 // (адрес и открытый ключ — tauri.conf.json → plugins.updater). Установщик подписан, чужой файл не встанет.
 // Бета-канал (settings.update.beta, только у владельца): сначала latest.json релиза tracker-beta (команда beta_check,
-// src-tauri/src/beta.rs), если там ничего нового — обычный: 0.7.3-beta.2 обновится на вышедший 0.7.3 сам.
+// src-tauri/src/beta.rs), если там ничего нового или канал недоступен — обычный: 0.7.3-beta.2 обновится на вышедший 0.7.3 сам.
 import { check, Update } from '@tauri-apps/plugin-updater';
 import { invoke } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
@@ -13,7 +13,8 @@ export const currentVersion = () => getVersion().catch(() => '');
 export async function findUpdate(beta = false) {
   if (import.meta.env.DEV && import.meta.env.MODE !== 'demo') return null;
   if (beta && import.meta.env.MODE !== 'demo') {
-    const meta = await invoke('beta_check');
+    // Канал недоступен (ещё нет ни одной беты, нет сети до GitHub) — не ошибка, проверяем обычный.
+    const meta = await invoke('beta_check').catch((e) => (console.warn('Бета-канал:', e), null));
     if (meta) {
       const update = new Update(meta);
       return { version: update.version, notes: update.body ?? '', update, beta: true };

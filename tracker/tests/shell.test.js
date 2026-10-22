@@ -206,3 +206,17 @@ test('бета-версии: строка только у владельца, и
   assert.equal(shell.betaShow({ show: false }, '0.7.3', { beta: true }), true);
   assert.equal(shell.betaShow({ show: false }, '0.7.3-beta.1', {}), true);
 });
+
+test('порядок вкладок шапки: свой, без мусора, новые — в конец', () => {
+  assert.deepEqual(shell.tabOrder(undefined), ['today', 'calendar', 'board', 'habits']);
+  assert.deepEqual(shell.tabOrder(['board', 'today']), ['board', 'today', 'calendar', 'habits']);
+  assert.deepEqual(shell.tabOrder(['habits', 'x', 'habits', 'board', 'calendar', 'today']), ['habits', 'board', 'calendar', 'today']);
+  const o = shell.tabOrder();
+  assert.deepEqual(shell.moveTab(o, 'habits', 0), ['habits', 'today', 'calendar', 'board']);
+  assert.deepEqual(shell.moveTab(o, 'today', 1), ['calendar', 'today', 'board', 'habits']);
+  assert.deepEqual(shell.moveTab(o, 'today', 99), ['calendar', 'board', 'habits', 'today']);
+  assert.deepEqual(shell.moveTab(o, 'nope', 0), o);
+  assert.ok(shell.tabsDefault(o));
+  assert.ok(!shell.tabsDefault(shell.moveTab(o, 'board', 0)));
+  assert.equal(shell.searchSettings('порядок меню')[0].id, 'tabs');
+});

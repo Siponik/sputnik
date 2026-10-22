@@ -5,13 +5,15 @@
   // выезжает поверх доски (150 мс / уход 300 мс, логика — shell.slider).
   import { tick, untrack } from 'svelte';
   import SphereIcon from './SphereIcon.svelte';
+  import SharedTag from './SharedTag.svelte';
+  import AvStack from './AvStack.svelte';
   import Coon from './Coon.svelte';
   import { sphereColor, iconPath } from './spheres.js';
   import * as shell from './shell.js';
   import { level } from './motion.js';
 
   let {
-    spheres, listsOf, noSphere, count, viewOf, activeId = null, current = 'board', activeSphere = null,
+    spheres, listsOf, noSphere, count, peopleOf = () => [], together = () => false, me = '', viewOf, activeId = null, current = 'board', activeSphere = null,
     folded = () => false, projects = [], project = null, tips = [], tipsOn = true, pinned = true, hold = false,
     onlist, onsphere, onfold, onmenu, onadd, onproject, ontemplates, onarchive, onshow, onpin, ontip, ontiphide, onregister,
   } = $props();
@@ -122,15 +124,16 @@
     {#each shown.spheres as { sp, lists } (sp.id)}
       {@const fold = !q && folded(sp.id)}
       <div class="sd-sph-row">
-        <button type="button" class="sd-sph" aria-current={current === 'sphere' && activeSphere === sp.id} onclick={() => { onsphere(sp.id); done(); }}
+        <button type="button" class="sd-sph" class:lost={sp.noAccess} aria-current={current === 'sphere' && activeSphere === sp.id} onclick={() => { onsphere(sp.id); done(); }}
           oncontextmenu={(e) => onmenu(e, 'sphere', sp.id)} onkeydown={(e) => { if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') onmenu(e, 'sphere', sp.id); }}>
-          <SphereIcon sphere={sp} size={22} /><span class="sn">{sp.name}</span><span class="n">{listsOf(sp.id).reduce((n, l) => n + count(l), 0)}</span>
+          <SphereIcon sphere={sp} size={22} /><span class="sn">{sp.name}</span>{#if sp.noAccess}<span class="sd-lost">нет доступа</span>{:else if together(sp.id)}<SharedTag small /><AvStack people={peopleOf(sp.id)} size={18} {me} max={2}
+            title="{peopleOf(sp.id).map((p) => p.name).join(', ')} · задач: {listsOf(sp.id).reduce((n, l) => n + count(l), 0)}" />{:else}{#if sp.shared}<span class="sd-shared" title="Общая сфера, пока без участников" aria-label="общая"><svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3 20c0-3.3 2.7-6 6-6s6 2.7 6 6M16 4.5a3.5 3.5 0 0 1 0 6.5M18 14c2 .8 3 3 3 6" /></svg></span>{/if}<span class="n">{listsOf(sp.id).reduce((n, l) => n + count(l), 0)}</span>{/if}
         </button>
         <button type="button" class="sd-chev" aria-label={fold ? 'Развернуть сферу' : 'Свернуть сферу'} aria-expanded={!fold} title={fold ? 'Развернуть' : 'Свернуть'} onclick={() => onfold(sp.id, !fold)}>
           <svg viewBox="0 0 24 24" aria-hidden="true" class:closed={fold}><path d="M6 9l6 6 6-6" /></svg>
         </button>
       </div>
-      {#if !fold}{#each lists as l (l.id)}{@render listRow(l)}{/each}{/if}
+      {#if !fold && !sp.noAccess}{#each lists as l (l.id)}{@render listRow(l)}{/each}{/if}
     {/each}
     {#if shown.noSphere.length}
       {#if spheres.length}<p class="sd-h4 sd-sub">Без сферы</p>{/if}
