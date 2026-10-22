@@ -1,4 +1,6 @@
 <script>
+  import SharedTag from './SharedTag.svelte';
+  import ShareBits from './ShareBits.svelte';
   // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
   // Одна выбранная карточка (обводка clay): клик по названию — окно задачи, по карточке — выбрать, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
@@ -25,7 +27,7 @@
   // lists — другие списки (для «В другой список»).
   // layList — запись списка в слое (для «Стикеров»: темы, раскладка).
   let { list, tasks, template, colOf, typeOf, layTasks, layList = {}, project = null, remindOf = () => '', view = 'kanban',
-    act, lists = [], fold = {}, onfold, sphereName = '',
+    act, lists = [], fold = {}, onfold, sphereName = '', share = null,
     oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
 
   // Три основных вида; «Список» — только у списка, где он выбран (в редакторе шаблонов).
@@ -266,7 +268,7 @@
 
 {#if view === 'stickers'}
 <div class="page bd stk-page">
-  <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs}
+  <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs} {share} {sphereName}
     headLine="{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»" {onedittemplate} {onarchive} />
 </div>
 {:else}
@@ -274,9 +276,9 @@
   <!-- Шапка по design/screens/Kanban.dc.html: сфера · шаблон над названием, справа фильтры и вид. -->
   <header class="bd-head">
     <div class="bd-title">
-      <p>{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
+      <p>{#if sphereName}<span class="bd-path">{sphereName}{#if share}<SharedTag small />{/if}</span>{' · '}{/if}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
         · <button type="button" class="link" title="Колонки, цвета, лимиты и поля шаблона" onclick={onedittemplate}>настроить</button></p>
-      <h1>{list?.title ?? 'Задачи'}</h1>
+      <h1>{list?.title ?? 'Задачи'}{#if share}<ShareBits {share} />{/if}</h1>
     </div>
     <div class="tb" role="group" aria-label="Фильтры">
       {#each FILTERS as f (f.k)}

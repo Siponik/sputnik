@@ -166,12 +166,13 @@ async function flush(s) {
   persist();
 }
 
-/** Участник впервые видит сферу — отмечаем «принял приглашение» (владелец увидит, что он с нами). */
+/** Участник впервые видит сферу — отмечаем «принял приглашение» (владелец увидит, что он с нами); раз в час — «был тогда-то». */
 async function markJoined(s) {
   if (!me || !s.recs[core.SPHERE_KEY]) return;
   const k = core.memberKey(me), cur = s.recs[k];
-  if (cur?.f?.joined && !cur.f.removed) return;
-  const next = cur ? core.edit(cur, { joined: true, removed: false }) : core.make(k, { email: me, order: core.nextOrder(s.recs), joined: true });
+  const stale = !cur?.f?.seen || Date.now() - cur.f.seen > 36e5; // «последний раз в …» — не чаще раза в час
+  if (cur?.f?.joined && !cur.f.removed && !stale) return;
+  const next = cur ? core.edit(cur, { joined: true, removed: false, seen: Date.now() }) : core.make(k, { email: me, order: core.nextOrder(s.recs), joined: true, seen: Date.now() });
   await write(s.cal, next);
 }
 
@@ -285,4 +286,15 @@ export async function removeMember(cal, email) {
   catch (err) { if (!/404|410/.test(String(err))) throw err; }
   const k = core.memberKey(e);
   if (stores[cal]?.recs?.[k]) await patchRec(cal, k, { removed: true });
+}
+
+/** Перестать делиться: убрать всех, кроме владельца. Сфера остаётся у владельца, как была. */
+export async function stopSharing(cal) {
+  for (const p of people(cal)) if (!p.owner) await removeMember(cal, p.email);
+}
+
+/** Текст приглашения для «Скопировать ссылку-приглашение»: ссылка Google Календаря и код для Спутника. */
+export function inviteText(cal, sphereName) {
+  const link = `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(cal)}`;
+  return `Зову тебя в общую сферу «${sphereName}» в Спутнике.\n1) Открой ссылку и добавь календарь: ${link}\n2) Или в Спутнике: ＋ в левой колонке → «Войти в общую сферу…» и код: ${cal}`;
 }

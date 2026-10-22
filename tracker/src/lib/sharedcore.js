@@ -10,7 +10,7 @@
 // Поля списка: title, created и поля слоя списка с '$' ('$template', '$view', '$topics'…).
 // Поля сферы: name, color, icon, owner (почта владельца).
 // Участник — своя запись (ключ из почты, memberKey): email, name, order (порядок вступления — от него цвет),
-// joined (принял приглашение), removed (убран или вышел). Отдельными записями, а не полем сферы: владелец зовёт,
+// joined (принял приглашение), seen (последний обмен, не чаще раза в час), removed (убран или вышел). Отдельными записями, а не полем сферы: владелец зовёт,
 // а участник в это же время отмечает «принял» — и никто никого не затирает.
 // Последний, кто менял запись, — поле by (почта), время — в ft.by.
 
@@ -256,12 +256,14 @@ export const isSphereCal = (c) => typeof c?.description === 'string' && c.descri
 // Цвета участников по порядку вступления: владелец — clay, дальше типы задач (docs/design-v2.md, «Участник — кружок»).
 export const MEMBER_COLORS = ['var(--clay)', 'var(--type-study)', 'var(--type-work)', 'var(--type-personal)', 'var(--gold)', 'var(--signal-done)'];
 
-/** Участники сферы по порядку: [{ email, name, order, owner, joined, color, letter }]; убранные — не показываем. */
+/** Участники сферы по порядку: [{ email, name, order, owner, joined, seen, invited, color, letter }]; убранные — не показываем.
+ *  seen — когда Спутник участника последний раз обменивался со сферой (мс), invited — когда позвали. */
 export function membersOf(recs) {
   const owner = recs?.[SPHERE_KEY]?.f?.owner ?? null;
   const out = Object.values(recs ?? {})
     .filter((r) => kindOf(r.k) === 'member' && r.f.email && !r.f.removed)
-    .map((r) => ({ email: r.f.email, name: r.f.name || nameOf(r.f.email), order: r.f.order ?? 0, owner: r.f.email === owner, joined: !!r.f.joined || r.f.email === owner }))
+    .map((r) => ({ email: r.f.email, name: r.f.name || nameOf(r.f.email), order: r.f.order ?? 0, owner: r.f.email === owner, joined: !!r.f.joined || r.f.email === owner,
+      seen: r.f.seen ?? null, invited: r.ft?.email ?? null }))
     .sort((a, b) => (b.owner - a.owner) || a.order - b.order || a.email.localeCompare(b.email));
   return out.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length], letter: (m.name || m.email).trim()[0]?.toUpperCase() ?? '?' }));
 }
@@ -304,4 +306,30 @@ export function setStageWho(L, col, who) {
   const cur = { ...(L?.stageWho ?? {}) };
   if (who) cur[col] = who; else delete cur[col];
   return { stageWho: cur };
+}
+
+/** Сфера по-настоящему общая — в ней есть кто-то кроме владельца (иначе метку «общая» не показываем). */
+export const isTogether = (people) => people.filter((m) => !m.owner).length > 0;
+
+/** «последний раз сегодня в 12:40» / «вчера в 9:05» / «20 окт.» — для строки участника. */
+export function seenText(ms, now = Date.now()) {
+  if (!ms) return '';
+  const d = new Date(ms), n = new Date(now);
+  const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(n) - day(d)) / 864e5);
+  if (diff === 0) return `сегодня в ${hm}`;
+  if (diff === 1) return `вчера в ${hm}`;
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+/** Разбор поля приглашения: почты через запятую, пробел или точку с запятой; неверные — отдельно. */
+export function parseEmails(text) {
+  const ok = [], bad = [];
+  for (const raw of String(text ?? '').split(/[\s,;]+/)) {
+    const e = raw.trim().toLowerCase();
+    if (!e) continue;
+    (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? ok : bad).push(e);
+  }
+  return { ok: [...new Set(ok)], bad };
 }
