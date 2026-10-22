@@ -260,6 +260,7 @@
       // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
       // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
       await syncLayer();
+      if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareVer++; }).catch(() => {});
       if (shr) applyShared(shr);
       lists = ls;
       // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
@@ -1164,6 +1165,15 @@
     };
   }
 
+  /** «Как меня видят» (окно «Участники»): имя, цвет, фото — одно на все общие сферы, хранится в настройках слоя. */
+  async function saveProfile(p) {
+    const f = sh.profileFields(p);
+    touch('settings', 'profile', f);
+    saveLayer();
+    try { await shared.applyProfile(f); shareVer++; say('Готово: так тебя видят во всех общих сферах'); }
+    catch (e) { say('Не удалось обновить профиль в сферах: ' + e); }
+  }
+
   async function inviteTo(sid, emails) {
     const cal = sh.calOfSphere(sid);
     let n = 0;
@@ -1996,7 +2006,7 @@
     <ShareSphere mode={sharePanel.mode} sphere={spheres.find((x) => x.id === sid)} people={peopleOf(sid)} me={meEmail}
       owner={sharePanel.mode === 'make' || shared.isOwner(sh.calOfSphere(sid))} listNames={sphereLists(sid).map((l) => l.title)}
       onmake={(emails) => makeShared(sid, emails)} oninvite={(emails) => inviteTo(sid, emails)} onremove={(p) => removePerson(sid, p)}
-      onstop={() => askStopSharing(sid)} onleave={() => { sharePanel = null; askLeaveSphere(sid); }} oncopy={() => copyInvite(sid)}
+      profile={lay.settings?.profile} onprofile={saveProfile} onstop={() => askStopSharing(sid)} onleave={() => { sharePanel = null; askLeaveSphere(sid); }} oncopy={() => copyInvite(sid)}
       onclose={() => (sharePanel = null)} />
   {/if}
   {#if joinOpen}

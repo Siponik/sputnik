@@ -176,3 +176,16 @@
 .sh-invs { display: flex; flex-direction: column; padding: 16px 24px 0; }
 .sd-sph.lost .sn { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .board-swap > .sh-st.uns { margin: 16px 24px 0; }
+/* «Как меня видят» — фото в кружке и редактор в окне «Участники». */
+.sh-av img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+.sh-prof { padding: 12px 14px 4px; border-bottom: 1px solid var(--hairline); background: var(--wash); display: flex; flex-direction: column; gap: 10px; }
+.sh-prof .sh-lbl { margin: 0; }
+.sh-prof .sh-note { margin: 0; }
+.sh-pr-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.sh-pr-row .sh-av { --ring: var(--wash); }
+.sh-pr-l { width: 44px; font-size: 12.5px; color: var(--ink-faint); }
+.sh-pr-name { flex: 1; min-width: 0; height: 36px; padding: 0 12px; border-radius: 9px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 500 14px/1 var(--font-sans); }
+.sh-pr-name:focus { outline: 2px solid var(--clay); outline-offset: -1px; }
+.sh-sw { width: 24px; height: 24px; border-radius: 50%; border: 0; background: var(--c); cursor: pointer; box-shadow: 0 0 0 2px var(--wash); }
+.sh-sw.on { box-shadow: 0 0 0 2px var(--wash), 0 0 0 4px var(--ink); }
+.sh-sw:focus-visible { outline: 2px solid var(--clay); outline-offset: 3px; }

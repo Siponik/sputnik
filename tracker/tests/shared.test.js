@@ -394,3 +394,29 @@ test('seenDue: раз в час или через 2 минуты, если пр�
   assert.equal(sh.seenDue(1, false, 36e5 + 2), true);
   assert.match(sh.askAccessText('Таверна', 'o@x'), /Кому: o@x[\s\S]*«Таверна»/);
 });
+
+test('«Как меня видят»: имя, цвет и фото из записи участника, чужие ссылки не проходят', () => {
+  const pic = 'data:image/jpeg;base64,' + 'A'.repeat(200) + '==';
+  const recs = {
+    [sh.SPHERE_KEY]: sh.make(sh.SPHERE_KEY, { name: 'С', owner: 'me@x.ru' }),
+    [sh.memberKey('me@x.ru')]: sh.make(sh.memberKey('me@x.ru'), { email: 'me@x.ru', order: 0, joined: true, name: 'Сипоник', color: 3, pic }),
+    [sh.memberKey('anya@x.ru')]: sh.make(sh.memberKey('anya@x.ru'), { email: 'anya@x.ru', order: 1, joined: true, color: 99, pic: 'https://evil/x.png' }),
+  };
+  const [me, anya] = sh.membersOf(recs);
+  assert.equal(me.name, 'Сипоник');
+  assert.equal(me.letter, 'С');
+  assert.equal(me.color, sh.MEMBER_COLORS[3]);
+  assert.equal(me.pic, pic);
+  assert.equal(anya.color, sh.MEMBER_COLORS[1]); // неверный цвет — по порядку
+  assert.equal(anya.pic, null);
+  assert.equal(sh.okPic('data:image/svg+xml;base64,AAAA'), null);
+  assert.equal(sh.okPic('data:image/png;base64,' + 'A'.repeat(sh.PIC_MAX)), null);
+});
+
+test('profilePatch: только то, что отличается; пустое имя — как по умолчанию', () => {
+  const rec = sh.make(sh.memberKey('me@x.ru'), { email: 'me@x.ru', name: 'Сипоник', color: 2 });
+  assert.deepEqual(sh.profilePatch(rec, { name: '  Сипоник ', color: 2 }), {});
+  assert.deepEqual(sh.profilePatch(rec, { name: 'Сипоник', color: 4 }), { color: 4 });
+  assert.deepEqual(sh.profilePatch(rec, { name: '', color: 7, pic: 'x' }), { name: null, color: null });
+  assert.equal(sh.profileFields({ name: 'a'.repeat(40) }).name.length, sh.NAME_MAX);
+});
