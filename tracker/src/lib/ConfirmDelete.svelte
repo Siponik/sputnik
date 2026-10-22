@@ -2,7 +2,7 @@
   import { fade, pop } from './motion.js';
   // Подтверждение необратимого удаления. Фокус — на «Отмена», чтобы случайный Enter ничего не удалил.
   // onconfirm может быть async: пока идёт, кнопки заняты; окно закрывает App.
-  let { title, text = '', note = '', yes = 'Удалить', onconfirm, onclose } = $props();
+  let { title, text = '', note = '', yes = 'Удалить', danger = true, onconfirm, onclose } = $props();
   let busy = $state(false);
   let cancel = $state(null);
   $effect(() => { cancel?.focus(); });
@@ -23,6 +23,6 @@
   {#if note}<p class="hint">{note}</p>{/if}
   <div class="actions">
     <button bind:this={cancel} class="sp-btn sp-btn-ghost" type="button" disabled={busy} onclick={onclose}>Отмена</button>
-    <button class="sp-btn danger" type="button" disabled={busy} onclick={go}>{busy ? 'Удаляю…' : yes}</button>
+    <button class="sp-btn" class:danger class:sp-btn-primary={!danger} type="button" disabled={busy} onclick={go}>{busy ? (danger ? 'Удаляю…' : 'Минутку…') : yes}</button>
   </div>
 </div>

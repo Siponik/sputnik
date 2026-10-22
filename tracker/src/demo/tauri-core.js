@@ -56,11 +56,64 @@ function tasksApi(method, path, q, body) {
   return {};
 }
 
+// Календари общих сфер (lib/shared.js) в памяти: календари, события с «токеном изменений», доступы.
+const cals = {}; // id → { summary, description, events: { id: { ev, at } }, acl: [] }
+let calTick = 1;
+if (typeof window !== 'undefined') window.__demoCals = cals;
+const httpErr = (code, msg) => { throw new Error(`${code} ${msg} (демо)`); };
+
+function sphereCalApi(method, path, q, body) {
+  let m;
+  if (path === 'calendars' && method === 'POST') {
+    const id = 'c' + n++ + '@group.calendar.google.com';
+    cals[id] = { summary: body.summary, description: body.description, events: {}, acl: [] };
+    return { id, summary: body.summary, description: body.description };
+  }
+  if ((m = /^users\/me\/calendarList\/(.+)$/.exec(path))) {
+    const id = decodeURIComponent(m[1]);
+    if (method === 'DELETE') { delete cals[id]; return null; }
+    return { id };
+  }
+  if (path === 'users/me/calendarList' && method === 'POST') {
+    const c = cals[body.id] ?? httpErr(404, 'Not Found');
+    return { id: body.id, summary: c.summary, description: c.description };
+  }
+  if (!(m = /^calendars\/([^/]+)(?:\/(events|acl)(?:\/([^/]+))?)?$/.exec(path))) return undefined;
+  const id = decodeURIComponent(m[1]), c = cals[id];
+  if (!c) return undefined;
+  if (!m[2]) { if (method === 'DELETE') { delete cals[id]; return null; } return { id, summary: c.summary }; }
+  if (m[2] === 'acl') {
+    if (method === 'GET') return { items: [{ id: 'user:demo@gmail.com', role: 'owner', scope: { type: 'user', value: 'demo@gmail.com' } }, ...c.acl] };
+    if (method === 'POST') { const a = { id: 'user:' + body.scope.value, role: body.role, scope: body.scope }; c.acl = [...c.acl.filter((x) => x.id !== a.id), a]; return a; }
+    if (method === 'DELETE') { c.acl = c.acl.filter((x) => x.id !== decodeURIComponent(m[3])); return null; }
+  }
+  const eid = m[3] && decodeURIComponent(m[3]);
+  if (!eid && method === 'GET') {
+    const since = Number(q.get('syncToken') || 0);
+    const items = Object.values(c.events).filter((x) => x.at > since && (since || x.ev.status !== 'cancelled')).map((x) => structuredClone(x.ev));
+    return { items, nextSyncToken: String(calTick) };
+  }
+  if (!eid && method === 'POST') {
+    if (c.events[body.id] && c.events[body.id].ev.status !== 'cancelled') httpErr(409, 'duplicate');
+    if (c.events[body.id]) httpErr(409, 'duplicate');
+    c.events[body.id] = { ev: { ...structuredClone(body), status: 'confirmed' }, at: ++calTick };
+    return structuredClone(c.events[body.id].ev);
+  }
+  const x = c.events[eid];
+  if (method === 'GET') { if (!x || x.ev.status === 'cancelled') httpErr(404, 'Not Found'); return structuredClone(x.ev); }
+  if (method === 'PUT') { c.events[eid] = { ev: { ...structuredClone(body), id: eid, status: 'confirmed' }, at: ++calTick }; return structuredClone(c.events[eid].ev); }
+  if (method === 'DELETE') { if (!x) httpErr(404, 'Not Found'); c.events[eid] = { ev: { id: eid, status: 'cancelled' }, at: ++calTick }; return null; }
+  return undefined;
+}
+
 function calApi(method, path, q, body) {
+  const sph = sphereCalApi(method, path, q, body);
+  if (sph !== undefined) return sph;
   if (/^users\/me\/calendarList/.test(path)) {
     return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
       { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' },
-      { id: 'queue@demo', summary: 'Спутник · входящие', backgroundColor: '#888888', accessRole: 'owner' }] };
+      { id: 'queue@demo', summary: 'Спутник · входящие', backgroundColor: '#888888', accessRole: 'owner' },
+      ...Object.entries(cals).map(([id, c]) => ({ id, summary: c.summary, description: c.description, accessRole: 'owner', selected: false }))] };
   }
   if (path.startsWith('calendars/queue%40demo/') || path.startsWith('calendars/queue@demo/')) {
     return { items: q.get('timeMin')?.startsWith('2029') ? [{ id: 'st', summary: 'Спутник · статус', description: JSON.stringify(seedInbox()) }] : [] };
