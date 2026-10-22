@@ -161,11 +161,11 @@
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
-    const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log),
+    const items = [...reminders.collect(boardLists, mineTasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log),
       ...reminders.assignedItems(boardLists, tasks, lay.tasks), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
-    const week = tgKey ? sharedbot.snapshot(boardLists, tasks, lay.tasks) : null;
+    const week = tgKey ? sharedbot.snapshot(boardLists, mineTasks, lay.tasks) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       // Общий бот (lib/sharedbot.js) — те же напоминания, кроме проверки личного бота, и задачи на неделю для /today.
@@ -922,6 +922,15 @@
       if (!ok) ok = (await notify.requestPermission()) === 'granted';
       if (ok) notify.sendNotification({ title: 'Спутник · тебе отдали задачу', body: given.length === 1 ? `${name}: ${title}` : text });
     } catch { /* уведомления недоступны — плашка и бот всё равно скажут */ }
+  }
+
+  // «Сегодня» и календарь: из общих сфер — только мои и ничьи задачи (docs/design-v2.md, «Общие сферы» 5).
+  const mineTasks = $derived((shareVer, sh.forMe(tasks, lay.tasks, meEmail, (lid) => sh.isSharedId(lid) && together(sphereOf(lid, lay)))));
+
+  /** Задача из строки «Сегодня» в общую сферу — сразу моя (в «Создать» по умолчанию «Никто»). */
+  function mineByDefault(p) {
+    if (!p?.listId || !sh.isSharedId(p.listId) || !together(sphereOf(p.listId, lay)) || p.layer?.who !== undefined) return p;
+    return { ...p, layer: { ...(p.layer ?? {}), who: meEmail } };
   }
 
   /** Окно задачи в общей сфере: исполнитель, последнее чужое изменение, счётчики для выбора. */
@@ -1764,16 +1773,16 @@
       <div class="main">
         {#snippet sphFilter()}<SphereFilter {spheres} value={sphereFilter} onchange={(v) => (sphereFilter = v)} />{/snippet}
         {#if view === 'today'}
-          <Today lists={shownLists} tasksByList={tasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
+          <Today lists={shownLists} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
-            oncreate={(p, loud = false) => quickCreate(p, !loud)} onreschedule={rescheduleMany} ontogglehabit={toggleHabit}
+            oncreate={(p, loud = false) => quickCreate(mineByDefault(p), !loud)} onreschedule={rescheduleMany} ontogglehabit={toggleHabit}
             onaccept={acceptInbox} onreject={rejectInbox}
             onregister={(fn) => (quickLine = fn)} onlearn={learnRoute} onfull={(line) => { if (boardLists.length) quick = { line }; }}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />
         {:else if view === 'calendar'}
-          <Calendar lists={shownLists} tasksByList={tasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
+          <Calendar lists={shownLists} tasksByList={mineTasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
             loadEvents={api.eventsRange} syncAt={sync.at} reloadKey={calReload} oncreatebirthday={createBirthday}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId) => toggle(t, d, listId)}
@@ -1807,7 +1816,8 @@
             onaddsub={(t, title, stage) => addSubTo(activeId, t, title, stage)}
             act={boardAct} layList={lay.lists?.[activeId] ?? {}} lists={boardLists.filter((l) => l.id !== activeId)} sphereName={spheres.find((s) => s.id === sphereOf(activeId, lay))?.name ?? ''}
             share={together(sphereOf(activeId, lay)) ? { people: peopleOf(sphereOf(activeId, lay)), me: meEmail, owner: shared.isOwner(sh.calOfSphere(sphereOf(activeId, lay))),
-              oninvite: () => (sharePanel = { id: sphereOf(activeId, lay), mode: 'people' }) } : null} fold={boardFold} onfold={foldCol}
+              oninvite: () => (sharePanel = { id: sphereOf(activeId, lay), mode: 'people' }),
+              mode: lay.settings?.whoFilter?.[activeId] ?? 'all', onmode: (m) => { touch('settings', 'whoFilter', { [activeId]: m }); saveLayer(); } } : null} fold={boardFold} onfold={foldCol}
             onedittemplate={() => (view = 'templates')}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}

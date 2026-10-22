@@ -423,3 +423,34 @@ export function whoCounts(tasks, layTasks) {
   }
   return out;
 }
+
+// ---------- шаг 4: «Все / Мои / Без исполнителя», «Сегодня» и календарь ----------
+
+/** Счётчики для фильтра доски по открытым задачам верхнего уровня: { all, mine, none }. */
+export function whoTally(tasks, layTasks, me) {
+  const out = { all: 0, mine: 0, none: 0 };
+  for (const t of tasks) {
+    if (t.parent || t.status === 'completed') continue;
+    out.all++;
+    const w = whoOf(layTasks?.[t.id]);
+    if (!w) out.none++;
+    else if (me && w === me) out.mine++;
+  }
+  return out;
+}
+
+export const WHO_MODES = ['all', 'mine', 'none'];
+
+/**
+ * Задачи для «Сегодня» и календаря: из общих сфер (together(listId)) — только мои и ничьи; подзадачи идут за родителем.
+ * Остальные списки — как есть.
+ */
+export function forMe(tasksByList, layTasks, me, together) {
+  const out = {};
+  for (const [id, ts] of Object.entries(tasksByList ?? {})) {
+    if (!together(id)) { out[id] = ts; continue; }
+    const keep = new Set(ts.filter((t) => !t.parent && assignedMatch(layTasks?.[t.id], me, 'mineOrNone')).map((t) => t.id));
+    out[id] = ts.filter((t) => (t.parent ? keep.has(t.parent) : keep.has(t.id)));
+  }
+  return out;
+}
