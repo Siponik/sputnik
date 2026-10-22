@@ -58,6 +58,9 @@ jobs:
           # Ключ подписи обновлений (закрытая часть — только в секретах; открытая — в tauri.conf.json).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # Общий ключ Google (содержимое client_secret.json, клиент Desktop app) — встраивается в приложение,
+          # чтобы людям не нужен был свой файл. Без секрета приложение, как раньше, попросит client_secret.json.
+          SPUTNIK_GOOGLE_CLIENT: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: npx tauri build 2>&1 | tee -a ../build.log
 
       - name: Сохранить установщик

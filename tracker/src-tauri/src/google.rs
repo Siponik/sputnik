@@ -18,6 +18,9 @@ const SCOPES: &str = "https://www.googleapis.com/auth/tasks https://www.googleap
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SIGN_IN_AGAIN: &str = "Войдите в Google заново";
+/// Общий ключ приложения (содержимое client_secret.json), встраивается при сборке из секрета GOOGLE_CLIENT_JSON.
+/// Свой client_secret.json в папке настроек главнее. Для приложений на компьютере это не тайна — так задумано Google.
+const BUILT_IN_SECRET: Option<&str> = option_env!("SPUTNIK_GOOGLE_CLIENT");
 
 #[derive(Default)]
 pub struct Google {
@@ -56,6 +59,8 @@ struct TokenResponse {
 pub struct AuthStatus {
     has_secret: bool,
     signed_in: bool,
+    /// Ключ встроен в сборку и своего файла нет.
+    built_in: bool,
 }
 
 fn now() -> u64 {
@@ -76,10 +81,18 @@ fn parse_secret(text: &str) -> Result<Secret, String> {
         .ok_or_else(|| "В файле нет раздела «installed» — нужен ключ типа Desktop app".to_string())
 }
 
-fn read_secret(app: &AppHandle) -> Result<Secret, String> {
+fn built_in_secret() -> Option<Secret> {
+    BUILT_IN_SECRET.filter(|t| !t.trim().is_empty()).and_then(|t| parse_secret(t).ok())
+}
+
+fn own_secret(app: &AppHandle) -> Result<Secret, String> {
     let text = std::fs::read_to_string(config_dir(app)?.join("client_secret.json"))
         .map_err(|_| "Нет ключа приложения (client_secret.json)".to_string())?;
     parse_secret(&text)
+}
+
+fn read_secret(app: &AppHandle) -> Result<Secret, String> {
+    own_secret(app).or_else(|e| built_in_secret().ok_or(e))
 }
 
 fn load_token(app: &AppHandle) -> Option<Token> {
@@ -124,9 +137,10 @@ async fn google_error(resp: reqwest::Response) -> String {
 
 #[tauri::command]
 pub fn auth_status(app: AppHandle) -> AuthStatus {
-    let has_secret = read_secret(&app).is_ok();
+    let own = own_secret(&app).is_ok();
+    let built_in = !own && built_in_secret().is_some();
     let signed_in = load_token(&app).map(|t| t.refresh_token.is_some()).unwrap_or(false);
-    AuthStatus { has_secret, signed_in }
+    AuthStatus { has_secret: own || built_in, signed_in, built_in }
 }
 
 #[tauri::command]
