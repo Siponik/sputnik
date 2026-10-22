@@ -19,3 +19,4 @@ bot-token.txt
 bot/.wrangler/
 bot/node_modules/
 reminders/Private.gs
+__pycache__/
