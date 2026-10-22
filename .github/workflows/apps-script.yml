@@ -25,6 +25,7 @@ jobs:
       - name: Залить скрипт
         env:
           CLASPRC_JSON: ${{ secrets.CLASPRC_JSON }}
+          BRIEF_URL: ${{ vars.BRIEF_URL }}
         run: |
           if [ -z "$CLASPRC_JSON" ]; then
             echo "::warning::Нет секрета CLASPRC_JSON — скрипт не обновлён (настройка в reminders/README.md)."
@@ -32,6 +33,8 @@ jobs:
           fi
           printf '%s' "$CLASPRC_JSON" > ~/.clasprc.json
           cd reminders
+          # Личное (ссылка на сводку) — не в публичном репозитории, а в переменной Actions BRIEF_URL.
+          printf "const BRIEF_URL_PRIVATE = '%s';\n" "$BRIEF_URL" > Private.gs
           npx --yes @google/clasp@3.4.1 push --force
 
       # Мгновенные ответы бота: скрипт публикуется как веб-приложение (одно развёртывание «telegram», адрес не меняется),

@@ -22,7 +22,7 @@ Tauri 2 под Android, а не отдельное приложение: экр�
 
 Десктопный способ (loopback `127.0.0.1`, `google.rs`) на Android не подходит, а свои схемы адресов (custom URI scheme)
 Google для новых Android-клиентов отключил. Предполагаемый путь:
-- В Google Cloud (проект `sputnik-512107`) создать клиент OAuth типа **Android**: имя пакета приложения + SHA-1 ключа
+- В Google Cloud (проект Спутника) создать клиент OAuth типа **Android**: имя пакета приложения + SHA-1 ключа
   подписи (отладочного и релизного — два отпечатка). Это делает пользователь по инструкции; ключей в репозиторий не класть.
 - В приложении — небольшой плагин Tauri на Kotlin, который через Google Identity Services (`AuthorizationClient`,
   `Identity.getAuthorizationClient(activity).authorize(...)`) просит те же права: Tasks, Calendar, `drive.appdata`,

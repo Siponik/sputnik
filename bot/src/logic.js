@@ -9,6 +9,8 @@ export const CODE_TTL = 15 * 60e3; // код привязки живёт 15 ми
 export const LATE_LIMIT = 12 * 3600e3; // опоздавшее больше чем на 12 ч не шлём
 export const KEEP_SENT = 3 * 864e5;
 export const SNOOZE_MIN = 60;
+export const LINK_TRIES = 10; // неверных кодов с одного адреса за час — потом ждать
+export const MAX_STATE = 256 * 1024; // байт в PUT /state
 const MONTHS = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
 const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
@@ -141,10 +143,12 @@ async function onButton(q, { store, tg, now }) {
 // ---------- запросы трекера ----------
 
 /** Трекер ввёл код: связываем чат с ключом этого человека. */
-export async function link({ code, key, tz }, { store, tg, now = Date.now() }) {
+export async function link({ code, key, tz }, { store, tg, now = Date.now(), ip = '' }) {
   if (!/^\d{6}$/.test(String(code ?? '')) || String(key ?? '').length < 32) return { status: 400, body: { error: 'Нужен код из 6 цифр' } };
+  // Перебор кодов: с одного адреса — не больше LINK_TRIES неверных за час.
+  if ((await store.tries(ip, now - 3600e3)) >= LINK_TRIES) return { status: 429, body: { error: 'Слишком много попыток — подожди час' } };
   const c = await store.takeCode(String(code));
-  if (!c || c.exp < now) return { status: 404, body: { error: 'Код не подошёл или устарел — отправь боту /start ещё раз' } };
+  if (!c || c.exp < now) { await store.addTry(ip, now); return { status: 404, body: { error: 'Код не подошёл или устарел — отправь боту /start ещё раз' } }; }
   await store.link(c.chat, await sha256(key), tz || 'Europe/Moscow', c.name);
   await tg('sendMessage', { chat_id: c.chat, text: '✓ Спутник подключён. Сюда будут приходить напоминания, а задачи можно писать мне текстом.\n\n' + HELP, parse_mode: 'HTML' }).catch(() => {});
   return { status: 200, body: { ok: true, name: c.name } };
