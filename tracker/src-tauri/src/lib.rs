@@ -1,5 +1,6 @@
 mod backup;
 mod google;
+mod pin;
 
 use serde_json::Value;
 use tauri::Manager;
@@ -88,6 +89,14 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(google::Google::default())
+        .setup(|_| {
+            // Значок на панели задач после обновления (src/pin.rs) — в фоне, запуск не ждёт.
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                pin::heal();
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             google::auth_status,
             google::save_client_secret,
