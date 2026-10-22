@@ -62,6 +62,12 @@ jobs:
           # Проверка: веб-приложение открыто без входа в Google и отвечает без переадресации.
           echo "GET:  $(curl -s -L -o /dev/null -w '%{http_code}' "$URL")"
           echo "POST: $(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "$URL?k=$KEY")"
+          # Бот общий (bot/, Cloudflare Workers): вебхук смотрит на воркер, а он пересылает сообщения владельца сюда.
+          HOOK=$(curl -s "https://api.telegram.org/bot$TG_TOKEN/getWebhookInfo" | node -e 'process.stdout.write((JSON.parse(require("fs").readFileSync(0, "utf8")).result || {}).url || "")')
+          if printf '%s' "$HOOK" | grep -q 'workers.dev'; then
+            echo "Вебхук у общего бота — не трогаю. Адрес для OWNER_HOOK воркера: $URL?k=<ключ>"
+            exit 0
+          fi
           curl -s "https://api.telegram.org/bot$TG_TOKEN/setWebhook" -H 'Content-Type: application/json' \
             -d "{\"url\":\"$URL?k=$KEY\",\"allowed_updates\":[\"message\",\"callback_query\"]}" | head -c 300; echo
           sleep 20

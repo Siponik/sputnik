@@ -1,0 +1,14 @@
+name = "sputnik-bot"
+main = "src/index.js"
+compatibility_date = "2025-09-01"
+
+[vars]
+BOT_NAME = "SputnikTasksBot"
+
+[triggers]
+crons = ["* * * * *"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "sputnik-bot"
+database_id = "0c5642de-5ab1-45bb-9ef2-3345247bfbc8"

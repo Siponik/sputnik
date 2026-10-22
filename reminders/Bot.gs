@@ -113,6 +113,8 @@ function hookAlive_() {
   if (!info || !info.ok) return true; // Telegram не ответил — проверим через минуту
   const w = info.result;
   if (!w.url) { props.deleteProperty('BOT_HOOK'); props.deleteProperty('HOOK_FAILS'); return false; }
+  // Бот общий (bot/, Cloudflare Workers): вебхук его, сообщения владельца он пересылает в doPost. Не снимаем.
+  if (/workers\.dev/.test(w.url)) return true;
   const failing = w.pending_update_count > 0 && w.last_error_date && Date.now() / 1000 - w.last_error_date < 180;
   const fails = failing ? +(props.getProperty('HOOK_FAILS') || 0) + 1 : 0;
   props.setProperty('HOOK_FAILS', String(fails));
