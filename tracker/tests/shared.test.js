@@ -301,3 +301,21 @@ test('whoCounts и memberOf', () => {
   assert.equal(sh.memberOf([], 'gone@y.z').gone, true);
   assert.equal(sh.memberOf([], null), null);
 });
+
+// ---------- шаг 4 ----------
+test('whoTally: все, мои, ничьи — по открытым задачам верхнего уровня', () => {
+  const tasks = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd', status: 'completed' }, { id: 'e', parent: 'a' }];
+  const L = { a: { who: 'me@x' }, b: { who: 'anya@x' }, d: { who: 'me@x' } };
+  assert.deepEqual(sh.whoTally(tasks, L, 'me@x'), { all: 3, mine: 1, none: 1 });
+});
+
+test('forMe: в общих сферах — мои и ничьи с подзадачами, личные списки как есть', () => {
+  const byList = {
+    'sh:l1': [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'a1', parent: 'a' }, { id: 'b1', parent: 'b' }],
+    'L2': [{ id: 'x' }],
+  };
+  const L = { a: { who: 'me@x' }, b: { who: 'anya@x' }, x: { who: 'anya@x' } };
+  const out = sh.forMe(byList, L, 'me@x', (id) => id.startsWith('sh:'));
+  assert.deepEqual(out['sh:l1'].map((t) => t.id), ['a', 'c', 'a1']);
+  assert.deepEqual(out.L2.map((t) => t.id), ['x']);
+});

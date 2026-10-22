@@ -2,7 +2,8 @@
   import SharedTag from './SharedTag.svelte';
   import ShareBits from './ShareBits.svelte';
   import WhoPick from './WhoPick.svelte';
-  import { memberOf, whoOf, whoCounts } from './sharedcore.js';
+  import { memberOf, whoOf, whoCounts, whoTally, assignedMatch } from './sharedcore.js';
+  import Avatar from './Avatar.svelte';
   // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
   // Одна выбранная карточка (обводка clay): клик по названию — окно задачи, по карточке — выбрать, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
@@ -66,8 +67,13 @@
   const open = $derived(top.filter((t) => t.status !== 'completed'));
   const weekA = ymd(startOfWeek(new Date())), weekB = ymd(addDays(startOfWeek(new Date()), 6));
   const weekDue = $derived(open.filter((t) => t.due && dueToYmd(t.due) >= weekA && dueToYmd(t.due) <= weekB).length);
+  // Общая сфера: «Все / Мои / Без исполнителя» (share.mode, запоминается для доски в App).
+  const whoMode = $derived(share?.mode ?? 'all');
+  const whoN = $derived(share ? whoTally(tasks, layTasks, share.me) : null);
+  const meM = $derived(share ? memberOf(share.people, share.me) : null);
   function passes(t) {
     if (project && layTasks?.[t.id]?.project !== project) return false;
+    if (share && !t.parent && !assignedMatch(layTasks?.[t.id], share.me, whoMode)) return false;
     if (filter === 'prio') return layTasks?.[t.id]?.priority === 1;
     if (filter === 'week') return !!t.due && dueToYmd(t.due) <= weekB && t.status !== 'completed';
     if (filter === 'late') return dueState(t) === 'overdue' && t.status !== 'completed';
@@ -133,6 +139,11 @@
   // Клавиши доски (канбан): стрелки, Enter, F2, Alt+…, D, M, Ctrl+D, Del, Esc, Shift+F10.
   // Ловим на фазе погружения, чтобы цифры и стрелки не уходили в общие клавиши приложения.
   function onKey(e) {
+    // Shift+A / Shift+M / Shift+U — «Все / Мои / Без исполнителя» (только общая сфера, на любом виде доски).
+    if (share && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !menu && !whoPick && !editing && !keys.typing(e) && !keys.overlay()) {
+      const m = { KeyA: 'all', KeyM: 'mine', KeyU: 'none' }[e.code];
+      if (m) { e.preventDefault(); e.stopPropagation(); share.onmode(m); return; }
+    }
     if (view !== 'kanban' || menu || whoPick || editing || keys.typing(e) || keys.overlay()) return;
     const handled = () => { e.preventDefault(); e.stopPropagation(); };
     const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
@@ -295,6 +306,14 @@
       <h1>{list?.title ?? 'Задачи'}{#if share}<ShareBits {share} />{/if}</h1>
     </div>
     <div class="tb" role="group" aria-label="Фильтры">
+      {#if share}
+        <div class="sh-seg" role="group" aria-label="Чьи задачи">
+          <button type="button" aria-pressed={whoMode === 'all'} title="Все · Shift+A" onclick={() => share.onmode('all')}>Все<small>{whoN.all}</small></button>
+          <button type="button" aria-pressed={whoMode === 'mine'} title="Мои · Shift+M" onclick={() => share.onmode('mine')}><Avatar m={meM} size={18} me />Мои<small>{whoN.mine}</small></button>
+          <button type="button" aria-pressed={whoMode === 'none'} title="Без исполнителя · Shift+U" onclick={() => share.onmode('none')}><Avatar m={null} size={18} />Без исполнителя<small>{whoN.none}</small></button>
+        </div>
+        <span class="tb-sep" aria-hidden="true"></span>
+      {/if}
       {#each FILTERS as f (f.k)}
         <button type="button" class="fb" aria-pressed={filter === f.k} onclick={() => (filter = f.k)}>{f.label}</button>
       {/each}

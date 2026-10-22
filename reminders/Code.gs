@@ -93,7 +93,8 @@ function remindButtons_(item) {
   for (const k of ids.slice(0, Math.max(0, ids.length - REM_KEEP))) delete last[k];
   props.setProperty('REM_LAST', JSON.stringify(last));
   const row = [];
-  if (item.taskId && item.listId) {
+  // Задачи общих сфер (список sh:…) живут не в Google Tasks — закрыть их отсюда нельзя.
+  if (item.taskId && item.listId && String(item.listId).indexOf('sh:') !== 0) {
     if (typeof rememberTask_ === 'function') rememberTask_(item.taskId, item.listId); // для кнопки ✓ (BotTasks.gs)
     row.push({ text: '✓ Готово', callback_data: 'd:' + item.taskId });
   }
