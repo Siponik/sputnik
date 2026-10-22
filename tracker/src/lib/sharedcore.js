@@ -264,9 +264,30 @@ export function membersOf(recs) {
   const out = Object.values(recs ?? {})
     .filter((r) => kindOf(r.k) === 'member' && r.f.email && !r.f.removed)
     .map((r) => ({ email: r.f.email, name: r.f.name || nameOf(r.f.email), order: r.f.order ?? 0, owner: r.f.email === owner, joined: !!r.f.joined || r.f.email === owner,
-      seen: r.f.seen ?? null, invited: r.ft?.email ?? null }))
+      seen: r.f.seen ?? null, invited: r.ft?.email ?? null, hue: okHue(r.f.color), pic: okPic(r.f.pic) }))
     .sort((a, b) => (b.owner - a.owner) || a.order - b.order || a.email.localeCompare(b.email));
-  return out.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length], letter: (m.name || m.email).trim()[0]?.toUpperCase() ?? '?' }));
+  return out.map(({ hue, ...m }, i) => ({ ...m, color: MEMBER_COLORS[hue ?? i % MEMBER_COLORS.length], letter: (m.name || m.email).trim()[0]?.toUpperCase() ?? '?' }));
+}
+
+// ---------- «Как меня видят»: своё имя, цвет и фото в общих сферах ----------
+
+export const NAME_MAX = 24;
+export const PIC_MAX = 6000; // символов data:-адреса; фото 64×64 JPEG — около 2–3 тыс., описание события Google — до 8 тыс.
+const okHue = (c) => (Number.isInteger(c) && c >= 0 && c < MEMBER_COLORS.length ? c : null);
+/** Фото участника пришло из чужого календаря — пропускаем только маленькую картинку data:image (никаких ссылок наружу). */
+export const okPic = (p) => (typeof p === 'string' && p.length <= PIC_MAX && /^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/.test(p) ? p : null);
+
+/** Профиль из настроек → поля записи участника: { name, color, pic } (null — «как по умолчанию»). */
+export function profileFields(profile) {
+  const name = String(profile?.name ?? '').replace(/\s+/g, ' ').trim().slice(0, NAME_MAX);
+  return { name: name || null, color: okHue(profile?.color), pic: okPic(profile?.pic) };
+}
+
+/** Что дописать в мою запись участника, чтобы она совпала с профилем; {} — ничего. */
+export function profilePatch(rec, profile) {
+  const want = profileFields(profile), out = {};
+  for (const [k, v] of Object.entries(want)) if ((rec?.f?.[k] ?? null) !== v) out[k] = v;
+  return out;
 }
 
 /** Имя из почты, пока человек не назвался: anya.k@gmail.com → «Anya». */

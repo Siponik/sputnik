@@ -191,6 +191,21 @@ async function markJoined(s, got = []) {
   await write(s.cal, next);
 }
 
+/** «Как меня видят»: имя, цвет и фото из настроек — в мою запись участника каждой сферы, где я есть. Возвращает, сколько сфер поменялось. */
+export async function applyProfile(profile) {
+  if (!me) return 0;
+  let n = 0;
+  for (const cal of activeCalendars()) {
+    const cur = stores[cal].recs[core.memberKey(me)];
+    if (!cur || cur.f.removed) continue;
+    const patch = core.profilePatch(cur, profile);
+    if (!Object.keys(patch).length) continue;
+    await write(cal, core.edit(cur, patch));
+    n++;
+  }
+  return n;
+}
+
 /** Дописать поля в запись (поля слоя — с '$'). */
 export async function patchRec(cal, k, patch) {
   const cur = stores[cal]?.recs?.[k];
