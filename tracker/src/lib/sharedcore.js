@@ -21,7 +21,8 @@ export const NOTES_MAX = 6000; // описание события у Google не
 
 // Поля слоя, которые у каждого участника свои: напоминания, таймер и учёт времени, решение по «Входящим».
 const OWN_TASK = new Set(['t', 'gone', 'timer', 'spent', 'remind', 'inbox', 'pulled', 'cheer', 'given']);
-const OWN_LIST = new Set(['t', 'gone', 'hidden', 'sphere']);
+// Раскладка стикеров (group, sort) у каждого своя: «По людям» у одного не должно перекладывать стену другому.
+const OWN_LIST = new Set(['t', 'gone', 'hidden', 'sphere', 'group', 'sort']);
 export const SPHERE_FIELDS = ['name', 'color', 'icon'];
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);

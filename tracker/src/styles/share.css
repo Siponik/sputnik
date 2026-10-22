@@ -104,3 +104,16 @@
 .sh-seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
 .sh-seg small { font: 400 11px/1 var(--font-mono); color: var(--ink-faint); }
 .sh-seg .sh-av { --ring: transparent; }
+
+/* Стикеры в общей сфере (docs/design-v2.md, «Общие сферы» 7) */
+.stk-page .stk.mine { box-shadow: inset 0 0 0 1.5px var(--clay), 0 8px 18px rgba(0, 0, 0, .28); }
+.stk-page .stk .sh-av { --ring: color-mix(in srgb, var(--tc) 30%, var(--bg)); }
+.sh-take { position: relative; display: inline-flex; align-items: center; }
+.sh-tk { display: none; align-items: center; gap: 6px; height: 26px; padding: 0 10px 0 4px; border-radius: 999px; border: 1px dashed var(--ink-faint);
+  background: color-mix(in srgb, var(--bg) 55%, transparent); color: var(--ink); font: 600 12px/1 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.stk:hover .sh-take .sh-who, .stk.sel .sh-take .sh-who { display: none; }
+.stk:hover .sh-take .sh-tk, .stk.sel .sh-take .sh-tk { display: inline-flex; }
+.stk-page .stamp .sh-av { margin-left: 6px; vertical-align: middle; transform: rotate(12deg); }
+.stk-page .lh.ppl { gap: 8px; }
+.stk-page .lh.ppl .sh-av { --ring: var(--bg); }
+.stk-page .bd-head .sh-seg { margin-right: 4px; }

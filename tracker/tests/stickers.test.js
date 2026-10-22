@@ -121,3 +121,19 @@ test('«Разное» (id пустой) не считается колонко�
   assert.deepEqual(visibleLanes(all, { group: 'topic', keep: null }).shown.map((l) => l.id), ['']);
   assert.deepEqual(visibleLanes(all, { group: 'topic', keep: 'docs' }).shown.map((l) => l.id), ['docs', '']);
 });
+
+test('peopleLanes: «Я» первым, «Ничьи» последней, не принявший — только с задачами', () => {
+  const people = [
+    { email: 'olya@x', name: 'Оля', joined: true, owner: true, color: 'c1' },
+    { email: 'me@x', name: 'Сипоник', joined: true, color: 'c2' },
+    { email: 'vika@x', name: 'Вика', joined: false, color: 'c3' },
+    { email: 'max@x', name: 'Макс', joined: false, color: 'c4' },
+  ];
+  const tasks = [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }, { id: 'e' }];
+  const L = { a: { who: 'me@x' }, b: { who: 'olya@x' }, c: { who: 'max@x' }, e: { who: 'gone@x' } };
+  const ls = lanes(tasks, { group: 'people', layTasks: L, today: '2026-10-22', people, me: 'me@x' });
+  assert.deepEqual(ls.map((l) => l.name), ['Я', 'Оля', 'Макс', 'Ничьи']);
+  assert.deepEqual(ls.map((l) => l.items.map((t) => t.id)), [['a'], ['b'], ['c'], ['d', 'e']]);
+  assert.equal(ls[3].id, '');
+  assert.equal(visibleLanes([{ id: 'x', items: [] }, { id: '', items: [{ id: 'z' }] }], { group: 'people' }).shown.length, 2);
+});
