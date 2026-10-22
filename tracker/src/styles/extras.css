@@ -81,3 +81,26 @@
 .dialog.del-ask p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
 .dialog.del-ask .actions { margin-top: 6px; }
 .dialog.del-ask .sp-btn.danger { color: var(--signal-overdue); border-color: currentColor; }
+
+/* ---------- Картинка задачи (lib/PreviewBox.svelte, lib/PreviewView.svelte) ---------- */
+.drawer .notes .lbl { font-size: 13px; color: var(--ink-soft); }
+.pvb { display: flex; flex-direction: column; gap: 8px; min-width: 0; border-radius: var(--radius-md); }
+.pvb.over { outline: 2px dashed var(--clay); outline-offset: 3px; }
+.pvb-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 96px; padding: 14px; border-radius: var(--radius-md); border: 1.5px dashed var(--edge); background: color-mix(in srgb, var(--wash) 60%, transparent); color: var(--ink-soft); font: inherit; font-size: 12.5px; text-align: center; cursor: pointer; }
+.pvb-zone b { font-weight: 600; color: var(--ink); font-size: 13.5px; }
+.pvb-zone:hover:not(:disabled), .pvb.over .pvb-zone { border-color: var(--clay); color: var(--ink); }
+.pvb-zone:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
+.pvb-img { position: relative; display: block; width: 100%; padding: 0; border: 1px solid var(--edge); border-radius: var(--radius-md); background: var(--wash); overflow: hidden; cursor: zoom-in; }
+.pvb-img img { display: block; width: 100%; max-height: 260px; object-fit: contain; }
+.pvb-img:focus-visible { outline: 2px solid var(--clay); outline-offset: 1px; }
+.pvb-busy { position: absolute; inset: auto 8px 8px auto; padding: 4px 8px; border-radius: 6px; background: color-mix(in srgb, var(--bg) 85%, transparent); font-size: 12px; color: var(--ink-soft); }
+.pvb-act { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.pvb-act .sp-btn { min-height: 28px; padding: 0 10px; font-size: 12.5px; }
+.pvb .hint { margin: 0; font-size: 12px; color: var(--ink-faint); }
+.pvb-err { margin: 0; font-size: 12px; color: var(--signal-overdue); }
+.pvw { position: fixed; inset: 0; z-index: 400; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 32px; background: color-mix(in srgb, #000 82%, transparent); cursor: zoom-out; }
+.pvw img { max-width: 100%; max-height: calc(100% - 40px); object-fit: contain; border-radius: 10px; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.pvw p { margin: 0; display: flex; gap: 14px; font-size: 13.5px; color: #EDE6E0; }
+.pvw p span { color: #9C928A; }
+.pvw-x { position: absolute; top: 14px; right: 18px; width: 36px; height: 36px; border: 0; border-radius: 50%; background: rgba(255, 255, 255, .1); color: #EDE6E0; font-size: 22px; line-height: 1; cursor: pointer; }
+.pvw-x:hover { background: rgba(255, 255, 255, .2); }

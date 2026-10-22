@@ -3,6 +3,7 @@
   // Строка = задача (ассет), дорожка этапов = колонки шаблона без последней («Готово»). Этап — слой tasks[id].status,
   // дата входа в этап — tasks[id].stageAt[этап]. Подзадачи этапа — вложенные задачи Google Tasks с tasks[sub].stage.
   // Клик по строке — раскрыть/свернуть (раскрыта одна), окно задачи — Enter или «Открыть полностью ↗».
+  // Превью ассета — tasks[id].preview (lib/preview.js): перетащить картинку на строку, Ctrl+V на выбранной строке или в раскрытой строке.
   import { tick } from 'svelte';
   import { dueToYmd, humanDue, ymd, dueState } from './api.js';
   import { plural } from './habits.js';
@@ -10,6 +11,8 @@
   import { PRIORITIES, priorityOf } from './meta.js';
   import * as keys from './keys.js';
   import { expand } from './motion.js';
+  import { imageFrom, dragHasFile, rejectWhy } from './preview.js';
+  import PreviewBox from './PreviewBox.svelte';
   import Avatar from './Avatar.svelte';
   import WhoPick from './WhoPick.svelte';
   import { memberOf, whoOf, whoCounts, stageCrew, nextHint, passText } from './sharedcore.js';
@@ -217,9 +220,41 @@
     if ((noteDraft ?? '') !== (t.notes ?? '')) act.notes(t, noteDraft);
   }
   const stop = (fn) => (e) => { e.stopPropagation(); fn(e); };
+
+  // ---------- картинка ассета (lib/PreviewBox.svelte) ----------
+  // Перетащить картинку на строку или карточку галереи, либо Ctrl+V на выбранной строке — поставить превью.
+  let dropId = $state('');
+  async function putPreview(t, f) {
+    if (act.previewOff?.()) return;
+    const why = rejectWhy(f);
+    if (why) return;
+    sel = t.id;
+    try { await act.preview(t, f); } catch {}
+  }
+  function rowDragOver(e, t) {
+    if (!dragHasFile(e.dataTransfer) || act.previewOff?.()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    dropId = t.id;
+  }
+  function rowDrop(e, t) {
+    if (!dragHasFile(e.dataTransfer)) return;
+    e.preventDefault();
+    dropId = '';
+    const f = imageFrom(e.dataTransfer);
+    if (f) putPreview(t, f);
+  }
+  function onPaste(e) {
+    if (gallery || !sel || keys.typing(e) || keys.overlay() || e.target?.closest?.('.pvb')) return;
+    const t = flat.find((x) => x.id === sel);
+    const f = t && imageFrom(e.clipboardData);
+    if (!f) return;
+    e.preventDefault();
+    putPreview(t, f);
+  }
 </script>
 
-<svelte:window onkeydowncapture={onKey} />
+<svelte:window onkeydowncapture={onKey} onpaste={onPaste} />
 
 <section class="dist" aria-label="Сколько задач на каждом этапе — нажми, чтобы отфильтровать" style="grid-template-columns: repeat({cols.length}, minmax(0, 1fr))">
   {#each dist as d (d.c.id)}
@@ -265,12 +300,13 @@
           aria-label="{t.title || 'Без названия'}, этап {done ? endCol.name : stages[si]?.name}"
           onfocus={() => (sel = t.id)}
           onclick={() => { if (editId !== t.id) toggleOpen(t); }}
+          class:drop={dropId === t.id} ondragover={(e) => rowDragOver(e, t)} ondragleave={() => (dropId = '')} ondrop={(e) => rowDrop(e, t)}
           oncontextmenu={(e) => { e.preventDefault(); menuFor(t, e.currentTarget); }}>
           <button type="button" class="car" aria-expanded={isOpen} aria-label="{isOpen ? 'Свернуть' : 'Раскрыть'} {t.title}" onclick={stop(() => toggleOpen(t))}>
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
           </button>
           <div class="name">
-            <span class="thumb">{initials(t.title)}</span>
+            {#if L.preview?.thumb}<img class="thumb" src={L.preview.thumb} alt="" />{:else}<span class="thumb">{initials(t.title)}</span>{/if}
             {#if editId === t.id}
               <input class="ren" use:focusSel bind:value={editDraft} aria-label="Название" onclick={(e) => e.stopPropagation()}
                 onkeydown={(e) => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finishEdit(t); } else if (e.key === 'Escape') { e.preventDefault(); finishEdit(t, false); } }}
@@ -384,7 +420,8 @@
               <div class="hs">
                 {#each tl.items as h (h.c.id)}<div><span>{h.c.name}</span><i class:cur={h.cur} style="width: {h.w}%"></i><b>{h.v}</b></div>{:else}<p class="hint">Время начнёт считаться со следующей смены этапа.</p>{/each}
               </div>
-              <div class="pv-row"><span class="thumb big">рендер</span><span class="hint">Превью рендера появится, когда освободится место на Google Drive.</span></div>
+              <div class="pn-h pv-h"><h4>Превью</h4></div>
+              <PreviewBox pv={L.preview ?? null} title={t.title} off={act.previewOff?.() ?? ''} onset={(f) => act.preview(t, f)} onclear={() => act.previewClear(t)} />
             </section>
             <div class="foot">
               {#if pv && !done}<button type="button" class="sp-btn" style="min-height: 30px" onclick={() => act.stage(t, pv.id)}>← {pv.name}</button>{/if}
@@ -412,8 +449,10 @@
       {@const si = stages.findIndex((c) => c.id === st)}
       {@const done = t.status === 'completed'}
       {@const dn = daysOn(t)}
-      <button type="button" class="gc" onclick={() => act.open(t)} oncontextmenu={(e) => { e.preventDefault(); menuFor(t, e.currentTarget); }}>
-        <span class="pv">{initials(t.title)}</span>
+      {@const gp = layTasks?.[t.id]?.preview}
+      <button type="button" class="gc" class:drop={dropId === t.id} onclick={() => act.open(t)} oncontextmenu={(e) => { e.preventDefault(); menuFor(t, e.currentTarget); }}
+        ondragover={(e) => rowDragOver(e, t)} ondragleave={() => (dropId = '')} ondrop={(e) => rowDrop(e, t)}>
+        {#if gp?.thumb}<img class="pv" src={gp.thumb} alt="" />{:else}<span class="pv">{initials(t.title)}</span>{/if}
         <span class="gb">
           <span class="gt"><b>{t.title || 'Без названия'}</b><span class="due {dueCls(t)}">{t.due ? humanDue(t.due) : ''}</span></span>
           <span class="mini2" style="grid-template-columns: repeat({stages.length}, 1fr)">{#each stages as c, i (c.id)}<i class:done={done || i < si} class:now={!done && i === si}></i>{/each}</span>

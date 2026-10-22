@@ -104,6 +104,8 @@ pub fn run() {
             google::login,
             google::logout,
             google::gapi,
+            google::gapi_upload,
+            google::gapi_bytes,
             layer_read,
             layer_write,
             backups_last,

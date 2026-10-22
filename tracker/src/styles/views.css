@@ -20,7 +20,7 @@
 .gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px; }
 .gc { display: flex; flex-direction: column; border-radius: 14px; overflow: hidden; background: var(--raised); border: 1px solid var(--edge); padding: 0; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .gc:hover { border-color: var(--ink-faint); }
-.gc .pv { height: 140px; font-size: 18px; }
+.gc .pv { height: 140px; font-size: 18px; width: 100%; }
 .gc .gb { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 8px; }
 .gc .gt { display: flex; align-items: baseline; gap: 8px; }
 .gc .gt b { flex: 1; min-width: 0; font-size: 14.5px; }

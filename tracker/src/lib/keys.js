@@ -5,7 +5,7 @@
 export const typing = (e) => !!e.target?.closest?.('input, textarea, select, [contenteditable="true"]');
 
 /** Открыто окно поверх экрана (задача, «Создать», новый список, подсказка). */
-export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win');
+export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win, .pvw');
 
 /** Одиночная клавиша без Ctrl/Alt/Win (Shift разрешён только там, где он часть знака, например «?»). */
 export const plain = (e) => !e.ctrlKey && !e.altKey && !e.metaKey;

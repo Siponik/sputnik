@@ -251,7 +251,7 @@ async function findByProp(value) {
   return r?.files?.[0]?.id ?? null;
 }
 
-async function ensureFolder() {
+export async function ensureFolder() {
   if (folderId) return folderId;
   folderId = await findByProp('folder');
   if (!folderId) {

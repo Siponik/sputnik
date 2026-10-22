@@ -1,4 +1,5 @@
 <script>
+  import PreviewBox from './PreviewBox.svelte';
   import Avatar from './Avatar.svelte';
   import WhoPick from './WhoPick.svelte';
   import { memberOf } from './sharedcore.js';
@@ -21,7 +22,8 @@
     pick = false, // сразу открыть окно «Когда» (клавиша D, кнопка срока на карточке)
     fields = [], client = '', money = '', // поля шаблона: «Клиент» и «Сумма» показываются, если включены в шаблоне
     share = null, onwho = null, // общая сфера: { people, me, who, change } — исполнитель и последнее чужое изменение
-    onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer } = $props();
+    onclose, onsave, onstatus, ondelete, ontoggle, onaddsub, onsubedit, onsubdelete, onremind, onslot, onlayer,
+    preview = null, previewOff = '', onpreview, onpreviewclear } = $props();
 
   // Напоминания: несколько «до начала» (кнопки) и одно «в своё время» (за N дней в ЧЧ:ММ или точная дата).
   const leads = $derived(rulesOf(remind).filter((r) => r.kind === 'lead').map((r) => r.min));
@@ -97,7 +99,7 @@
   function key(e) {
     if (whoOpen) return; // Esc и цифры — у поповера исполнителя
     if (share && e.code === 'KeyI' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !typingIn(e)) { e.preventDefault(); whoOpen = true; return; }
-    if (document.querySelector('.keyhelp, .dtp')) return; // открыто окно поверх — Esc закроет его, а не задачу
+    if (document.querySelector('.keyhelp, .dtp, .pvw')) return; // открыто окно поверх — Esc закроет его, а не задачу
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); close(); return; }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     const i = cols.findIndex((c) => c.id === status);
@@ -245,6 +247,11 @@
     <div class="notes">
       <label for="f-notes">Заметка</label>
       <textarea id="f-notes" bind:value={notes} use:autosize={notes} onblur={saveNotes} placeholder="Подробности, ссылки, список шагов…"></textarea>
+    </div>
+
+    <div class="notes">
+      <span class="lbl">Картинка</span>
+      <PreviewBox pv={preview} {title} off={previewOff} onset={onpreview} onclear={onpreviewclear} />
     </div>
 
     <section class="subs">
