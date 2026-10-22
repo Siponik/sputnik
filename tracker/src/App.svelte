@@ -540,8 +540,12 @@
   async function move(task, col, listId = activeId) {
     // stageAt[колонка] — когда задача пришла на этап (учёт времени в «Конвейере»).
     const stageAt = { ...(lay.tasks?.[task.id]?.stageAt ?? {}), [col]: Date.now() };
-    if (col !== 'done') touch('tasks', task.id, { status: col, stageAt });
-    else touch('tasks', task.id, { stageAt });
+    // Общая сфера, вперёд по этапам: исполнитель ассета становится исполнителем следующего этапа (sh.stagePass).
+    const cs = templateFor(listId).cols, from = colOf(task, cs);
+    const pass = sh.isSharedId(listId) && together(sphereOf(listId, lay)) && cs.findIndex((c) => c.id === col) > cs.findIndex((c) => c.id === from)
+      ? sh.stagePass(lay.tasks?.[task.id], from, col, meEmail) : {};
+    if (col !== 'done') touch('tasks', task.id, { status: col, stageAt, ...pass });
+    else touch('tasks', task.id, { stageAt, ...pass });
     saveLayer();
     const wasDone = task.status === 'completed';
     if (col === 'done' && !wasDone) await toggle(task, true, listId);
@@ -646,6 +650,12 @@
     stage: (t, col) => stageUndo(t, col, activeId),
     priority: (t, n) => { touch('tasks', t.id, { priority: n }); saveLayer(); },
     who: (t, w) => setWho(t.id, w),
+    // Конвейер: исполнитель этапа; у текущего этапа он же ведёт ассет.
+    stageWho: (t, col, w) => {
+      const L = lay.tasks?.[t.id];
+      touch('tasks', t.id, { ...sh.setStageWho(L, col, w), ...(colOf(t, templateFor(activeId).cols) === col ? { who: w ?? null } : {}) });
+      saveLayer();
+    },
     order: (ids) => { ids.forEach((id, i) => touch('tasks', id, { ord: i })); saveLayer(); },
     moveList: (t, dest) => moveToList(t, dest, activeId),
     duplicate: (t) => duplicateTask(t, activeId),

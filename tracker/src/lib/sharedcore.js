@@ -22,7 +22,7 @@ export const NOTES_MAX = 6000; // описание события у Google не
 // Поля слоя, которые у каждого участника свои: напоминания, таймер и учёт времени, решение по «Входящим».
 const OWN_TASK = new Set(['t', 'gone', 'timer', 'spent', 'remind', 'inbox', 'pulled', 'cheer', 'given']);
 // Раскладка стикеров (group, sort) у каждого своя: «По людям» у одного не должно перекладывать стену другому.
-const OWN_LIST = new Set(['t', 'gone', 'hidden', 'sphere', 'group', 'sort']);
+const OWN_LIST = new Set(['t', 'gone', 'hidden', 'sphere', 'group', 'sort', 'cvGroup']);
 export const SPHERE_FIELDS = ['name', 'color', 'icon'];
 
 const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -454,4 +454,47 @@ export function forMe(tasksByList, layTasks, me, together) {
     out[id] = ts.filter((t) => (t.parent ? keep.has(t.parent) : keep.has(t.id)));
   }
   return out;
+}
+
+// ---------- шаг 6: Конвейер — исполнители этапов и передача ----------
+
+/** Как назвать человека в тексте: «ты» / «тебе» для себя, иначе имя. */
+const who2 = (people, email, me, dat = false) => (email === me ? (dat ? 'тебе' : 'ты') : memberOf(people, email)?.name ?? 'никто');
+
+/**
+ * Передача при «Этап →» (с записью в историю): поля слоя для переноса с этапа from на этап to.
+ * by — кто нажал. passes — последние 8 передач { from, to, by, who, at }.
+ */
+export function stagePass(L, from, to, by, now = Date.now()) {
+  const h = handoff(L, to);
+  const who = h.who ?? whoOf(L);
+  const passes = [...(Array.isArray(L?.passes) ? L.passes : []), { from, to, by, who: who ?? null, at: now }].slice(-8);
+  // Кто делал законченный этап — остаётся в «Кто на этапах», даже если этапу никого не назначали.
+  const keep = whoOf(L) && !L?.stageWho?.[from] ? { stageWho: { ...(L?.stageWho ?? {}), [from]: whoOf(L) } } : {};
+  return { ...h, ...keep, passes };
+}
+
+/** Строка истории «Как передаётся»: «Аня · «Референсы» готовы → тебе». */
+export function passText(p, people, me, colName = (c) => c) {
+  const by = who2(people, p.by, me);
+  const head = `${by[0].toUpperCase()}${by.slice(1)} · «${colName(p.from)}» готов${p.from ? 'о' : ''}`;
+  if (!p.who) return `${head} → на этапе никого`;
+  if (p.who !== p.by) return `${head} → ${who2(people, p.who, me, true)}`;
+  return `${head} → «${colName(p.to)}» ${p.who === me ? 'остаётся у тебя' : `снова у: ${memberOf(people, p.who).name}`}`;
+}
+
+/** Подсказка у кнопки следующего этапа: у кого он останется. */
+export function nextHint(L, next, me, people) {
+  if (!next) return '';
+  const cur = whoOf(L), to = L?.stageWho?.[next] ?? null;
+  const target = to ?? cur;
+  if (!target) return 'этап без исполнителя';
+  // Имена не склоняем: «уйдёт: Макс», а не «к Макс».
+  if (target === cur) return target === me ? 'этап твой — останется у тебя' : `останется: ${memberOf(people, target).name}`;
+  return target === me ? 'уйдёт к тебе' : `уйдёт: ${memberOf(people, target).name}`;
+}
+
+/** Кто на этапах: [{ col, who }] — у текущего этапа это тот, кто ведёт ассет (если у этапа своего нет). */
+export function stageCrew(L, cols, cur) {
+  return cols.map((c) => ({ col: c, who: L?.stageWho?.[c.id] ?? (c.id === cur ? whoOf(L) : null) }));
 }
