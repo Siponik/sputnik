@@ -2,7 +2,7 @@
   import * as motion from './motion.js';
   import { onMount, tick } from 'svelte';
   import { ymd, dueToYmd } from './api.js';
-  import { stats } from './habits.js';
+  import { stats, goalN, countOn } from './habits.js';
   import * as cal from './calendar.js';
   import * as keys from './keys.js';
   import { pickNext } from './meta.js';
@@ -178,7 +178,8 @@
 
   const panelHabits = $derived(selDay.habits.filter((x) => x.sched).map((x) => ({
     ...x,
-    meta: x.isToday ? ((s) => (s ? `${s} дн. подряд` : 'серия с нуля'))(stats(x.h, log).streak) : x.future ? 'по плану' : x.done ? 'сделано' : 'пропуск',
+    meta: !x.done && !x.future && goalN(x.h) && countOn(log, x.h, selDay.ymd) ? `${countOn(log, x.h, selDay.ymd)} из ${goalN(x.h)}`
+      : x.isToday ? ((s) => (s ? `${s} ${x.h.perWeek > 0 ? 'нед.' : 'дн.'} подряд` : 'серия с нуля'))(stats(x.h, log).streak) : x.future ? 'по плану' : x.done ? 'сделано' : 'пропуск',
   })));
   const habitHead = $derived(selDay.isToday ? 'Привычки на сегодня' : selDay.future ? 'Привычки по плану' : 'Привычки');
 
