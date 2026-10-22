@@ -18,7 +18,7 @@
    - `TELEGRAM_BOT_TOKEN`: токен из шага 1
    - `TELEGRAM_CHAT_ID`: число из шага 2
 5. **Добавьте переменную** там же, вкладка Variables → New repository variable:
-   - `BRIEF_URL`: `https://claude.ai/artifact/Mftfm4G7jmnrQZhnVJw728`
+   - `BRIEF_URL`: ссылка на вашу страницу сводки
 6. **Проверьте.** Actions → «Утренняя сводка» → Run workflow. Через полминуты сообщение должно прийти в Telegram.
 
 ## Запуск локально

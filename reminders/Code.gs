@@ -173,7 +173,9 @@ function esc_(s) {
 // и, опубликовав её, ставит в календарь «Спутник · входящие» событие «Спутник · сводка готова» на сегодня.
 // Ссылка уходит в выбранное время, но не раньше этой отметки; если отметки нет — ждём до BRIEF_WAIT_MIN
 // после выбранного времени и шлём с пометкой, что по ссылке прошлая сводка.
-const BRIEF_URL_DEFAULT = 'https://claude.ai/artifact/Mftfm4G7jmnrQZhnVJw728';
+// Ссылка на страницу сводки — не в репозитории: apps-script.yml пишет Private.gs из переменной Actions BRIEF_URL
+// (или свойство скрипта BRIEF_URL).
+const BRIEF_URL_DEFAULT = typeof BRIEF_URL_PRIVATE !== 'undefined' ? BRIEF_URL_PRIVATE : '';
 const BRIEF_AT_DEFAULT = 8 * 60; // минуты от полуночи по Москве
 const BRIEF_READY_TITLE = 'Спутник · сводка готова';
 const BRIEF_WAIT_MIN = 180;
