@@ -14,11 +14,7 @@
   let busy = $state(false);
   let err = $state('');
 
-  async function load() {
-    if (!owner) return;
-    try { people = await shared.members(cal); err = ''; }
-    catch (e) { people = []; err = 'Не удалось получить участников: ' + e; }
-  }
+  function load() { people = shared.people(cal).filter((p) => !p.owner); }
   $effect(() => { if (mode === 'people' && cal) load(); });
 
   const okMail = (s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
@@ -33,7 +29,7 @@
   }
   async function drop(p) {
     busy = true;
-    try { await shared.removeMember(cal, p.id); await load(); }
+    try { await shared.removeMember(cal, p.email); load(); }
     catch (e) { err = 'Не удалось убрать: ' + e; }
     finally { busy = false; }
   }
@@ -75,8 +71,8 @@
       <ul class="shr-list">
         <li><span class="shr-who">{shared.myEmail() || 'Ты'}</span><span class="shr-role">владелец</span></li>
         {#if people === null}<li class="hint">Загружаю…</li>{/if}
-        {#each people ?? [] as p (p.id)}
-          <li><span class="shr-who">{p.email}</span><span class="shr-role">{p.role === 'reader' ? 'только смотрит' : 'участник'}</span>
+        {#each people ?? [] as p (p.email)}
+          <li><span class="shr-who">{p.email}</span><span class="shr-role">{p.joined ? 'участник' : 'ещё не принял'}</span>
             <button class="sp-btn sp-btn-ghost shr-x" type="button" disabled={busy} onclick={() => drop(p)}>Убрать</button></li>
         {/each}
       </ul>

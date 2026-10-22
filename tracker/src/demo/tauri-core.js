@@ -1,7 +1,7 @@
 // Демо-режим (npm run demo): трекер открывается в обычном браузере, без Tauri и без Google.
 // Подменяет invoke(): Google Tasks и Calendar — выдуманные данные в памяти, слой — в памяти (?fresh — сначала).
 // Нужен, чтобы видеть экран и сравнивать с макетами (design/screens/ref/*.png). Ничего не уходит в сеть.
-import { seedLists, seedTasks, seedLayer, seedInbox } from './data.js';
+import { seedLists, seedTasks, seedLayer, seedInbox, seedShared, DEMO_ME } from './data.js';
 
 const lists = seedLists();
 const tasks = seedTasks(); // { listId: [task] }
@@ -57,8 +57,9 @@ function tasksApi(method, path, q, body) {
 }
 
 // Календари общих сфер (lib/shared.js) в памяти: календари, события с «токеном изменений», доступы.
-const cals = {}; // id → { summary, description, events: { id: { ev, at } }, acl: [] }
+const cals = {}; // id → { summary, description, role, events: { id: { ev, at } }, acl: [] }
 let calTick = 1;
+for (const c of seedShared()) cals[c.id] = { summary: c.summary, description: c.description, role: c.role, acl: [], events: Object.fromEntries(c.recs.map((ev) => [ev.id, { ev: { ...ev, status: 'confirmed' }, at: calTick++ }])) };
 if (typeof window !== 'undefined') window.__demoCals = cals;
 const httpErr = (code, msg) => { throw new Error(`${code} ${msg} (демо)`); };
 
@@ -66,7 +67,7 @@ function sphereCalApi(method, path, q, body) {
   let m;
   if (path === 'calendars' && method === 'POST') {
     const id = 'c' + n++ + '@group.calendar.google.com';
-    cals[id] = { summary: body.summary, description: body.description, events: {}, acl: [] };
+    cals[id] = { summary: body.summary, description: body.description, role: 'owner', events: {}, acl: [] };
     return { id, summary: body.summary, description: body.description };
   }
   if ((m = /^users\/me\/calendarList\/(.+)$/.exec(path))) {
@@ -83,7 +84,7 @@ function sphereCalApi(method, path, q, body) {
   if (!c) return undefined;
   if (!m[2]) { if (method === 'DELETE') { delete cals[id]; return null; } return { id, summary: c.summary }; }
   if (m[2] === 'acl') {
-    if (method === 'GET') return { items: [{ id: 'user:demo@gmail.com', role: 'owner', scope: { type: 'user', value: 'demo@gmail.com' } }, ...c.acl] };
+    if (method === 'GET') return { items: [{ id: 'user:' + DEMO_ME, role: 'owner', scope: { type: 'user', value: DEMO_ME } }, ...c.acl] };
     if (method === 'POST') { const a = { id: 'user:' + body.scope.value, role: body.role, scope: body.scope }; c.acl = [...c.acl.filter((x) => x.id !== a.id), a]; return a; }
     if (method === 'DELETE') { c.acl = c.acl.filter((x) => x.id !== decodeURIComponent(m[3])); return null; }
   }
@@ -110,10 +111,10 @@ function calApi(method, path, q, body) {
   const sph = sphereCalApi(method, path, q, body);
   if (sph !== undefined) return sph;
   if (/^users\/me\/calendarList/.test(path)) {
-    return { items: [{ id: 'primary', summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
+    return { items: [{ id: DEMO_ME, summary: 'Основной', primary: true, backgroundColor: '#7FA6E8', accessRole: 'owner' },
       { id: 'work@demo', summary: 'Работа', backgroundColor: '#E0A04A', accessRole: 'owner' },
       { id: 'queue@demo', summary: 'Спутник · входящие', backgroundColor: '#888888', accessRole: 'owner' },
-      ...Object.entries(cals).map(([id, c]) => ({ id, summary: c.summary, description: c.description, accessRole: 'owner', selected: false }))] };
+      ...Object.entries(cals).map(([id, c]) => ({ id, summary: c.summary, description: c.description, accessRole: c.role, selected: false }))] };
   }
   if (path.startsWith('calendars/queue%40demo/') || path.startsWith('calendars/queue@demo/')) {
     return { items: q.get('timeMin')?.startsWith('2029') ? [{ id: 'st', summary: 'Спутник · статус', description: JSON.stringify(seedInbox()) }] : [] };

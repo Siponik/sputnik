@@ -8,7 +8,11 @@
 // Поля задачи: list (ключ списка), title, notes, due, status ('needsAction' | 'completed'), completed, parent, pos —
 // как у Google Tasks; поля слоя Спутника (колонка, этап, тема, приоритет…) — с префиксом '$' ('$status', '$type').
 // Поля списка: title, created и поля слоя списка с '$' ('$template', '$view', '$topics'…).
-// Поля сферы: name, color, icon.
+// Поля сферы: name, color, icon, owner (почта владельца).
+// Участник — своя запись (ключ из почты, memberKey): email, name, order (порядок вступления — от него цвет),
+// joined (принял приглашение), removed (убран или вышел). Отдельными записями, а не полем сферы: владелец зовёт,
+// а участник в это же время отмечает «принял» — и никто никого не затирает.
+// Последний, кто менял запись, — поле by (почта), время — в ft.by.
 
 export const MARK = 'sputnik-sphere'; // метка в описании календаря общей сферы
 export const SUMMARY = 'Спутник · служебная запись';
@@ -43,7 +47,17 @@ export function newKey(kind, rnd = Math.random) {
   return s;
 }
 export const SPHERE_KEY = 's0000000000000000';
-export const kindOf = (k) => (k === SPHERE_KEY ? 'sphere' : k?.[0] === 'l' ? 'list' : k?.[0] === 't' ? 'task' : null);
+export const kindOf = (k) => (k === SPHERE_KEY ? 'sphere' : ({ l: 'list', t: 'task', m: 'member' })[k?.[0]] ?? null);
+
+/** Ключ записи участника — из почты (одна запись на человека, у всех одинаковая). */
+export function memberKey(email) {
+  const e = String(email ?? '').trim().toLowerCase();
+  let h1 = 0x811c9dc5, h2 = 0x01000193;
+  for (let i = 0; i < e.length; i++) { const c = e.charCodeAt(i); h1 = Math.imul(h1 ^ c, 16777619) >>> 0; h2 = Math.imul(h2 + c, 2246822519) >>> 0; }
+  let s = 'm';
+  for (const h of [h1, h2]) for (let i = 0; i < 8; i++) s += B32[(h >>> (i * 4)) & 31];
+  return s;
+}
 
 export const isSharedId = (id) => typeof id === 'string' && id.startsWith(PREFIX);
 export const listId = (lk) => PREFIX + lk;
@@ -236,3 +250,58 @@ export function withChildren(recs, k) {
 
 /** Календарь — общая сфера Спутника? */
 export const isSphereCal = (c) => typeof c?.description === 'string' && c.description.includes(MARK);
+
+// ---------- участники и исполнители ----------
+
+// Цвета участников по порядку вступления: владелец — clay, дальше типы задач (docs/design-v2.md, «Участник — кружок»).
+export const MEMBER_COLORS = ['var(--clay)', 'var(--type-study)', 'var(--type-work)', 'var(--type-personal)', 'var(--gold)', 'var(--signal-done)'];
+
+/** Участники сферы по порядку: [{ email, name, order, owner, joined, color, letter }]; убранные — не показываем. */
+export function membersOf(recs) {
+  const owner = recs?.[SPHERE_KEY]?.f?.owner ?? null;
+  const out = Object.values(recs ?? {})
+    .filter((r) => kindOf(r.k) === 'member' && r.f.email && !r.f.removed)
+    .map((r) => ({ email: r.f.email, name: r.f.name || nameOf(r.f.email), order: r.f.order ?? 0, owner: r.f.email === owner, joined: !!r.f.joined || r.f.email === owner }))
+    .sort((a, b) => (b.owner - a.owner) || a.order - b.order || a.email.localeCompare(b.email));
+  return out.map((m, i) => ({ ...m, color: MEMBER_COLORS[i % MEMBER_COLORS.length], letter: (m.name || m.email).trim()[0]?.toUpperCase() ?? '?' }));
+}
+
+/** Имя из почты, пока человек не назвался: anya.k@gmail.com → «Anya». */
+export function nameOf(email) {
+  const n = String(email ?? '').split('@')[0].split(/[._+-]/)[0] ?? '';
+  return n ? n[0].toUpperCase() + n.slice(1) : 'Участник';
+}
+
+/** Следующий порядок для нового участника. */
+export const nextOrder = (recs) => 1 + Math.max(0, ...Object.values(recs ?? {}).filter((r) => kindOf(r.k) === 'member').map((r) => r.f.order ?? 0));
+
+/** Кто исполнитель задачи (почта или null) — по слою задачи. */
+export const whoOf = (L) => (L && typeof L.who === 'string' && L.who ? L.who : null);
+
+/**
+ * Фильтр «Все / Мои / Без исполнителя» (и «Ничьи» на стикерах): mode = all | mine | none.
+ * «Сегодня» и календарь показывают из общих сфер mine+none: свои и ничьи.
+ */
+export function assignedMatch(L, me, mode) {
+  const w = whoOf(L);
+  if (mode === 'mine') return !!me && w === me;
+  if (mode === 'none') return !w;
+  if (mode === 'mineOrNone') return !w || (!!me && w === me);
+  return true;
+}
+
+/**
+ * Передача на Конвейере при «Этап →»: исполнитель ассета становится исполнителем следующего этапа,
+ * если у этапа он назначен; у этапа никого — исполнитель не меняется. Возвращает поля для слоя.
+ */
+export function handoff(L, toCol) {
+  const next = L?.stageWho?.[toCol];
+  return next && next !== whoOf(L) ? { who: next } : {};
+}
+
+/** Исполнитель этапа: { stageWho } с этапом col (who = null — снять). */
+export function setStageWho(L, col, who) {
+  const cur = { ...(L?.stageWho ?? {}) };
+  if (who) cur[col] = who; else delete cur[col];
+  return { stageWho: cur };
+}

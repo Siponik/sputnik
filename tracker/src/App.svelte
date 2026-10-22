@@ -908,7 +908,7 @@
     const t0 = Date.now();
     const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
     let r;
-    try { r = await shared.pullAll(); shareErr = ''; } catch (e) { shareErr = String(e); return; }
+    try { r = await shared.pullAll({ discover: false }); shareErr = ''; } catch (e) { shareErr = String(e); return; }
     if (!r.changes.length && !r.gone.length) return;
     applyShared(r);
     const shl = shared.lists();

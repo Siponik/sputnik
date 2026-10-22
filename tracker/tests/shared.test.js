@@ -149,3 +149,63 @@ test('календарь общей сферы узнаём по метке в �
   assert.equal(sh.isSphereCal({ description: `${sh.MARK} v1 — служебный` }), true);
   assert.equal(sh.isSphereCal({ summary: 'Работа' }), false);
 });
+
+// ---------- участники и исполнители ----------
+
+test('ключ участника — из почты, одинаковый у всех и без учёта регистра', () => {
+  const k = sh.memberKey('Anya@Gmail.com');
+  assert.equal(k, sh.memberKey(' anya@gmail.com'));
+  assert.match(k, /^m[0-9a-v]{16}$/);
+  assert.equal(sh.kindOf(k), 'member');
+  assert.notEqual(k, sh.memberKey('max@gmail.com'));
+});
+
+test('участники: владелец первым, дальше по порядку вступления, цвета по порядку, убранных нет', () => {
+  const recs = {};
+  const add = (r) => (recs[r.k] = r);
+  add(sh.make(sh.SPHERE_KEY, { name: 'Таверна', owner: 'me@gmail.com' }));
+  add(sh.make(sh.memberKey('max@gmail.com'), { email: 'max@gmail.com', name: 'Макс', order: 2, joined: true }));
+  add(sh.make(sh.memberKey('me@gmail.com'), { email: 'me@gmail.com', order: 0 }));
+  add(sh.make(sh.memberKey('anya@gmail.com'), { email: 'anya@gmail.com', order: 1, joined: false }));
+  add(sh.make(sh.memberKey('old@gmail.com'), { email: 'old@gmail.com', order: 3, joined: true, removed: true }));
+  const m = sh.membersOf(recs);
+  assert.deepEqual(m.map((x) => [x.email, x.owner, x.joined, x.letter]), [
+    ['me@gmail.com', true, true, 'M'], ['anya@gmail.com', false, false, 'A'], ['max@gmail.com', false, true, 'М']]);
+  assert.equal(m[0].color, 'var(--clay)');
+  assert.equal(m[1].color, 'var(--type-study)');
+  assert.equal(sh.nextOrder(recs), 4);
+});
+
+test('имя из почты, пока человек не назвался', () => {
+  assert.equal(sh.nameOf('anya.k@gmail.com'), 'Anya');
+  assert.equal(sh.nameOf(''), 'Участник');
+});
+
+test('фильтр «Все / Мои / Без исполнителя» и «мои и ничьи» для «Сегодня»', () => {
+  const me = 'me@gmail.com';
+  const mine = { who: me }, theirs = { who: 'anya@gmail.com' }, none = {};
+  assert.deepEqual([mine, theirs, none].map((L) => sh.assignedMatch(L, me, 'mine')), [true, false, false]);
+  assert.deepEqual([mine, theirs, none].map((L) => sh.assignedMatch(L, me, 'none')), [false, false, true]);
+  assert.deepEqual([mine, theirs, none].map((L) => sh.assignedMatch(L, me, 'mineOrNone')), [true, false, true]);
+  assert.deepEqual([mine, theirs, none].map((L) => sh.assignedMatch(L, me, 'all')), [true, true, true]);
+  assert.equal(sh.assignedMatch(undefined, me, 'none'), true);
+});
+
+test('Конвейер: при «Этап →» задача уходит исполнителю следующего этапа, у пустого этапа — остаётся', () => {
+  const L = { who: 'me', stageWho: { retopo: 'me', uv: 'max' } };
+  assert.deepEqual(sh.handoff(L, 'uv'), { who: 'max' });
+  assert.deepEqual(sh.handoff(L, 'retopo'), {});
+  assert.deepEqual(sh.handoff(L, 'textures'), {});
+  assert.deepEqual(sh.handoff({}, 'uv'), {});
+});
+
+test('исполнитель этапа ставится и снимается, остальные этапы не трогаются', () => {
+  const L = { stageWho: { refs: 'anya' } };
+  assert.deepEqual(sh.setStageWho(L, 'uv', 'max'), { stageWho: { refs: 'anya', uv: 'max' } });
+  assert.deepEqual(sh.setStageWho(L, 'refs', null), { stageWho: {} });
+  assert.deepEqual(L.stageWho, { refs: 'anya' }, 'исходная запись не меняется');
+});
+
+test('исполнитель и исполнители этапов — общие поля слоя, не личные', () => {
+  assert.deepEqual(sh.sharedOf({ who: 'a', stageWho: { uv: 'b' }, remind: 1, t: 1 }, 'task'), { $who: 'a', $stageWho: { uv: 'b' } });
+});
