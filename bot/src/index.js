@@ -8,11 +8,13 @@ import { onUpdate, link, putState, tick, sha256 } from './logic.js';
 import { d1Store } from './store.js';
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
+// Секрет, переданный через PowerShell, может прийти с BOM и переводом строки — чистим.
+const clean = (s) => String(s ?? '').replace(/^\uFEFF/, '').trim();
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
 function telegram(env) {
   return async (method, body) => {
-    const r = await fetch(`https://api.telegram.org/bot${env.BOT_TOKEN}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const r = await fetch(`https://api.telegram.org/bot${clean(env.BOT_TOKEN)}/${method}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (r.ok) return r.json();
     const text = await r.text();
     // Telegram не разобрал разметку (например, «<» в названии) — тот же текст без тегов.
@@ -34,7 +36,7 @@ export default {
     try {
       if (url.pathname === '/ping') return json({ ok: true, bot: env.BOT_NAME ?? '' });
       if (url.pathname === '/tg' && req.method === 'POST') {
-        if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== env.TG_SECRET) return new Response('нет', { status: 403 });
+        if (req.headers.get('X-Telegram-Bot-Api-Secret-Token') !== clean(env.TG_SECRET)) return new Response('нет', { status: 403 });
         const u = await req.json();
         const chat = String(u.message?.chat?.id ?? u.callback_query?.message?.chat?.id ?? u.callback_query?.from?.id ?? '');
         if (env.OWNER_CHAT && env.OWNER_HOOK && chat === String(env.OWNER_CHAT)) {
