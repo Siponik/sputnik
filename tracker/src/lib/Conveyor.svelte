@@ -10,10 +10,27 @@
   import { PRIORITIES, priorityOf } from './meta.js';
   import * as keys from './keys.js';
   import { expand } from './motion.js';
+  import Avatar from './Avatar.svelte';
+  import WhoPick from './WhoPick.svelte';
+  import { memberOf, whoOf, whoCounts, stageCrew, nextHint, passText } from './sharedcore.js';
 
   // act — действия из App (как на канбане); onmenu(t, anchor, expand, rename) — меню задачи доски.
-  let { list, tasks, cols, colOf, layTasks, visible = () => true, gallery = false, remindOf = () => '',
+  // share — общая сфера (docs/design-v2.md, «Общие сферы» 8): кто ведёт ассет (tasks[id].who) и исполнители этапов (stageWho).
+  let { list, tasks, cols, colOf, layTasks, layList = {}, share = null, visible = () => true, gallery = false, remindOf = () => '',
     act, ontoggle, onaddsub, onmenu } = $props();
+  const me = $derived(share?.me ?? '');
+  const people = $derived(share?.people ?? []);
+  const byPeople = $derived(!!share && layList?.cvGroup === 'people');
+  const mOf = (email) => memberOf(people, email);
+  const counts = $derived(share ? whoCounts(tasks, layTasks) : {});
+  let whoPick = $state(null); // { t, col (null — кто ведёт ассет), anchor }
+  function pickWho(t, col, anchor) { sel = t.id; whoPick = { t, col, anchor }; }
+  function applyWho(w) {
+    const { t, col } = whoPick;
+    whoPick = null;
+    if (col) act.stageWho(t, col, w); else act.who(t, w);
+    focusRow(t.id);
+  }
 
   const stages = $derived(cols.slice(0, -1));
   const endCol = $derived(cols[cols.length - 1]);
@@ -37,6 +54,16 @@
   const rows = $derived(top.filter((t) => (filter ? stageOf(t) === filter : stageOf(t) !== endCol.id || t.status !== 'completed' || Date.now() - new Date(t.completed).getTime() < 3 * 864e5)));
   // Группировка по проекту (tasks[id].project): сначала проекты по алфавиту, потом «Без проекта».
   const groups = $derived.by(() => {
+    if (byPeople) {
+      // «По людям»: по тому, кто ведёт ассет; я первым, «Ничьи» последней.
+      const order = [...people.filter((p) => p.email === me), ...people.filter((p) => p.email !== me)];
+      const known = new Set(order.map((p) => p.email));
+      const sorted = (rs) => rs.sort((a, b) => cols.findIndex((c) => c.id === stageOf(b)) - cols.findIndex((c) => c.id === stageOf(a)) || (a.position || '').localeCompare(b.position || ''));
+      const out = order.map((p) => ({ title: p.email === me ? 'Я' : p.name, m: p, rows: sorted(rows.filter((t) => whoOf(layTasks?.[t.id]) === p.email)) })).filter((g) => g.rows.length);
+      const none = rows.filter((t) => !known.has(whoOf(layTasks?.[t.id])));
+      if (none.length) out.push({ title: 'Ничьи', m: null, rows: sorted(none) });
+      return out;
+    }
     const g = {};
     for (const t of rows) (g[layTasks?.[t.id]?.project || ''] ??= []).push(t);
     const order = Object.keys(g).sort((a, b) => (!a) - (!b) || a.localeCompare(b, 'ru'));
@@ -113,7 +140,7 @@
 
   // Клавиши Конвейера: ↑↓ строки, →/← раскрыть/свернуть, Space — следующая, 1–7 — этап, плюс общие клавиши карточки.
   function onKey(e) {
-    if (gallery || editId || keys.typing(e) || keys.overlay()) return;
+    if (gallery || editId || whoPick || keys.typing(e) || keys.overlay()) return;
     const handled = () => { e.preventDefault(); e.stopPropagation(); };
     const t = flat.find((x) => x.id === sel) ?? null;
     const i = t ? flat.indexOf(t) : -1;
@@ -133,6 +160,13 @@
       return;
     }
     if (e.ctrlKey && !e.altKey && e.code === 'KeyD') { handled(); act.duplicate(t); return; }
+    // I — исполнитель текущего этапа, Shift+I — кто ведёт ассет.
+    if (share && e.code === 'KeyI' && !e.ctrlKey && !e.altKey && !e.metaKey && !whoPick) {
+      handled();
+      const row = document.querySelector(`.cvr[data-id="${t.id}"]`);
+      pickWho(t, e.shiftKey || t.status === 'completed' ? null : stageOf(t), row?.querySelector('.cv-who') ?? row);
+      return;
+    }
     if ((e.shiftKey && e.key === 'F10') || e.key === 'ContextMenu') { handled(); menuFor(t, document.querySelector(`.cvr[data-id="${t.id}"]`)); return; }
     if (!keys.plain(e)) return;
     const n = /^Digit([1-9])$/.exec(e.code);
@@ -194,12 +228,21 @@
     </button>
   {/each}
 </section>
-<p class="cv-sum">{summary}{filter ? ` · фильтр: «${cols.find((c) => c.id === filter)?.name}»` : ''}</p>
+<div class="cv-sumrow">
+  <p class="cv-sum">{summary}{filter ? ` · фильтр: «${cols.find((c) => c.id === filter)?.name}»` : ''}</p>
+  {#if share && !gallery}
+    <div class="sh-seg" role="group" aria-label="Группировка">
+      <button type="button" aria-pressed={!byPeople} onclick={() => act.set({ cvGroup: 'project' })}>По проектам</button>
+      <button type="button" aria-pressed={byPeople} onclick={() => act.set({ cvGroup: 'people' })}>По людям</button>
+    </div>
+  {/if}
+</div>
 
 {#if !gallery}
   <div class="cv">
     {#each groups as g (g.title)}
-      {#if groups.length > 1 || g.title !== 'Без проекта'}<p class="grp">{g.title}</p>{/if}
+      {#if byPeople}<p class="grp">{#if g.m !== undefined}<Avatar m={g.m} size={18} me={g.m?.email === me} />{/if}{g.title}</p>
+      {:else if groups.length > 1 || g.title !== 'Без проекта'}<p class="grp">{g.title}</p>{/if}
       {#each g.rows as t (t.id)}
         {@const st = stageOf(t)}
         {@const si = stages.findIndex((c) => c.id === st)}
@@ -212,6 +255,11 @@
         {@const dn = daysOn(t)}
         {@const pr = priorityOf(layTasks?.[t.id]?.priority)}
         {@const isOpen = openId === t.id}
+        {@const L = layTasks?.[t.id] ?? {}}
+        {@const lead = share ? mOf(whoOf(L)) : null}
+        {@const nxWho = share && nx && !done ? (L.stageWho?.[nx.id] ?? null) : null}
+        {@const nxM = nxWho && nxWho !== whoOf(L) ? mOf(nxWho) : null}
+        {@const given = share && L.given && whoOf(L) === me ? L.given : null}
         <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_tabindex, a11y_no_static_element_interactions -->
         <div class="cvr" class:open={isOpen} class:sel={sel === t.id} data-id={t.id} tabindex="0"
           aria-label="{t.title || 'Без названия'}, этап {done ? endCol.name : stages[si]?.name}"
@@ -231,6 +279,7 @@
               <span class="nm" title="Двойной клик или F2 — переименовать" ondblclick={stop(() => startEdit(t))}>
                 <b>{t.title || 'Без названия'}</b>
                 <small>{layTasks?.[t.id]?.project ? `${layTasks[t.id].project} · ` : ''}{subsOf(t.id).length ? `подзадач ${subsOf(t.id).filter((s) => s.status === 'completed').length} из ${subsOf(t.id).length}` : 'нажми, чтобы раскрыть'}</small>
+                {#if given}<span class="sh-given"><Avatar m={mOf(given.by)} size={14} />передано тебе · от {given.name}</span>{/if}
               </span>
             {/if}
             {#if pr && !done}<span class="pip" title="Приоритет: {pr.label.toLowerCase()}" style="background: {PC[pr.id]}"></span>{/if}
@@ -238,17 +287,23 @@
           <div>
             <div class="track" role="group" aria-label="Этапы" style="grid-template-columns: repeat({stages.length}, minmax(0, 1fr))">
               {#each stages as c, i (c.id)}
-                <button type="button" class="st" class:done={done || i < si} class:now={!done && i === si}
-                  title="{i + 1} · {c.name}{!done && i === si ? ' — сейчас' : ''}" onclick={stop(() => act.stage(t, c.id))}>{c.name}</button>
+                {@const sw = share && (done || i !== si) ? L.stageWho?.[c.id] : null}
+                <button type="button" class="st" class:done={done || i < si} class:now={!done && i === si} class:nxo={!!nxM && nx?.id === c.id}
+                  style={nxM && nx?.id === c.id ? `--nc: ${nxM.color}` : ''}
+                  title="{i + 1} · {c.name}{!done && i === si ? ' — сейчас' : ''}{sw ? ` · ${mOf(sw).name}` : ''}" onclick={stop(() => act.stage(t, c.id))}>{c.name}{#if sw}<span class="sw"><Avatar m={mOf(sw)} size={16} me={sw === me} /></span>{/if}</button>
               {/each}
             </div>
             <div class="days" class:slow={!done && dn != null && dn >= 7}>
               {done ? 'готово' : dn == null ? 'время на этапе пока не считалось' : `на этапе ${dn} ${plural(dn, ['день', 'дня', 'дней'])}${dn >= 7 ? ' — дольше обычного' : ''}`}
             </div>
           </div>
-          <span class="due {dueCls(t)}">{t.due ? (dueCls(t) === 'late' ? 'просрочено' : humanDue(t.due)) : '—'}</span>
+          <span class="due {dueCls(t)}">{t.due ? (dueCls(t) === 'late' ? 'просрочено' : humanDue(t.due)) : share ? 'без срока' : '—'}</span>
+          {#if share}
+            <button type="button" class="sh-who cv-who" title="{lead ? `Ведёт: ${lead.name}` : 'Никто не ведёт'} · Shift+I" aria-label={lead ? `Ведёт ${lead.name}, сменить` : 'Выбрать, кто ведёт'}
+              onclick={stop((e) => pickWho(t, null, e.currentTarget))}><Avatar m={lead} size={30} me={!!lead && lead.email === me} /></button>
+          {/if}
           {#if !done && nx}
-            <button type="button" class="adv nx" class:ready={allChecked} title="Alt+→" onclick={stop(() => act.stage(t, nx.id))}>{nx.name} →</button>
+            <button type="button" class="adv nx" class:ready={allChecked} title="Alt+→{nxM ? ` · уйдёт: ${nxM.name}` : ''}" onclick={stop(() => act.stage(t, nx.id))}>{nx.name} →{#if nxM}<Avatar m={nxM} size={18} />{/if}</button>
           {:else}
             <span class="fin">✓ {endCol.name.toLowerCase()}</span>
           {/if}
@@ -256,6 +311,29 @@
         {#if isOpen}
           {@const tl = timeline(t)}
           <div class="pn" role="region" in:expand out:expand={{ out: true }} aria-label="Подробности: {t.title}">
+            {#if share}
+              <div class="cv-crew">
+                <section>
+                  <div class="pn-h"><h4>Кто на этапах</h4><span>ассет ведёт: {lead ? (lead.email === me ? 'ты' : lead.name) : 'никто'}</span></div>
+                  {#each stageCrew(L, stages, done ? '' : st) as r, i (r.col.id)}
+                    {@const m = mOf(r.who)}
+                    <div class="cw" class:cur={!done && r.col.id === st}>
+                      <span class="cn">{r.col.name}</span>
+                      <button type="button" class="cwb" title="Кто делает «{r.col.name}»{!done && r.col.id === st ? ' · I' : ''}" onclick={(e) => pickWho(t, r.col.id, e.currentTarget)}>
+                        <Avatar {m} size={22} me={r.who === me} />{m ? (r.who === me ? 'Я' : m.name) : 'по ходу дела'}<i aria-hidden="true">▾</i></button>
+                      <span class="cd">{done || i < si ? (L.stageAt?.[stages[i + 1]?.id ?? endCol.id] ? `✓ ${new Date(L.stageAt[stages[i + 1]?.id ?? endCol.id]).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}` : '✓') : !done && i === si && dn != null ? `${dn} ${plural(dn, ['день', 'дня', 'дней'])}` : ''}</span>
+                    </div>
+                  {/each}
+                </section>
+                <section>
+                  <div class="pn-h"><h4>Как передаётся</h4></div>
+                  {#each [...(Array.isArray(L.passes) ? L.passes : [])].reverse().slice(0, 5) as p (p.at)}
+                    <div class="cv-ps"><Avatar m={mOf(p.by)} size={18} me={p.by === me} /><span class="tx">{passText(p, people, me, (c) => cols.find((x) => x.id === c)?.name ?? c)}</span><em>{new Date(p.at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</em></div>
+                  {:else}<p class="hint">Пока никто не передавал. При «Этап →» ассет сам уйдёт к исполнителю следующего этапа.</p>{/each}
+                  {#if !done && nx}<div class="cv-ps cv-nx"><Avatar m={nxWho ? mOf(nxWho) : lead} size={18} /><span class="tx">Дальше: «{nx.name}» — {nextHint(L, nx.id, me, people)}</span></div>{/if}
+                </section>
+              </div>
+            {/if}
             <section>
               <div class="pn-h"><h4>{done ? 'Подзадачи' : `Этап «${stages[si]?.name ?? endCol.name}»`}</h4>{#if ch.stage.length}<span>{chDone} из {ch.stage.length}</span>{/if}</div>
               {#if ch.stage.length}<div class="bar" aria-hidden="true"><i style="width: {Math.round((chDone / ch.stage.length) * 100)}%"></i></div>{/if}
@@ -310,8 +388,13 @@
             </section>
             <div class="foot">
               {#if pv && !done}<button type="button" class="sp-btn" style="min-height: 30px" onclick={() => act.stage(t, pv.id)}>← {pv.name}</button>{/if}
+              {#if share && nx && !done}
+                <button type="button" class="sp-btn sp-btn-primary" style="min-height: 30px" onclick={() => act.stage(t, nx.id)}>{nx.name} →</button>
+                <span class="keys">{nextHint(L, nx.id, me, people)}</span>
+              {/if}
               <button type="button" class="sp-btn sp-btn-ghost" style="min-height: 30px" onclick={() => act.open(t)}>Открыть полностью ↗</button>
               <span style="flex: 1"></span>
+              {#if share}<span class="keys"><kbd>I</kbd> исполнитель этапа · <kbd>Shift+I</kbd> ведёт ассет ·</span>{/if}
               <span class="keys"><kbd>Esc</kbd> свернуть · <kbd>Space</kbd> следующий · <kbd>Enter</kbd> окно задачи</span>
             </div>
           </div>
@@ -341,4 +424,10 @@
       <p class="empty">{filter ? 'На этом этапе сейчас ничего нет.' : 'Пока пусто.'}</p>
     {/each}
   </div>
+{/if}
+
+{#if whoPick && share}
+  <WhoPick anchor={whoPick?.anchor} {people} {me} {counts}
+    cur={whoPick?.col ? (layTasks?.[whoPick.t.id]?.stageWho?.[whoPick.col] ?? (stageOf(whoPick.t) === whoPick.col ? whoOf(layTasks?.[whoPick.t.id]) : null)) : whoOf(layTasks?.[whoPick?.t.id])}
+    onpick={applyWho} onclose={() => (whoPick = null)} />
 {/if}

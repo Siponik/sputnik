@@ -319,3 +319,31 @@ test('forMe: в общих сферах — мои и ничьи с подзад
   assert.deepEqual(out['sh:l1'].map((t) => t.id), ['a', 'c', 'a1']);
   assert.deepEqual(out.L2.map((t) => t.id), ['x']);
 });
+
+// ---------- шаг 6 ----------
+test('stagePass: передача на следующий этап и история', () => {
+  const L = { who: 'me@x', stageWho: { uv: 'max@x' }, passes: [] };
+  const p = sh.stagePass(L, 'retopo', 'uv', 'me@x', 100);
+  assert.equal(p.who, 'max@x');
+  assert.deepEqual(p.passes, [{ from: 'retopo', to: 'uv', by: 'me@x', who: 'max@x', at: 100 }]);
+  const q = sh.stagePass({ who: 'me@x' }, 'uv', 'textures', 'me@x', 200);
+  assert.equal(q.who, undefined);
+  assert.equal(q.passes[0].who, 'me@x');
+  assert.deepEqual(q.stageWho, { uv: 'me@x' });
+  assert.deepEqual(p.stageWho, { uv: 'max@x', retopo: 'me@x' }); // у retopo своего не было — записан тот, кто вёл
+
+  const many = { passes: Array.from({ length: 8 }, (_, i) => ({ at: i })) };
+  assert.equal(sh.stagePass(many, 'a', 'b', 'x', 9).passes.length, 8);
+});
+
+test('passText и nextHint', () => {
+  const ppl = [{ email: 'anya@x', name: 'Аня' }, { email: 'max@x', name: 'Макс' }];
+  const name = (c) => ({ refs: 'Референсы', blockout: 'Блокаут', sculpt: 'Скульпт' }[c] ?? c);
+  assert.equal(sh.passText({ from: 'refs', to: 'blockout', by: 'anya@x', who: 'me@x' }, ppl, 'me@x', name), 'Аня · «Референсы» готово → тебе');
+  assert.equal(sh.passText({ from: 'blockout', to: 'sculpt', by: 'me@x', who: 'me@x' }, ppl, 'me@x', name), 'Ты · «Блокаут» готово → «Скульпт» остаётся у тебя');
+  assert.equal(sh.nextHint({ who: 'me@x' }, 'retopo', 'me@x', ppl), 'этап твой — останется у тебя');
+  assert.equal(sh.nextHint({ who: 'me@x', stageWho: { uv: 'max@x' } }, 'uv', 'me@x', ppl), 'уйдёт: Макс');
+  assert.equal(sh.nextHint({}, 'uv', 'me@x', ppl), 'этап без исполнителя');
+  const crew = sh.stageCrew({ who: 'me@x', stageWho: { refs: 'anya@x' } }, [{ id: 'refs' }, { id: 'sculpt' }, { id: 'uv' }], 'sculpt');
+  assert.deepEqual(crew.map((r) => r.who), ['anya@x', 'me@x', null]);
+});

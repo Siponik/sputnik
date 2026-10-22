@@ -117,3 +117,33 @@
 .stk-page .lh.ppl { gap: 8px; }
 .stk-page .lh.ppl .sh-av { --ring: var(--bg); }
 .stk-page .bd-head .sh-seg { margin-right: 4px; }
+
+/* Конвейер в общей сфере (docs/design-v2.md, «Общие сферы» 8) */
+.cvr:has(.cv-who) { grid-template-columns: 20px minmax(170px, 1.05fr) minmax(0, 2.6fr) 80px 34px minmax(100px, auto); }
+.cvr .track .st { position: relative; overflow: visible; }
+.cvr .track .st .sw { position: absolute; top: -8px; right: -4px; line-height: 0; }
+.cvr .track .st .sw .sh-av { --ring: var(--raised); }
+.cvr .track .st.nxo { box-shadow: inset 0 0 0 1.5px var(--nc); color: var(--ink-soft); }
+.cvr .adv .sh-av { margin-left: 6px; vertical-align: middle; --ring: var(--raised); }
+.cv-sumrow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cv-sumrow .cv-sum { flex: 1; }
+.cv .grp .sh-av { --ring: var(--bg); }
+.sh-given { display: inline-flex; align-items: center; gap: 5px; margin-top: 3px; padding: 2px 8px 2px 3px; border-radius: 999px;
+  background: color-mix(in srgb, var(--gold) 16%, transparent); color: var(--gold); font: 600 11px/1.3 var(--font-sans); }
+.pn .cv-crew { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border-bottom: 1px solid var(--hairline); }
+.pn .cv-crew > section { padding: 16px 18px; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.pn .cv-crew > section + section { border-left: 1px solid var(--hairline); }
+.pn .cw { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 34px; padding: 0 8px; border-radius: 8px; font-size: 13px; }
+.pn .cw.cur { background: var(--raised); }
+.pn .cw.cur .cn { color: var(--clay); font-weight: 600; }
+.pn .cw .cn { color: var(--ink-soft); }
+.pn .cw .cd { font: 400 11.5px/1 var(--font-mono); color: var(--ink-faint); }
+.pn .cwb { display: inline-flex; align-items: center; gap: 8px; justify-self: start; height: 30px; padding: 0 8px 0 2px; border: 0; border-radius: 999px; background: none; color: var(--ink); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.pn .cwb:hover { background: var(--wash); }
+.pn .cwb i { font-style: normal; color: var(--ink-faint); font-size: 10px; }
+.pn .cwb .sh-av { --ring: var(--wash); }
+.pn .cv-ps { display: flex; align-items: center; gap: 9px; min-height: 28px; font-size: 13px; color: var(--ink-soft); }
+.pn .cv-ps .tx { flex: 1; min-width: 0; }
+.pn .cv-ps em { font: normal 400 11.5px/1 var(--font-mono); color: var(--ink-faint); }
+.pn .cv-ps.cv-nx { color: var(--ink-faint); }
+.pn .cv-ps .sh-av { --ring: var(--wash); }

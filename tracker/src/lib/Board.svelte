@@ -324,7 +324,7 @@
   </header>
 
   {#if view === 'pipe' || view === 'gallery'}
-    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {layList} {share} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
       onmenu={openMenu} />
   {:else if view === 'list'}
     <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
