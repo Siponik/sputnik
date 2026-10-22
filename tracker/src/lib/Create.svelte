@@ -391,7 +391,7 @@
   <div class="cr-row"><span>Напомнить</span>
     <div class="cr-chips">
       <button type="button" class="cr-c" class:gold={kind === 'birthday'} aria-pressed={!remind.length} onclick={() => setRemind([])}>Нет</button>
-      {#each kind === 'birthday' ? [0, 1440, 4320, 10080] : quickLeads as min (min)}
+      {#each kind === 'birthday' ? [0, 1440, 4320, 10080, 43200] : quickLeads as min (min)}
         <button type="button" class="cr-c" class:gold={kind === 'birthday'} aria-pressed={remind.includes(min)}
           onclick={() => setRemind(remind.includes(min) ? remind.filter((m) => m !== min) : [...remind, min].sort((a, b) => b - a))}>{kind === 'birthday' && min === 10080 && gift ? 'За неделю — подарок' : remLabel(min)}</button>
       {/each}

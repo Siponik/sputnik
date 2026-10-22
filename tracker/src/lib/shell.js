@@ -46,11 +46,27 @@ export function versionLine(upd) {
   return { text: 'обновления проверяются сами', cls: '' };
 }
 
-/** Подпись строки «Напоминания в Telegram». rem = { at, n, err }. */
+/** Подпись строки «Напоминания в Telegram». rem = { at, n, err } — файл для своего бота;
+ *  { shared: true, linked, err } — свой бот выключен, напоминания идут только через общий. */
 export function remindLine(rem) {
+  if (rem?.shared) {
+    if (rem.err) return { text: rem.err, cls: 'e' };
+    return rem.linked ? { text: 'через общий бот', cls: 'ok' } : { text: 'бот не подключён — Настройки → Напоминания', cls: 'w' };
+  }
   if (rem?.err) return { text: rem.err, cls: 'e' };
   if (!rem?.at) return { text: 'файл ещё не обновлялся', cls: '' };
   return { text: `файл обновлён ${hm(rem.at)} · ${rem.n} впереди`, cls: 'ok' };
+}
+
+/**
+ * Свой бот на Google Apps Script (reminders/Code.gs) есть только у владельца: у него скрипт ведёт «Входящие от Claude»
+ * и пишет событие «Спутник · статус» (inbox — его содержимое). У остальных пользователей — только общий бот.
+ * settings.ownBot = { v } — выбор вручную. show — показывать строку в настройках, on — писать файл напоминаний на Drive.
+ */
+export function ownBot(settings, inbox) {
+  const v = settings?.ownBot?.v;
+  const found = !!inbox;
+  return { show: found || v === true, on: typeof v === 'boolean' ? v : found };
 }
 
 /** «Что нового»: первые n пунктов списка из заметки релиза (строки «- …», «* …», «• …»; иначе — строки как есть). */
@@ -174,11 +190,11 @@ export const SETTINGS_INDEX = [
   { tab: 'show', id: 'lists', title: 'Списки задач', hint: 'Какие списки видны на доске, в «Сегодня» и в календаре', also: 'скрыть показывать' },
   { tab: 'show', id: 'cals', title: 'Календари', hint: 'Какие календари Google показывать', also: 'скрыть показывать дни рождения праздники' },
   { tab: 'rem', id: 'tgbot', title: 'Telegram', hint: 'Общий бот: напоминания и задачи текстом', also: 'телеграм бот подключить код' },
-  { tab: 'rem', id: 'bot', title: 'Свой бот (Apps Script)', hint: 'Файл напоминаний и проверка связи', also: 'телеграм бот проверить' },
+  { tab: 'rem', id: 'bot', title: 'Свой бот (Apps Script)', hint: 'Только у владельца: файл напоминаний, проверка связи, выключить', also: 'телеграм бот проверить apps script выключить' },
   { tab: 'rem', id: 'rtask', title: 'Задачи — по умолчанию', hint: 'Напоминание, которое ставится новой задаче со сроком' },
   { tab: 'rem', id: 'revent', title: 'События', hint: 'Напоминание о событии по умолчанию' },
   { tab: 'rem', id: 'rbday', title: 'Дни рождения', hint: 'Напоминание о дне рождения по умолчанию' },
-  { tab: 'rem', id: 'rhour', title: 'Задачи без времени', hint: 'Во сколько напоминать, если у задачи только дата' },
+  { tab: 'rem', id: 'rhour', title: 'Задачи без времени', hint: 'Во сколько напоминать, если у задачи только дата, или не напоминать', also: 'выключить отключить уведомление' },
   { tab: 'rem', id: 'notify', title: 'Уведомления Windows', hint: 'Вехи привычек; основное — в боте' },
   { tab: 'sync', id: 'acct', title: 'Google-аккаунт', hint: 'Задачи, календарь, скрытая папка', also: 'выйти войти почта' },
   { tab: 'sync', id: 'google', title: 'Google Задачи и Календарь', hint: 'Обновляется само раз в 2 минуты', also: 'обновить синхронизация' },

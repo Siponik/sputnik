@@ -153,18 +153,23 @@
   // Любое изменение задач или напоминаний — через 3 с обновляем файл для облака (если список поменялся).
   let publishTimer;
   let remStat = $state({ at: null, n: 0, err: '' }); // файл напоминаний — для «Состояния»
+  const ownBot = $derived(shell.ownBot(lay.settings, inboxSt)); // свой бот на Apps Script — только у владельца
+  const remView = $derived(ownBot.on ? remStat : { shared: true, linked: !!lay.settings?.tgbot?.key, err: tgStat.err });
   let publishWarned = false;
   $effect(() => {
     if (phase !== 'ready' || !sync.at) return;
     const items = [...reminders.collect(boardLists, tasks, lay.tasks, habitList, cheers, remindEvents), ...reminders.habitItems(habits, lay.log), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
+    const own = ownBot;
     const week = tgKey ? sharedbot.snapshot(boardLists, tasks, lay.tasks) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       // Общий бот (lib/sharedbot.js) — те же напоминания, кроме проверки личного бота, и задачи на неделю для /today.
       if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week).then(() => (tgStat = { ...tgStat, err: '' }))
         .catch((e) => (tgStat = { ...tgStat, err: String(e.message ?? e), unlinked: !!e.unlinked }));
-      reminders.publish(items, { task: remindDefaults.task }).then((wrote) => {
+      // Файл на Drive читает только свой бот владельца (Apps Script). Выключили — один раз очищаем файл, чтобы скрипт замолчал.
+      if (!own.on && !remStat.at) return;
+      reminders.publish(own.on ? items : [], { task: remindDefaults.task }).then((wrote) => {
         if (wrote || !remStat.at) remStat = { at: new Date(), n: items.length, err: '' };
       }).catch((e) => {
         remStat = { ...remStat, err: 'не удалось передать: ' + e };
@@ -1501,7 +1506,7 @@
     </Popover>
   {/if}
   {#if statOpen}
-    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remStat} notes={shell.notesOf(upd.found?.notes)}
+    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remView} notes={shell.notesOf(upd.found?.notes)}
       onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
       oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
       onclose={() => (statOpen = false)} />
@@ -1509,7 +1514,7 @@
   {#if settingsTab}
     <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
       hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
-      {version} {upd} {sync} {offline} {cloud} rem={remStat} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
+      {version} {upd} {sync} {offline} {cloud} rem={remStat} {ownBot} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
       onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
       tgbot={lay.settings?.tgbot} {tgStat} ontglink={tgLink} ontgtest={tgTest} ontgunlink={tgUnlink}
       onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
