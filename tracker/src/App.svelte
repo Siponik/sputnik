@@ -315,7 +315,7 @@
     upd.err = '';
     upd.note = manual ? 'Проверяю…' : '';
     try {
-      upd.found = await updater.findUpdate();
+      upd.found = await updater.findUpdate(!!lay.settings?.update?.beta); // бета-канал — только у владельца
       upd.checkedAt = new Date();
       upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
     } catch (e) {
@@ -1235,7 +1235,11 @@
   // ---------- Настройки (⚙ в шапке, Ctrl+,): всё из старого низа левой колонки ----------
   let settingsTab = $state(null); // null — окно закрыто
   function openSettings(tab = 'look') { statOpen = false; updOpen = false; settingsTab = tab; }
-  function setPref(key, patch) { touch('settings', key, patch); saveLayer(); }
+  function setPref(key, patch) {
+    touch('settings', key, patch);
+    saveLayer();
+    if (key === 'update' && 'beta' in patch) { upd.found = null; checkUpdate(true); } // канал сменился — проверить сразу
+  }
   function hideList(id, hide) { touch('lists', id, { hidden: hide }); saveLayer(); }
   async function hideCal(id, hide) {
     touch('cals', id, { hidden: hide });

@@ -197,3 +197,12 @@ test('свой бот (Apps Script): только у владельца, у ко
   assert.equal(shell.remindLine({ shared: true, linked: true, err: 'нет связи' }).text, 'нет связи');
   assert.ok(shell.searchSettings('отключить').some((r) => r.id === 'rhour'));
 });
+
+test('бета-версии: строка только у владельца, или если бета включена / уже стоит', () => {
+  assert.equal(shell.isBeta('0.7.3-beta.2'), true);
+  assert.equal(shell.isBeta('0.7.3'), false);
+  assert.equal(shell.betaShow({ show: false }, '0.7.3', {}), false);
+  assert.equal(shell.betaShow({ show: true }, '0.7.3', {}), true);
+  assert.equal(shell.betaShow({ show: false }, '0.7.3', { beta: true }), true);
+  assert.equal(shell.betaShow({ show: false }, '0.7.3-beta.1', {}), true);
+});

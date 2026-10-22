@@ -1,4 +1,5 @@
 mod backup;
+mod beta;
 mod google;
 mod pin;
 
@@ -107,6 +108,7 @@ pub fn run() {
             layer_write,
             backups_last,
             open_place,
+            beta::beta_check,
         ])
         .run(tauri::generate_context!())
         .expect("Спутник не смог запуститься");

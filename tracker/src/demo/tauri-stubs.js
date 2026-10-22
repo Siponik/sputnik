@@ -23,6 +23,7 @@ export const check = async () => {
     },
   };
 };
+export class Update {} // бета-канал в демо не проверяется (updater.findUpdate)
 export const relaunch = async () => {};
 export const isPermissionGranted = async () => false;
 export const requestPermission = async () => 'denied';

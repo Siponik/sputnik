@@ -1,6 +1,6 @@
 // «Что нового» для релиза трекера (.github/workflows/tracker-build.yml) — то, что видно в приложении у чипа обновления.
-//   node tools/ci/notes.mjs <теги релизов…>
-//       печатает список «- …» по изменениям трекера с прошлого релиза.
+//   node tools/ci/notes.mjs [--beta] <теги релизов…>
+//       печатает список «- …» по изменениям трекера с прошлого релиза (с --beta — с прошлой беты или релиза).
 // Откуда пункты: из PR, слитых после прошлого релиза, — раздел «## Что нового» в описании PR (1–3 пункта
 // простыми словами для пользователя). У PR без такого раздела — названия его коммитов (без «Merge pull request…»).
 // Учитываются только PR и коммиты, которые меняют tracker/.
@@ -66,13 +66,21 @@ export function prNumber(subject) {
   return m ? Number(m[1]) : null;
 }
 
-/** Последний тег релиза по номеру версии («tracker-0.6.69» больше «tracker-0.6.7»). */
-export function lastTag(tags) {
-  const ver = (t) => (/^tracker-(\d+)\.(\d+)\.(\d+)$/.exec(String(t).trim()) ?? []).slice(1).map(Number);
-  const ok = tags.map((t) => String(t).trim()).filter((t) => ver(t).length === 3);
+/**
+ * Последний тег релиза по номеру версии («tracker-0.6.69» больше «tracker-0.6.7»). Бета-теги («tracker-0.7.3-beta.2»)
+ * учитываются только с beta: так у обычного релиза «Что нового» — с прошлого обычного (вместе со всем, что было в бетах),
+ * а у беты — с прошлой беты или обычного релиза, что новее.
+ */
+export function lastTag(tags, { beta = false } = {}) {
+  const ver = (t) => {
+    const m = /^tracker-(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$/.exec(String(t).trim());
+    if (!m || (m[4] && !beta)) return [];
+    return [+m[1], +m[2], +m[3], m[4] ? +m[4] : Infinity]; // 0.7.3-beta.2 < 0.7.3
+  };
+  const ok = tags.map((t) => String(t).trim()).filter((t) => ver(t).length === 4);
   ok.sort((a, b) => {
     const [x, y] = [ver(a), ver(b)];
-    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2];
+    return x[0] - y[0] || x[1] - y[1] || x[2] - y[2] || (x[3] === y[3] ? 0 : x[3] < y[3] ? -1 : 1);
   });
   return ok.at(-1) ?? null;
 }
@@ -126,5 +134,7 @@ function collect(tag) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  console.log(releaseNotes(collect(lastTag(process.argv.slice(2)))));
+  const args = process.argv.slice(2);
+  const beta = args.includes('--beta');
+  console.log(releaseNotes(collect(lastTag(args.filter((a) => a !== '--beta'), { beta }))));
 }
