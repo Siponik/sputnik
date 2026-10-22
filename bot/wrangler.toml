@@ -3,7 +3,7 @@ main = "src/index.js"
 compatibility_date = "2025-09-01"
 
 [vars]
-BOT_NAME = ""  # имя бота без @ — ставит bot/README.md при выкладке
+BOT_NAME = "SputnikTasksBot"
 
 [triggers]
 crons = ["* * * * *"]
