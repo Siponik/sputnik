@@ -1,7 +1,7 @@
 // Календарь: раскладка событий, задач и привычек по дням. Только расчёты, без интерфейса.
 // Время задачи (в Google Tasks его нет) хранится в слое: tasks[id].slot = { s: 'ЧЧ:ММ', e: 'ЧЧ:ММ' }.
 import { ymd, dueToYmd } from './api.js';
-import { dow, isDone } from './habits.js';
+import { dow, isDone, scheduledOn } from './habits.js';
 
 // Рабочие часы — для свободного окна и загрузки недели. Сетка недели — все сутки.
 export const GRID_START = 9 * 60;
@@ -218,10 +218,10 @@ function longestGap(dayItems, days) {
 
 /** Привычка в конкретный день: по расписанию ли, сделана ли. */
 export function habitDay(habit, log, day, today) {
-  const days = habit.days?.length ? habit.days : [0, 1, 2, 3, 4, 5, 6];
+  // «N раз в неделю» (perWeek) — каждый день, пока норма недели не набрана (habits.scheduledOn).
   const done = isDone(log, habit.id, day);
   const before = !!habit.createdAt && day < habit.createdAt.slice(0, 10);
-  return { sched: days.includes(dow(parseYmd(day))) && (!before || done), done, isToday: day === today, future: day > today };
+  return { sched: scheduledOn(habit, log, day) && (!before || done), done, isToday: day === today, future: day > today };
 }
 
 export function dayLabel(day) {
