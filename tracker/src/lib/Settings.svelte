@@ -236,6 +236,10 @@
             {@render sw(updPref.auto !== false, (x) => onset('update', { auto: x }), 'Проверять обновления самому')}</div>
           <div class="it" class:hit={hit.has('night')}>{@render tx('night', 'Ставить ночью', 'если компьютер включён — обновится в 3:00 без вопросов')}
             {@render sw(!!updPref.night, (x) => onset('update', { night: x }), 'Ставить обновления ночью')}</div>
+          {#if shell.betaShow(ownBot, version, updPref)}
+            <div class="it" class:hit={hit.has('beta')}>{@render tx('beta', 'Бета-версии', updPref.beta ? (shell.isBeta(version) ? 'включено · стоит бета — выключишь, вернёшься на обычную со следующим релизом' : 'включено · сборки из ветки beta приходят только тебе') : 'выключено · только обычные релизы, как у всех', '')}
+              {@render sw(!!updPref.beta, (x) => onset('update', { beta: x }), 'Получать бета-версии')}</div>
+          {/if}
           <div class="it" class:hit={hit.has('all')}>{@render tx('all', 'Все версии', 'список изменений на GitHub')}
             <button type="button" class="stg-btn" onclick={() => openPlace('releases').catch(() => {})}>Открыть</button></div>
         </div>

@@ -69,6 +69,15 @@ export function ownBot(settings, inbox) {
   return { show: found || v === true, on: typeof v === 'boolean' ? v : found };
 }
 
+/** Бета-сборка: «0.7.3-beta.2» (ветка beta, .github/workflows/tracker-build.yml). */
+export const isBeta = (v) => /-beta\.\d+$/.test(String(v ?? ''));
+
+/**
+ * Строка «Бета-версии» в Настройки → Обновления — только у владельца (у кого есть свой бот, см. ownBot), а ещё если
+ * бета уже включена или стоит — чтобы её можно было выключить. settings.update.beta — проверять бета-канал.
+ */
+export const betaShow = (own, version, pref = {}) => !!own?.show || pref.beta === true || isBeta(version);
+
 /** «Что нового»: первые n пунктов списка из заметки релиза (строки «- …», «* …», «• …»; иначе — строки как есть). */
 export function notesOf(text, n = 3) {
   const lines = String(text ?? '').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);

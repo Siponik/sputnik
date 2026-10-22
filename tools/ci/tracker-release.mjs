@@ -2,30 +2,36 @@
 //   node tools/ci/tracker-release.mjs next <теги релизов…>
 //       печатает следующую версию: МАЖОР.МИНОР из tauri.conf.json, третье число — следующее после уже вышедших
 //       (первый релиз минора — x.y.0; см. version.mjs).
+//   node tools/ci/tracker-release.mjs next-beta <теги релизов…>
+//       то же для ветки beta: следующий номер + «-beta.N» (0.7.3-beta.1, 0.7.3-beta.2…).
 //   node tools/ci/tracker-release.mjs prepare <версия>
 //       версия в tauri.conf.json; без ключа подписи (секрет TAURI_SIGNING_PRIVATE_KEY) — без файлов обновления,
-//       чтобы сборка не падала, пока секреты не заведены.
+//       чтобы сборка не падала, пока секреты не заведены. У беты в .msi — числовая версия 0.7.3.N.
 //   node tools/ci/tracker-release.mjs latest <версия> <путь к .msi> <заметка>
 //       пишет latest.json для обновления из приложения (рядом с .msi должен лежать .msi.sig).
 // Секрет читается при старте задания: сборка, начатая до того, как секрет завели, выйдет без подписи.
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nextVersion } from './version.mjs';
+import { nextVersion, nextBeta, msiVersion } from './version.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const CONF = join(root, 'tracker', 'src-tauri', 'tauri.conf.json');
 const REPO = 'Siponik/sputnik'; // репозиторий публичный — приложение читает релизы без пароля
 const [cmd, arg, ...rest] = process.argv.slice(2);
 const version = arg;
-if (cmd !== 'next' && !/^\d+\.\d+\.\d+$/.test(version ?? '')) throw new Error('Нужна версия вида 0.6.0');
+if (!cmd.startsWith('next') && !/^\d+\.\d+\.\d+(-beta\.\d+)?$/.test(version ?? '')) throw new Error('Нужна версия вида 0.6.0 или 0.6.0-beta.1');
 
-if (cmd === 'next') {
+if (cmd === 'next' || cmd === 'next-beta') {
   const conf = JSON.parse(readFileSync(CONF, 'utf8'));
-  console.log(nextVersion(conf.version, process.argv.slice(3)));
+  console.log((cmd === 'next' ? nextVersion : nextBeta)(conf.version, process.argv.slice(3)));
 } else if (cmd === 'prepare') {
   const conf = JSON.parse(readFileSync(CONF, 'utf8'));
   conf.version = version;
+  if (version !== msiVersion(version)) {
+    conf.bundle.windows ??= {};
+    conf.bundle.windows.wix = { ...conf.bundle.windows.wix, version: msiVersion(version) };
+  }
   const signed = !!process.env.TAURI_SIGNING_PRIVATE_KEY;
   conf.bundle.createUpdaterArtifacts = signed;
   writeFileSync(CONF, JSON.stringify(conf, null, 2) + '\n');

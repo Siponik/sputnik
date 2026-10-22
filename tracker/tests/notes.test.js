@@ -52,3 +52,10 @@ test('номер PR и последний тег', () => {
   assert.equal(lastTag(['tracker-0.6.7', 'tracker-0.6.69', 'tracker-0.5.99', 'v1']), 'tracker-0.6.69');
   assert.equal(lastTag([]), null);
 });
+
+test('бета-теги: обычный релиз их не видит, бета берёт самый новый из обоих', () => {
+  const tags = ['tracker-0.7.2', 'tracker-0.7.3-beta.1', 'tracker-0.7.3-beta.10', 'tracker-0.7.3-beta.2', 'tracker-beta'];
+  assert.equal(lastTag(tags), 'tracker-0.7.2');
+  assert.equal(lastTag(tags, { beta: true }), 'tracker-0.7.3-beta.10');
+  assert.equal(lastTag([...tags, 'tracker-0.7.3'], { beta: true }), 'tracker-0.7.3');
+});
