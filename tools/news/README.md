@@ -3,17 +3,17 @@
 Каждый день в 05:20 МСК GitHub Actions (`.github/workflows/news.yml`) собирает страницу новостей и кладёт её на GitHub Pages:
 `https://siponik.github.io/sputnik/news/`. В 8:00 (или во время из `/time`) бот присылает встречи, задачи дня и три главные новости со ссылкой.
 
-Лимиты Claude не тратятся. Новости — из RSS-лент и Steam (список — `feeds.mjs`), пересказ по-русски — один запрос в день к бесплатной модели.
+Лимиты Claude не тратятся. Новости — из RSS-лент и Steam (список — `feeds.mjs`), пересказ по-русски — один запрос в день к бесплатной модели GitHub Models.
 
 ## Настройка (один раз)
 
 1. **Включить Pages.** GitHub → репозиторий → Settings → Pages → Source: **GitHub Actions**.
-2. **Ключ модели (по желанию, бесплатно).** Открыть https://aistudio.google.com/apikey (из России может понадобиться VPN — только на время получения ключа), «Create API key», скопировать.
-   GitHub → Settings → Secrets and variables → Actions → New repository secret: имя `GEMINI_API_KEY`, значение — ключ.
-   Без ключа страница тоже соберётся, но с оригинальными заголовками (часть на английском) и без пересказа.
-3. **Проверить.** Actions → «Новости» → Run workflow. Через минуту страница откроется по ссылке выше, а боту можно написать `/now`.
+2. **Проверить.** Actions → «Новости» → Run workflow. Через минуту страница откроется по ссылке выше, а боту можно написать `/now`.
 
-Другая модель вместо Gemini: секрет `LLM_KEY` и переменные `LLM_URL` (например `https://api.deepseek.com/chat/completions`) и `LLM_MODEL` (`deepseek-chat`). Подойдёт любой сервис с API как у OpenAI, например OpenRouter.
+Ключ модели не нужен: пересказ делает GitHub Models (бесплатно, токен самого Actions, модель `openai/gpt-4.1-mini`).
+Своя модель по желанию: секрет `GEMINI_API_KEY` (Gemini из Google AI Studio — из России открывается только через VPN)
+или секрет `LLM_KEY` и переменные `LLM_URL`/`LLM_MODEL` для любого сервиса с API как у OpenAI (DeepSeek, OpenRouter).
+Модель не ответила — страница всё равно соберётся, с оригинальными заголовками.
 
 ## Как устроено
 

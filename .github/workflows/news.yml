@@ -1,8 +1,9 @@
 # Новости для утренней сводки — без Claude: RSS-ленты + один запрос к бесплатной модели (Gemini) на пересказ.
 # Страница публикуется на GitHub Pages: https://<владелец>.github.io/sputnik/news/ (только публичные новости, личного там нет).
 # Бот (reminders/Code.gs) утром читает news/data.json и присылает ссылку вместе с задачами и встречами дня.
-# Нужно один раз: Settings → Pages → Source: «GitHub Actions». Ключ модели — секрет GEMINI_API_KEY
-# (без него новости собираются без пересказа: оригинальные заголовки и начало текста).
+# Нужно один раз: Settings → Pages → Source: «GitHub Actions». Пересказ — GitHub Models (бесплатно, без ключа,
+# токен самого Actions). Свой ключ по желанию: секрет GEMINI_API_KEY или LLM_KEY + переменные LLM_URL/LLM_MODEL.
+# Модель не ответила — новости собираются без пересказа: оригинальные заголовки и начало текста.
 name: Новости
 
 on:
@@ -14,6 +15,7 @@ on:
 permissions:
   contents: read
   pages: write
+  models: read
   id-token: write
 
 concurrency:
@@ -42,9 +44,9 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          LLM_KEY: ${{ secrets.LLM_KEY }}
-          LLM_URL: ${{ vars.LLM_URL }}
-          LLM_MODEL: ${{ vars.LLM_MODEL }}
+          LLM_KEY: ${{ secrets.LLM_KEY || github.token }}
+          LLM_URL: ${{ vars.LLM_URL || 'https://models.github.ai/inference/chat/completions' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'openai/gpt-4.1-mini' }}
         run: |
           node tools/news/build.mjs site/news prev.json
           printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=news/"><a href="news/">Спутник · Новости</a>\n' > site/index.html

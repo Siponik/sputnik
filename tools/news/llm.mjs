@@ -1,6 +1,7 @@
 // Пересказ новостей бесплатной или дешёвой моделью. Один запрос в день.
 // GEMINI_API_KEY — Gemini (бесплатный уровень Google AI Studio), модель GEMINI_MODEL (по умолчанию gemini-flash-latest).
-// Иначе LLM_KEY + LLM_URL + LLM_MODEL — любой сервис с API как у OpenAI (DeepSeek, OpenRouter).
+// Иначе LLM_KEY + LLM_URL + LLM_MODEL — любой сервис с API как у OpenAI. По умолчанию в news.yml — GitHub Models
+// (models.github.ai, токен Actions с правом models: read, бесплатно; запрос до ~8 тыс. токенов).
 // Нет ключа или модель не ответила — build.mjs берёт отбор без ИИ (fallbackPick).
 
 export function prompt(cands, sections, dotaTitle) {
@@ -47,7 +48,7 @@ export async function retell(text, env = process.env) {
     const r = await fetch(env.LLM_URL, {
       method: 'POST',
       headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LLM_KEY },
-      body: JSON.stringify({ model: env.LLM_MODEL || 'deepseek-chat', temperature: 0.4, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: text }] }),
+      body: JSON.stringify({ model: env.LLM_MODEL || 'openai/gpt-4.1-mini', temperature: 0.4, max_tokens: 4000, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: text }] }),
       signal: AbortSignal.timeout(180e3),
     });
     if (!r.ok) throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 300)}`);
