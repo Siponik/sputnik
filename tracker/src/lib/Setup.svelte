@@ -12,6 +12,7 @@
   let { status, firstRun = true, hidden = { lists: [], cals: [] }, onready, onerror, oncancel = null } = $props();
 
   let hasSecret = $state(false);
+  const builtIn = $derived(status?.built_in ?? false); // общий ключ встроен в сборку — свой файл не нужен
   let signedIn = $state(false);
   let busy = $state(false);
   let lists = $state(null); // [{ id, name, meta, on }]
@@ -28,7 +29,7 @@
   const say = $derived(
     finished ? 'Ура, мы на орбите! Вот три штуки, которые пригодятся.'
     : step === 1 ? 'Привет! Я енот Спутника. Сначала нужен ключ Google — это один файл.'
-    : step === 2 ? 'Откроется браузер. Если Google скажет «приложение не проверено» — это нормально: оно твоё.'
+    : step === 2 ? 'Откроется браузер. Если Google скажет «приложение не проверено» — это нормально: Спутник ещё не прошёл проверку Google.'
     : 'Отметь списки и календари, которые хочешь видеть. Поменять можно потом.');
   const cls = (n) => `step ${step === n && !finished ? 'cur' : step > n || finished ? 'done' : 'wait'}`;
   const num = (n) => `num ${step > n || finished ? 'ok' : step === n ? 'cur' : ''}`;
@@ -132,7 +133,7 @@
               Выбрать client_secret.json
             </label>
           {:else}
-            <div class="sd">client_secret.json скопирован в настройки. Повторно не спросим.</div>
+            <div class="sd">{builtIn ? 'Ключ уже встроен в Спутник — ничего делать не нужно.' : 'client_secret.json скопирован в настройки. Повторно не спросим.'}</div>
           {/if}
         </div>
       </div>
@@ -152,7 +153,7 @@
             <div class="row">
               <button class="sp-btn sp-btn-primary" type="button" onclick={login} disabled={busy}>{busy ? 'Жду вход в браузере…' : 'Открыть вход в браузере'}</button>
               {#if busy}<span class="spinner" aria-hidden="true"></span>{/if}
-              <button class="sp-btn sp-btn-ghost" type="button" onclick={() => (hasSecret = false)}>Заменить ключ</button>
+              <button class="sp-btn sp-btn-ghost" type="button" onclick={() => (hasSecret = false)}>{builtIn ? 'Свой ключ' : 'Заменить ключ'}</button>
             </div>
           {:else if step > 2}
             <div class="sd">Готово — ты вошёл.</div>

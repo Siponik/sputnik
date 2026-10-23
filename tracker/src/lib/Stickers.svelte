@@ -1,4 +1,9 @@
 <script>
+  import SharedTag from './SharedTag.svelte';
+  import ShareBits from './ShareBits.svelte';
+  import Avatar from './Avatar.svelte';
+  import WhoPick from './WhoPick.svelte';
+  import { memberOf, whoOf, whoCounts, whoTally, assignedMatch } from './sharedcore.js';
   // Вид «Стикеры» — простые дела без этапов (design/screens/Stickers.dc.html, docs/design-v2.md — «Простые дела: вид «Стикеры»»).
   // Колонки по темам списка или по срокам (G). Стикер: клик — окно задачи, кружок — сделано (штамп, через 2 с в «баночку»),
   // 2×клик по названию / F2 — переименовать, правый клик / Shift+F10 — меню. Логика раскладки — lib/stickers.js.
@@ -14,21 +19,29 @@
   // layList — запись списка в слое (topics, group, sort); cols — колонки шаблона (для метки промежуточного этапа).
   // act — действия App (open, rename, priority, order, moveList, duplicate, remove, done, topic, pin, when, add, topics, set).
   // tabs — переключатель вида из доски; headLine — «Сфера · шаблон … » над названием.
-  let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '',
+  let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '', share = null, sphereName = '',
     onedittemplate, onarchive } = $props();
 
   const [send, receive] = stickerCrossfade();
 
   const today = $derived(ymd(new Date()));
   const topics = $derived(stk.topicsOf(layList));
-  const group = $derived(layList?.group === 'when' ? 'when' : 'topic');
+  // «По людям» — только в общей сфере (docs/design-v2.md, «Общие сферы» 7).
+  const group = $derived(layList?.group === 'when' ? 'when' : layList?.group === 'people' && share ? 'people' : 'topic');
+  const GROUPS = $derived(share ? ['topic', 'when', 'people'] : ['topic', 'when']);
+  const me = $derived(share?.me ?? '');
+  const whoMode = $derived(share?.mode ?? 'all');
+  const whoN = $derived(share ? whoTally(tasks, layTasks, me) : null);
+  const meM = $derived(share ? memberOf(share.people, me) : null);
+  const counts = $derived(share ? whoCounts(tasks, layTasks) : {});
+  const whoM = (t) => memberOf(share?.people ?? [], whoOf(layTasks?.[t.id]));
   const sort = $derived(layList?.sort === 'due' ? 'due' : 'pin');
 
   // Только что сделанные: висят со штампом 2 с, потом улетают в баночку.
   let stamped = $state(new Set());
   const top = $derived(tasks.filter((t) => !t.parent));
-  const shown = $derived(top.filter((t) => t.status !== 'completed' || stamped.has(t.id)));
-  const allLanes = $derived(stk.lanes(shown, { group, topics, layTasks, today, sort }));
+  const shown = $derived(top.filter((t) => (t.status !== 'completed' || stamped.has(t.id)) && (!share || assignedMatch(layTasks?.[t.id], me, whoMode))));
+  const allLanes = $derived(stk.lanes(shown, { group, topics, layTasks, today, sort, people: share?.people ?? [], me }));
   // По темам пустые темы спрятаны (кнопки «＋ в тему» под стеной); lanes — то, что на экране.
   const vis = $derived(stk.visibleLanes(allLanes, { group, keep: adding }));
   const lanes = $derived(vis.shown);
@@ -42,24 +55,33 @@
 
   let jarEl = $state(null);
   const timers = new Map();
+  const unstamp = (id) => { stamped = new Set([...stamped].filter((x) => x !== id)); };
+  // Сделано: штамп держится 2 с и до ответа Google — иначе при медленной сети стикер на миг возвращался открытым.
+  // Второй клик в первые 0,6 с (двойной клик) отметку не снимает: стикер улетал в баночку и тут же возвращался.
+  const markedAt = new Map();
   function done(t) {
     if (stamped.has(t.id) || t.status === 'completed') {
+      if (Date.now() - (markedAt.get(t.id) ?? 0) < 600) return;
       clearTimeout(timers.get(t.id));
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
+      unstamp(t.id);
       act.done(t, false);
       return;
     }
     stamped = new Set([...stamped, t.id]);
-    act.done(t, true, () => { // «Отменить» на плашке
+    markedAt.set(t.id, Date.now());
+    let undone = false;
+    const sent = act.done(t, true, () => { // «Отменить» на плашке
+      undone = true;
       clearTimeout(timers.get(t.id));
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
+      unstamp(t.id);
     });
-    timers.set(t.id, setTimeout(() => {
+    const wait = new Promise((r) => timers.set(t.id, setTimeout(r, 2000)));
+    Promise.all([sent, wait]).then(() => {
       timers.delete(t.id);
-      stamped = new Set([...stamped].filter((x) => x !== t.id));
-    }, 2000));
+      if (!undone) unstamp(t.id);
+    });
   }
   $effect(() => () => timers.forEach((x) => clearTimeout(x)));
   // Уход: сделанный — в баночку, остальное — перелёт в новую колонку.
@@ -71,9 +93,24 @@
   // ---------- выбор, переименование, меню ----------
   let sel = $state('');
   let editing = $state('');
+  // Окно задачи — только по клику на название; ждём чуть-чуть, чтобы двойной клик успел стать переименованием.
+  let openT;
+  function titleClick(e, t) {
+    e.stopPropagation();
+    sel = t.id;
+    clearTimeout(openT);
+    if (e.detail > 1) return;
+    openT = setTimeout(() => act.open(t), 220);
+  }
   let menu = $state(null);
   const selTask = $derived(shown.find((t) => t.id === sel) ?? null);
   const stickerEl = (id) => document.querySelector(`.stk[data-id="${id}"]`);
+  // autofocus не всегда успевает: фокус остаётся на стикере после двойного клика
+  async function startEdit(id) {
+    editing = id;
+    await tick();
+    stickerEl(id)?.querySelector('.t-edit')?.focus();
+  }
   async function focusSticker(id) {
     sel = id;
     await tick();
@@ -88,7 +125,7 @@
     const t = menu?.task;
     if (!t) return;
     if (name === 'open') act.open(t);
-    else if (name === 'rename') editing = t.id;
+    else if (name === 'rename') startEdit(t.id);
     else if (name === 'due') act.open(t, true);
     else if (name === 'priority') act.priority(t, arg);
     else if (name === 'list') act.moveList(t, arg);
@@ -117,16 +154,18 @@
   /** В другую колонку: сменить тему или срок. */
   function moveTo(t, laneId) {
     if (group === 'topic') act.topic(t, laneId || null);
+    else if (group === 'people') act.who(t, laneId || null);
     else act.when(t, laneId);
   }
 
   // Смена раскладки — без Svelte-переходов (с |global старые колонки ждали улёта стикеров и оставались на экране
   // вперемешку с новыми), перелёт стикеров — FLIP из motion.js.
   let wallEl = $state(null);
-  async function flipGroup() {
+  async function flipGroup(to = GROUPS[(GROUPS.indexOf(group) + 1) % GROUPS.length]) {
+    if (to === group) return;
     const before = rectsOf(wallEl);
-    adding = '';
-    act.set({ group: group === 'when' ? 'topic' : 'when' });
+    adding = null;
+    act.set({ group: to });
     await tick();
     flipFrom(wallEl, before);
   }
@@ -136,6 +175,7 @@
     if (menu || editing || topicsOpen || keys.typing(e) || keys.overlay()) return;
     const handled = () => { e.preventDefault(); e.stopPropagation(); };
     if (keys.plain(e) && !e.shiftKey && e.code === 'KeyG') { handled(); flipGroup(); return; }
+    if (whoPick) return;
     const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     if (!selTask) {
       if (arrows.includes(e.key) && !e.altKey && !e.ctrlKey) {
@@ -182,8 +222,10 @@
       }
     } else if (e.key === ' ' || e.code === 'Space') { handled(); done(t); }
     else if (e.key === 'Enter') { handled(); act.open(t); }
-    else if (e.key === 'F2') { handled(); editing = t.id; }
+    else if (e.key === 'F2') { handled(); startEdit(t.id); }
     else if (e.code === 'KeyP' && !e.shiftKey) { handled(); act.pin(t); }
+    else if (share && e.code === 'KeyT' && !e.shiftKey) { handled(); take(t); }
+    else if (share && e.code === 'KeyI' && !e.shiftKey) { handled(); pickWho(t, stickerEl(t.id)?.querySelector('.sh-who') ?? stickerEl(t.id)); }
     else if (e.code === 'KeyN' && !e.shiftKey) { handled(); startAdd(lane.id); }
     else if (e.code === 'KeyD' && !e.shiftKey) { handled(); act.open(t, true); }
     else if (e.code === 'KeyM' && !e.shiftKey) { handled(); openMenu(t, stickerEl(t.id)); }
@@ -233,7 +275,8 @@
   }
 
   // ---------- новый стикер ----------
-  let adding = $state('');
+  // null — новый стикер не пишут; '' — пишут в «Разное» (у этой колонки id пустой).
+  let adding = $state(null);
   let draft = $state('');
   let addEl = $state(null);
   async function startAdd(laneId) {
@@ -249,10 +292,11 @@
     const topic = p.topic ?? (group === 'topic' ? lane.id || null : null);
     const due = p.day ?? (group === 'when' ? stk.newDue(lane.id, today) : p.time ? today : null);
     // В конец своей колонки (#тема или «в пятницу» могут увести в другую): колонке — порядок, новому — следующий номер.
-    const dest = allLanes.find((l) => l.id === (group === 'topic' ? topic ?? '' : stk.bucket(due ?? '', today))) ?? lane;
+    const dest = group === 'people' ? lane : allLanes.find((l) => l.id === (group === 'topic' ? topic ?? '' : stk.bucket(due ?? '', today))) ?? lane;
     if (dest.items.some((x) => typeof layTasks?.[x.id]?.ord !== 'number')) act.order(dest.items.map((x) => x.id));
     const layer = { ord: Math.max(dest.items.length, ...dest.items.map((x) => (layTasks?.[x.id]?.ord ?? 0) + 1)) };
     if (topic) layer.topic = topic;
+    if (share) layer.who = group === 'people' ? lane.id || null : whoMode === 'mine' ? me : null;
     if (p.priority) layer.priority = p.priority;
     if (p.repeat) layer.repeat = p.repeat;
     const slot = p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null;
@@ -261,8 +305,14 @@
   }
   function addKey(e, lane) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); commit(lane); }
-    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); adding = ''; draft = ''; }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); adding = null; draft = ''; }
   }
+
+  // ---------- исполнитель (общая сфера) ----------
+  let whoPick = $state(null); // { t, anchor }
+  function pickWho(t, anchor) { sel = t.id; whoPick = { t, anchor }; }
+  /** «Взять себе» (кнопка на ничьём стикере и клавиша T). */
+  function take(t) { if (whoOf(layTasks?.[t.id]) !== me) act.who(t, me); }
 
   // ---------- меню шапки и темы ----------
   let headMenu = $state(false);
@@ -275,14 +325,27 @@
 
 <header class="bd-head">
   <div class="bd-title">
-    <p>{headLine} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
-    <h1>{list?.title ?? 'Дела'}</h1>
+    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
+    <h1>{list?.title ?? 'Дела'}{#if share}<ShareBits {share} />{/if}</h1>
   </div>
   <div class="tb">
+    {#if share}
+      <div class="sh-seg" role="group" aria-label="Раскладка · G">
+        <button type="button" aria-pressed={group === 'topic'} onclick={() => flipGroup('topic')}>По темам</button>
+        <button type="button" aria-pressed={group === 'when'} onclick={() => flipGroup('when')}>По срокам</button>
+        <button type="button" aria-pressed={group === 'people'} onclick={() => flipGroup('people')}>По людям</button>
+      </div>
+      <div class="sh-seg" role="group" aria-label="Чьи стикеры">
+        <button type="button" aria-pressed={whoMode === 'all'} title="Все · Shift+A" onclick={() => share.onmode('all')}>Все<small>{whoN.all}</small></button>
+        <button type="button" aria-pressed={whoMode === 'mine'} title="Мои · Shift+M" onclick={() => share.onmode('mine')}><Avatar m={meM} size={18} me />Мои<small>{whoN.mine}</small></button>
+        <button type="button" aria-pressed={whoMode === 'none'} title="Ничьи · Shift+U" onclick={() => share.onmode('none')}><Avatar m={null} size={18} />Ничьи<small>{whoN.none}</small></button>
+      </div>
+    {:else}
     <button type="button" class="grpsw" title="Разложить по-другому · G" aria-label={group === 'when' ? 'Сейчас по срокам. Разложить по темам' : 'Сейчас по темам. Разложить по срокам'} onclick={flipGroup}>
       <span class:on={group === 'topic'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="16" rx="2" /><rect x="14" y="4" width="6" height="10" rx="2" /></svg>По темам</span>
       <span class:on={group === 'when'}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>По срокам</span>
     </button>
+    {/if}
     {#if group === 'topic'}
       <span class="tb-sep" aria-hidden="true"></span>
       {#each SORTS as s (s.id)}<button type="button" class="fb" aria-pressed={sort === s.id} onclick={() => act.set({ sort: s.id })}>{s.name}</button>{/each}
@@ -309,8 +372,8 @@
   {#each lanes as lane, li (group + lane.id)}
     <section class="lane" class:drop={drop?.lane === lane.id} style="--tc: {lane.c}" aria-label={lane.name}
       ondragover={(e) => dragOver(e, lane.id)} ondragleave={(e) => dragLeave(e, lane.id)} ondrop={(e) => dropOn(e, lane)}>
-      <header class="lh" class:big={group === 'when'}>
-        {#if group === 'topic'}<i></i>{/if}{lane.name}<b>{lane.items.filter((t) => t.status !== 'completed').length}</b>
+      <header class="lh" class:big={group === 'when'} class:ppl={group === 'people'}>
+        {#if group === 'topic'}<i></i>{:else if group === 'people'}<Avatar m={lane.m} size={22} me={lane.id === me} />{/if}{lane.name}<b>{lane.items.filter((t) => t.status !== 'completed').length}</b>
         {#if lane.sub}<span class="lh-sub">{lane.sub}</span>{/if}
       </header>
       <div class="stack">
@@ -321,14 +384,16 @@
           {@const dl = stk.dueLabel(t.due ? t.due.slice(0, 10) : '', today, L.slot, group === 'when' && lane.id === 'today')}
           {@const stage = stageName(t)}
           {@const note = (t.notes ?? '').split('\n')[0]}
+          {@const wm = share ? whoM(t) : null}
+          {@const mine = !!share && !!wm && wm.email === me}
           {#if drop?.lane === lane.id && drop.index === k && dragId !== t.id}<div class="stk-ph" aria-hidden="true"></div>{/if}
           <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions, a11y_click_events_have_key_events -->
-          <article class="stk" class:pin={L.pin && !isDone} class:done={isDone} class:sel={sel === t.id} class:ghost={dragId === t.id}
+          <article class="stk" class:mine class:pin={L.pin && !isDone} class:done={isDone} class:sel={sel === t.id} class:ghost={dragId === t.id}
             data-id={t.id} data-done={isDone ? '1' : '0'} tabindex="0" draggable={editing !== t.id}
             style="--tc: {tp ? stk.topicColor(tp) : stk.MISC.c}; --rot: {tiltOf(t.id)}deg"
             aria-label="{t.title || 'Без названия'}{tp ? `, ${tp.name}` : ''}{isDone ? ', сделано' : ''}"
             in:receive={{ key: t.id, delay: k * 12 }} out:leave={{ key: t.id }}
-            onclick={() => { sel = t.id; act.open(t); }}
+            onclick={() => (sel = t.id)}
             onfocus={() => (sel = t.id)}
             oncontextmenu={(e) => { e.preventDefault(); openMenu(t, null, { x: e.clientX, y: e.clientY }); }}
             ondragstart={(e) => dragStart(e, t)} ondragend={dragEnd}>
@@ -339,11 +404,23 @@
               <input class="t-edit" value={t.title} aria-label="Название" autofocus onclick={(e) => e.stopPropagation()}
                 onkeydown={(e) => renameKey(e, t)} onblur={(e) => finishRename(t, e.currentTarget.value)} />
             {:else}
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="t" ondblclick={(e) => { e.stopPropagation(); editing = t.id; }}>{t.title || 'Без названия'}</div>
+              <!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+              <div class="t" onclick={(e) => titleClick(e, t)} ondblclick={(e) => { e.stopPropagation(); clearTimeout(openT); startEdit(t.id); }}>{t.title || 'Без названия'}</div>
             {/if}
             {#if note}<p class="d">{note}</p>{/if}
             <div class="ft">
+              {#if share && group !== 'people' && !isDone}
+                {#if wm}
+                  <button type="button" class="sh-who" title="{mine ? 'Моё' : wm.name} · сменить · I" aria-label="Исполнитель {wm.name}, сменить"
+                    onclick={(e) => { e.stopPropagation(); pickWho(t, e.currentTarget); }}><Avatar m={wm} size={24} me={mine} /></button>
+                {:else}
+                  <span class="sh-take">
+                    <button type="button" class="sh-who" title="Ничей · выбрать · I" aria-label="Выбрать исполнителя"
+                      onclick={(e) => { e.stopPropagation(); pickWho(t, e.currentTarget); }}><Avatar m={null} size={24} /></button>
+                    <button type="button" class="sh-tk" title="Взять себе · T" onclick={(e) => { e.stopPropagation(); take(t); }}><Avatar m={meM} size={18} me />Взять себе</button>
+                  </span>
+                {/if}
+              {/if}
               {#if stage}<span class="stg" title="Этап из канбана">{stage}</span>{/if}
               {#if dl.text}<span class="due {dl.cls}">{dl.text}</span>{/if}
               {#if L.repeat?.every}<span class="due" title="Повторяется">↻</span>{/if}
@@ -353,14 +430,14 @@
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
               </button>
             </div>
-            {#if isDone}<span class="stamp" aria-hidden="true">сделано</span>{/if}
+            {#if isDone}<span class="stamp" aria-hidden="true">сделано{#if share && L.doneBy}<Avatar m={memberOf(share.people, L.doneBy)} size={16} />{/if}</span>{/if}
           </article>
         {/each}
         {#if drop?.lane === lane.id && drop.index >= lane.items.filter((t) => t.id !== dragId).length}<div class="stk-ph" aria-hidden="true"></div>{/if}
         {#if adding === lane.id}
           <div class="stk-new open">
             <textarea bind:this={addEl} bind:value={draft} rows="2" aria-label="Новый стикер в «{lane.name}»" placeholder="Что сделать?"
-              onkeydown={(e) => addKey(e, lane)} onblur={() => { if (!draft.trim()) adding = ''; }}></textarea>
+              onkeydown={(e) => addKey(e, lane)} onblur={() => { if (!draft.trim()) adding = null; }}></textarea>
             <span class="stk-new-hint">Enter — приклеить · Esc — отмена</span>
           </div>
         {:else}
@@ -395,6 +472,11 @@
   <CardMenu at={menu.at} priority={layTasks?.[mt.id]?.priority ?? null} {lists} pinned={!!layTasks?.[mt.id]?.pin}
     {topics} topic={layTasks?.[mt.id]?.topic ?? ''}
     onaction={menuAction} onclose={() => { const id = menu?.task.id; menu = null; if (id) focusSticker(id); }} />
+{/if}
+
+{#if whoPick && share}
+  <WhoPick anchor={whoPick?.anchor} people={share?.people ?? []} {me} cur={whoOf(layTasks?.[whoPick?.t.id])} {counts}
+    onpick={(w) => { const t = whoPick.t; whoPick = null; act.who(t, w); focusSticker(t.id); }} onclose={() => (whoPick = null)} />
 {/if}
 
 {#if topicsOpen}

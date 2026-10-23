@@ -193,7 +193,7 @@
 
       <section aria-label="Предпросмотр">
         <p class="cap">Предпросмотр доски</p>
-        <div class="pvw">
+        <div class="tpl-pv">
           {#each draft.cols as c, i (c.id)}
             <div style="--pc: {colColor(c)}"><b>{c.name}</b>{#each Array.from({ length: Math.min(3, count(sel, c.id) || (i === 0 ? 2 : 1)) }) as _, k (k)}<i></i>{/each}</div>
           {/each}

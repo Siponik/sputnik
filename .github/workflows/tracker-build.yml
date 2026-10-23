@@ -1,8 +1,10 @@
 name: Сборка трекера
 
+# main — обычные релизы для всех; beta — бета-сборки (0.7.3-beta.1…), их получает только тот, кто включил
+# «Бета-версии» в Настройки → Обновления (строка видна только владельцу). Бета-канал — релиз tracker-beta с latest.json.
 on:
   push:
-    branches: [main]
+    branches: [main, beta]
     paths:
       - "tracker/**"
       - ".github/workflows/tracker-build.yml"
@@ -14,7 +16,7 @@ permissions:
   issues: write
 
 concurrency:
-  group: tracker-build
+  group: tracker-build-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -26,6 +28,8 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # вся история и теги — для «Что нового» с прошлого релиза
 
       - uses: actions/setup-node@v4
         with:
@@ -41,11 +45,18 @@ jobs:
         working-directory: tracker
         run: npm install --no-audit --no-fund 2>&1 | tee -a ../build.log
 
-      # Версия 0.5.<номер сборки>: по ней приложение понимает, что вышло обновление.
+      # Версия: МАЖОР.МИНОР — из tauri.conf.json, третье число — следующее после вышедших релизов этого минора
+      # (первый — x.y.0, потом x.y.1…). Новый минор — поменять версию в tauri.conf.json на x.(y+1).0.
       - name: Версия
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-        run: node tools/ci/tracker-release.mjs prepare ${{ github.run_number }} 2>&1 | tee -a build.log
+          BETA: ${{ github.ref_name == 'beta' }}
+        run: |
+          TAGS=$(git ls-remote --tags origin 'tracker-*' | sed 's#.*refs/tags/##; s#\^{}$##' | sort -u)
+          if [ "$BETA" = "true" ]; then NEXT=next-beta; else NEXT=next; fi
+          VER=$(node tools/ci/tracker-release.mjs $NEXT $TAGS)
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          node tools/ci/tracker-release.mjs prepare "$VER" 2>&1 | tee -a build.log
 
       - name: Сборка установщика
         working-directory: tracker
@@ -53,6 +64,9 @@ jobs:
           # Ключ подписи обновлений (закрытая часть — только в секретах; открытая — в tauri.conf.json).
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # Общий ключ Google (содержимое client_secret.json, клиент Desktop app) — встраивается в приложение,
+          # чтобы людям не нужен был свой файл. Без секрета приложение, как раньше, попросит client_secret.json.
+          SPUTNIK_GOOGLE_CLIENT: ${{ secrets.GOOGLE_CLIENT_JSON }}
         run: npx tauri build 2>&1 | tee -a ../build.log
 
       - name: Сохранить установщик
@@ -69,13 +83,27 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           HAS_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+          BETA: ${{ github.ref_name == 'beta' }}
         run: |
           MSI=$(ls tracker/src-tauri/target/release/bundle/msi/*.msi | head -1)
-          VER="0.5.${{ github.run_number }}"
-          NOTE=$(git log -1 --format=%s)
+          # «Что нового»: разделы «## Что нового» из PR с прошлого релиза, иначе названия коммитов (tools/ci/notes.mjs).
+          TAGS=$(git tag -l 'tracker-*')
+          if [ "$BETA" = "true" ]; then NOTE=$(node tools/ci/notes.mjs --beta $TAGS); else NOTE=$(node tools/ci/notes.mjs $TAGS); fi
+          echo "$NOTE"
           HELP="Первая установка: скачайте .msi ниже и запустите. Windows может предупредить, что издатель неизвестен: «Подробнее» → «Выполнить в любом случае». Дальше Спутник обновляется сам."
-          if [ "$HAS_KEY" = "true" ]; then
-            node tools/ci/tracker-release.mjs latest ${{ github.run_number }} "$MSI" "$NOTE"
+          if [ "$BETA" = "true" ]; then
+            # Бета: пререлиз (не «последний» — обычные пользователи его не видят) и latest.json в канале tracker-beta.
+            if [ "$HAS_KEY" != "true" ]; then echo "::error::Бете нужен секрет TAURI_SIGNING_PRIVATE_KEY"; exit 1; fi
+            node tools/ci/tracker-release.mjs latest "$VER" "$MSI" "$NOTE"
+            gh release create "tracker-$VER" "$MSI" "$MSI.sig" --target "$GITHUB_SHA" --prerelease \
+              --title "Спутник $VER (бета)" --notes "Бета-сборка из ветки beta — для проверки перед обычным релизом."$'\n\n'"$NOTE"
+            if ! gh release view tracker-beta >/dev/null 2>&1; then
+              gh release create tracker-beta --target "$GITHUB_SHA" --prerelease --title "Спутник · бета-канал" \
+                --notes "Служебный релиз: здесь лежит latest.json последней бета-сборки. Устанавливать отсюда не нужно."
+            fi
+            gh release upload tracker-beta "$(dirname "$MSI")/latest.json" --clobber
+          elif [ "$HAS_KEY" = "true" ]; then
+            node tools/ci/tracker-release.mjs latest "$VER" "$MSI" "$NOTE"
             gh release create "tracker-$VER" "$MSI" "$MSI.sig" "$(dirname "$MSI")/latest.json" \
               --title "Спутник $VER" --notes "$NOTE"$'\n\n'"$HELP" --latest
           else

@@ -1,5 +1,7 @@
 mod backup;
+mod beta;
 mod google;
+mod pin;
 
 use serde_json::Value;
 use tauri::Manager;
@@ -46,6 +48,40 @@ fn layer_write(app: tauri::AppHandle, data: Value) -> Result<(), String> {
     std::fs::rename(&tmp, &path).map_err(|e| e.to_string())
 }
 
+/// Дата последней резервной копии слоя (ГГГГ-ММ-ДД) — для Настроек → Синхронизация.
+#[tauri::command]
+fn backups_last(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let path = layer_path(&app)?;
+    Ok(backup::list(&path).first().and_then(|p| {
+        let n = p.file_stem()?.to_str()?;
+        n.strip_prefix("layer-").map(|d| d.to_string())
+    }))
+}
+
+/// Открыть в проводнике папку резервных копий (`backups` рядом со слоем) или страницу релизов на GitHub.
+/// Только эти два места — произвольный путь или адрес сюда не передать.
+#[tauri::command]
+fn open_place(app: tauri::AppHandle, place: String) -> Result<(), String> {
+    let target = match place.as_str() {
+        "backups" => {
+            let dir = layer_path(&app)?.with_file_name("backups");
+            std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+            dir.into_os_string()
+        }
+        "releases" => "https://github.com/Siponik/sputnik/releases".into(),
+        // Общий бот — то же имя, что BOT_NAME в src/lib/sharedbot.js.
+        "telegram" => "https://t.me/SputnikTasksBot".into(),
+        _ => return Err("Неизвестное место".into()),
+    };
+    #[cfg(target_os = "windows")]
+    let mut cmd = std::process::Command::new("explorer");
+    #[cfg(target_os = "macos")]
+    let mut cmd = std::process::Command::new("open");
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let mut cmd = std::process::Command::new("xdg-open");
+    cmd.arg(target).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -54,14 +90,27 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(google::Google::default())
+        .setup(|_| {
+            // Значок на панели задач после обновления (src/pin.rs) — в фоне, запуск не ждёт.
+            std::thread::spawn(|| {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                pin::heal();
+            });
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             google::auth_status,
             google::save_client_secret,
             google::login,
             google::logout,
             google::gapi,
+            google::gapi_upload,
+            google::gapi_bytes,
             layer_read,
             layer_write,
+            backups_last,
+            open_place,
+            beta::beta_check,
         ])
         .run(tauri::generate_context!())
         .expect("Спутник не смог запуститься");

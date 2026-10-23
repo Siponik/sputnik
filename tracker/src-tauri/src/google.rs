@@ -18,6 +18,9 @@ const SCOPES: &str = "https://www.googleapis.com/auth/tasks https://www.googleap
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SIGN_IN_AGAIN: &str = "Войдите в Google заново";
+/// Общий ключ приложения (содержимое client_secret.json), встраивается при сборке из секрета GOOGLE_CLIENT_JSON.
+/// Свой client_secret.json в папке настроек главнее. Для приложений на компьютере это не тайна — так задумано Google.
+const BUILT_IN_SECRET: Option<&str> = option_env!("SPUTNIK_GOOGLE_CLIENT");
 
 #[derive(Default)]
 pub struct Google {
@@ -56,6 +59,8 @@ struct TokenResponse {
 pub struct AuthStatus {
     has_secret: bool,
     signed_in: bool,
+    /// Ключ встроен в сборку и своего файла нет.
+    built_in: bool,
 }
 
 fn now() -> u64 {
@@ -76,10 +81,18 @@ fn parse_secret(text: &str) -> Result<Secret, String> {
         .ok_or_else(|| "В файле нет раздела «installed» — нужен ключ типа Desktop app".to_string())
 }
 
-fn read_secret(app: &AppHandle) -> Result<Secret, String> {
+fn built_in_secret() -> Option<Secret> {
+    BUILT_IN_SECRET.filter(|t| !t.trim().is_empty()).and_then(|t| parse_secret(t).ok())
+}
+
+fn own_secret(app: &AppHandle) -> Result<Secret, String> {
     let text = std::fs::read_to_string(config_dir(app)?.join("client_secret.json"))
         .map_err(|_| "Нет ключа приложения (client_secret.json)".to_string())?;
     parse_secret(&text)
+}
+
+fn read_secret(app: &AppHandle) -> Result<Secret, String> {
+    own_secret(app).or_else(|e| built_in_secret().ok_or(e))
 }
 
 fn load_token(app: &AppHandle) -> Option<Token> {
@@ -124,9 +137,10 @@ async fn google_error(resp: reqwest::Response) -> String {
 
 #[tauri::command]
 pub fn auth_status(app: AppHandle) -> AuthStatus {
-    let has_secret = read_secret(&app).is_ok();
+    let own = own_secret(&app).is_ok();
+    let built_in = !own && built_in_secret().is_some();
     let signed_in = load_token(&app).map(|t| t.refresh_token.is_some()).unwrap_or(false);
-    AuthStatus { has_secret, signed_in }
+    AuthStatus { has_secret: own || built_in, signed_in, built_in }
 }
 
 #[tauri::command]
@@ -290,16 +304,17 @@ async fn access_token(app: &AppHandle, google: &Google) -> Result<String, String
     Ok(access)
 }
 
+/// Тело запроса к Google: JSON, двоичный файл (картинка превью) или ничего.
+enum Payload {
+    None,
+    Json(Value),
+    Bytes(String, Vec<u8>),
+}
+
 /// Запрос к Google API от имени пользователя. Только https://*.googleapis.com.
-#[tauri::command]
-pub async fn gapi(
-    app: AppHandle,
-    google: State<'_, Google>,
-    method: String,
-    url: String,
-    body: Option<Value>,
-) -> Result<Value, String> {
-    let parsed = url::Url::parse(&url).map_err(|e| e.to_string())?;
+/// Повторы при «занят», обновление токена при 401. Возвращает удачный ответ.
+async fn send(app: &AppHandle, google: &State<'_, Google>, method: &str, url: &str, body: Payload) -> Result<reqwest::Response, String> {
+    let parsed = url::Url::parse(url).map_err(|e| e.to_string())?;
     let host_ok = parsed.scheme() == "https"
         && parsed.host_str().map(|h| h.ends_with(".googleapis.com")).unwrap_or(false);
     if !host_ok {
@@ -314,10 +329,12 @@ pub async fn gapi(
     let mut waits = [1u64, 3].into_iter();
     let mut refreshed = false;
     loop {
-        let token = access_token(&app, &google).await?;
+        let token = access_token(app, google).await?;
         let mut req = google.http.request(method.clone(), parsed.clone()).bearer_auth(&token);
-        if let Some(b) = &body {
-            req = req.json(b);
+        match &body {
+            Payload::None => {}
+            Payload::Json(b) => req = req.json(b),
+            Payload::Bytes(mime, data) => req = req.header(reqwest::header::CONTENT_TYPE, mime.as_str()).body(data.clone()),
         }
         let resp = match req.send().await {
             Ok(r) => r,
@@ -346,12 +363,51 @@ pub async fn gapi(
         if !status.is_success() {
             return Err(google_error(resp).await);
         }
-        let text = resp.text().await.map_err(|e| e.to_string())?;
-        if text.trim().is_empty() {
-            return Ok(Value::Null);
-        }
-        return serde_json::from_str(&text).map_err(|e| e.to_string());
+        return Ok(resp);
     }
+}
+
+async fn json_of(resp: reqwest::Response) -> Result<Value, String> {
+    let text = resp.text().await.map_err(|e| e.to_string())?;
+    if text.trim().is_empty() {
+        return Ok(Value::Null);
+    }
+    serde_json::from_str(&text).map_err(|e| e.to_string())
+}
+
+/// Запрос к Google API с JSON-телом.
+#[tauri::command]
+pub async fn gapi(
+    app: AppHandle,
+    google: State<'_, Google>,
+    method: String,
+    url: String,
+    body: Option<Value>,
+) -> Result<Value, String> {
+    let payload = body.map(Payload::Json).unwrap_or(Payload::None);
+    json_of(send(&app, &google, &method, &url, payload).await?).await
+}
+
+/// Загрузить файл (картинку превью) — данные приходят base64, ответ Google — JSON.
+#[tauri::command]
+pub async fn gapi_upload(
+    app: AppHandle,
+    google: State<'_, Google>,
+    method: String,
+    url: String,
+    mime: String,
+    data: String,
+) -> Result<Value, String> {
+    let bytes = base64::engine::general_purpose::STANDARD.decode(data.as_bytes()).map_err(|e| e.to_string())?;
+    json_of(send(&app, &google, &method, &url, Payload::Bytes(mime, bytes)).await?).await
+}
+
+/// Скачать файл (картинку превью) — ответ base64.
+#[tauri::command]
+pub async fn gapi_bytes(app: AppHandle, google: State<'_, Google>, url: String) -> Result<String, String> {
+    let resp = send(&app, &google, "GET", &url, Payload::None).await?;
+    let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(&bytes))
 }
 
 /// Временные ответы Google: стоит подождать и повторить.

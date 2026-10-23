@@ -1,6 +1,6 @@
 [package]
 name = "sputnik"
-version = "0.5.0"
+version = "0.7.0"
 description = "Спутник — трекер задач поверх Google Tasks и Calendar"
 authors = ["Siponik"]
 edition = "2021"

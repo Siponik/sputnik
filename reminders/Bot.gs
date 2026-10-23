@@ -13,12 +13,24 @@
 //   /now           — прислать ссылку на сводку сейчас
 //   /help          — список команд
 
-const BOT_VERSION = '4'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
-const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
+const BOT_VERSION = '5'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
+const BRIEF_READY_AT = 5 * 60 + 40; // новости собираются около 5:30 МСК (.github/workflows/news.yml)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
 function setupBot() {
+  // Бот общий (bot/, Cloudflare Workers): у всех остальных — его короткое меню, а сводка, /time и задачи Google —
+  // только в чате владельца (TELEGRAM_CHAT_ID). Сводку получает только владелец: её шлёт этот скрипт, а не воркер.
   tg_('setMyCommands', {
+    commands: [
+      { command: 'today', description: 'Задачи на сегодня' },
+      { command: 'week', description: 'Задачи на неделю' },
+      { command: 'off', description: 'Не присылать напоминания' },
+      { command: 'on', description: 'Снова присылать напоминания' },
+      { command: 'help', description: 'Что я умею' },
+    ],
+  });
+  tg_('setMyCommands', {
+    scope: { type: 'chat', chat_id: PropertiesService.getScriptProperties().getProperty('TELEGRAM_CHAT_ID') },
     commands: [
       { command: 'today', description: 'Задачи на сегодня' },
       { command: 'week', description: 'Задачи на неделю по дням' },
@@ -113,6 +125,8 @@ function hookAlive_() {
   if (!info || !info.ok) return true; // Telegram не ответил — проверим через минуту
   const w = info.result;
   if (!w.url) { props.deleteProperty('BOT_HOOK'); props.deleteProperty('HOOK_FAILS'); return false; }
+  // Бот общий (bot/, Cloudflare Workers): вебхук его, сообщения владельца он пересылает в doPost. Не снимаем.
+  if (/workers\.dev/.test(w.url)) return true;
   const failing = w.pending_update_count > 0 && w.last_error_date && Date.now() / 1000 - w.last_error_date < 180;
   const fails = failing ? +(props.getProperty('HOOK_FAILS') || 0) + 1 : 0;
   props.setProperty('HOOK_FAILS', String(fails));
@@ -184,7 +198,7 @@ function handle_(text) {
     props.setProperty('BRIEF_AT', String(t));
     props.deleteProperty('BRIEF_OFF');
     let msg = '✅ Сводка будет приходить в ' + hhmm_(t) + ' (' + daysText_() + ').';
-    if (t < BRIEF_READY_AT) msg += '\nСводка собирается около 6:00 — если к ' + hhmm_(t) + ' она не будет готова, пришлю, как только соберётся.';
+    if (t < BRIEF_READY_AT) msg += '\nНовости собираются около 5:30 — если к ' + hhmm_(t) + ' их ещё не будет, подожду до часа.';
     return msg;
   }
   if (cmd === '/days') {
@@ -192,7 +206,6 @@ function handle_(text) {
     else if (/^(будн|раб|work)/.test(arg)) props.setProperty('BRIEF_DAYS', 'work');
     else return 'Напиши /days будни или /days все. Сейчас: ' + daysText_() + '.';
     let msg = '✅ Сводка приходит ' + daysText_() + ' в ' + hhmm_(briefAt_()) + '.';
-    if (briefDays_() === 'all') msg += '\n⚠ Саму сводку Claude пока собирает только по будням — в выходные по ссылке будет пятничная.';
     return msg;
   }
   if (cmd === '/off') {

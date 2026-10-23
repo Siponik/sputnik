@@ -1,16 +1,20 @@
 <script>
   import { onMount } from 'svelte';
   import { dueToYmd, ymd, humanDue } from './api.js';
-  import { stats, plural, isDone } from './habits.js';
+  import { stats, plural, isDone, goalN, countOn, unitForms } from './habits.js';
   import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
-  import { templateOf } from './templates.js';
   import Coon from './Coon.svelte';
-  import { priorityOf, priorityRank, pickNext, TYPES } from './meta.js';
-  import { parseWhen, whenText } from './when.js';
-  import { takeRepeat, repeatLabel } from './repeat.js';
+  import ListPick from './ListPick.svelte';
+  import { priorityOf, priorityRank, pickNext } from './meta.js';
+  import { parseLine, route, learn } from './route.js';
+  import { spheresFrom, sphereOf, sphereColor } from './spheres.js';
+  import { understood, taskFrom } from './today.js';
 
-  let { lists, tasksByList, events, layTasks, layLists, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
-    onopen, ontoggle, oncreate, onreschedule = null, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar, filter = null } = $props();
+  // layer — весь слой (для «Куда» и цвета сфер); onfull(text) — Shift+Enter, полное окно «Создать» с этим текстом;
+  // onlearn — ручной выбор списка учит «Куда» (как в «Создать»); onaccept(items) — у пункта может быть dest (другой список).
+  let { lists, tasksByList, events, layTasks, layer = {}, log, habits, inboxItems, inboxOn, inboxFocus, typeOf,
+    onopen, ontoggle, oncreate, onreschedule = null, ontogglehabit, onaccept, onreject, onregister, onhabits, oncalendar,
+    onfull = null, onlearn = null, filter = null } = $props();
 
   let clock = $state(Date.now());
   onMount(() => {
@@ -27,7 +31,6 @@
 
   // ---------- задачи ----------
 
-  const TYPE_LABEL = Object.fromEntries(TYPES.map((t) => [t.id, t.label])); // work, asset, study, personal
   let fresh = $state(new Set()); // созданные в этом сеансе — метка «новая»
 
   const all = $derived(lists.flatMap((l) => (tasksByList[l.id] ?? []).filter((t) => !t.parent).map((t) => ({ task: t, list: l }))));
@@ -42,11 +45,10 @@
   const doneN = $derived([...overdue, ...dueToday].filter(isOn).length);
   const left = $derived(total - doneN);
 
-  function chip(x) {
-    const tags = layTasks?.[x.task.id]?.tags ?? [];
-    const type = typeOf(x.list.id, x.task.id);
-    return { cls: `sp-chip-${type}`, label: tags.includes('client') || tags.includes('клиент') ? 'client' : TYPE_LABEL[type] ?? 'task' };
-  }
+  // Метка у задачи — список (квадратик цвета сферы), как в «Создать».
+  const spheres = $derived(spheresFrom(layer));
+  const colorOf = (id) => { const sp = spheres.find((x) => x.id === sphereOf(id, layer)); return sp ? sphereColor(sp) : 'var(--ink-faint)'; };
+  const titleOf = (id) => lists.find((l) => l.id === id)?.title ?? '';
   function meta(x) {
     const slot = layTasks?.[x.task.id]?.slot;
     if (slot?.s) return slot.s;
@@ -137,53 +139,55 @@
     await ontoggle(cur, false, x.list.id, true);
   }
 
-  // ---------- быстрое добавление ----------
+  // ---------- умная строка (как в «Создать»: route.parseLine + route.route) ----------
 
   let input = $state(null);
   let draft = $state('');
   let adding = $state(false);
-  // #тег → тип задачи и какой шаблон списка ей подходит. Теги латиницей, строчными;
-  // старые русские (#ассет …) тоже понимаем, чтобы привычка писать их ничего не ломала.
-  const TAGS = {
-    asset: { type: 'creative', tpl: 'asset3d' }, work: { type: 'work', tpl: 'work' }, client: { type: 'work', tpl: 'work', tag: 'client' },
-    study: { type: 'study', tpl: 'study' }, personal: { type: 'personal', tpl: 'personal' },
-  };
-  const OLD_TAGS = { 'ассет': 'asset', 'работа': 'work', 'клиент': 'client', 'учёба': 'study', 'учеба': 'study', 'личное': 'personal' };
-
-  /** «скетч таверны 17:00 #asset» → { title, time, kind } */
-  function parse(raw) {
-    let txt = ` ${raw} `;
-    // !!! — высокий приоритет, !! — средний, ! — низкий.
-    let priority = null;
-    const pm = txt.match(/\s(!{1,3})(?=\s)/);
-    if (pm) { priority = 4 - pm[1].length; txt = txt.replace(pm[0], ' '); }
-    let kind = null;
-    const tg = txt.match(/#([^\s#]+)/);
-    if (tg) { const k = tg[1].toLowerCase(); kind = TAGS[OLD_TAGS[k] ?? k] ?? null; txt = txt.replace(tg[0], ' '); }
-    // Дата и время словами — общий разбор (тот же, что в окне «Когда»): «в пятницу 17:00», «завтра», «25 окт».
-    const rp = takeRepeat(txt); // «каждую неделю», «по будням»
-    const w = parseWhen(rp.rest, new Date(clock));
-    txt = w.rest;
-    return { title: txt && txt[0].toUpperCase() + txt.slice(1), time: w.time ?? '', day: w.day, kind, priority, repeat: rp.rule };
-  }
-  const preview = $derived(draft.trim() ? parse(draft) : null);
-
-  function listFor(kind) {
-    const byTpl = kind && lists.find((l) => (layLists?.[l.id]?.template ?? 'work') === kind.tpl);
-    return (byTpl ?? lists.find((l) => templateOf(layLists?.[l.id]?.template).id !== 'asset3d') ?? lists[0])?.id;
-  }
+  let manual = $state(null); // список, выбранный вручную (клик по золотому чипу)
+  let pickFor = $state(null); // { anchor, kind: 'line' | 'inbox', m? } — открытый выбор списка
+  let destEl = $state(null);
+  const parsed = $derived(parseLine(draft, { today: new Date(clock) }));
+  const routeSrc = $derived([parsed.at ? `@${parsed.at}` : '', parsed.tag ? `#${parsed.tag}` : '', parsed.rest].join(' ').trim());
+  const ranked = $derived(routeSrc ? route(routeSrc, { lists, layer, tasks: tasksByList }) : []);
+  const dest = $derived(manual ?? ranked[0]?.listId ?? lists[0]?.id);
+  const why = $derived(manual ? 'выбрано вручную' : ranked.find((r) => r.listId === dest)?.why ?? '');
+  const chips = $derived(understood(parsed, today));
+  $effect(() => { if (!draft.trim()) manual = null; });
 
   async function add() {
-    const p = parse(draft);
-    if (!p.title || adding || !lists.length) return;
+    if (!parsed.title || adding || !lists.length) return;
     adding = true;
-    const layer = {};
-    if (p.kind) { layer.type = p.kind.type; if (p.kind.tag) layer.tags = [p.kind.tag]; }
-    if (p.priority) layer.priority = p.priority;
-    if (p.repeat) layer.repeat = p.repeat;
-    const id = await oncreate({ title: p.title, listId: listFor(p.kind), due: p.day ?? today, slot: p.time ? { s: p.time, e: fromMin(Math.min(toMin(p.time) + 60, 1439)) } : null, layer }, !!p.day && p.day !== today); // не на сегодня — App покажет, куда ушла
+    const t = taskFrom(parsed, today, dest, ranked[0]);
+    const id = await oncreate(t, t.due !== today); // не на сегодня — App покажет, куда ушла
     adding = false;
-    if (id) { draft = ''; fresh = new Set([...fresh, id]); input?.focus(); }
+    if (!id) return;
+    if (manual && manual !== ranked[0]?.listId) onlearn?.(learn(layer?.settings?.route, t.title, dest));
+    draft = ''; fresh = new Set([...fresh, id]); input?.focus();
+  }
+  function lineKey(e) {
+    if (e.key === 'Escape') { draft = ''; return; }
+    if (e.key === 'Enter' && e.shiftKey && onfull) {
+      // То же нажатие не должно дойти до окна «Создать» (там Shift+Enter — «создать и ещё»): окно открываем после него.
+      e.preventDefault(); e.stopPropagation();
+      const t = draft; draft = '';
+      setTimeout(() => onfull(t));
+      return;
+    }
+    if (e.altKey && e.code === 'KeyL' && parsed.title) { e.preventDefault(); pickFor = { anchor: destEl, kind: 'line' }; }
+  }
+
+  // ---------- входящие от Claude: куда ляжет ----------
+
+  let inboxDest = $state({}); // id задачи → список, выбранный вручную
+  const guessOf = (m) => route(`${m.task.title ?? ''} ${m.task.notes ?? ''}`, { lists, layer, tasks: tasksByList, current: m.listId })[0]?.listId ?? m.listId;
+  const destOf = (m) => inboxDest[m.task.id] ?? guessOf(m);
+  const withDest = (items) => items.map((m) => ({ ...m, dest: destOf(m) }));
+  function picked(id) {
+    const p = pickFor;
+    pickFor = null;
+    if (p?.kind === 'inbox') inboxDest = { ...inboxDest, [p.m.task.id]: id };
+    else { manual = id; input?.focus(); }
   }
 
   // ---------- расписание дня ----------
@@ -207,7 +211,6 @@
 </script>
 
 {#snippet taskRow(x)}
-  {@const c = chip(x)}
   {@const m = meta(x)}
   <div class="trow">
     <button type="button" class="tick" aria-pressed={isOn(x)} aria-label="{x.task.title}{isOn(x) ? ' — выполнено' : ' — отметить'}" onclick={() => tick(x)}>
@@ -216,7 +219,7 @@
     <button type="button" class="ttl" class:off={isOn(x)} onclick={() => onopen(x.task, x.list.id)}>{x.task.title || 'Без названия'}</button>
     {#if fresh.has(x.task.id)}<span class="new">новая</span>{/if}
     {#if priorityOf(layTasks?.[x.task.id]?.priority) && !isOn(x)}{@const pr = priorityOf(layTasks?.[x.task.id]?.priority)}<span class="prio {pr.cls}" title="Приоритет: {pr.label.toLowerCase()}">{pr.mark}</span>{/if}
-    <span class="sp-chip {c.cls}"><span class="dot"></span>{c.label}</span>
+    <span class="t-lst" style="--sc: {colorOf(x.list.id)}"><i></i>{x.list.title}</span>
     {#if m}<span class="meta" class:late={dueToYmd(x.task.due) < today && !isOn(x)}>{m}</span>{/if}
   </div>
 {/snippet}
@@ -257,18 +260,23 @@
       <div>
         <form class="qa" onsubmit={(e) => { e.preventDefault(); add(); }}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
-          <input bind:this={input} bind:value={draft} type="text" aria-label="Новая задача на сегодня"
-            placeholder="Новая задача… например «скетч таверны 17:00 #asset»" onkeydown={(e) => e.key === 'Escape' && (draft = '')} />
-          <button class="sp-btn sp-btn-primary" type="submit" disabled={!preview?.title || adding || !lists.length}>Добавить</button>
+          <input bind:this={input} bind:value={draft} type="text" aria-label="Новая задача"
+            placeholder="Пиши как в окне «Создать»… например «скетч таверны 17:00»" onkeydown={lineKey} />
+          <button class="sp-btn sp-btn-primary" type="submit" disabled={!parsed.title || adding || !lists.length}>Добавить</button>
         </form>
-        <p class="qa-hint">
-          {#if preview?.title}
-            Добавлю «{preview.title}» {preview.day && preview.day !== today ? `на ${whenText(preview.day, null).date.toLowerCase()}` : 'на сегодня'}{preview.time ? ` в ${preview.time}` : ''}{preview.kind ? ` · ${TYPE_LABEL[preview.kind.type]}` : ''}{preview.priority ? ` · приоритет ${priorityOf(preview.priority).label.toLowerCase()}` : ''}{preview.repeat ? ` · ↻ ${repeatLabel(preview.repeat)}` : ''}
-            → список «{lists.find((l) => l.id === listFor(preview.kind))?.title}».
+        <div class="qa-got">
+          {#if parsed.title}
+            <span class="lbl">Понял:</span>
+            {#each chips as c (c.kind)}<span class="qa-c">{c.text}</span>{/each}
+            <button type="button" class="qa-c qa-dest" bind:this={destEl} style="--sc: {colorOf(dest)}" title="Сменить список · Alt+L" aria-haspopup="listbox"
+              aria-expanded={pickFor?.kind === 'line'} onclick={() => (pickFor = pickFor ? null : { anchor: destEl, kind: 'line' })}>
+              <i></i><span class="tx">→ {titleOf(dest)}</span>{#if why}<small>✦ {why}</small>{/if}
+            </button>
           {:else}
-            Дата, время, #тип и приоритет распознаются сами: «завтра», «в пятницу», «25 окт», 17:00, #asset #work #client #study #personal, !!! / !! / !, повтор «каждую неделю» или «по будням». Из любого чата Claude тоже можно: «запиши в Спутник…» — задача появится здесь.
+            <span class="lbl">Дата, время, !!!, #тип и @список распознаются сами. Из любого чата Claude: «запиши в Спутник…»</span>
           {/if}
-        </p>
+          <span class="qa-keys">{onfull ? "Enter — добавить · Shift+Enter — открыть полное окно" : "Enter — добавить"}</span>
+        </div>
       </div>
 
       {#if overdue.length}
@@ -291,19 +299,22 @@
       {#if habits.length}
         <section>
           <h2><button type="button" class="h-link" onclick={onhabits}>Привычки →</button></h2>
-          {#each todays as h (h.id)}
-            {@const d = isDone(log, h.id, today)}
-            {@const s = stats(h, log).streak}
-            <div class="trow">
-              <button type="button" class="hring" aria-pressed={d} aria-label="{h.name}{d ? ' — сделано' : ' — отметить'}" onclick={() => ontogglehabit(h)}>
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+          <div class="hpills">
+            {#each todays as h (h.id)}
+              {@const d = isDone(log, h.id, today)}
+              {@const s = stats(h, log).streak}
+              {@const g = goalN(h)}
+              {@const n = g ? countOn(log, h, today) : 0}
+              <!-- У привычки с количеством клик = «+1», рядом — сколько набрано: «5/8». -->
+              <button type="button" class="hpill" aria-pressed={d} title="{d ? 'Сделано' : g ? `Плюс один: ${n + 1} из ${g} ${h.goal.unit ?? ''}` : 'Отметить'}{h.time ? ` · ${h.time}` : ''}{s ? ` · ${s} ${plural(s, unitForms(h))} подряд` : ''}" onclick={() => ontogglehabit(h)}>
+                <span class="hring" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
+                <span class="hn">{h.name}</span>
+                {#if g && !d}<span class="hs">{n}/{g}</span>{:else}<span class="hs" class:gold={s}>{s ? `✦ ${s}` : 'старт'}</span>{/if}
               </button>
-              <span class="ttl" style="font-weight: 500">{h.name}</span>{#if h.time}<span class="meta">{h.time}</span>{/if}
-              <span class="meta" class:gold={s}>{s ? `✦ ${s} ${plural(s, ['день', 'дня', 'дней'])} подряд` : 'начни серию'}</span>
-            </div>
-          {:else}
-            <p class="empty">Сегодня привычек по расписанию нет.</p>
-          {/each}
+            {:else}
+              <p class="empty">Сегодня привычек по расписанию нет.</p>
+            {/each}
+          </div>
         </section>
       {/if}
 
@@ -313,20 +324,23 @@
             <h2>Входящие от Claude · {inboxItems.length}</h2>
             <span class="ih-r">
               <span class="src">из чатов Claude</span>
-              {#if inboxItems.length > 1}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 28px" onclick={() => onaccept(inboxItems)}>Принять все</button>{/if}
+              {#if inboxItems.length > 1}<button class="sp-btn sp-btn-ghost" type="button" style="min-height: 28px" onclick={() => onaccept(withDest(inboxItems))}>Принять все</button>{/if}
             </span>
           </div>
           {#each inboxItems as m (m.task.id)}
-            {@const c = chip({ task: m.task, list: { id: m.listId } })}
+            {@const to = destOf(m)}
             <div class="im">
               <div class="im-t">
-                <button type="button" class="im-title" onclick={() => onopen(m.task, m.listId)}>{m.task.title || 'Без названия'}</button>
-                <div class="im-sub">{m.from ? `${m.from} · ` : ''}список «{m.list}»</div>
+                <button type="button" class="im-title" title={m.task.title} onclick={() => onopen(m.task, m.listId)}>{m.task.title || 'Без названия'}</button>
+                <div class="im-sub" title={m.task.notes ?? ''}>{[m.task.notes?.split('\n')[0], m.from].filter(Boolean).join(' · ') || `список «${m.list}»`}</div>
               </div>
-              <span class="sp-chip {c.cls}"><span class="dot"></span>{c.label}</span>
-              <span class="sp-chip">{m.task.due ? humanDue(m.task.due) : 'без срока'}</span>
-              <button class="sp-btn" type="button" onclick={() => onaccept([m])}>Принять</button>
-              <button class="sp-btn sp-btn-ghost" type="button" onclick={() => onreject(m)}>Отклонить</button>
+              <button type="button" class="qa-c qa-dest" style="--sc: {colorOf(to)}" title="Куда ляжет — сменить" aria-haspopup="listbox"
+                onclick={(e) => (pickFor = { anchor: e.currentTarget, kind: 'inbox', m })}><i></i><span class="tx">→ {titleOf(to)}</span></button>
+              <span class="qa-c">{m.task.due ? humanDue(m.task.due) : 'без срока'}</span>
+              <button class="im-b ok" type="button" aria-label="Принять «{m.task.title}»" title="Принять" onclick={() => onaccept(withDest([m]))}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></button>
+              <button class="im-b" type="button" aria-label="Отклонить «{m.task.title}»" title="Отклонить" onclick={() => onreject(m)}>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
             </div>
           {:else}
             <p class="empty" style="padding: 0">Всё разобрано. Принятое уже на доске во «Входящих».</p>
@@ -360,6 +374,11 @@
     </aside>
   </div>
 </div>
+
+{#if pickFor}
+  <ListPick anchor={pickFor.anchor} {lists} {layer} current={pickFor.kind === 'inbox' ? destOf(pickFor.m) : dest}
+    guess={pickFor.kind === 'inbox' ? guessOf(pickFor.m) : ranked[0]?.listId} onpick={picked} onclose={() => (pickFor = null)} />
+{/if}
 
 {#if last}
   <div class="toast" role="status"><span>Готово: «{last.task.title}»</span><button type="button" onclick={undo}>Отменить</button></div>

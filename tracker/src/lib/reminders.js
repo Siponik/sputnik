@@ -10,6 +10,7 @@
 // а скрипт Google Apps Script (reminders/Code.gs) раз в минуту читает его и пишет в Telegram.
 import { gapi, dueToYmd, ymd } from './api.js';
 import { habitDay } from './calendar.js';
+import { remindAt } from './habits.js';
 
 export const BEFORE = [
   { days: 0, name: 'В день срока' },
@@ -58,14 +59,22 @@ export const rulesOf = (r) => (!r ? [] : Array.isArray(r) ? r : [r]);
 export const leadName = (min, kind = 'task') => leadsFor(kind).find((l) => l.min === min)?.name ?? LEADS.find((l) => l.min === min)?.name ?? `За ${min} мин`;
 /** «за день и за час» */
 export const leadsText = (mins, kind = 'task') => mins.slice().sort((a, b) => b - a).map((m) => leadName(m, kind).toLowerCase()).join(' и ');
-export const DEFAULT_TIME = '10:00';
+export let DEFAULT_TIME = '10:00';
+/** «Задачи без времени — не напоминать»: правила «до начала» у задачи без времени молчат. */
+export let NO_TIME_OFF = false;
+/** Настройки → Напоминания → «Задачи без времени» (settings.remindHour: 9:00 / 10:00 / 12:00 или 'off' — не напоминать).
+ *  При 'off' DEFAULT_TIME остаётся 10:00: им пользуются дни рождения и свои правила «за N дней в ЧЧ:ММ». */
+export function setDefaultTime(t) {
+  NO_TIME_OFF = t === 'off';
+  DEFAULT_TIME = /^\d\d:\d\d$/.test(t ?? '') ? t : '10:00';
+}
 
 /** Момент срабатывания или null. slot — время задачи из слоя ({ s, e } или null). */
 export function fireAt(remind, task, slot = null) {
   if (!remind) return null;
   if (remind.kind === 'lead') {
     const ymd = dueToYmd(task.due);
-    if (!ymd) return null;
+    if (!ymd || (!slot?.s && NO_TIME_OFF)) return null;
     const [y, m, d] = ymd.split('-').map(Number);
     const [hh, mm] = (slot?.s || DEFAULT_TIME).split(':').map(Number);
     return new Date(y, m - 1, d, hh, mm - (remind.min || 0));
@@ -176,15 +185,40 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
   return items.sort((a, b) => a.fireAt.localeCompare(b.fireAt));
 }
 
-/** Напоминания о привычках со временем (habits[id].time) — на 7 дней вперёд, только по расписанию.
+/** «Тебе отдали задачу» в общей сфере (tasks[id].given = { by, name, at } — ставит App при обмене со сферой):
+ *  одно сообщение боту сразу, не позже суток. Без taskId — кнопки «✓ Готово» под ним нет. */
+export function assignedItems(lists, tasksByList, layTasks, now = Date.now()) {
+  const items = [];
+  for (const l of lists) {
+    for (const t of tasksByList[l.id] ?? []) {
+      const g = layTasks?.[t.id]?.given;
+      if (!g?.at || t.status === 'completed' || t.deleted) continue;
+      const at = new Date(g.at).getTime();
+      if (!(at > now - 864e5)) continue;
+      items.push({
+        key: `given|${t.id}|${g.at}`,
+        kind: 'assigned',
+        title: t.title || 'Без названия',
+        note: `${g.name || 'Участник'} отдаёт тебе задачу`,
+        list: l.title,
+        due: dueToYmd(t.due),
+        fireAt: new Date(at).toISOString(),
+      });
+    }
+  }
+  return items;
+}
+
+/** Напоминания о привычках со временем (habits[id].time, или время части дня: утро 10:00, день 15:00, вечер 21:00)
+ *  — на 7 дней вперёд, только по расписанию. habits[id].remind.tg === false — в Telegram не слать.
  *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
  *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
 export function habitItems(habits, log, now = new Date()) {
   const items = [];
   const today = ymd(now);
   for (const h of habits) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(h.time ?? '');
-    if (!m) continue;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(remindAt(h) ?? '');
+    if (!m || h.remind?.tg === false) continue;
     for (let i = 0; i < 7; i++) {
       const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, +m[1], +m[2]);
       const day = ymd(at);
@@ -194,7 +228,7 @@ export function habitItems(habits, log, now = new Date()) {
         key: `habit|${h.id}|${day}`,
         kind: 'habit',
         title: h.name,
-        note: '',
+        note: h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '',
         list: 'Привычки',
         due: '',
         fireAt: at.toISOString(),
@@ -202,6 +236,20 @@ export function habitItems(habits, log, now = new Date()) {
     }
   }
   return items;
+}
+
+/** Уведомления Windows о привычках (habits[id].remind.win): какие пора показать сейчас — время прошло не больше 30 мин
+ *  назад, по расписанию, не отмечено, и сегодня ещё не показывали (sent — ключи «id|день»). */
+export function habitWinDue(habits, log, sent = [], now = new Date()) {
+  const today = ymd(now);
+  return habits.filter((h) => {
+    if (!h.remind?.win || sent.includes(`${h.id}|${today}`)) return false;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(remindAt(h) ?? '');
+    if (!m) return false;
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), +m[1], +m[2]).getTime();
+    const d = habitDay(h, log, today, today);
+    return d.sched && !d.done && now.getTime() >= at && now.getTime() - at < 30 * 60e3;
+  });
 }
 
 // ---------- файл на Google Drive ----------
@@ -219,7 +267,7 @@ async function findByProp(value) {
   return r?.files?.[0]?.id ?? null;
 }
 
-async function ensureFolder() {
+export async function ensureFolder() {
   if (folderId) return folderId;
   folderId = await findByProp('folder');
   if (!folderId) {
@@ -233,7 +281,7 @@ async function ensureFolder() {
  *  defaults — напоминания по умолчанию ({ task: [минуты] }): по ним бот ставит напоминания задачам, созданным в Telegram. */
 export async function publish(items, defaults = null) {
   const body = JSON.stringify({ items, defaults });
-  if (body === lastBody) return;
+  if (body === lastBody) return false;
   if (!fileId) fileId = await findByProp('reminders');
   if (!fileId) {
     const parent = await ensureFolder();
@@ -242,4 +290,5 @@ export async function publish(items, defaults = null) {
   }
   await gapi('PATCH', `${UPLOAD}/files/${fileId}?uploadType=media`, { version: 1, updated: new Date().toISOString(), items, ...(defaults ? { defaults } : {}) });
   lastBody = body;
+  return true;
 }

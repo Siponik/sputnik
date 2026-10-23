@@ -106,7 +106,8 @@ export function order(items, layTasks, today, sort = 'pin') {
  * Колонки стены. tasks — открытые задачи верхнего уровня. group — 'topic' | 'when'.
  * Возвращает [{ id, name, c, sub, items }]; «Разное» — только если в нём что-то есть.
  */
-export function lanes(tasks, { group = 'topic', topics = DEFAULT_TOPICS, layTasks = {}, today, sort = 'pin' }) {
+export function lanes(tasks, { group = 'topic', topics = DEFAULT_TOPICS, layTasks = {}, today, sort = 'pin', people = [], me = '' }) {
+  if (group === 'people') return peopleLanes(tasks, { layTasks, today, sort, people, me });
   if (group === 'when') {
     return WHEN.map((w) => ({
       ...w, sub: w.id === 'today' ? todaySub(today) : w.sub,
@@ -122,13 +123,33 @@ export function lanes(tasks, { group = 'topic', topics = DEFAULT_TOPICS, layTask
 }
 
 /**
+ * «По людям» (общая сфера): колонка = человек — «Я» первым, потом принявшие приглашение, «Ничьи» последней.
+ * Не принявший получает колонку, только если ему уже что-то отдали. id колонки — почта, у «Ничьих» — ''.
+ */
+export function peopleLanes(tasks, { layTasks = {}, today, sort = 'pin', people = [], me = '' }) {
+  const whoOf = (t) => layTasks?.[t.id]?.who || '';
+  const ppl = [...people.filter((p) => p.email === me), ...people.filter((p) => p.email !== me)];
+  const out = [];
+  for (const p of ppl) {
+    const items = tasks.filter((t) => whoOf(t) === p.email);
+    if (!p.joined && !items.length) continue;
+    out.push({ id: p.email, name: p.email === me ? 'Я' : p.name, c: p.color, m: p, sub: '', items: order(items, layTasks, today, sort) });
+  }
+  const known = new Set(out.map((l) => l.id));
+  // Отдано тому, кого уже нет в сфере, — тоже в «Ничьи»: иначе стикер пропал бы со стены.
+  const none = tasks.filter((t) => !whoOf(t) || !known.has(whoOf(t)));
+  out.push({ id: '', name: 'Ничьи', c: 'var(--ink-faint)', m: null, sub: '', items: order(none, layTasks, today, sort) });
+  return out;
+}
+
+/**
  * Какие колонки показать. По темам пустые темы прячутся (кроме keep — туда сейчас пишут новый стикер);
  * если пусто везде — показываем все, чтобы было куда приклеить первый. По срокам — всегда три.
  * Возвращает { shown, hidden } — hidden идут кнопками «＋ в тему».
  */
-export function visibleLanes(all, { group = 'topic', keep = '' } = {}) {
-  if (group === 'when' || all.every((l) => !l.items.length)) return { shown: all, hidden: [] };
-  const vis = (l) => l.items.length > 0 || (keep !== '' && l.id === keep);
+export function visibleLanes(all, { group = 'topic', keep = null } = {}) {
+  if (group === 'when' || group === 'people' || all.every((l) => !l.items.length)) return { shown: all, hidden: [] };
+  const vis = (l) => l.items.length > 0 || (keep != null && l.id === keep);
   return { shown: all.filter(vis), hidden: all.filter((l) => !vis(l)) };
 }
 

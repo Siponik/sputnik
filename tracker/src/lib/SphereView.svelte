@@ -5,8 +5,14 @@
   import { startOfWeek, addDays } from './calendar.js';
   import { sphereColor } from './spheres.js';
   import SphereIcon from './SphereIcon.svelte';
+  import SharedTag from './SharedTag.svelte';
+  import AvStack from './AvStack.svelte';
+  import { whoOf } from './sharedcore.js';
 
-  let { sphere, lists, tasksByList, templateFor, colOf, onedit, onaddlist, onopenlist, onopentask } = $props();
+  // people — участники, если сфера общая и в ней есть кто-то кроме владельца (иначе пусто).
+  let { sphere, lists, tasksByList, templateFor, colOf, onedit, onaddlist, onopenlist, onopentask,
+    people = [], me = '', layTasks = {}, onshare } = $props();
+  const owner = $derived(people.find((p) => p.owner) ?? null);
 
   const today = ymd(new Date());
   const weekEnd = ymd(addDays(startOfWeek(new Date()), 6));
@@ -31,6 +37,8 @@
     open: cards.reduce((n, c) => n + c.open, 0),
     week: cards.reduce((n, c) => n + c.week, 0),
   });
+  const mineN = $derived(lists.reduce((n, l) => n + (tasksByList[l.id] ?? [])
+    .filter((t) => !t.parent && t.status !== 'completed' && me && whoOf(layTasks[t.id]) === me).length, 0));
   // Срочное: просрочено (красным), сегодня (clay), завтра–послезавтра.
   const urgent = $derived(lists.flatMap((l) => (tasksByList[l.id] ?? [])
     .filter((t) => !t.parent && t.status !== 'completed' && t.due && dueToYmd(t.due) <= ymd(addDays(new Date(), 2)))
@@ -42,9 +50,20 @@
   <header class="sv-head">
     <SphereIcon {sphere} size={48} />
     <div class="sv-t">
-      <h1>{sphere.name}</h1>
-      <p>{lists.length} {plural(lists.length, ['список', 'списка', 'списков'])} · {totals.open} {plural(totals.open, ['открытая', 'открытых', 'открытых'])}{totals.week ? ` · ${totals.week} на этой неделе` : ''}</p>
+      {#if people.length}
+        <h1 class="sv-sh">{sphere.name} <SharedTag /></h1>
+        <p>{lists.length} {plural(lists.length, ['список', 'списка', 'списков'])} · {totals.open} {plural(totals.open, ['задача', 'задачи', 'задач'])} · {mineN} {plural(mineN, ['твоя', 'твои', 'твоих'])}{owner ? ` · владелец — ${owner.email === me ? 'ты' : owner.name}` : ''}</p>
+      {:else}
+        <h1>{sphere.name}</h1>
+        <p>{lists.length} {plural(lists.length, ['список', 'списка', 'списков'])} · {totals.open} {plural(totals.open, ['открытая', 'открытых', 'открытых'])}{totals.week ? ` · ${totals.week} на этой неделе` : ''}</p>
+      {/if}
     </div>
+    {#if people.length}
+      <AvStack {people} size={28} {me} max={5} />
+      <button type="button" class="sp-btn" onclick={onshare}>Участники</button>
+    {:else if onshare}
+      <button type="button" class="sp-btn" onclick={onshare}>{sphere.shared ? 'Пригласить' : 'Сделать общей'}</button>
+    {/if}
     <button type="button" class="sp-btn" onclick={onedit}>Изменить сферу</button>
     <button type="button" class="sp-btn sp-btn-primary" onclick={onaddlist}>＋ Список в сферу</button>
   </header>

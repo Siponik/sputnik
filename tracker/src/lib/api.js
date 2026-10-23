@@ -1,10 +1,17 @@
 // Запросы к Google идут через Rust (команда gapi): там живёт токен входа.
 import { invoke } from '@tauri-apps/api/core';
+import * as shared from './shared.js';
+import { isSharedId, isSphereCal } from './sharedcore.js';
 
 const TASKS = 'https://tasks.googleapis.com/tasks/v1';
 const CAL = 'https://www.googleapis.com/calendar/v3';
 
 export const gapi = (method, url, body = null) => invoke('gapi', { method, url, body });
+
+/** Дата последней резервной копии слоя (ГГГГ-ММ-ДД) или null. */
+export const backupsLast = () => invoke('backups_last').catch(() => null);
+/** Открыть папку резервных копий ('backups') или релизы на GitHub ('releases'). */
+export const openPlace = (place) => invoke('open_place', { place });
 
 export const auth = {
   status: () => invoke('auth_status'),
@@ -19,19 +26,22 @@ export const layer = {
 };
 
 // ---------- Google Tasks ----------
+// Списки общих сфер (id sh:…) живут не в Google Tasks, а в календаре сферы — lib/shared.js.
+// Здесь они выглядят как обычные: те же функции, тот же вид задач.
 
 export async function listLists() {
   const r = await gapi('GET', `${TASKS}/users/@me/lists?maxResults=100`);
-  return r?.items ?? [];
+  return [...(r?.items ?? []), ...shared.lists()];
 }
 
 export const createList = (title) => gapi('POST', `${TASKS}/users/@me/lists`, { title });
 /** Удалить список вместе с задачами — в Google Tasks насовсем. Основной список Google удалить не даёт. */
-export const deleteList = (listId) => gapi('DELETE', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`);
+export const deleteList = (listId) => isSharedId(listId) ? shared.deleteList(listId) : gapi('DELETE', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`);
 /** id основного списка Google Tasks («Мои задачи»). */
 export const defaultListId = async () => (await gapi('GET', `${TASKS}/users/@me/lists/@default`))?.id ?? null;
 
 export async function listTasks(listId) {
+  if (isSharedId(listId)) return shared.tasks(listId);
   let items = [];
   let page = '';
   do {
@@ -44,20 +54,34 @@ export async function listTasks(listId) {
 }
 
 export function createTask(listId, body, parent = null) {
+  if (isSharedId(listId)) return shared.createTask(listId, body, parent);
   const q = parent ? `?parent=${encodeURIComponent(parent)}` : '';
   return gapi('POST', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks${q}`, body);
 }
 
 export function patchTask(listId, taskId, patch) {
+  if (isSharedId(listId)) return shared.patchTask(listId, taskId, patch);
   return gapi('PATCH', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`, patch);
 }
 
 export function deleteTask(listId, taskId) {
+  if (isSharedId(listId)) return shared.deleteTask(listId, taskId);
   return gapi('DELETE', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}`);
 }
 
-/** Перенести задачу (с подзадачами) в другой список Google Tasks. */
-export function moveTask(listId, taskId, destList) {
+/** Перенести задачу (с подзадачами) в другой список Google Tasks.
+ *  Между общим и обычным списком (или двумя общими) — копия на новом месте и удаление старой: id будет другой. */
+export async function moveTask(listId, taskId, destList) {
+  if (isSharedId(listId) || isSharedId(destList)) {
+    const all = await listTasks(listId);
+    const t = all.find((x) => x.id === taskId);
+    if (!t) throw new Error('404 задача не найдена');
+    const body = (x) => ({ title: x.title, notes: x.notes ?? '', ...(x.due ? { due: x.due } : {}), status: x.status });
+    const r = await createTask(destList, body(t));
+    for (const sub of all.filter((x) => x.parent === taskId)) await createTask(destList, body(sub), r.id);
+    await deleteTask(listId, taskId);
+    return r;
+  }
   return gapi('POST', `${TASKS}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(taskId)}/move?destinationTasklist=${encodeURIComponent(destList)}`, {});
 }
 
@@ -69,7 +93,7 @@ export const completeTask = (listId, taskId, done) =>
 export async function eventsForDay(day = new Date()) {
   const start = new Date(day); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
-  const chosen = (await calendarList()).filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
+  const chosen = (await calendarList()).filter((c) => c.selected !== false && !isService(c) && !hiddenCals.has(c.id));
   const lists = await Promise.all(chosen.map(async (c) => {
     try {
       const q = new URLSearchParams({ timeMin: start.toISOString(), timeMax: end.toISOString(), singleEvents: 'true', orderBy: 'startTime', maxResults: '50' });
@@ -83,6 +107,8 @@ export async function eventsForDay(day = new Date()) {
 // Календари для вида «Календарь»: дни рождения и праздники узнаём по id календаря.
 const HOLIDAYS_RU = 'ru.russian#holiday@group.v.calendar.google.com';
 const isQueue = (c) => /^Спутник · входящие/.test(c.summary ?? ''); // служебная очередь «Входящие от Claude»
+// Служебные календари: очередь и календари общих сфер (их события — записи, а не встречи).
+const isService = (c) => isQueue(c) || isSphereCal(c);
 const calKind = (c) => (/#contacts@/.test(c.id) ? 'birthday' : /#holiday@/.test(c.id) ? 'holiday' : 'event');
 
 let calCache = null;
@@ -94,7 +120,7 @@ async function calendarList() {
 }
 /** Все календари пользователя, кроме служебной очереди, — для выбора на первом запуске. */
 export async function calendarsAll() {
-  return (await calendarList()).filter((c) => !isQueue(c));
+  return (await calendarList()).filter((c) => !isService(c));
 }
 
 /** Ошибка похожа на отсутствие связи (а не на отказ Google)? */
@@ -106,7 +132,7 @@ export function setHiddenCalendars(ids) { hiddenCals = new Set(ids); }
 
 async function calendars() {
   const all = await calendarList();
-  const items = all.filter((c) => c.selected !== false && !isQueue(c) && !hiddenCals.has(c.id));
+  const items = all.filter((c) => c.selected !== false && !isService(c) && !hiddenCals.has(c.id));
   if (!all.some((c) => c.id === HOLIDAYS_RU) && !hiddenCals.has(HOLIDAYS_RU)) items.push({ id: HOLIDAYS_RU, summary: 'Праздники России' });
   return items;
 }
@@ -186,7 +212,7 @@ export async function remindEvents() {
   const now = Date.now();
   const q = new URLSearchParams({ timeMin: new Date(now - 864e5).toISOString(), timeMax: new Date(now + 32 * 864e5).toISOString(),
     singleEvents: 'true', privateExtendedProperty: 'sputnikR=1', maxResults: '250' });
-  const own = (await calendarList().catch(() => [])).filter((c) => ['owner', 'writer'].includes(c.accessRole) && !c.primary && !isQueue(c) && calKind(c) === 'event');
+  const own = (await calendarList().catch(() => [])).filter((c) => ['owner', 'writer'].includes(c.accessRole) && !c.primary && !isService(c) && calKind(c) === 'event');
   const ids = ['primary', ...own.map((c) => c.id)];
   const all = await Promise.all(ids.map((id) => gapi('GET', `${CAL}/calendars/${encodeURIComponent(id)}/events?${q}`)
     .then((r) => r?.items ?? []).catch((e) => { if (id === 'primary') throw e; return []; })));

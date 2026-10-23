@@ -11,9 +11,11 @@
 @import './styles/datetime.css';
 @import './styles/views.css';
 @import './styles/spheres.css';
+@import './styles/share.css';
 @import './styles/conveyor.css';
 @import './styles/stickers.css';
 @import './styles/create.css';
+@import './styles/shell.css';
 @import './styles/motion.css';
 
 /* Раскладка приложения */
@@ -33,15 +35,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .sync.err .dot { background: var(--signal-overdue); }
 
 .body { flex: 1; min-height: 0; display: flex; }
-.side { width: 268px; flex: none; padding: var(--space-5) var(--space-4); border-right: 1px solid var(--edge); display: flex; flex-direction: column; gap: var(--space-5); overflow-y: auto; }
-.side h4 { margin: 0 0 6px; padding: 0 10px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink-faint); }
-.side .item { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border: 0; border-radius: var(--radius-md); background: none; font-size: 14px; color: var(--ink-soft); cursor: pointer; text-align: left; }
-.side .item:hover { background: var(--wash); color: var(--ink); }
-.side .item.on { background: var(--clay-soft); color: var(--clay); font-weight: 600; }
-.side .item .n { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); }
-.side .item.on .n { color: var(--clay); }
-.side .foot { margin-top: auto; font-size: 12px; color: var(--ink-faint); display: flex; flex-direction: column; gap: 6px; padding: 0 10px; }
-.side .foot button { align-self: flex-start; background: none; border: 0; padding: 0; color: var(--ink-soft); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 
 .main { flex: 1; min-width: 0; overflow: auto; }
 .page { padding: 28px 32px 40px; display: flex; flex-direction: column; gap: 20px; }
@@ -113,9 +106,6 @@ button, input, textarea, select { font: inherit; color: inherit; }
 .search:focus { outline: 2px solid var(--clay); outline-offset: 1px; }
 .row .title.done { color: var(--ink-soft); font-weight: 500; }
 
-/* Боковая панель: «+ Новый список» */
-.side .item.add { margin-top: 6px; color: var(--ink-faint); }
-.side .item.add:hover { color: var(--clay); background: var(--clay-soft); }
 
 /* Окно «Новый список» */
 .dialog { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 11; width: min(640px, calc(100% - 32px)); max-height: calc(100% - 48px); overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding: 26px 28px; border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); box-shadow: var(--shadow-lift); }
@@ -291,9 +281,9 @@ svg.flip { transform: rotate(180deg); }
 .wk-grid .now::before { content: ""; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--clay); }
 
 /* Обзор недели */
-.cal-over { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+.cal-over .ov-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
 .cal .card { border-radius: var(--radius-lg); background: var(--raised); border: 1px solid var(--edge); padding: 14px 16px; min-width: 0; }
-.bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; height: 92px; }
+.bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; height: 72px; }
 .bar { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 5px; height: 100%; }
 .bar .h { font: 400 10.5px/1 var(--font-mono); color: var(--ink-soft); white-space: nowrap; }
 .bar .b { width: 100%; max-width: 22px; border-radius: 4px 4px 2px 2px; background: var(--ink-faint); }

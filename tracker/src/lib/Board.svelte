@@ -1,4 +1,9 @@
 <script>
+  import SharedTag from './SharedTag.svelte';
+  import ShareBits from './ShareBits.svelte';
+  import WhoPick from './WhoPick.svelte';
+  import { memberOf, whoOf, whoCounts, whoTally, assignedMatch } from './sharedcore.js';
+  import Avatar from './Avatar.svelte';
   // Доска списка (design/screens/Kanban.dc.html, docs/design-v2.md — «Канбан и Конвейер: вид и взаимодействие»).
   // Одна выбранная карточка (обводка clay): клик по названию — окно задачи, по карточке — выбрать, двойной клик / F2 — переименовать, правый клик — меню.
   import { tick } from 'svelte';
@@ -25,7 +30,7 @@
   // lists — другие списки (для «В другой список»).
   // layList — запись списка в слое (для «Стикеров»: темы, раскладка).
   let { list, tasks, template, colOf, typeOf, layTasks, layList = {}, project = null, remindOf = () => '', view = 'kanban',
-    act, lists = [], fold = {}, onfold, sphereName = '',
+    act, lists = [], fold = {}, onfold, sphereName = '', share = null,
     oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
 
   // Три основных вида; «Список» — только у списка, где он выбран (в редакторе шаблонов).
@@ -62,8 +67,13 @@
   const open = $derived(top.filter((t) => t.status !== 'completed'));
   const weekA = ymd(startOfWeek(new Date())), weekB = ymd(addDays(startOfWeek(new Date()), 6));
   const weekDue = $derived(open.filter((t) => t.due && dueToYmd(t.due) >= weekA && dueToYmd(t.due) <= weekB).length);
+  // Общая сфера: «Все / Мои / Без исполнителя» (share.mode, запоминается для доски в App).
+  const whoMode = $derived(share?.mode ?? 'all');
+  const whoN = $derived(share ? whoTally(tasks, layTasks, share.me) : null);
+  const meM = $derived(share ? memberOf(share.people, share.me) : null);
   function passes(t) {
     if (project && layTasks?.[t.id]?.project !== project) return false;
+    if (share && !t.parent && !assignedMatch(layTasks?.[t.id], share.me, whoMode)) return false;
     if (filter === 'prio') return layTasks?.[t.id]?.priority === 1;
     if (filter === 'week') return !!t.due && dueToYmd(t.due) <= weekB && t.status !== 'completed';
     if (filter === 'late') return dueState(t) === 'overdue' && t.status !== 'completed';
@@ -120,10 +130,21 @@
     act.order(ids);
   }
 
+  // Исполнитель в общей сфере: кружок на карточке и клавиша I открывают выбор (WhoPick).
+  let whoPick = $state(null); // { t, anchor }
+  const assigneeOf = (t) => (share ? memberOf(share.people, whoOf(layTasks?.[t.id])) : undefined);
+  const counts = $derived(share ? whoCounts(tasks, layTasks) : {});
+  function pickWho(t, anchor) { if (share) whoPick = { t, anchor }; }
+
   // Клавиши доски (канбан): стрелки, Enter, F2, Alt+…, D, M, Ctrl+D, Del, Esc, Shift+F10.
   // Ловим на фазе погружения, чтобы цифры и стрелки не уходили в общие клавиши приложения.
   function onKey(e) {
-    if (view !== 'kanban' || menu || editing || keys.typing(e) || keys.overlay()) return;
+    // Shift+A / Shift+M / Shift+U — «Все / Мои / Без исполнителя» (только общая сфера, на любом виде доски).
+    if (share && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && !menu && !whoPick && !editing && !keys.typing(e) && !keys.overlay()) {
+      const m = { KeyA: 'all', KeyM: 'mine', KeyU: 'none' }[e.code];
+      if (m) { e.preventDefault(); e.stopPropagation(); share.onmode(m); return; }
+    }
+    if (view !== 'kanban' || menu || whoPick || editing || keys.typing(e) || keys.overlay()) return;
     const handled = () => { e.preventDefault(); e.stopPropagation(); };
     const arrows = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
     if (!selTask) {
@@ -174,6 +195,7 @@
     } else if (e.key === 'Enter') { handled(); act.open(t); }
     else if (e.key === 'F2') { handled(); editing = t.id; }
     else if (e.code === 'KeyD' && !e.shiftKey) { handled(); act.open(t, true); }
+    else if (e.code === 'KeyI' && !e.shiftKey && share) { handled(); pickWho(t, document.querySelector(`.kc[data-id="${t.id}"] .sh-who`)); }
     else if (e.code === 'KeyM' && !e.shiftKey) { handled(); openMenu(t, document.querySelector(`.kc[data-id="${t.id}"]`), 'list'); }
     else if (e.key === 'Delete') {
       handled();
@@ -248,6 +270,11 @@
 
 <svelte:window onkeydowncapture={onKey} />
 
+{#if whoPick && share}
+  <WhoPick anchor={whoPick?.anchor} people={share?.people ?? []} me={share?.me ?? ''} cur={whoOf(layTasks?.[whoPick?.t.id])} {counts}
+    onpick={(w) => { const t = whoPick.t; whoPick = null; act.who(t, w); focusCard(t.id); }} onclose={() => (whoPick = null)} />
+{/if}
+
 {#snippet compose()}
   <div class="compose">
     <input bind:this={composeInput} bind:value={draft} type="text" aria-label="Название задачи" placeholder="Что сделать?" onkeydown={composeKey} />
@@ -266,7 +293,7 @@
 
 {#if view === 'stickers'}
 <div class="page bd stk-page">
-  <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs}
+  <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs} {share} {sphereName}
     headLine="{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»" {onedittemplate} {onarchive} />
 </div>
 {:else}
@@ -274,11 +301,19 @@
   <!-- Шапка по design/screens/Kanban.dc.html: сфера · шаблон над названием, справа фильтры и вид. -->
   <header class="bd-head">
     <div class="bd-title">
-      <p>{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
+      <p>{#if sphereName}<span class="bd-path">{sphereName}{#if share}<SharedTag small />{/if}</span>{' · '}{/if}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
         · <button type="button" class="link" title="Колонки, цвета, лимиты и поля шаблона" onclick={onedittemplate}>настроить</button></p>
-      <h1>{list?.title ?? 'Задачи'}</h1>
+      <h1>{list?.title ?? 'Задачи'}{#if share}<ShareBits {share} />{/if}</h1>
     </div>
     <div class="tb" role="group" aria-label="Фильтры">
+      {#if share}
+        <div class="sh-seg" role="group" aria-label="Чьи задачи">
+          <button type="button" aria-pressed={whoMode === 'all'} title="Все · Shift+A" onclick={() => share.onmode('all')}>Все<small>{whoN.all}</small></button>
+          <button type="button" aria-pressed={whoMode === 'mine'} title="Мои · Shift+M" onclick={() => share.onmode('mine')}><Avatar m={meM} size={18} me />Мои<small>{whoN.mine}</small></button>
+          <button type="button" aria-pressed={whoMode === 'none'} title="Без исполнителя · Shift+U" onclick={() => share.onmode('none')}><Avatar m={null} size={18} />Без исполнителя<small>{whoN.none}</small></button>
+        </div>
+        <span class="tb-sep" aria-hidden="true"></span>
+      {/if}
       {#each FILTERS as f (f.k)}
         <button type="button" class="fb" aria-pressed={filter === f.k} onclick={() => (filter = f.k)}>{f.label}</button>
       {/each}
@@ -289,7 +324,7 @@
   </header>
 
   {#if view === 'pipe' || view === 'gallery'}
-    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
+    <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {layList} {share} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
       onmenu={openMenu} />
   {:else if view === 'list'}
     <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
@@ -342,6 +377,7 @@
             next={isDoneCol ? null : next} selected={sel === task.id} editing={editing === task.id} ghost={dragId === task.id}
             onopen={(t) => act.open(t)} onadvance={(t) => act.stage(t, next.id)} ondue={(t) => act.open(t, true)}
             onmenu={(t, el) => openMenu(t, el)} onselect={(t) => (sel = t.id)}
+            assignee={assigneeOf(task)} mine={!!share && whoOf(layTasks?.[task.id]) === share.me} onwho={pickWho} wait={share?.waitOf?.(task.id) ?? null}
             onstartedit={(t) => (editing = t.id)} onendedit={() => (editing = '')} onrename={(t, title) => act.rename(t, title)}
             ondragstart={dragStart} ondragend={dragEnd} />
           </div>

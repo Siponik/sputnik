@@ -1,14 +1,25 @@
 // Обновление из приложения: Tauri updater смотрит latest.json в последнем релизе Siponik/sputnik
 // (адрес и открытый ключ — tauri.conf.json → plugins.updater). Установщик подписан, чужой файл не встанет.
-import { check } from '@tauri-apps/plugin-updater';
+// Бета-канал (settings.update.beta, только у владельца): сначала latest.json релиза tracker-beta (команда beta_check,
+// src-tauri/src/beta.rs), если там ничего нового или канал недоступен — обычный: 0.7.3-beta.2 обновится на вышедший 0.7.3 сам.
+import { check, Update } from '@tauri-apps/plugin-updater';
+import { invoke } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
 
 export const currentVersion = () => getVersion().catch(() => '');
 
-/** Есть ли новая версия: { version, notes, update } или null. В режиме разработки обновлений нет. */
-export async function findUpdate() {
-  if (import.meta.env.DEV) return null;
+/** Есть ли новая версия: { version, notes, update, beta } или null. В режиме разработки обновлений нет. */
+export async function findUpdate(beta = false) {
+  if (import.meta.env.DEV && import.meta.env.MODE !== 'demo') return null;
+  if (beta && import.meta.env.MODE !== 'demo') {
+    // Канал недоступен (ещё нет ни одной беты, нет сети до GitHub) — не ошибка, проверяем обычный.
+    const meta = await invoke('beta_check').catch((e) => (console.warn('Бета-канал:', e), null));
+    if (meta) {
+      const update = new Update(meta);
+      return { version: update.version, notes: update.body ?? '', update, beta: true };
+    }
+  }
   const update = await check({ timeout: 30000 });
   return update ? { version: update.version, notes: update.body ?? '', update } : null;
 }

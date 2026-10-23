@@ -1,7 +1,7 @@
 // Напоминания (lib/reminders.js): когда срабатывают и что уходит в файл для бота.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fireAt, collect, defaultMins, defaultRule, minsToRule, rulesOf, leadsText } from '../src/lib/reminders.js';
+import { fireAt, setDefaultTime, collect, defaultMins, defaultRule, minsToRule, rulesOf, leadsText, assignedItems } from '../src/lib/reminders.js';
 
 const local = (y, m, d, hh = 0, mm = 0) => new Date(y, m - 1, d, hh, mm);
 const task = (due, extra = {}) => ({ id: 't1', title: 'Рендер', due: `${due}T00:00:00.000Z`, status: 'needsAction', ...extra });
@@ -57,4 +57,35 @@ test('collect: события и дни рождения с напоминани
   assert.equal(b.title, 'Аня');
   assert.equal(b.due, '2099-05-01');
   assert.equal(b.lead, 'В день рождения');
+});
+
+test('«Задачи без времени — во сколько» (Настройки): без времени напоминание идёт от выбранного часа', () => {
+  setDefaultTime('09:00');
+  try {
+    assert.deepEqual(fireAt({ kind: 'lead', min: 0 }, task('2026-10-21')), local(2026, 10, 21, 9, 0));
+    assert.deepEqual(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21'), { s: '15:00', e: '16:00' }), local(2026, 10, 21, 14, 0));
+  } finally { setDefaultTime(null); }
+  assert.deepEqual(fireAt({ kind: 'lead', min: 0 }, task('2026-10-21')), local(2026, 10, 21, 10, 0));
+});
+
+test('«Задачи без времени — не напоминать»: молчат только «до начала» у задач без времени', () => {
+  setDefaultTime('off');
+  try {
+    assert.equal(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21')), null);
+    assert.deepEqual(fireAt({ kind: 'lead', min: 60 }, task('2026-10-21'), { s: '15:00', e: '16:00' }), local(2026, 10, 21, 14, 0));
+    assert.deepEqual(fireAt({ kind: 'before', days: 1, time: '09:00' }, task('2026-10-21')), local(2026, 10, 20, 9, 0));
+  } finally { setDefaultTime(null); }
+});
+
+test('assignedItems: «тебе отдали» — одно сообщение сразу, не позже суток, без кнопки «Готово»', () => {
+  const now = Date.parse('2026-10-22T10:00:00Z');
+  const lists = [{ id: 'sh:l1', title: 'Ассеты таверны' }];
+  const tasks = { 'sh:l1': [{ id: 'a', title: 'Сундук', status: 'needsAction' }, { id: 'b', title: 'Старое' }, { id: 'c', title: 'Готово', status: 'completed' }] };
+  const L = { a: { given: { by: 'anya@x.com', name: 'Аня', at: '2026-10-22T09:59:00Z' } }, b: { given: { at: '2026-10-20T09:00:00Z' } }, c: { given: { at: '2026-10-22T09:00:00Z' } } };
+  const items = assignedItems(lists, tasks, L, now);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].kind, 'assigned');
+  assert.equal(items[0].note, 'Аня отдаёт тебе задачу');
+  assert.equal(items[0].taskId, undefined);
+  assert.equal(items[0].key, 'given|a|2026-10-22T09:59:00Z');
 });
