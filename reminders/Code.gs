@@ -168,18 +168,16 @@ function esc_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Утренняя сводка: ссылка в Telegram (по умолчанию по будням в 08:00 МСК) ──
+// ── Утренняя сводка в Telegram (по умолчанию по будням в 08:00 МСК) ──
 // tick() идёт раз в минуту. Время, дни и паузу меняют командами боту (Bot.gs): свойства BRIEF_AT, BRIEF_DAYS, BRIEF_OFF.
-// Синхронизация со сборкой: задача Claude «Утренняя сводка» собирает страницу заранее (по будням в 5:45 МСК)
-// и, опубликовав её, ставит в календарь «Спутник · входящие» событие «Спутник · сводка готова» на сегодня.
-// Ссылка уходит в выбранное время, но не раньше этой отметки; если отметки нет — ждём до BRIEF_WAIT_MIN
-// после выбранного времени и шлём с пометкой, что по ссылке прошлая сводка.
-// Ссылка на страницу сводки — не в репозитории: apps-script.yml пишет Private.gs из переменной Actions BRIEF_URL
-// (или свойство скрипта BRIEF_URL).
-const BRIEF_URL_DEFAULT = typeof BRIEF_URL_PRIVATE !== 'undefined' ? BRIEF_URL_PRIVATE : '';
+// С 23.10 без Claude: сообщение = встречи дня + задачи дня (todayBrief_) + новости. Новости собирает GitHub Actions
+// (.github/workflows/news.yml, tools/news/) из RSS-лент и бесплатной модели, страница — на GitHub Pages (NEWS_URL),
+// data.json рядом с ней: дата сборки, число пунктов, тройка главных. Свежих новостей ещё нет — ждём до NEWS_WAIT_MIN
+// после выбранного времени, потом шлём без них. Другая ссылка — свойство скрипта NEWS_URL.
+const NEWS_URL_DEFAULT = 'https://siponik.github.io/sputnik/news/';
 const BRIEF_AT_DEFAULT = 8 * 60; // минуты от полуночи по Москве
-const BRIEF_READY_TITLE = 'Спутник · сводка готова';
-const BRIEF_WAIT_MIN = 180;
+const BRIEF_READY_TITLE = 'Спутник · сводка готова'; // старая отметка от задачи Claude — Inbox.gs её пропускает
+const NEWS_WAIT_MIN = 60;
 
 /** Время отправки в минутах от полуночи по Москве. */
 function briefAt_() {
@@ -192,19 +190,43 @@ function briefDays_() {
   return PropertiesService.getScriptProperties().getProperty('BRIEF_DAYS') === 'all' ? 'all' : 'work';
 }
 
-/** Есть ли сегодня отметка «сводка готова». Старые отметки заодно удаляет. */
-function briefReady_() {
-  const cal = typeof inboxCalendar_ === 'function' ? inboxCalendar_(false) : null;
-  if (!cal) return null; // календаря нет — синхронизация не работает, шлём по времени
-  const now = new Date(), tz = 'Europe/Moscow';
-  const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
-  let ready = false;
-  for (const ev of cal.getEvents(new Date(now.getTime() - 7 * 864e5), new Date(now.getTime() + 864e5))) {
-    if (ev.getTitle().indexOf(BRIEF_READY_TITLE) !== 0) continue;
-    if (Utilities.formatDate(ev.getStartTime(), tz, 'yyyy-MM-dd') === today) ready = true;
-    else ev.deleteEvent();
+function newsUrl_() {
+  return PropertiesService.getScriptProperties().getProperty('NEWS_URL') || NEWS_URL_DEFAULT;
+}
+
+/** data.json сборки новостей или null (страница ещё не выложена, нет связи). */
+function newsData_() {
+  try {
+    const r = UrlFetchApp.fetch(newsUrl_() + 'data.json?t=' + Date.now(), { muteHttpExceptions: true });
+    return r.getResponseCode() === 200 ? JSON.parse(r.getContentText()) : null;
+  } catch (e) {
+    console.error('Новости: ' + e);
+    return null;
   }
-  return ready;
+}
+
+/** Строки о новостях для сообщения: число, большое обновление Dota 2 и три главных со ссылками. */
+function newsLines_(data) {
+  if (!data || !data.count) return '';
+  const lines = ['\n\n📰 <b>Новости · ' + data.count + '</b>'];
+  if (data.dota && data.dota.stage === 'big') lines.push('✦ <a href="' + esc_(data.dota.url) + '">Dota 2: ' + esc_(data.dota.title) + '</a>');
+  for (const t of (data.top || []).slice(0, 3)) lines.push('• <a href="' + esc_(t.url) + '">' + esc_(t.title) + '</a>');
+  return lines.join('\n');
+}
+
+/** Встречи сегодня из основного календаря (до 5), или ''. */
+function eventsBrief_() {
+  try {
+    const tz = 'Europe/Moscow';
+    const evs = CalendarApp.getDefaultCalendar().getEventsForDay(new Date()).filter((e) => !e.isAllDayEvent());
+    if (!evs.length) return '\n\n📅 Встреч сегодня нет.';
+    const lines = evs.slice(0, 5).map((e) => '• ' + Utilities.formatDate(e.getStartTime(), tz, 'H:mm') + ' ' + esc_(e.getTitle()));
+    if (evs.length > 5) lines.push('…и ещё ' + (evs.length - 5));
+    return '\n\n📅 <b>Встречи</b>\n' + lines.join('\n');
+  } catch (e) {
+    console.error('Встречи для сводки: ' + e);
+    return '';
+  }
 }
 
 function morningTick_() {
@@ -215,20 +237,25 @@ function morningTick_() {
   if (dow > 5 && briefDays_() === 'work') return;
   const min = +Utilities.formatDate(now, tz, 'H') * 60 + +Utilities.formatDate(now, tz, 'm');
   const at = briefAt_();
-  if (min < at || min > at + BRIEF_WAIT_MIN) return;
+  if (min < at || min > at + 180) return;
   const today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
   if (props.getProperty('BRIEF_SENT') === today) return;
-  const ready = briefReady_();
-  // Свежей сводки ещё нет — ждём; в выходные (сводку не собирают) и по истечении ожидания шлём как есть.
-  if (ready === false && dow <= 5 && min < at + BRIEF_WAIT_MIN) return;
-  sendBrief_((ready === false ? '\n<i>Свежая сводка сегодня не собралась — по ссылке прошлая.</i>' : '') + (typeof todayBrief_ === 'function' ? todayBrief_() : ''));
+  // Новости сегодня ещё не собрались — проверяем раз в 5 минут, ждём до NEWS_WAIT_MIN.
+  if (min > at && (min - at) % 5) return;
+  const data = newsData_();
+  const fresh = data && data.date === today ? data : null;
+  if (!fresh && min < at + NEWS_WAIT_MIN) return;
+  sendBrief_(fresh);
   props.setProperty('BRIEF_SENT', today);
 }
 
-/** Отправить ссылку на сводку прямо сейчас (для проверки). */
-function sendBrief_(note) {
-  const url = PropertiesService.getScriptProperties().getProperty('BRIEF_URL') || BRIEF_URL_DEFAULT;
-  send_('🛰 Спутник · утренняя сводка готова' + (note || ''), { inline_keyboard: [[{ text: 'Открыть сводку', url: url }]] });
+/** Утреннее сообщение прямо сейчас (/now, проверка). data — новости; не передали — прочитаем сами. */
+function sendBrief_(data) {
+  if (data === undefined) data = newsData_();
+  const tz = 'Europe/Moscow';
+  const head = '🛰 <b>Спутник · утро</b> · ' + Utilities.formatDate(new Date(), tz, 'd.MM');
+  const tasks = typeof todayBrief_ === 'function' ? todayBrief_() : '';
+  send_(head + eventsBrief_() + tasks + newsLines_(data), { inline_keyboard: [[{ text: 'Открыть новости', url: newsUrl_() }]] });
 }
 
 /** Запустить вручную из редактора: пришлёт сводку сейчас — проверка, что всё работает. */

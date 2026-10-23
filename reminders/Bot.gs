@@ -14,7 +14,7 @@
 //   /help          — список команд
 
 const BOT_VERSION = '5'; // поменять, когда меняется меню команд: бот обновит его и расскажет, что нового
-const BRIEF_READY_AT = 6 * 60; // сводка обычно готова к 6:00 МСК (задача Claude «Утренняя сводка» стартует в 5:45)
+const BRIEF_READY_AT = 5 * 60 + 40; // новости собираются около 5:30 МСК (.github/workflows/news.yml)
 
 /** Запустить один раз: включает меню команд в Telegram и шлёт пробное сообщение. */
 function setupBot() {
@@ -198,7 +198,7 @@ function handle_(text) {
     props.setProperty('BRIEF_AT', String(t));
     props.deleteProperty('BRIEF_OFF');
     let msg = '✅ Сводка будет приходить в ' + hhmm_(t) + ' (' + daysText_() + ').';
-    if (t < BRIEF_READY_AT) msg += '\nСводка собирается около 6:00 — если к ' + hhmm_(t) + ' она не будет готова, пришлю, как только соберётся.';
+    if (t < BRIEF_READY_AT) msg += '\nНовости собираются около 5:30 — если к ' + hhmm_(t) + ' их ещё не будет, подожду до часа.';
     return msg;
   }
   if (cmd === '/days') {
@@ -206,7 +206,6 @@ function handle_(text) {
     else if (/^(будн|раб|work)/.test(arg)) props.setProperty('BRIEF_DAYS', 'work');
     else return 'Напиши /days будни или /days все. Сейчас: ' + daysText_() + '.';
     let msg = '✅ Сводка приходит ' + daysText_() + ' в ' + hhmm_(briefAt_()) + '.';
-    if (briefDays_() === 'all') msg += '\n⚠ Саму сводку Claude пока собирает только по будням — в выходные по ссылке будет пятничная.';
     return msg;
   }
   if (cmd === '/off') {
