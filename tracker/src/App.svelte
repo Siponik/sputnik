@@ -30,7 +30,7 @@
   import Settings from './lib/Settings.svelte';
   import ItemMenu from './lib/ItemMenu.svelte';
   import ConfirmDelete from './lib/ConfirmDelete.svelte';
-  import { isDone, logKey, stats, plural, MILESTONES } from './lib/habits.js';
+  import { isDone, logKey, stats, plural, MILESTONES, sortHabits, nextMark, dayMark, unitForms } from './lib/habits.js';
   import * as notify from '@tauri-apps/plugin-notification';
   import * as updater from './lib/updater.js';
   import * as meta from './lib/meta.js';
@@ -49,6 +49,7 @@
   import * as sh from './lib/sharedcore.js';
   import ShareSphere from './lib/ShareSphere.svelte';
   import * as shell from './lib/shell.js';
+  import { accentCss } from './lib/accent.js';
   import StatusPop from './lib/StatusPop.svelte';
   import Popover from './lib/Popover.svelte';
 
@@ -86,13 +87,17 @@
     return boardLists.reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
   });
 
-  const habits = $derived(habitList
+  const habitsRaw = $derived(habitList
     ? (tasks[habitList.id] ?? []).filter((t) => !t.parent && t.status !== 'completed')
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
-        .map((t) => ({ id: t.id, name: t.title || 'Без названия', days: lay.habits?.[t.id]?.days ?? [], time: lay.habits?.[t.id]?.time ?? null, createdAt: lay.habits?.[t.id]?.createdAt }))
-        // привычки со временем — по времени, без времени — после них, в порядке списка
-        .sort((a, b) => (a.time ?? '99').localeCompare(b.time ?? '99'))
+        .map((t) => {
+          const m = lay.habits?.[t.id] ?? {};
+          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], time: m.time ?? null, createdAt: m.createdAt,
+            part: m.part ?? null, perWeek: m.perWeek ?? null, goal: m.goal ?? null, icon: m.icon ?? null, color: m.color ?? null, remind: m.remind ?? null, tipHide: m.tipHide ?? null };
+        })
     : []);
+  // Порядок карточек на «Привычках» (по части дня, внутри — по времени) — его же держат Shift+1…9.
+  const habits = $derived(sortHabits(habitsRaw));
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
 
@@ -387,12 +392,15 @@
     { id: 'habits', kind: 'Раздел', name: 'Привычки', view: 'habits', alias: ['habits'] },
     { id: 'archive', kind: 'Раздел', name: 'Архив', view: 'archive' },
     { id: 'templates', kind: 'Раздел', name: 'Шаблоны досок', view: 'templates' },
+    ...habits.map((h) => ({ id: 'hab-' + h.id, kind: 'Привычка', name: h.name, view: 'habits', habitId: h.id })),
     ...boardLists.map((l) => ({ id: l.id, kind: 'Список', name: l.title, listId: l.id, n: (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length })),
   ]);
   function searchGo(p) {
     searchOpen = false;
     if (p.listId) { activeId = p.listId; boardProject = null; go('board'); } else go(p.view);
+    if (p.habitId) habitOpen = { id: p.habitId }; // привычка из поиска — сразу её панель
   }
+  let habitOpen = $state(null);
   function searchOpenTask(listId, id) { searchOpen = false; openRef = { listId, id }; }
   const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
   /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
@@ -474,6 +482,7 @@
     const minTimer = setInterval(() => {
       nowMin = Date.now();
       if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
+      if (phase === 'ready') habitWin();
     }, 60e3);
     const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
     const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
@@ -1616,10 +1625,13 @@
 
   // ---------- привычки ----------
 
+  // Отметка сегодня; у привычки с целью на день (goal) — «+1», по достижении цели — сделано.
   function toggleHabit(h) {
     const day = api.ymd(new Date());
-    const done = !isDone(lay.log, h.id, day);
-    touch('log', logKey(h.id, day), { done, rest: false });
+    const was = isDone(lay.log, h.id, day);
+    touch('log', logKey(h.id, day), nextMark(lay.log, h, day));
+    const done = isDone(lay.log, h.id, day);
+    if (done === was) { saveLayer(); return; } // «+1», цель ещё не набрана
     if (done) {
       const n = stats(h, lay.log).streak;
       if (MILESTONES.includes(n) && lay.habits?.[h.id]?.cheer?.key !== `${n}|${day}`) celebrate(h, n, day);
@@ -1632,11 +1644,37 @@
     saveLayer();
   }
 
+  // Привычки с «Напомнить: Windows» (habits[id].remind.win): уведомление, если к своему времени не отмечено.
+  // Что уже показано сегодня — localStorage hb.win (у каждого компьютера своё).
+  async function habitWin() {
+    let sent = [];
+    try { sent = JSON.parse(localStorage.getItem('hb.win') || '[]'); } catch {}
+    const due = reminders.habitWinDue(habits, lay.log, sent);
+    if (!due.length) return;
+    const today = api.ymd(new Date());
+    sent = [...sent.filter((k) => k.endsWith('|' + today)), ...due.map((h) => `${h.id}|${today}`)];
+    try { localStorage.setItem('hb.win', JSON.stringify(sent)); } catch {}
+    try {
+      let ok = await notify.isPermissionGranted();
+      if (!ok) ok = (await notify.requestPermission()) === 'granted';
+      if (ok) for (const h of due) notify.sendNotification({ title: 'Спутник · привычка', body: `Пора: ${h.name}. Отметь, когда сделаешь — серия ждёт.` });
+    } catch { /* уведомления недоступны */ }
+  }
+
+  // Отметка задним числом (меню дня в «Месяце» и в панели привычки): done | miss | skip («не считать»).
+  function setHabitDay(h, day, state) {
+    touch('log', logKey(h.id, day), dayMark(h, state));
+    if (state === 'done' && day === api.ymd(new Date())) {
+      const n = stats(h, lay.log).streak;
+      if (MILESTONES.includes(n) && lay.habits?.[h.id]?.cheer?.key !== `${n}|${day}`) celebrate(h, n, day);
+    }
+    saveLayer();
+  }
+
   // Веха серии (7 · 21 · 50 · 100): праздник на экране, уведомление Windows и сообщение бота (через файл напоминаний).
   let cele = $state(null); // { id, name, n }
   async function celebrate(h, n, day) {
-    const forms = !h.days?.length || h.days.length === 7 ? ['день', 'дня', 'дней'] : ['занятие', 'занятия', 'занятий'];
-    const text = `${h.name} — ${n} ${plural(n, forms)} подряд!`;
+    const text = `${h.name} — ${n} ${plural(n, unitForms(h))} подряд!`;
     cele = { id: h.id, name: h.name, n, text };
     touch('habits', h.id, { cheer: { key: `${n}|${day}`, n, text, at: new Date().toISOString() } });
     if (view !== 'habits') say(`🎉 Новая веха: ${text}`);
@@ -1652,7 +1690,11 @@
     return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
   }));
 
-  async function createHabit(name, days, time = null) {
+  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, time, part, perWeek, goal, icon, color, remind, tipHide).
+  const HABIT_FIELDS = ['days', 'time', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
+  const habitPatch = (f) => Object.fromEntries(HABIT_FIELDS.filter((k) => k in f).map((k) => [k, f[k]]));
+  async function createHabit(f) {
+    const name = f.name;
     try {
       let l = habitList;
       if (!l) {
@@ -1663,16 +1705,17 @@
       }
       const t = await api.createTask(l.id, { title: name });
       tasks[l.id] = [...(tasks[l.id] ?? []), t];
-      touch('habits', t.id, { days, time, createdAt: api.ymd(new Date()) });
+      touch('habits', t.id, { ...habitPatch(f), createdAt: api.ymd(new Date()) });
       saveLayer();
     } catch (e) { say('Не удалось добавить привычку: ' + e); }
   }
 
-  async function updateHabit(id, { name, days, time = null }) {
-    touch('habits', id, { days, time });
+  async function updateHabit(id, f) {
+    const name = f.name;
+    touch('habits', id, habitPatch(f));
     saveLayer();
     const t = (tasks[habitList.id] ?? []).find((x) => x.id === id);
-    if (t && t.title !== name) {
+    if (t && name && t.title !== name) {
       try { replace(habitList.id, await api.patchTask(habitList.id, id, { title: name })); }
       catch (e) { say('Не удалось переименовать: ' + e); }
     }
@@ -1775,6 +1818,19 @@
     const el = document.documentElement;
     if (themePref === 'dark' || themePref === 'light') el.setAttribute('data-theme', themePref);
     else if (lay.settings?.theme) el.removeAttribute('data-theme');
+  });
+  // Акцент: settings.accent.v = набор или свой «#RRGGBB» → <style id="sp-accent"> поверх токенов (lib/accent.js).
+  // Пока слой грузится — цвет с прошлого запуска (localStorage sp.accent), чтобы не мигала глина.
+  let accentLast = null;
+  try { accentLast = localStorage.getItem('sp.accent'); } catch {}
+  const accentPref = $derived(phase === 'loading' ? accentLast : lay.settings?.accent?.v ?? null);
+  $effect(() => {
+    const css = accentCss(accentPref);
+    if (phase !== 'loading') try { accentPref ? localStorage.setItem('sp.accent', accentPref) : localStorage.removeItem('sp.accent'); } catch {}
+    let el = document.getElementById('sp-accent');
+    if (!css) { el?.remove(); return; }
+    if (!el) { el = document.createElement('style'); el.id = 'sp-accent'; document.head.appendChild(el); }
+    el.textContent = css;
   });
   // «Задачи без времени — во сколько» (settings.remindHour).
   $effect(() => reminders.setDefaultTime(lay.settings?.remindHour?.v ?? '10:00'));
@@ -1897,7 +1953,7 @@
             oncreatetask={(p) => quickCreate(p)}
             oncreateevent={createEvent} filter={sphFilter} />
         {:else if view === 'habits'}
-          <Habits {habits} log={lay.log} {cele} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onclosecele={() => (cele = null)}
+          <Habits {habits} log={lay.log} {cele} open={habitOpen} onopened={() => (habitOpen = null)} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onday={setHabitDay} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}

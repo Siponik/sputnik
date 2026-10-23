@@ -10,6 +10,7 @@
 // а скрипт Google Apps Script (reminders/Code.gs) раз в минуту читает его и пишет в Telegram.
 import { gapi, dueToYmd, ymd } from './api.js';
 import { habitDay } from './calendar.js';
+import { remindAt } from './habits.js';
 
 export const BEFORE = [
   { days: 0, name: 'В день срока' },
@@ -208,15 +209,16 @@ export function assignedItems(lists, tasksByList, layTasks, now = Date.now()) {
   return items;
 }
 
-/** Напоминания о привычках со временем (habits[id].time) — на 7 дней вперёд, только по расписанию.
+/** Напоминания о привычках со временем (habits[id].time, или время части дня: утро 10:00, день 15:00, вечер 21:00)
+ *  — на 7 дней вперёд, только по расписанию. habits[id].remind.tg === false — в Telegram не слать.
  *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
  *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
 export function habitItems(habits, log, now = new Date()) {
   const items = [];
   const today = ymd(now);
   for (const h of habits) {
-    const m = /^(\d{1,2}):(\d{2})$/.exec(h.time ?? '');
-    if (!m) continue;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(remindAt(h) ?? '');
+    if (!m || h.remind?.tg === false) continue;
     for (let i = 0; i < 7; i++) {
       const at = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i, +m[1], +m[2]);
       const day = ymd(at);
@@ -226,7 +228,7 @@ export function habitItems(habits, log, now = new Date()) {
         key: `habit|${h.id}|${day}`,
         kind: 'habit',
         title: h.name,
-        note: '',
+        note: h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '',
         list: 'Привычки',
         due: '',
         fireAt: at.toISOString(),
@@ -234,6 +236,20 @@ export function habitItems(habits, log, now = new Date()) {
     }
   }
   return items;
+}
+
+/** Уведомления Windows о привычках (habits[id].remind.win): какие пора показать сейчас — время прошло не больше 30 мин
+ *  назад, по расписанию, не отмечено, и сегодня ещё не показывали (sent — ключи «id|день»). */
+export function habitWinDue(habits, log, sent = [], now = new Date()) {
+  const today = ymd(now);
+  return habits.filter((h) => {
+    if (!h.remind?.win || sent.includes(`${h.id}|${today}`)) return false;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(remindAt(h) ?? '');
+    if (!m) return false;
+    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), +m[1], +m[2]).getTime();
+    const d = habitDay(h, log, today, today);
+    return d.sched && !d.done && now.getTime() >= at && now.getTime() - at < 30 * 60e3;
+  });
 }
 
 // ---------- файл на Google Drive ----------

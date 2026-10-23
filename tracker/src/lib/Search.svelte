@@ -13,7 +13,8 @@
   let box;
 
   const found = $derived(q.trim() ? findTasks(q, lists, tasks) : []);
-  const jumps = $derived(findPlaces(q, places).slice(0, q.trim() ? 4 : places.length));
+  // Без запроса — разделы и списки; привычки — только когда ищут.
+  const jumps = $derived(q.trim() ? findPlaces(q, places).slice(0, 4) : places.filter((p) => p.kind !== 'Привычка'));
   // Одна общая лента для стрелок: сначала переходы, потом задачи.
   const rows = $derived([...jumps.map((p) => ({ kind: 'place', key: 'p' + p.id, p })), ...found.map((x) => ({ kind: 'task', key: 't' + x.task.id, x }))]);
 
