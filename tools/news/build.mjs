@@ -37,14 +37,18 @@ let pool = unseen(fresh(all.filter((i) => !(i.dota && i === dotaItem)), now), se
 // Обычные объявления Dota без большого обновления — в «Обновления игр» как остальные; хотфиксы ИИ отсеет.
 pool.sort((a, b) => b.at - a.at);
 const perSec = Object.fromEntries(SECTIONS.map((s) => [s.id, 0]));
-pool = pool.filter((i) => (perSec[i.sec] = (perSec[i.sec] || 0) + 1) <= 30); // не больше 30 кандидатов на раздел
+// У GitHub Models на бесплатном уровне запрос до ~8 тыс. токенов — кандидатов меньше и текст короче; у Gemini — с запасом.
+const big = !!process.env.GEMINI_API_KEY;
+const PER_SEC = big ? 30 : 10, TEXT = big ? 300 : 110;
+pool = pool.filter((i) => (perSec[i.sec] = (perSec[i.sec] || 0) + 1) <= PER_SEC);
 pool.forEach((c, k) => { c.id = 'c' + k; c.date = shortDate(c.at); });
+const cands = pool.map((c) => ({ ...c, text: plain(c.text, TEXT) }));
 
 let picked = null, headline = '', viaAi = false;
 try {
-  let text = prompt(pool, SECTIONS, dota && dota.stage === 'big' ? dota.item.title : '');
+  let text = prompt(cands, SECTIONS, dota && dota.stage === 'big' ? dota.item.title : '');
   if (dota && dota.stage === 'big') {
-    text += `\n\nЕщё добавь в ответ поле "dota": {"title":"заголовок до 6 слов, например «Патч 7.42»","text":"одно-два предложения сути","points":["3–5 главных изменений, коротко"]} по этому объявлению Dota 2:\n${JSON.stringify({ title: dota.item.title, text: dota.item.text })}`;
+    text += `\n\nЕщё добавь в ответ поле "dota": {"title":"заголовок до 6 слов, например «Патч 7.42»","text":"одно-два предложения сути","points":["3–5 главных изменений, коротко"]} по этому объявлению Dota 2:\n${JSON.stringify({ title: dota.item.title, text: plain(dota.item.text, big ? 1500 : 600) })}`;
   }
   const ans = await retell(text);
   if (ans) {
