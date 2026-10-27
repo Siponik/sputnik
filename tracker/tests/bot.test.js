@@ -54,3 +54,12 @@ test('время сводки: /time 7:30', () => {
 test('esc_: разметка Telegram', () => {
   assert.equal(ctx.esc_('a < b & c > d'), 'a &lt; b &amp; c &gt; d');
 });
+
+test('утро: новости в сообщении — число, Dota 2 и три главных со ссылками; пусто — ничего', () => {
+  const s = ctx.newsLines_({ count: 27, dota: { stage: 'big', title: 'Патч 7.42', url: 'https://d/1' }, top: [{ title: 'A & B', url: 'https://a' }, { title: 'C', url: 'https://c' }] });
+  assert.ok(s.includes('Новости · 27'));
+  assert.ok(s.includes('<a href="https://d/1">Dota 2: Патч 7.42</a>'));
+  assert.ok(s.includes('<a href="https://a">A &amp; B</a>'));
+  assert.equal(ctx.newsLines_(null), '');
+  assert.equal(ctx.newsLines_({ count: 0 }), '');
+});

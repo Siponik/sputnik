@@ -1,0 +1,59 @@
+# Новости для утренней сводки — без Claude: RSS-ленты + один запрос к бесплатной модели (Gemini) на пересказ.
+# Страница публикуется на GitHub Pages: https://<владелец>.github.io/sputnik/news/ (только публичные новости, личного там нет).
+# Бот (reminders/Code.gs) утром читает news/data.json и присылает ссылку вместе с задачами и встречами дня.
+# Нужно один раз: Settings → Pages → Source: «GitHub Actions». Пересказ — GitHub Models (бесплатно, без ключа,
+# токен самого Actions). Свой ключ по желанию: секрет GEMINI_API_KEY или LLM_KEY + переменные LLM_URL/LLM_MODEL.
+# Модель не ответила — новости собираются без пересказа: оригинальные заголовки и начало текста.
+name: Новости
+
+on:
+  schedule:
+    # Каждый день в 02:20 UTC = 05:20 МСК
+    - cron: "20 2 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  models: read
+  id-token: write
+
+concurrency:
+  group: news
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}news/
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Прошлая сборка (чтобы не повторяться)
+        run: |
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          curl -fsSL "https://$owner.github.io/${{ github.event.repository.name }}/news/data.json" -o prev.json || echo '{}' > prev.json
+
+      - name: Собрать новости
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          LLM_KEY: ${{ secrets.LLM_KEY || github.token }}
+          LLM_URL: ${{ vars.LLM_URL || 'https://models.github.ai/inference/chat/completions' }}
+          LLM_MODEL: ${{ vars.LLM_MODEL || 'openai/gpt-4.1-mini' }}
+        run: |
+          node tools/news/build.mjs site/news prev.json
+          printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=news/"><a href="news/">Спутник · Новости</a>\n' > site/index.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - id: deploy
+        uses: actions/deploy-pages@v4
