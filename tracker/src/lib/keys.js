@@ -1,11 +1,11 @@
 // Горячие клавиши Спутника. Клавиши ловим по физической кнопке (e.code), поэтому они работают
 // и в русской раскладке: Q = Й, E = У, N = Т и т. д. Полный список — окно «?» (KeyHelp.svelte).
 
-/** Сейчас печатают в поле — одиночные клавиши не перехватываем. */
-export const typing = (e) => !!e.target?.closest?.('input, textarea, select, [contenteditable="true"]');
+/** Сейчас печатают в поле (или стоят на выпадающем списке) — одиночные клавиши не перехватываем. */
+export const typing = (e) => !!e.target?.closest?.('input, textarea, select, .ddb, [contenteditable="true"]');
 
-/** Открыто окно поверх экрана (задача, «Создать», новый список, подсказка). */
-export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win, .pvw');
+/** Открыто окно поверх экрана (задача, «Создать», новый список, подсказка, меню выпадающего списка). */
+export const overlay = () => !!document.querySelector('.drawer, .dialog, .cr-win, .dtp, .cmenu, .stg-win, .pvw, .ddm');
 
 /** Одиночная клавиша без Ctrl/Alt/Win (Shift разрешён только там, где он часть знака, например «?»). */
 export const plain = (e) => !e.ctrlKey && !e.altKey && !e.metaKey;

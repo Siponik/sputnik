@@ -2,6 +2,7 @@
   // Окно привычки (design/screens/HabitEdit.dc.html): «＋ Привычка», «Создать» на экране привычек, «Изменить» в панели.
   // Значок и цвет, как часто, цель на день, когда, напомнить; превью «Так будет». Enter — сохранить, Esc — отмена.
   import * as H from './habits.js';
+  import Dropdown from './Dropdown.svelte';
   import { ICONS, ICON_IDS, COLORS, COLOR_IDS, iconOf, UNITS } from './habitIcons.js';
   import { fade, pop } from './motion.js';
 
@@ -48,7 +49,7 @@
   }
   function toggleDay(d) { days = days.includes(d) ? days.filter((x) => x !== d) : [...days, d]; }
   function key(e) {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onclose(); }
+    if (e.key === 'Escape' && !document.querySelector('.ddm')) { e.preventDefault(); e.stopPropagation(); onclose(); } // открыт выпадающий список — Esc закроет его
   }
 </script>
 
@@ -102,7 +103,7 @@
         <button type="button" class="op" aria-pressed={goalOn} onclick={() => (goalOn = true)}>Количество</button>
         {#if goalOn}
           <span class="num"><button type="button" aria-label="Меньше" onclick={() => (goalN = Math.max(2, goalN - 1))}>−</button>{goalN}<button type="button" aria-label="Больше" onclick={() => (goalN = Math.min(99, goalN + 1))}>+</button></span>
-          <select class="op" bind:value={unit} aria-label="Чего">{#each UNITS as u (u)}<option value={u}>{u}</option>{/each}</select>
+          <Dropdown ghost small label="Чего" value={unit} options={UNITS.map((u) => ({ id: u, label: u }))} onchange={(v) => (unit = v)} />
         {/if}
       </div>
       {#if goalOn}<p class="hint">На карточке будет «+1», а не галочка.</p>{/if}

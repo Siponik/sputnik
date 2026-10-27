@@ -10,9 +10,11 @@
   import CalMonth from './CalMonth.svelte';
   import DateTimePicker from './DateTimePicker.svelte';
   import Coon from './Coon.svelte';
+  import Dropdown from './Dropdown.svelte';
+  import { listChoices } from './spheres.js';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
-    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0, filter = null } = $props();
+    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0, filter = null, layer = null } = $props();
 
   // Вид и фильтры запоминаем на этом компьютере — это удобство, не данные.
   const remember = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -191,6 +193,7 @@
 
   const TIMES = ['all', '10:00', '14:00', '19:00'];
   const cmpTimes = $derived(cmp.time !== 'all' && !TIMES.includes(cmp.time) ? [...TIMES, cmp.time] : TIMES);
+  const listPick = $derived(listChoices(lists, layer));
   const cmpList = $derived(cmp.listId && lists.some((l) => l.id === cmp.listId) ? cmp.listId : lists[0]?.id ?? '');
   const shortDay = (day) => { const d = cal.parseYmd(day); return `${d.getDate()} ${cal.MONTH_GEN[d.getMonth()].slice(0, 3)}.`; };
   const cmpHint = $derived(cmp.kind === 'event'
@@ -457,9 +460,9 @@
             <button type="button" title="Другой день или точное время" onclick={() => (cmpPick = true)}>Другое время…</button>
           </div>{/if}
           {#if cmp.kind === 'task' && lists.length > 1}
-            <select class="cmp-list" aria-label="Список" value={cmpList} onchange={(e) => (cmp.listId = e.currentTarget.value)}>
-              {#each lists as l (l.id)}<option value={l.id}>{l.title}</option>{/each}
-            </select>
+            <Dropdown cls="cmp-list" label="Список" search={lists.length > 6} searchPlaceholder="Найти список…" foot={lists.length > 6}
+              mark="dot" value={cmpList} options={listPick.options} groups={listPick.groups} emptyText={(q) => `Нет списка «${q}»`}
+              onchange={(v) => (cmp.listId = v)} />
           {/if}
           <p class="cmp-hint">{cmpHint}</p>
           <div style="display: flex; gap: 6px">

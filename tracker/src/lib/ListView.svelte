@@ -4,11 +4,13 @@
   import { humanDue, dueState } from './api.js';
   import { colColor, isArchived } from './templates.js';
   import { priorityOf, priorityRank } from './meta.js';
+  import Dropdown from './Dropdown.svelte';
 
   let { tasks, cols, colOf, layTasks, fields = [], visible = () => true, onopen, onmove, onmenu } = $props();
   // Правый клик по строке — то же меню задачи, что на канбане (onmenu от доски).
 
   const has = (f) => fields.includes(f);
+  const stageOpts = $derived(cols.map((x) => ({ id: x.id, label: x.name, color: colColor(x) })));
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
   const rows = $derived(tasks.filter((t) => !t.parent && visible(t) && !isArchived(t))
     .sort((a, b) => cols.findIndex((c) => c.id === colOf(a, cols)) - cols.findIndex((c) => c.id === colOf(b, cols))
@@ -25,12 +27,9 @@
     {@const ds = dueState(t)}
     <!-- svelte-ignore a11y_no_static_element_interactions -->
     <div class="lvr" class:done={t.status === 'completed'} oncontextmenu={(e) => { e.preventDefault(); onmenu?.(t, e.currentTarget); }}>
-      <label class="lv-stage" style="--c: {colColor(c)}" title="Этап">
-        <span class="dot"></span>
-        <select value={c.id} aria-label="Этап задачи «{t.title}»" onchange={(e) => onmove(t, e.currentTarget.value)}>
-          {#each cols as x (x.id)}<option value={x.id}>{x.name}</option>{/each}
-        </select>
-      </label>
+      <span class="lv-stage" style="--c: {colColor(c)}">
+        <Dropdown ghost small mark="dot" title="Этап" label="Этап задачи «{t.title}»" value={c.id} options={stageOpts} onchange={(v) => onmove(t, v)} />
+      </span>
       <button type="button" class="lv-title" onclick={() => onopen(t)}>{t.title || 'Без названия'}</button>
       {#if has('prio') && pr && t.status !== 'completed'}<span class="prio {pr.cls}">{pr.mark}</span>{/if}
       {#if (has('progress') || has('subtasks')) && subs.length}

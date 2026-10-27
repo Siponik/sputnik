@@ -224,7 +224,6 @@
 .hb-dlg .op[aria-pressed="true"] { border-color: var(--clay); background: var(--clay-soft); color: var(--ink); }
 .hb-dlg .op.day { min-width: 40px; justify-content: center; padding: 0 8px; }
 .hb-dlg .op.tm { border-color: var(--clay); background: var(--clay-soft); color: var(--ink); color-scheme: inherit; }
-.hb-dlg select.op { padding-right: 8px; }
 .hb-dlg .op svg.li { width: 14px; height: 14px; }
 .hb-dlg .icg { display: flex; gap: 6px; flex-wrap: wrap; }
 .hb-dlg .icg button { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--bg); color: var(--ink-soft); display: grid; place-items: center; cursor: pointer; padding: 0; }
