@@ -724,16 +724,6 @@
   // ---------- доска: проекты и совет енота ----------
 
   let boardProject = $state(null);
-  // Проекты — группы Конвейера, на других досках фильтр по ним не нужен.
-  const projects = $derived.by(() => {
-    const n = {};
-    if (viewFor(activeId) !== 'pipe') return [];
-    for (const t of tasks[activeId] ?? []) {
-      const p = !t.parent && t.status !== 'completed' && lay.tasks?.[t.id]?.project;
-      if (p) n[p] = (n[p] ?? 0) + 1;
-    }
-    return Object.entries(n).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
-  });
   // Советы енота (2–3 для текущей доски): «Начни с …», лимит колонки, разбор входящих. Ссылка под советом — делает то, что
   // предлагает енот. «×» — скрыть до завтра (settings.tipHide), совсем — Настройки → Вид → «Енот-советчик» (settings.tips).
   const boardTips = $derived.by(() => {
@@ -1945,10 +1935,10 @@
       {#if view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates'}
         <Side {spheres} listsOf={sphereLists} {peopleOf} {together} me={meEmail} noSphere={noSphereLists} count={openCount} viewOf={viewFor} {activeId}
           current={view} {activeSphere} folded={(id) => !!lay.settings?.sphereFold?.[id]}
-          {projects} project={boardProject} tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
+          tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
           pinned={sidePinned} hold={!!sideMenu}
           onlist={openList} onsphere={openSphere} onfold={foldSphere} onmenu={openSideMenu} onadd={openAddMenu}
-          onproject={(p) => (boardProject = p)} ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
+          ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
           onshow={() => openSettings('show')} onpin={togglePin} ontip={runTip} ontiphide={hideTips}
           onregister={(api) => (sideApi = api)} />
       {/if}
@@ -2035,7 +2025,7 @@
       preview={lay.tasks?.[openTask.id]?.preview ?? null} previewOff={previewOff(openRef.listId)}
       onpreview={(f) => setPreview(openTask.id, f, openTask.title)} onpreviewclear={() => clearPreview(openTask.id, openTask.title)}
       share={drawerShare} onwho={(w) => setWho(openTask.id, w)}
-      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
+      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
       onsave={save}
