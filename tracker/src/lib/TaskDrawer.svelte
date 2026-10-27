@@ -13,6 +13,8 @@
   import { whenText } from './when.js';
   import DateTimePicker from './DateTimePicker.svelte';
   import { REPEATS, nextDue } from './repeat.js';
+  import Dropdown from './Dropdown.svelte';
+  import { colColor } from './templates.js';
 
   // type / priority — из слоя (tasks[id]); onlayer(patch) пишет туда же.
   // dueDays / loadEvents — для окна «Когда»: точки занятости в месяце и события выбранного дня.
@@ -30,6 +32,7 @@
   const custom = $derived(rulesOf(remind).find((r) => r.kind !== 'lead') ?? null);
   const remindKind = $derived(!custom ? '' : custom.kind === 'at' ? 'at' : `b${custom.days ?? 0}`);
   const remindWhen = $derived(remindLabel(remind, task, slot));
+  const remindOpts = [{ id: '', label: 'Нет' }, ...BEFORE.map((b) => ({ id: `b${b.days}`, label: `${b.name} в…` })), { id: 'at', label: 'Точная дата и время' }];
 
   function saveRemind(mins, own) {
     const all = [...mins.map((min) => ({ kind: 'lead', min })), ...(own ? [own] : [])];
@@ -94,12 +97,12 @@
   let whoBtn = $state(null);
   let whoOpen = $state(false);
   const whoM = $derived(share ? memberOf(share.people, share.who) : null);
-  const typingIn = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? '') || e.target?.isContentEditable;
+  const typingIn = (e) => /^(INPUT|TEXTAREA|SELECT)$/.test(e.target?.tagName ?? '') || e.target?.isContentEditable || !!e.target?.closest?.('.ddb');
 
   function key(e) {
     if (whoOpen) return; // Esc и цифры — у поповера исполнителя
     if (share && e.code === 'KeyI' && !e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && !typingIn(e)) { e.preventDefault(); whoOpen = true; return; }
-    if (document.querySelector('.keyhelp, .dtp, .pvw')) return; // открыто окно поверх — Esc закроет его, а не задачу
+    if (document.querySelector('.keyhelp, .dtp, .pvw, .ddm')) return; // открыто окно поверх — Esc закроет его, а не задачу
     if (e.key === 'Escape' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) { e.preventDefault(); close(); return; }
     if (!e.altKey || e.ctrlKey || e.metaKey) return;
     const i = cols.findIndex((c) => c.id === status);
@@ -146,9 +149,7 @@
 
     <div class="field">
       <label for="f-status">{cols.length > 4 ? 'Этап' : 'Статус'}</label>
-      <select id="f-status" value={status} onchange={(e) => onstatus(e.currentTarget.value)}>
-        {#each cols as c (c.id)}<option value={c.id}>{c.name}</option>{/each}
-      </select>
+      <Dropdown id="f-status" mark="bar" value={status} options={cols.map((c) => ({ id: c.id, label: c.name, color: colColor(c) }))} onchange={onstatus} />
     </div>
     <div class="field">
       <span>Приоритет</span>
@@ -214,11 +215,7 @@
     <div class="field">
       <label for="f-remind">Ещё в своё время</label>
       <div class="remind">
-        <select id="f-remind" value={remindKind} onchange={(e) => pickRemind(e.currentTarget.value)}>
-          <option value="">Нет</option>
-          {#each BEFORE as b (b.days)}<option value="b{b.days}">{b.name} в…</option>{/each}
-          <option value="at">Точная дата и время</option>
-        </select>
+        <Dropdown id="f-remind" value={remindKind} options={remindOpts} onchange={pickRemind} />
         {#if custom?.kind === 'before'}
           <input type="time" aria-label="Во сколько" value={custom.time ?? DEFAULT_TIME} onchange={(e) => e.currentTarget.value && saveRemind(leads, { ...custom, time: e.currentTarget.value })} />
         {:else if custom?.kind === 'at'}

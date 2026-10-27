@@ -1,6 +1,7 @@
 <script>
   // Экран «Шаблоны досок» (design/screens/Templates.dc.html): слева шаблоны, справа редактор выбранного.
   import { untrack } from 'svelte';
+  import Dropdown from './Dropdown.svelte';
   import { PALETTE, VIEWS, FIELDS, colColor, isBuiltin } from './templates.js';
   import ItemMenu from './ItemMenu.svelte';
 
@@ -128,9 +129,7 @@
         <div class="warn">
           {#if usage(sel).length}
             Шаблон используют: {usage(sel).join(', ')}. Какой шаблон им дать вместо него?
-            <select class="in small" bind:value={replaceWith}>
-              {#each templates.filter((t) => t.id !== sel) as t (t.id)}<option value={t.id}>{t.name}</option>{/each}
-            </select>
+            <Dropdown small label="Шаблон вместо удаляемого" value={replaceWith} options={templates.filter((t) => t.id !== sel).map((t) => ({ id: t.id, label: t.name }))} onchange={(v) => (replaceWith = v)} />
           {:else}
             Удалить шаблон «{curT.name}»? Им не пользуется ни один список.
           {/if}

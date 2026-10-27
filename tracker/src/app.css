@@ -16,6 +16,7 @@
 @import './styles/stickers.css';
 @import './styles/create.css';
 @import './styles/shell.css';
+@import './styles/dropdown.css';
 @import './styles/motion.css';
 
 /* Раскладка приложения */
@@ -168,7 +169,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* Напоминание в окне задачи и на карточке */
 .remind { display: flex; flex-wrap: wrap; gap: 8px; }
-.remind select { flex: 1 1 160px; width: auto; }
+.remind .dd { flex: 1 1 160px; }
+.remind .ddb { width: 100%; }
 .remind input { flex: 0 1 auto; width: auto; }
 .remind-hint { margin: -10px 0 0 124px; font-size: 12px; line-height: 16px; color: var(--ink-soft); }
 
