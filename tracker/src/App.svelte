@@ -53,6 +53,8 @@
   import { accentCss } from './lib/accent.js';
   import StatusPop from './lib/StatusPop.svelte';
   import Popover from './lib/Popover.svelte';
+  import Toast from './lib/Toast.svelte';
+  import { say, busy as toastBusy } from './stores/toast.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -68,10 +70,7 @@
   let newListName = $state(''); // название из окна «Создать»
   let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
   let sync = $state({ busy: false, err: '', at: null });
-  let toast = $state('');
-  let toastLabel = $state('Отменить');
   let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
-  let toastTimer;
 
   // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
@@ -101,27 +100,6 @@
   const habits = $derived(sortHabits(habitsRaw));
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
-
-  // Плашка внизу; undo — кнопка «Отменить» (перенос этапа, удаление). Таймер 6 с, на наведении — пауза.
-  let toastUndo = $state(null);
-  let toastN = $state(0); // номер плашки — заново запускает полоску-таймер
-  let toastLeft = 0, toastStart = 0;
-  /** Плашка внизу; undo — действие кнопки (по умолчанию «Отменить», label — другая подпись, например «Открыть»). */
-  function say(msg, undo = null, label = 'Отменить') {
-    toast = msg;
-    toastUndo = undo;
-    toastLabel = label;
-    toastN++;
-    toastLeft = 6000;
-    resumeToast();
-  }
-  function resumeToast() {
-    clearTimeout(toastTimer);
-    toastStart = Date.now();
-    toastTimer = setTimeout(() => { toast = ''; toastUndo = null; }, toastLeft);
-  }
-  function pauseToast() { clearTimeout(toastTimer); toastLeft = Math.max(800, toastLeft - (Date.now() - toastStart)); }
-  function undoToast() { const fn = toastUndo; toast = ''; toastUndo = null; fn?.(); }
 
   // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
   function touch(section, key, patch) {
@@ -519,7 +497,7 @@
           touch('tasks', r.id, Object.fromEntries(repeat.CARRY.filter((k) => L[k] != null).map((k) => [k, L[k]])));
           touch('tasks', task.id, { repeatNext: r.id, repeatAt: Date.now() });
           saveLayer();
-          if (!quiet && !toastUndo) say(`Повтор: «${task.title}» — снова ${api.humanDue(r.due)}`);
+          if (!quiet && !toastBusy()) say(`Повтор: «${task.title}» — снова ${api.humanDue(r.due)}`);
         } catch (e) { say('Не удалось создать следующую повторяющуюся задачу: ' + e); break; }
       }
     } finally { rolling = false; }
@@ -2127,11 +2105,4 @@
   {/if}
 {/if}
 
-{#if toast}
-  <div class="toast" role="status" onmouseenter={pauseToast} onmouseleave={resumeToast}>
-    {#key toastN}<span class="timer" aria-hidden="true"></span>{/key}
-    <span>{toast}</span>
-    {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>{toastLabel}</button>{/if}
-    <button type="button" onclick={() => { toast = ''; toastUndo = null; }}>Скрыть</button>
-  </div>
-{/if}
+<Toast />
