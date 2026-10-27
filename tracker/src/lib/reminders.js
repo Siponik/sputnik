@@ -23,6 +23,7 @@ export const BEFORE = [
 // «До начала»: сколько минут до срока/времени задачи.
 export const LEADS = [
   { min: 0, name: 'В момент начала' },
+  { min: 5, name: 'За 5 минут' },
   { min: 15, name: 'За 15 минут' },
   { min: 60, name: 'За час' },
   { min: 1440, name: 'За день' },

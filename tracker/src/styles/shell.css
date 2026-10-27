@@ -275,7 +275,8 @@
 .stg-prev.off .card { animation: none; }
 @keyframes stg-mv { 0%, 20% { transform: translateX(0); } 50%, 70% { transform: translateX(120px); } 100% { transform: translateX(0); } }
 @keyframes stg-fd { 0%, 20% { opacity: 1; } 45% { opacity: .3; } 70%, 100% { opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .stg-prev .card { animation: none; } }
+/* Образец показываем всегда, даже если в Windows выключены анимации: он и нужен, чтобы увидеть разницу. */
+[data-motion="min"] .stg-prev.min .card { animation: stg-fd 2.4s ease infinite !important; }
 .stg-notes { margin: 0; padding: 12px 16px 12px 32px; font-size: 13px; line-height: 20px; color: var(--ink-soft); border-bottom: 1px solid var(--hairline); }
 .stg-grp .av { width: 36px; height: 36px; flex: none; border-radius: 50%; background: var(--clay-soft); color: var(--clay); display: grid; place-items: center; font: 700 14px/1 var(--font-sans); }
 .stg-kg { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; border-radius: 14px; }

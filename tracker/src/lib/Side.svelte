@@ -14,8 +14,8 @@
 
   let {
     spheres, listsOf, noSphere, count, peopleOf = () => [], together = () => false, me = '', viewOf, activeId = null, current = 'board', activeSphere = null,
-    folded = () => false, projects = [], project = null, tips = [], tipsOn = true, pinned = true, hold = false,
-    onlist, onsphere, onfold, onmenu, onadd, onproject, ontemplates, onarchive, onshow, onpin, ontip, ontiphide, onregister,
+    folded = () => false, tips = [], tipsOn = true, pinned = true, hold = false,
+    onlist, onsphere, onfold, onmenu, onadd, ontemplates, onarchive, onshow, onpin, ontip, ontiphide, onregister,
   } = $props();
 
   const VIEW_ICONS = {
@@ -141,14 +141,6 @@
     {/if}
     {#if q && !shown.spheres.length && !shown.noSphere.length}<p class="sd-empty">Ничего не нашлось.</p>{/if}
     {#if !allLists}<p class="sd-empty">Списков пока нет — «＋» справа от «Сферы».</p>{/if}
-    {#if projects.length && current === 'board' && !q}
-      <p class="sd-h4 sd-sub">Проекты</p>
-      {#each projects as [p, n] (p)}
-        <button class="sd-lst prj" class:on={project === p} type="button" aria-pressed={project === p} onclick={() => onproject(project === p ? null : p)}>
-          <span class="lt">{p}</span><span class="n">{n}</span>
-        </button>
-      {/each}
-    {/if}
   </div>
   {#if tip && tipsOn}
     <div class="sd-tip" role="note">
