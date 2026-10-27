@@ -59,6 +59,7 @@
   import * as taskStore from './stores/tasks.svelte.js';
   import * as syncStore from './stores/sync.svelte.js';
   import * as shareStore from './stores/share.svelte.js';
+  import * as updStore from './stores/update.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -247,29 +248,8 @@
 
   // ---------- обновление из приложения ----------
 
-  let version = $state('');
-  let upd = $state({ found: null, busy: false, progress: 0, err: '', fail: '', note: '', checkedAt: null });
-  async function checkUpdate(manual = false) {
-    if (upd.busy) return;
-    upd.err = '';
-    upd.note = manual ? 'Проверяю…' : '';
-    try {
-      upd.found = await updater.findUpdate(!!lay.settings?.update?.beta); // бета-канал — только у владельца
-      upd.checkedAt = new Date();
-      upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
-    } catch (e) {
-      upd.note = '';
-      if (manual) upd.err = 'Не удалось проверить обновления: ' + e;
-    }
-  }
-  async function installUpdate() {
-    if (!upd.found || upd.busy) return;
-    upd.busy = true;
-    upd.err = ''; upd.fail = '';
-    upd.progress = 0;
-    try { await updater.install(upd.found, (p) => (upd.progress = p)); }
-    catch (e) { upd.fail = 'Не удалось обновиться: ' + e; upd.busy = false; }
-  }
+  const upd = updStore.upd; // { version, found, busy, progress, … }
+  const checkUpdate = updStore.check, installUpdate = updStore.install;
   // Чип «✦ Версия …» в шапке: «Вечером» — напомнить в 20:00, «Пропустить» — не показывать для этой версии
   // (точка «версия» в «Состоянии» остаётся). settings.update = { skip, remindAt, auto, night }.
   const updPref = $derived(lay.settings?.update ?? {});
@@ -277,8 +257,8 @@
   const updChip = $derived(upd.busy || shell.showUpdChip(upd.found, updPref, nowMin));
   let updOpen = $state(false);
   let updBtn = $state(null);
-  function updLater() { touch('settings', 'update', { remindAt: shell.eveningAt() }); saveLayer(); updOpen = false; say('Напомню про обновление вечером, в 20:00'); }
-  function updSkip() { touch('settings', 'update', { skip: upd.found.version, remindAt: null }); saveLayer(); updOpen = false; say(`Версию ${upd.found.version} пропускаю — поставить можно в «Состоянии»`); }
+  function updLater() { updStore.later(); updOpen = false; }
+  function updSkip() { updStore.skip(); updOpen = false; }
 
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
@@ -390,20 +370,15 @@
 
   onMount(() => {
     start();
-    updater.currentVersion().then((v) => (version = v));
-    // Обновления: через полминуты после запуска и дальше раз в 6 часов.
-    // «Проверять самому» (settings.update.auto) выключено — только вручную.
-    const autoCheck = () => { if (lay.settings?.update?.auto !== false) checkUpdate(); };
-    const updFirst = setTimeout(autoCheck, import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
-    const updTimer = setInterval(autoCheck, 6 * 3600e3);
+    const stopUpd = updStore.start();
     // «Ставить ночью»: компьютер не спит в 3:00 и есть версия — ставим.
     const minTimer = setInterval(() => {
       nowMin = Date.now();
-      if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
+      updStore.minute();
       if (phase === 'ready') habitWin();
     }, 60e3);
     const stopSync = syncStore.start();
-    return () => { stopSync(); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); };
+    return () => { stopSync(); stopUpd(); clearInterval(minTimer); };
   });
 
   // Когда трекер сам менял задачу — чтобы ответ синхронизации, запрошенный раньше, её не откатил (lib/fresh.js).
@@ -1323,7 +1298,7 @@
   function setPref(key, patch) {
     touch('settings', key, patch);
     saveLayer();
-    if (key === 'update' && 'beta' in patch) { upd.found = null; checkUpdate(true); } // канал сменился — проверить сразу
+    if (key === 'update' && 'beta' in patch) updStore.recheck(); // канал сменился — проверить сразу
   }
   function hideList(id, hide) { touch('lists', id, { hidden: hide }); saveLayer(); }
   async function hideCal(id, hide) {
@@ -1416,9 +1391,9 @@
 {#if phase === 'loading'}
   <div class="setup"><span class="spinner" aria-label="Загрузка"></span></div>
 {:else if phase === 'setup'}
-  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} onerror={say} />
+  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} />
 {:else if choosing}
-  <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
+  <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
     <!-- Шапка 0.6 — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. Ничего не переносится. -->
@@ -1626,19 +1601,16 @@
     </Popover>
   {/if}
   {#if statOpen}
-    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remView} notes={shell.notesOf(upd.found?.notes)}
-      onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
-      oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
+    <StatusPop anchor={statBtn} rem={remView} onsettings={() => { statOpen = false; openSettings(); }}
       onclose={() => (statOpen = false)} />
   {/if}
   {#if settingsTab}
     <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
       hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
-      {version} {upd} {sync} {offline} {cloud} rem={remStat} {ownBot} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
+      rem={remStat} {ownBot} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
       onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
       tgbot={lay.settings?.tgbot} {tgStat} ontglink={tgLink} ontgtest={tgTest} ontgunlink={tgUnlink}
-      onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
-      oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />
+      onlogout={() => { settingsTab = null; logout(); }} onclose={() => (settingsTab = null)} />
   {/if}
   {#if searchOpen}
     <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />
