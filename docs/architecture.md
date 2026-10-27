@@ -24,6 +24,7 @@
   - `toast` — плашка внизу (`say(msg, undo, label)`, показывает `lib/Toast.svelte`).
   - `layer` — слой Спутника: `layer.data` (в App — `lay`, `$derived`; поля менять можно, сам объект заменяет только стор), `touch`, `save`, `sync` (слияние с Drive), `cloudLogin`, `layer.cloud` — состояние. App задаёт `configure({ canSync, afterSave })`.
   - `tasks` — `board.lists` / `board.tasks` (в App — `lists` / `tasks`), действия без экрана: `toggle`, `rollRepeats`, `removeUndo` (удаление через 6 с, «Отменить»), `duplicate`, `moveToList`, `doneUndo`, `topicUndo`, `whenUndo`; общие помощники `guard(что, fn)` — ошибка плашкой «Не удалось …», `undoable(текст, run, undo)` — правка с «Отменить».
+  - `sync` — обмен с Google: `sync` (`busy/err/at/flash`), `refresh` (один цикл за раз, ошибки, вход слетел → `onAuthLost`), `start()` — опрос раз в 2 мин, по фокусу, через минуту без связи. Что забирать — `configure({ pull })` (в App — `pullAll`).
 
 ## План разбора `App.svelte`
 
@@ -33,7 +34,7 @@
 2. ✅ `layer` — слой Спутника, `touch`, сохранение, слияние с Drive.
 3. ✅ `tasks` — списки и задачи, действия (выполнить, перенести, создать, удалить) и одна общая
    «оптимистичная правка»: сразу показать → запрос в Google → откат или «Отменить».
-4. `sync` — опрос Google раз в 2 мин, «Нет связи», повторы, «Входящие от Claude».
+4. ✅ `sync` — опрос Google раз в 2 мин, «Нет связи», повторы, «Входящие от Claude».
 5. `shared` — общие сферы.
 6. Экраны берут действия из сторов вместо длинных пропсов (`boardAct` и т.п.).
 
