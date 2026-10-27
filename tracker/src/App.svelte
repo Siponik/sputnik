@@ -56,13 +56,15 @@
   import Toast from './lib/Toast.svelte';
   import { say, busy as toastBusy } from './stores/toast.svelte.js';
   import * as layerStore from './stores/layer.svelte.js';
+  import * as taskStore from './stores/tasks.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
   let view = $state('today'); // today | calendar | board | archive | habits | templates | sphere
-  let lists = $state([]);
+  // Списки и задачи — в сторе tasks; lists и tasks — его текущие значения (tasks[listId] = … менять можно).
+  const lists = $derived(taskStore.board.lists);
   let activeId = $state(null);
-  let tasks = $state({}); // listId → задачи (вместе с подзадачами)
+  const tasks = $derived(taskStore.board.tasks); // listId → задачи (вместе с подзадачами)
   // Слой Спутника (то, чего нет в Google) — в сторе; lay — его текущий объект (менять поля можно, заменять целиком — нет).
   const lay = $derived(layerStore.layer.data);
   const cloud = $derived(layerStore.layer.cloud);
@@ -194,9 +196,9 @@
       await syncLayer();
       if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareVer++; }).catch(() => {});
       if (shr) applyShared(shr);
-      lists = ls;
+      taskStore.board.lists = ls;
       // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
-      tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
+      taskStore.board.tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
       if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
       // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
       // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
@@ -417,63 +419,8 @@
   });
 
   // Когда трекер сам менял задачу — чтобы ответ синхронизации, запрошенный раньше, её не откатил (lib/fresh.js).
-  const touchedAt = new Map();
-  function replace(listId, updated) {
-    touchedAt.set(updated.id, Date.now());
-    tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
-  }
-
-  // ---------- повтор: выполненная задача с правилом → следующая с новым сроком ----------
-  let rolling = false;
-  async function rollRepeats(quiet = false) {
-    if (rolling) return;
-    rolling = true;
-    try {
-      const todo = repeat.dueRepeats(lists.filter((l) => !isHabitList(l, lay)), tasks, lay.tasks);
-      for (const { listId, task, rule } of todo) {
-        const day = repeat.nextDue(rule, api.dueToYmd(task.due), api.ymd(new Date()));
-        if (!day) continue;
-        try {
-          // Копию мог уже сделать другой компьютер — тогда только ссылаемся на неё (иначе на двух ПК задачи двоились).
-          const have = repeat.existingNext(tasks[listId], task, day);
-          if (have) { touch('tasks', task.id, { repeatNext: have.id, repeatAt: Date.now() }); saveLayer(); continue; }
-          const r = await api.createTask(listId, { title: task.title, notes: task.notes ?? '', due: api.ymdToDue(day) });
-          tasks[listId] = [r, ...(tasks[listId] ?? [])];
-          const L = lay.tasks?.[task.id] ?? {};
-          touch('tasks', r.id, Object.fromEntries(repeat.CARRY.filter((k) => L[k] != null).map((k) => [k, L[k]])));
-          touch('tasks', task.id, { repeatNext: r.id, repeatAt: Date.now() });
-          saveLayer();
-          if (!quiet && !toastBusy()) say(`Повтор: «${task.title}» — снова ${api.humanDue(r.due)}`);
-        } catch (e) { say('Не удалось создать следующую повторяющуюся задачу: ' + e); break; }
-      }
-    } finally { rolling = false; }
-  }
-
-  // Отметку сняли сразу после выполнения («Отменить») — следующую копию убираем, пока её не трогали (10 мин).
-  async function unrollRepeat(task, listId) {
-    const L = lay.tasks?.[task.id];
-    if (!L?.repeatNext || Date.now() - (L.repeatAt ?? 0) > 10 * 60e3) return;
-    const next = (tasks[listId] ?? []).find((x) => x.id === L.repeatNext);
-    touch('tasks', task.id, { repeatNext: null, repeatAt: null });
-    saveLayer();
-    if (!next || next.status === 'completed') return;
-    tasks[listId] = tasks[listId].filter((x) => x.id !== next.id);
-    await api.deleteTask(listId, next.id).catch(() => {});
-  }
-
-  async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
-    try {
-      const r = await api.completeTask(listId, task.id, done);
-      replace(listId, r);
-      if (done && lay.tasks?.[task.id]?.repeat?.every) rollRepeats(quiet);
-      if (!done) unrollRepeat(task, listId);
-      if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
-      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
-      // Общая сфера: кто сделал — кружок на штампе «сделано» у всех.
-      if (sh.isSharedId(listId) && !task.parent && (lay.tasks?.[task.id]?.doneBy ?? null) !== (done ? meEmail : null)) { touch('tasks', task.id, { doneBy: done ? meEmail : null }); saveLayer(); }
-      return true;
-    } catch (e) { say('Не удалось отметить: ' + e); return false; }
-  }
+  const { touchedAt, replace, rollRepeats } = taskStore;
+  const toggle = (task, done, listId = openRef?.listId ?? activeId, quiet = false) => taskStore.toggle(task, done, listId, quiet);
 
   async function move(task, col, listId = activeId) {
     // stageAt[колонка] — когда задача пришла на этап (учёт времени в «Конвейере»).
@@ -530,57 +477,19 @@
   // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
 
   const colName = (listId, col) => templateFor(listId).cols.find((c) => c.id === col)?.name ?? col;
-  const findTask = (listId, id) => (tasks[listId] ?? []).find((t) => t.id === id);
+  const findTask = taskStore.find;
   /** Перенос этапа с плашкой «… → Этап · Отменить». */
   async function stageUndo(t, col, listId = activeId) {
     const prev = colOf(t, templateFor(listId).cols);
     if (prev === col) return;
-    await move(t, col, listId);
-    say(`«${t.title || 'Без названия'}» → ${colName(listId, col)}`, () => { const cur = findTask(listId, t.id); if (cur) move(cur, prev, listId); });
+    await taskStore.undoable(`«${t.title || 'Без названия'}» → ${colName(listId, col)}`, () => move(t, col, listId),
+      () => { const cur = findTask(listId, t.id); if (cur) move(cur, prev, listId); });
   }
-  const pendingDel = new Map(); // id → таймер удаления (6 с на «Отменить»)
-  function removeUndo(t, listId = activeId) {
-    const before = tasks[listId] ?? [];
-    tasks[listId] = before.filter((x) => x.id !== t.id && x.parent !== t.id);
-    if (openRef?.id === t.id) openRef = null;
-    const timer = setTimeout(async () => {
-      pendingDel.delete(t.id);
-      try { await api.deleteTask(listId, t.id); }
-      catch (e) { tasks[listId] = before; say('Не удалось удалить: ' + e); }
-    }, 6000);
-    pendingDel.set(t.id, timer);
-    say(`«${t.title || 'Без названия'}» удалена`, () => {
-      clearTimeout(pendingDel.get(t.id));
-      pendingDel.delete(t.id);
-      const back = before.filter((x) => x.id === t.id || x.parent === t.id);
-      tasks[listId] = [...back, ...(tasks[listId] ?? []).filter((x) => !back.some((b) => b.id === x.id))];
-    });
-  }
-  async function duplicateTask(t, listId = activeId) {
-    try {
-      const r = await api.createTask(listId, { title: t.title, notes: t.notes, due: t.due });
-      tasks[listId] = [r, ...(tasks[listId] ?? [])];
-      const L = lay.tasks?.[t.id] ?? {};
-      const copy = Object.fromEntries(['type', 'priority', 'status', 'project', 'slot', 'client', 'money'].filter((k) => L[k] != null).map((k) => [k, L[k]]));
-      if (Object.keys(copy).length) { touch('tasks', r.id, copy); saveLayer(); }
-      say(`Копия «${t.title}» создана`);
-    } catch (e) { say('Не удалось дублировать: ' + e); }
-  }
-  async function moveToList(t, dest, listId = activeId) {
-    try {
-      const r = await api.moveTask(listId, t.id, dest);
-      // Если Google выдал задаче в новом списке другой id — переносим её поля Спутника (статус, тип, время…).
-      if (r?.id && r.id !== t.id && lay.tasks?.[t.id]) {
-        const { t: _, ...rest } = lay.tasks[t.id];
-        touch('tasks', r.id, rest);
-        saveLayer();
-      }
-      const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
-      tasks[listId] = a; tasks[dest] = b;
-      say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
-      return r?.id ?? t.id;
-    } catch (e) { say('Не удалось перенести в другой список: ' + e); return null; }
-  }
+  const removeUndo = (t, listId = activeId) => taskStore.removeUndo(t, listId);
+  const duplicateTask = (t, listId = activeId) => taskStore.duplicate(t, listId);
+  const moveToList = (t, dest, listId = activeId) => taskStore.moveToList(t, dest, listId);
+  const { doneUndo, topicUndo, whenUndo } = taskStore;
+  taskStore.configure({ onRemoved: (id) => { if (openRef?.id === id) openRef = null; } });
   const boardAct = {
     open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
     rename: (t, title) => renameTask(activeId, t, title),
@@ -610,34 +519,6 @@
     topics: (topics) => { touch('lists', activeId, { topics }); saveLayer(); },
     set: (patch) => { touch('lists', activeId, patch); saveLayer(); },
   };
-  /** Стикер сделан / возвращён: плашка «Сделано: «…» · Отменить». */
-  async function doneUndo(t, d, listId, onundo) {
-    const ok = await toggle(t, d, listId, true);
-    if (!ok || !d) return ok;
-    say(`Сделано: «${t.title || 'Без названия'}»`, () => { onundo?.(); const cur = findTask(listId, t.id); if (cur) toggle(cur, false, listId, true); });
-    return true;
-  }
-  function topicUndo(t, id, listId) {
-    const prev = lay.tasks?.[t.id]?.topic ?? null;
-    if (prev === id) return;
-    touch('tasks', t.id, { topic: id });
-    saveLayer();
-    const name = stickers.topicsOf(lay.lists?.[listId]).find((x) => x.id === id)?.name ?? stickers.MISC.name;
-    say(`«${t.title || 'Без названия'}» → ${name}`, () => { touch('tasks', t.id, { topic: prev }); saveLayer(); });
-  }
-  /** Перенос по срокам: сегодня / на неделе / когда-нибудь. Время (slot) и напоминания идут за сроком. */
-  async function whenUndo(t, target, listId) {
-    const today = api.ymd(new Date());
-    const cur = api.dueToYmd(t.due) || null;
-    const next = stickers.whenDue(target, cur, today);
-    if (next === cur) return;
-    try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(next) })); }
-    catch (e) { say('Не удалось перенести: ' + e); return; }
-    const where = { today: 'сегодня', week: next ? api.humanDue(api.ymdToDue(next)) : 'на неделе', later: 'когда-нибудь' }[target];
-    say(`«${t.title || 'Без названия'}» → ${where}`, async () => {
-      try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(cur) })); } catch (e) { say('Не удалось вернуть срок: ' + e); }
-    });
-  }
   const boardFold = $derived(lay.settings?.fold?.[activeId] ?? {});
   function foldCol(col, v) {
     const all = lay.settings?.fold ?? {};
@@ -1010,7 +891,7 @@
     if (!r.changes.length && !r.gone.length) return;
     applyShared(r);
     const shl = shared.lists();
-    lists = [...lists.filter((l) => !sh.isSharedId(l.id)), ...shl];
+    taskStore.board.lists = [...lists.filter((l) => !sh.isSharedId(l.id)), ...shl];
     for (const l of shl) tasks[l.id] = fresh.keepLocal(shared.tasks(l.id), tasks[l.id], before[l.id], touchedAt, t0);
     for (const id of Object.keys(tasks)) if (sh.isSharedId(id) && !shl.some((l) => l.id === id)) delete tasks[id];
   }
@@ -1047,7 +928,7 @@
       lay.lists[nl.id] = { ...listLayer, sphere: sid, t: Date.now() };
       await api.deleteList(l.id);
       layerSync.forgetList(lay, l.id, all.map((x) => x.id));
-      lists = [...lists.filter((x) => x.id !== l.id), nl];
+      taskStore.board.lists = [...lists.filter((x) => x.id !== l.id), nl];
       delete tasks[l.id];
       tasks[nl.id] = shared.tasks(nl.id);
       if (activeId === l.id) activeId = nl.id;
@@ -1112,7 +993,7 @@
         catch (e) { say((owner ? 'Не удалось удалить сферу: ' : 'Не удалось выйти: ') + e); return; }
         const gone = lists.filter((l) => l.shared === cal);
         for (const l of gone) { layerSync.forgetList(lay, l.id, (tasks[l.id] ?? []).map((t) => t.id)); delete tasks[l.id]; }
-        lists = lists.filter((l) => l.shared !== cal);
+        taskStore.board.lists = lists.filter((l) => l.shared !== cal);
         touch('spheres', id, { removed: true });
         saveLayer();
         if (view === 'sphere' && activeSphere === id) view = 'board';
@@ -1264,7 +1145,7 @@
     if (title && title !== l.title) {
       try {
         if (!sh.isSharedId(id)) await api.renameList(id, title);
-        lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
+        taskStore.board.lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
       } catch (e) { say('Не удалось переименовать: ' + e); return; }
     }
     if (!sh.isSharedId(id)) touch('lists', id, { sphere: sphere ?? null });
@@ -1316,7 +1197,7 @@
     try { await api.deleteList(id); }
     catch (e) { say('Не удалось удалить список: ' + e); return; }
     const ids = (tasks[id] ?? []).map((t) => t.id);
-    lists = lists.filter((x) => x.id !== id);
+    taskStore.board.lists = lists.filter((x) => x.id !== id);
     delete tasks[id];
     // Надгробия, а не delete: иначе другой компьютер при слиянии вернул бы записи списка и его задач.
     layerSync.forgetList(lay, id, ids);
@@ -1362,7 +1243,7 @@
       touch('lists', l.id, newListSphere ? { template, sphere: newListSphere } : { template });
       newListSphere = null;
       saveLayer();
-      lists = [...lists, l];
+      taskStore.board.lists = [...lists, l];
       tasks[l.id] = [];
       activeId = l.id;
       view = blank ? 'templates' : 'board';
@@ -1642,7 +1523,7 @@
       if (!l) {
         l = await api.createList('Привычки');
         touch('lists', l.id, { template: HABITS });
-        lists = [...lists, l];
+        taskStore.board.lists = [...lists, l];
         tasks[l.id] = [];
       }
       const t = await api.createTask(l.id, { title: name });
@@ -1678,7 +1559,7 @@
 
   async function logout() {
     await api.auth.logout().catch(() => {});
-    lists = []; tasks = {}; events = []; openRef = null;
+    taskStore.board.lists = []; taskStore.board.tasks = {}; events = []; openRef = null;
     layerStore.reset();
     authInfo = await api.auth.status();
     phase = 'setup';
