@@ -6,10 +6,16 @@
 
 import { onUpdate, link, putState, tick, sha256, MAX_STATE } from './logic.js';
 import { d1Store } from './store.js';
+import { briefTick, NEWS_URL } from './brief.js';
 
 const CORS = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS', 'Access-Control-Allow-Headers': 'Authorization, Content-Type' };
 // Секрет, переданный через PowerShell, может прийти с BOM и переводом строки — чистим.
 const clean = (s) => String(s ?? '').replace(/^\uFEFF/, '').trim();
+// data.json сборки новостей (tools/news/) — с кешем Cloudflare на 5 минут, чтобы не дёргать Pages каждую минуту.
+const news = async () => {
+  const r = await fetch(NEWS_URL + 'data.json', { cf: { cacheTtl: 300, cacheEverything: true } });
+  return r.ok ? r.json() : null;
+};
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...CORS } });
 
 function telegram(env) {
@@ -44,7 +50,7 @@ export default {
           ctx.waitUntil(fetch(env.OWNER_HOOK, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) }).catch((e) => console.error('Личный бот: ' + e)));
           return new Response('ok');
         }
-        await onUpdate(u, { store, tg });
+        await onUpdate(u, { store, tg, news });
         return new Response('ok');
       }
       if (url.pathname === '/link' && req.method === 'POST') {
@@ -72,6 +78,8 @@ export default {
     }
   },
   async scheduled(_ev, env, ctx) {
-    ctx.waitUntil(tick({ store: d1Store(env.DB), tg: telegram(env) }));
+    const store = d1Store(env.DB), tg = telegram(env);
+    ctx.waitUntil(tick({ store, tg }));
+    ctx.waitUntil(briefTick({ store, tg, news }).catch((e) => console.error('Сводка: ' + e)));
   },
 };

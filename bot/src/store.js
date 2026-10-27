@@ -1,6 +1,11 @@
 // Хранилище общего бота в Cloudflare D1 (таблицы — schema.sql). Тот же набор методов в тестах — в памяти.
 
+// Таблица утренней сводки появилась позже остальных — создаём её сами, чтобы выкладка не требовала миграции.
+const BRIEF_SQL = 'CREATE TABLE IF NOT EXISTS brief (chat TEXT PRIMARY KEY, at INTEGER, days TEXT, off INTEGER DEFAULT 0, sent TEXT)';
+let briefReady = null;
+
 export function d1Store(db) {
+  const briefTable = () => (briefReady ??= db.prepare(BRIEF_SQL).run().catch((e) => { briefReady = null; throw e; }));
   const one = (sql, ...a) => db.prepare(sql).bind(...a).first();
   const all = async (sql, ...a) => (await db.prepare(sql).bind(...a).all()).results ?? [];
   const run = (sql, ...a) => db.prepare(sql).bind(...a).run();
@@ -21,7 +26,8 @@ export function d1Store(db) {
        ON CONFLICT(chat) DO UPDATE SET key_hash = excluded.key_hash, tz = excluded.tz, name = excluded.name, muted = 0`,
       chat, hash, tz, name, Date.now()),
     async unlink(chat) {
-      for (const t of ['users', 'inbox', 'sent', 'codes']) await run(`DELETE FROM ${t} WHERE chat = ?`, chat);
+      await briefTable();
+      for (const t of ['users', 'inbox', 'sent', 'codes', 'brief']) await run(`DELETE FROM ${t} WHERE chat = ?`, chat);
     },
     setMuted: (chat, v) => run('UPDATE users SET muted = ? WHERE chat = ?', v ? 1 : 0, chat),
     async state(chat) { const r = await one('SELECT state FROM users WHERE chat = ?', chat); return r?.state ? JSON.parse(r.state) : null; },
@@ -48,5 +54,17 @@ export function d1Store(db) {
     addInbox: (chat, body) => run('INSERT INTO inbox (chat, body, at) VALUES (?, ?, ?)', chat, JSON.stringify(body), Date.now()),
     async inbox(chat) { return (await all('SELECT id, body FROM inbox WHERE chat = ? ORDER BY id LIMIT 100', chat)).map((r) => ({ id: r.id, ...JSON.parse(r.body) })); },
     async ack(chat, ids) { for (const id of ids) await run('DELETE FROM inbox WHERE chat = ? AND id = ?', chat, id); },
+    // утренняя сводка (brief.js)
+    async brief(chat) { await briefTable(); return one('SELECT at, days, off, sent FROM brief WHERE chat = ?', chat); },
+    async briefUsers() {
+      await briefTable();
+      return all('SELECT u.chat, u.tz, u.muted, b.at, b.days, b.off, b.sent FROM users u LEFT JOIN brief b ON b.chat = u.chat');
+    },
+    async setBrief(chat, { at = null, days = null, off = null, sent = null }) {
+      await briefTable();
+      await run(`INSERT INTO brief (chat, at, days, off, sent) VALUES (?, ?, ?, COALESCE(?, 0), ?)
+        ON CONFLICT(chat) DO UPDATE SET at = COALESCE(excluded.at, at), days = COALESCE(excluded.days, days),
+        off = COALESCE(?, off), sent = COALESCE(excluded.sent, sent)`, chat, at, days, off, sent, off);
+    },
   };
 }
