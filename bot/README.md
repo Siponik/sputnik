@@ -8,6 +8,7 @@
 
 - `src/logic.js` — команды, привязка по коду, напоминания (тесты — `tracker/tests/shared-bot.test.js`)
 - `src/store.js` — таблицы D1 (`schema.sql`)
+- `src/brief.js` — утренняя сводка: задачи дня + новости из `https://siponik.github.io/sputnik/news/data.json` (тесты — `tracker/tests/bot-brief.test.js`), команда `/brief`
 - `src/index.js` — адреса воркера и cron раз в минуту
 
 ## Привязка

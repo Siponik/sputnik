@@ -1294,15 +1294,17 @@
 
   // ---------- входящие от Claude ----------
 
-  // Поля Спутника (тип, проект, теги…), которые прислал чат, переносим в свой слой один раз.
+  // Поля Спутника, которые прислал чат или бот, переносим в свой слой один раз: сферы, шаблон/вид/темы списков, поля задач.
   function pullInboxLayer() {
-    const patches = inbox.layerPatches(inboxSt, lay.tasks);
+    const { spheres: sps, lists: lps, tasks: patches } = inbox.pullPatches(inboxSt, lay);
+    for (const [id, rec] of sps) touch('spheres', id, rec);
+    for (const [id, patch] of lps) touch('lists', id, patch);
     for (const [id, patch] of patches) {
       // Задачи из бота и чатов Claude тоже получают напоминание по умолчанию.
       if (remindDefault && !lay.tasks?.[id]?.remind) patch.remind = remindDefault;
       touch('tasks', id, patch);
     }
-    if (patches.length) saveLayer();
+    if (sps.length || lps.length || patches.length) saveLayer();
   }
 
   /** Принять входящие; dest — другой список, чем выбрал Claude («→ список» на «Сегодня»): сначала перенос. */

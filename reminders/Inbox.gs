@@ -11,7 +11,10 @@ const STATUS_DATE = new Date(2030, 0, 1);
 const KEEP_PROCESSED_MS = 14 * 24 * 3600 * 1000;
 const KEEP_PROCESSED_MAX = 40; // описание события — до ~8 тыс. символов
 const KEEP_LAYER_MS = 30 * 24 * 3600 * 1000;
-const KEEP_LAYER_MAX = 25; // вместе с processed описание события не должно вырасти за ~8 тыс. символов
+const KEEP_LAYER_MAX = 60;
+const KEEP_LISTS_MAX = 20;
+// Описание события статуса — до ~8 тыс. символов. Не влезает — сначала уходят старые итоги запросов, потом старые поля слоя.
+const STATUS_BUDGET = 7800;
 const DEDUP_MS = 2 * 24 * 3600 * 1000;
 const OPS = ['list.ensure', 'task.create', 'task.complete'];
 
@@ -112,6 +115,8 @@ function parseRequest_(description) {
     if (op.notes != null && (typeof op.notes !== 'string' || op.notes.length > 4000)) throw new Error(where + '"notes" до 4000 символов');
     if (op.due != null && !/^\d{4}-\d{2}-\d{2}$/.test(op.due)) throw new Error(where + '"due" в виде ГГГГ-ММ-ДД');
     if (op.parent != null && typeof op.parent !== 'string') throw new Error(where + '"parent" — название задачи');
+    if (op.layer != null && (typeof op.layer !== 'object' || Array.isArray(op.layer) || JSON.stringify(op.layer).length > 1500)) throw new Error(where + '"layer" — объект до 1500 символов');
+    if (op.done != null && typeof op.done !== 'boolean') throw new Error(where + '"done" — true или false');
   });
   return req;
 }
@@ -140,7 +145,11 @@ function openTasks_(listId) {
 
 function runOp_(op, getLists, status) {
   const list = ensureList_(getLists, op.list);
-  if (op.op === 'list.ensure') return { op: op.op, list: list.title };
+  if (op.op === 'list.ensure') {
+    // Поля списка (шаблон, вид, сфера, темы) тоже ждут трекер — в pendingLists.
+    if (op.layer) status.pendingLists[list.id] = Object.assign({ at: new Date().toISOString() }, op.layer);
+    return { op: op.op, list: list.title };
+  }
 
   const open = openTasks_(list.id);
   const title = op.title.trim();
@@ -165,10 +174,11 @@ function runOp_(op, getLists, status) {
   const body = { title: title };
   if (op.notes) body.notes = op.notes;
   if (op.due) body.due = op.due + 'T00:00:00.000Z';
+  if (op.done) body.status = 'completed';
   const t = Tasks.Tasks.insert(body, list.id, opts);
   // Поля слоя Спутника ждут здесь, пока трекер не заберёт их в свой слой.
   if (op.layer && typeof op.layer === 'object') status.pendingLayer[t.id] = Object.assign({ listId: list.id, at: new Date().toISOString() }, op.layer);
-  return { op: op.op, list: list.title, title: title, taskId: t.id };
+  return { op: op.op, title: title.slice(0, 40), taskId: t.id };
 }
 
 // ---------- статус: служебное событие в календаре-очереди ----------
@@ -194,6 +204,7 @@ function readStatus_() {
   try { s = JSON.parse(statusEvent_().getDescription() || '{}'); } catch (e) { s = {}; }
   s.processed = s.processed || {};
   s.pendingLayer = s.pendingLayer || {};
+  s.pendingLists = s.pendingLists || {};
   s.lists = s.lists || [];
   return s;
 }
@@ -202,17 +213,34 @@ function writeStatus_(s) {
   // Только последние KEEP_PROCESSED_MAX запросов: описание события не резиновое.
   const keys = Object.keys(s.processed).sort((a, b) => Date.parse(s.processed[b].at) - Date.parse(s.processed[a].at));
   for (const k of keys.slice(KEEP_PROCESSED_MAX)) delete s.processed[k];
-  // pendingLayer ждёт трекер не дольше KEEP_LAYER_MS (задачи из Telegram копят его быстрее, чем чаты Claude).
+  // pendingLayer и pendingLists ждут трекер не дольше KEEP_LAYER_MS (задачи из Telegram копят их быстрее, чем чаты Claude).
   const now = Date.now();
-  for (const k of Object.keys(s.pendingLayer)) {
-    const p = s.pendingLayer[k];
-    if (!p.at) p.at = new Date(now).toISOString();
-    if (now - Date.parse(p.at) > KEEP_LAYER_MS) delete s.pendingLayer[k];
+  const newest = (o) => Object.keys(o).sort((a, b) => Date.parse(o[b].at) - Date.parse(o[a].at));
+  s.pendingLists = s.pendingLists || {};
+  for (const o of [s.pendingLayer, s.pendingLists]) {
+    for (const k of Object.keys(o)) {
+      if (!o[k].at) o[k].at = new Date(now).toISOString();
+      if (now - Date.parse(o[k].at) > KEEP_LAYER_MS) delete o[k];
+    }
   }
-  const pend = Object.keys(s.pendingLayer).sort((a, b) => Date.parse(s.pendingLayer[b].at) - Date.parse(s.pendingLayer[a].at));
-  for (const k of pend.slice(KEEP_LAYER_MAX)) delete s.pendingLayer[k];
+  for (const k of newest(s.pendingLayer).slice(KEEP_LAYER_MAX)) delete s.pendingLayer[k];
+  for (const k of newest(s.pendingLists).slice(KEEP_LISTS_MAX)) delete s.pendingLists[k];
   s.version = 1;
   s.updatedAt = new Date().toISOString();
   s.calendarId = inboxCalendar_(true).getId();
+  fitStatus_(s);
   statusEvent_().setDescription(JSON.stringify(s));
+}
+
+/** Укладывает статус в STATUS_BUDGET: убирает самые старые итоги запросов (оставляет 5), потом самые старые поля слоя. */
+function fitStatus_(s) {
+  const newest = (o) => Object.keys(o).sort((a, b) => Date.parse(o[b].at) - Date.parse(o[a].at));
+  const proc = newest(s.processed), lay = newest(s.pendingLayer);
+  while (JSON.stringify(s).length > STATUS_BUDGET) {
+    if (proc.length > 5) delete s.processed[proc.pop()];
+    else if (lay.length) delete s.pendingLayer[lay.pop()];
+    else if (proc.length) delete s.processed[proc.pop()];
+    else break;
+  }
+  return s;
 }
