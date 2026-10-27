@@ -25,6 +25,7 @@
   - `layer` — слой Спутника: `layer.data` (в App — `lay`, `$derived`; поля менять можно, сам объект заменяет только стор), `touch`, `save`, `sync` (слияние с Drive), `cloudLogin`, `layer.cloud` — состояние. App задаёт `configure({ canSync, afterSave })`.
   - `tasks` — `board.lists` / `board.tasks` (в App — `lists` / `tasks`), действия без экрана: `toggle`, `rollRepeats`, `removeUndo` (удаление через 6 с, «Отменить»), `duplicate`, `moveToList`, `doneUndo`, `topicUndo`, `whenUndo`; общие помощники `guard(что, fn)` — ошибка плашкой «Не удалось …», `undoable(текст, run, undo)` — правка с «Отменить».
   - `sync` — обмен с Google: `sync` (`busy/err/at/flash`), `refresh` (один цикл за раз, ошибки, вход слетел → `onAuthLost`), `start()` — опрос раз в 2 мин, по фокусу, через минуту без связи. Что забирать — `configure({ pull })` (в App — `pullAll`).
+  - `share` — общие сферы: `share` (`ver/err/hidden`), `me`, `peopleOf`, `together`, `applyShared` (записи календарей ↔ слой), `pushShared`, `shareTick` (раз в 30 с), `moveListsToShared`, `setWho`, `inviteTo`, `removePerson`, `saveProfile`, `unseenOf`, `waitOf`, `mineByDefault`. Окна-вопросы (сделать общей, выйти, перестать делиться) остаются в App.
 
 ## План разбора `App.svelte`
 
@@ -35,7 +36,7 @@
 3. ✅ `tasks` — списки и задачи, действия (выполнить, перенести, создать, удалить) и одна общая
    «оптимистичная правка»: сразу показать → запрос в Google → откат или «Отменить».
 4. ✅ `sync` — опрос Google раз в 2 мин, «Нет связи», повторы, «Входящие от Claude».
-5. `shared` — общие сферы.
+5. ✅ `share` — общие сферы.
 6. Экраны берут действия из сторов вместо длинных пропсов (`boardAct` и т.п.).
 
 ## Чеклист новой функции
