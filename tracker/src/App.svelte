@@ -55,6 +55,7 @@
   import Popover from './lib/Popover.svelte';
   import Toast from './lib/Toast.svelte';
   import { say, busy as toastBusy } from './stores/toast.svelte.js';
+  import * as layerStore from './stores/layer.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -62,7 +63,11 @@
   let lists = $state([]);
   let activeId = $state(null);
   let tasks = $state({}); // listId → задачи (вместе с подзадачами)
-  let lay = $state(layerSync.emptyLayer()); // слой Спутника: то, чего нет в Google
+  // Слой Спутника (то, чего нет в Google) — в сторе; lay — его текущий объект (менять поля можно, заменять целиком — нет).
+  const lay = $derived(layerStore.layer.data);
+  const cloud = $derived(layerStore.layer.cloud);
+  const { touch, sync: syncLayer, cloudLogin } = layerStore;
+  const saveLayer = layerStore.save;
   let events = $state([]);
   let inboxSt = $state(null); // статус «Входящих от Claude»
   let openRef = $state(null); // { listId, id }
@@ -100,12 +105,6 @@
   const habits = $derived(sortHabits(habitsRaw));
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
-
-  // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
-  function touch(section, key, patch) {
-    lay[section] ??= {};
-    lay[section][key] = { ...(lay[section][key] ?? {}), ...patch, t: Date.now() };
-  }
 
   /** Колонка задачи на доске с данными колонками. */
   function colOf(task, cols) {
@@ -169,58 +168,6 @@
     }, 3000);
   });
 
-  async function saveLayer() {
-    try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить: ' + e); }
-    clearTimeout(cloudTimer);
-    cloudTimer = setTimeout(syncLayer, 4000);
-    clearTimeout(sharePushTimer);
-    if (shared.calendars().length) sharePushTimer = setTimeout(pushShared, 1500);
-  }
-
-  // ---------- слой между компьютерами (lib/layer.js) ----------
-  // Копия слоя — в скрытой папке приложения на Google Drive. Сливаем при каждой синхронизации (раз в 2 мин и по фокусу)
-  // и через 4 с после изменения. state: idle | busy | ok | login (нет права — войти заново) | err.
-  let cloud = $state({ state: 'idle', at: null, err: '' });
-  let cloudTimer;
-  let cloudRun = null, cloudAgain = false;
-  async function syncLayer() {
-    if (phase !== 'ready' || cloud.state === 'login') return;
-    if (cloudRun) { cloudAgain = true; return cloudRun; }
-    cloudRun = (async () => {
-      cloud.state = 'busy';
-      try {
-        const remote = await layerSync.pull();
-        // Сливаем с тем, что на экране сейчас: правки, сделанные, пока шёл запрос, не теряются.
-        const { merged, localChanged, remoteChanged } = layerSync.merge($state.snapshot(lay), remote);
-        if (localChanged) {
-          lay = merged;
-          api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
-          await api.layer.write(merged).catch((e) => say('Не удалось сохранить: ' + e));
-        }
-        if (remoteChanged) await layerSync.push(merged);
-        cloud = { state: 'ok', at: new Date(), err: '' };
-      } catch (e) {
-        if (layerSync.needsLogin(e)) {
-          cloud = { state: 'login', at: null, err: String(e) };
-          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново: «Состояние» в шапке → «Войти».');
-        } else cloud = { ...cloud, state: 'err', err: String(e) };
-      } finally {
-        cloudRun = null;
-        if (cloudAgain) { cloudAgain = false; setTimeout(syncLayer, 0); }
-      }
-    })();
-    return cloudRun;
-  }
-  // Вход с новым правом drive.appdata (кто входил до синхронизации).
-  async function cloudLogin() {
-    try {
-      await api.auth.login();
-      cloud = { state: 'idle', at: null, err: '' };
-      await syncLayer();
-      if (cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
-    } catch (e) { say('Не удалось войти: ' + e); }
-  }
-
   // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
   function ensureHabitMeta() {
     if (!habitList) return;
@@ -273,8 +220,7 @@
   }
 
   async function start() {
-    lay = { ...layerSync.emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
-    api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
+    await layerStore.load();
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
     let last = null;
@@ -832,6 +778,10 @@
   // а поля слоя (колонка, этап, тема, приоритет…) сводим с записями календаря здесь: забрали — в слой, поменяли слой — в календарь.
   let shareErr = $state('');
   let sharePushTimer;
+  layerStore.configure({
+    canSync: () => phase === 'ready',
+    afterSave: () => { clearTimeout(sharePushTimer); if (shared.calendars().length) sharePushTimer = setTimeout(pushShared, 1500); },
+  });
   let sharePushing = null;
   let sharePanel = $state(null); // окно общей сферы: { id, mode: 'make' | 'people' }
   let joinOpen = $state(false);
@@ -1729,7 +1679,7 @@
   async function logout() {
     await api.auth.logout().catch(() => {});
     lists = []; tasks = {}; events = []; openRef = null;
-    layerSync.reset(); cloud = { state: 'idle', at: null, err: '' };
+    layerStore.reset();
     authInfo = await api.auth.status();
     phase = 'setup';
   }
