@@ -4,6 +4,9 @@
 //
 // Ключей Google здесь нет. Трекер сам присылает список напоминаний и задачи на неделю (PUT /state)
 // и забирает то, что человек написал боту (GET /inbox) — задачи в Google создаёт уже трекер.
+// Утренняя сводка (задачи дня + новости) — brief.js.
+
+import { briefCommand } from './brief.js';
 
 export const CODE_TTL = 15 * 60e3; // код привязки живёт 15 минут
 export const LATE_LIMIT = 12 * 3600e3; // опоздавшее больше чем на 12 ч не шлём
@@ -20,6 +23,7 @@ export const HELP = [
   '',
   '/today — задачи на сегодня',
   '/week — на неделю',
+  '/brief — утренняя сводка сейчас, /brief 7:30 — время, /brief выкл — не присылать',
   '/off — не присылать напоминания, /on — снова присылать',
   '/unlink — отключить этот чат от Спутника',
 ].join('\n');
@@ -87,7 +91,7 @@ export function nextAt(state, sentKeys, now) {
 
 // ---------- сообщения из Telegram ----------
 
-export async function onUpdate(u, { store, tg, now = Date.now(), rand = Math.random }) {
+export async function onUpdate(u, { store, tg, news = async () => null, now = Date.now(), rand = Math.random }) {
   if (u.callback_query) return onButton(u.callback_query, { store, tg, now });
   const msg = u.message;
   if (!msg?.chat || msg.chat.type !== 'private') return;
@@ -110,6 +114,7 @@ export async function onUpdate(u, { store, tg, now = Date.now(), rand = Math.ran
     const head = st?.at && now - st.at > 864e5 ? '\n\n<i>Спутник давно не синхронизировался — список может быть старым.</i>' : '';
     return say(agenda(st?.today, user.tz, now, cmd === 'week' ? 7 : 1) + head);
   }
+  if (cmd === 'brief') return briefCommand(chat, text.replace(/^\/\w+(@\w+)?/, ''), { store, tg, news, now });
   if (cmd === 'off') { await store.setMuted(chat, true); return say('Напоминания на паузе. Включить — /on'); }
   if (cmd === 'on') { await store.setMuted(chat, false); return say('Напоминания снова включены ✓'); }
   if (cmd === 'unlink' || cmd === 'stop') { await store.unlink(chat); return say('Чат отключён от Спутника. Подключить снова — /start'); }

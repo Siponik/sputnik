@@ -27,7 +27,7 @@ function tick() {
   if (!lock.tryLock(0)) return; // прошлый запуск ещё идёт
   try {
     try { remindersTick_(); } catch (e) { console.error('Напоминания: ' + e); }
-    try { morningTick_(); } catch (e) { console.error('Утренняя сводка: ' + e); }
+    // Утреннюю сводку с 27.10 шлёт общий бот @SputnikTasksBot (bot/src/brief.js). Здесь она — только по /now.
     // Итог недели по пятницам — BotTasks.gs.
     if (typeof reviewTick_ === 'function') {
       try { reviewTick_(); } catch (e) { console.error('Итог недели: ' + e); }
@@ -168,7 +168,7 @@ function esc_(s) {
   return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// ── Утренняя сводка в Telegram (по умолчанию по будням в 08:00 МСК) ──
+// ── Утренняя сводка в Telegram: с 27.10 сама не приходит (её шлёт общий бот, bot/src/brief.js), только по /now ──
 // tick() идёт раз в минуту. Время, дни и паузу меняют командами боту (Bot.gs): свойства BRIEF_AT, BRIEF_DAYS, BRIEF_OFF.
 // С 23.10 без Claude: сообщение = встречи дня + задачи дня (todayBrief_) + новости. Новости собирает GitHub Actions
 // (.github/workflows/news.yml, tools/news/) из RSS-лент и бесплатной модели, страница — на GitHub Pages (NEWS_URL),

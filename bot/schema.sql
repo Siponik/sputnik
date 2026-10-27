@@ -18,3 +18,4 @@ CREATE TABLE IF NOT EXISTS sent (id INTEGER PRIMARY KEY AUTOINCREMENT, chat TEXT
 CREATE INDEX IF NOT EXISTS sent_chat ON sent (chat, key);
 CREATE TABLE IF NOT EXISTS tries (ip TEXT NOT NULL, at INTEGER NOT NULL); -- неверные коды привязки
 CREATE INDEX IF NOT EXISTS tries_ip ON tries (ip, at);
+CREATE TABLE IF NOT EXISTS brief (chat TEXT PRIMARY KEY, at INTEGER, days TEXT, off INTEGER DEFAULT 0, sent TEXT); -- утренняя сводка (brief.js); воркер создаёт её и сам
