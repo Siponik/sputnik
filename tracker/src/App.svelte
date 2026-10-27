@@ -57,6 +57,7 @@
   import { say, busy as toastBusy } from './stores/toast.svelte.js';
   import * as layerStore from './stores/layer.svelte.js';
   import * as taskStore from './stores/tasks.svelte.js';
+  import * as syncStore from './stores/sync.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -76,8 +77,7 @@
   let newList = $state(false);
   let newListName = $state(''); // название из окна «Создать»
   let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
-  let sync = $state({ busy: false, err: '', at: null });
-  let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
+  const sync = syncStore.sync; // { busy, err, at, flash } — обмен с Google
 
   // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
@@ -180,46 +180,40 @@
     if (changed) saveLayer();
   }
 
-  async function refresh() {
-    if (sync.busy) return;
-    sync.busy = true;
-    sync.err = '';
-    try {
-      const t0 = Date.now();
-      const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
-      // Общие сферы (календари) — до списков: их списки и задачи api берёт из того, что забрали здесь.
-      const shr = await shared.pullAll().catch((e) => { if (api.isOffline(e)) throw e; shareErr = String(e); return null; });
-      const ls = await api.listLists();
-      const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
-      // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
-      // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
-      await syncLayer();
-      if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareVer++; }).catch(() => {});
-      if (shr) applyShared(shr);
-      taskStore.board.lists = ls;
-      // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
-      taskStore.board.tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
-      if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
-      // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
-      // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
-      ensureHabitMeta();
-      events = await api.eventsForDay().catch(() => []);
-      inboxSt = await api.inboxStatus().catch(() => inboxSt);
-      await loadRemindEvents();
-      pullInboxLayer();
-      await rollRepeats();
-      await pullTg();
-      sync.at = new Date();
-      syncLayer();
-    } catch (e) {
-      sync.err = String(e);
-      if (/войдите|sign in|invalid_grant/i.test(sync.err)) { phase = 'setup'; authInfo = await api.auth.status(); }
-      else if (!api.isOffline(e)) say('Не удалось обновить: ' + e);
-    } finally {
-      sync.busy = false;
-      if (!sync.err) { syncFlash = true; setTimeout(() => (syncFlash = false), 650); }
-    }
+  // Один обмен с Google (порядок и ошибки — stores/sync.svelte.js): общие сферы, списки и задачи, слой, события, «Входящие».
+  async function pullAll() {
+    const t0 = Date.now();
+    const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
+    // Общие сферы (календари) — до списков: их списки и задачи api берёт из того, что забрали здесь.
+    const shr = await shared.pullAll().catch((e) => { if (api.isOffline(e)) throw e; shareErr = String(e); return null; });
+    const ls = await api.listLists();
+    const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
+    // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
+    // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
+    await syncLayer();
+    if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareVer++; }).catch(() => {});
+    if (shr) applyShared(shr);
+    taskStore.board.lists = ls;
+    // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
+    taskStore.board.tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
+    if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+    // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
+    // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
+    ensureHabitMeta();
+    events = await api.eventsForDay().catch(() => []);
+    inboxSt = await api.inboxStatus().catch(() => inboxSt);
+    await loadRemindEvents();
+    pullInboxLayer();
+    await rollRepeats();
+    await pullTg();
+    syncLayer();
   }
+  syncStore.configure({
+    pull: pullAll,
+    ready: () => phase === 'ready',
+    onAuthLost: async () => { phase = 'setup'; authInfo = await api.auth.status(); },
+  });
+  const refresh = syncStore.refresh;
 
   async function start() {
     await layerStore.load();
@@ -287,11 +281,6 @@
 
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
-  let retryTimer;
-  $effect(() => {
-    clearTimeout(retryTimer);
-    if (offline) retryTimer = setTimeout(refresh, 60e3);
-  });
 
   // ---------- быстрое добавление: кнопка «Создать» и Ctrl+N ----------
 
@@ -412,10 +401,8 @@
       if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
       if (phase === 'ready') habitWin();
     }, 60e3);
-    const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
-    const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
-    window.addEventListener('focus', onFocus);
-    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); window.removeEventListener('focus', onFocus); };
+    const stopSync = syncStore.start();
+    return () => { stopSync(); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); };
   });
 
   // Когда трекер сам менял задачу — чтобы ответ синхронизации, запрошенный раньше, её не откатил (lib/fresh.js).
@@ -1704,7 +1691,7 @@
       </button>
       <button class="hd-stat" bind:this={statBtn} type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
         onclick={() => (statOpen = !statOpen)}>
-        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && syncFlash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
+        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && sync.flash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
       </button>
       {#if inboxItems.length}
         <button class="hd-ib" type="button" title="Входящие от Claude · {inboxItems.length} — разобрать на «Сегодня»"
