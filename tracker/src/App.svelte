@@ -12,6 +12,7 @@
   import Today from './lib/Today.svelte';
   import Habits from './lib/Habits.svelte';
   import NewList from './lib/NewList.svelte';
+  import EditList from './lib/EditList.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import Calendar from './lib/Calendar.svelte';
   import Create from './lib/Create.svelte';
@@ -723,8 +724,10 @@
   // ---------- доска: проекты и совет енота ----------
 
   let boardProject = $state(null);
+  // Проекты — группы Конвейера, на других досках фильтр по ним не нужен.
   const projects = $derived.by(() => {
     const n = {};
+    if (viewFor(activeId) !== 'pipe') return [];
     for (const t of tasks[activeId] ?? []) {
       const p = !t.parent && t.status !== 'completed' && lay.tasks?.[t.id]?.project;
       if (p) n[p] = (n[p] ?? 0) + 1;
@@ -1310,6 +1313,7 @@
     }
     return [
       { id: 'open', label: 'Открыть доску' },
+      { id: 'edit', label: 'Изменить список' },
       ...(sphereOf(sideMenu.id, lay) && !sh.isSharedId(sideMenu.id) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
       { id: 'delete', label: 'Удалить список…', danger: true, sep: true },
     ];
@@ -1328,9 +1332,28 @@
       else if (a === 'leave') askLeaveSphere(id);
     } else {
       if (a === 'open') openList(id);
+      else if (a === 'edit') listEdit = id;
       else if (a === 'unsphere') { touch('lists', id, { sphere: null }); saveLayer(); say('Список — в «Без сферы»'); }
       else if (a === 'delete') askDeleteList(id);
     }
+  }
+
+  // «Изменить список»: название, сфера и вид доски. Шаблон здесь не трогаем — он правится в «Шаблонах досок».
+  let listEdit = $state(null);
+  async function applyListEdit(id, { title, sphere, view: v }) {
+    const l = lists.find((x) => x.id === id);
+    if (!l) return;
+    if (title && title !== l.title) {
+      try {
+        if (!sh.isSharedId(id)) await api.renameList(id, title);
+        lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
+      } catch (e) { say('Не удалось переименовать: ' + e); return; }
+    }
+    if (!sh.isSharedId(id)) touch('lists', id, { sphere: sphere ?? null });
+    touch('lists', id, { view: v });
+    saveLayer();
+    listEdit = null;
+    say('Список изменён');
   }
 
   function askDeleteSphere(id) {
@@ -2100,6 +2123,13 @@
 
   {#if askDel}
     <ConfirmDelete title={askDel.title} text={askDel.text} note={askDel.note} yes={askDel.yes} danger={askDel.danger ?? true} onconfirm={confirmDel} onclose={() => (askDel = null)} />
+  {/if}
+
+  {#if listEdit}
+    {@const el = lists.find((x) => x.id === listEdit)}
+    {#if el}
+      <EditList list={el} sphere={sphereOf(el.id, lay) ?? null} {spheres} view={viewFor(el.id)} shared={sh.isSharedId(el.id)} onsave={(p) => applyListEdit(el.id, p)} onclose={() => (listEdit = null)} />
+    {/if}
   {/if}
 
   {#if newList}
