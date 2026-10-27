@@ -2,13 +2,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { onUpdate, link, putState, tick, agenda, format, sha256 } from '../../bot/src/logic.js';
+import { ackDrafts } from '../../bot/src/drafts.js';
 
 function memStore() {
-  const users = new Map(), codes = new Map(), inbox = [], sent = [];
+  const users = new Map(), codes = new Map(), inbox = [], sent = [], drafts = new Map();
+  let qseq = 0;
   let seq = 0;
   const tries = [];
   return {
-    users, inbox, sent,
+    users, q: inbox, sent,
     user: async (chat) => users.get(chat) ?? null,
     userByKey: async (h) => [...users.values()].find((u) => u.key_hash === h) ?? null,
     putCode: async (code, chat, name, exp) => { for (const [k, c] of codes) if (c.chat === chat) codes.delete(k); codes.set(code, { chat, name, exp }); },
@@ -28,10 +30,21 @@ function memStore() {
     purge: async () => {},
     tries: async (ip, since) => tries.filter((t) => t.ip === ip && t.at > since).length,
     addTry: async (ip, at) => { tries.push({ ip, at }); },
-    addInbox: async (chat, body) => { inbox.push({ id: inbox.length + 1, chat, ...body }); },
+    addInbox: async (chat, body) => { inbox.push({ id: ++qseq, chat, ...body }); return qseq; },
+    updateInbox: async (chat, id, body) => { const i = inbox.findIndex((x) => x.id === id && x.chat === chat); if (i < 0) return false; inbox[i] = { id, chat, ...body }; return true; },
+    dropInbox: async (chat, id) => { const i = inbox.findIndex((x) => x.id === id && x.chat === chat); if (i < 0) return false; inbox.splice(i, 1); return true; },
+    inbox: async (chat) => inbox.filter((x) => x.chat === chat).map(({ chat: _c, ...x }) => x),
+    ack: async (chat, ids) => { for (const id of ids) { const i = inbox.findIndex((x) => x.id === id && x.chat === chat); if (i >= 0) inbox.splice(i, 1); } },
+    drafts,
+    draft: async (chat, id) => structuredClone(drafts.get(chat + '|' + id) ?? null),
+    lastDraft: async (chat) => structuredClone([...drafts.entries()].filter(([k]) => k.startsWith(chat + '|') && !k.endsWith('|~')).map(([, d]) => d).sort((a, b) => b.at - a.at)[0] ?? null),
+    putDraft: async (chat, d, at) => { drafts.set(chat + '|' + d.id, structuredClone({ ...d, at })); },
+    dropDraft: async (chat, id) => { drafts.delete(chat + '|' + id); },
+    draftMeta: async (chat) => structuredClone(drafts.get(chat + '|~') ?? null),
+    setDraftMeta: async (chat, m) => { drafts.set(chat + '|~', structuredClone(m)); },
   };
 }
-const tgLog = () => { const calls = []; const tg = async (method, body) => { calls.push({ method, ...body }); return { ok: true }; }; return { calls, tg }; };
+const tgLog = () => { const calls = []; let mid = 500; const tg = async (method, body) => { const id = method === 'sendMessage' ? ++mid : null; calls.push({ method, ...body, ...(id ? { message_id: id } : {}) }); return { ok: true, result: id ? { message_id: id } : true }; }; return { calls, tg }; };
 const msg = (text, chat = 5) => ({ message: { chat: { id: chat, type: 'private' }, from: { first_name: 'Аня' }, text } });
 
 test('привязка: /start → код → трекер вводит код → чат связан с ключом', async () => {
@@ -60,11 +73,13 @@ test('перебор кодов: после 10 неверных с одного 
 test('текст в чат — задача во «входящие» трекера; без привязки — просим /start', async () => {
   const store = memStore(), { calls, tg } = tgLog();
   await onUpdate(msg('купить корм'), { store, tg, rand: () => 0.1 });
-  assert.equal(store.inbox.length, 0);
+  assert.equal(store.q.length, 0);
   assert.match(calls[0].text, /Код для подключения/);
   await store.link('5', 'h', 'Europe/Moscow', 'Аня');
-  await onUpdate(msg('купить корм завтра 18:00'), { store, tg });
-  assert.deepEqual(store.inbox.map((x) => [x.type, x.text]), [['add', 'купить корм завтра 18:00']]);
+  await onUpdate(msg('купить корм завтра 18:00'), { store, tg, now: Date.parse('2026-10-27T09:00:00Z') });
+  const [x] = store.q;
+  assert.deepEqual([x.type, x.text, x.draft.title, x.draft.due, x.draft.time, x.draft.src], ['add', 'Купить корм', 'Купить корм', '2026-10-28', '18:00', 'купить корм завтра 18:00']);
+  assert.match(calls.at(-1).text, /Записал/);
 });
 
 test('напоминание приходит один раз, с кнопками; «Готово» уходит в трекер, «Через час» повторяет', async () => {
@@ -80,11 +95,12 @@ test('напоминание приходит один раз, с кнопкам
   const sentMsg = calls.find((c) => c.method === 'sendMessage');
   assert.match(sentMsg.text, /Полить &lt;цветы&gt;/);
   assert.match(sentMsg.text, /Срок: 22 окт\./);
-  const [done, snooze] = sentMsg.reply_markup.inline_keyboard[0];
+  const [[done, tomorrow], [q15, snooze]] = sentMsg.reply_markup.inline_keyboard;
+  assert.deepEqual([tomorrow.text, q15.text], ['📅 На завтра', '⏰ 15 мин']);
   assert.equal(store.users.get('5').next_at, Date.parse(later.fireAt));
 
   await onUpdate({ callback_query: { id: 'q', data: done.callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
-  assert.deepEqual(store.inbox.map((x) => [x.type, x.taskId, x.listId]), [['done', 't1', 'L']]);
+  assert.deepEqual(store.q.map((x) => [x.type, x.taskId, x.listId]), [['done', 't1', 'L']]);
 
   await onUpdate({ callback_query: { id: 'q2', data: snooze.callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
   assert.match(calls.at(-1).text, /Напомню в 11:00/); // Москва, +1 ч
@@ -136,4 +152,101 @@ test('трекер: сообщение боту → задача; снимок �
     B: [{ id: '4', title: 'Созвон', due: '2026-10-22T00:00:00.000Z' }],
   }, { 4: { slot: { s: '15:00' } } }, today);
   assert.deepEqual(snap, [{ title: 'Созвон', due: '2026-10-22', time: '15:00', list: 'Работа' }, { title: 'Скоро', due: '2026-10-24', list: 'Дом' }]);
+});
+
+// ---------- черновики задач (bot/src/draft.js, drafts.js) ----------
+
+const NOW = Date.parse('2026-10-27T09:00:00Z'); // вторник, 12:00 по Москве
+async function linked() {
+  const store = memStore(), log = tgLog();
+  await store.link('5', 'h', 'Europe/Moscow', 'Аня');
+  await putState('5', { items: [], today: [], lists: [{ id: 'W', title: 'Работа' }, { id: 'Z', title: 'Заказы клиентов' }], def: 'W', words: { корм: 'W' } }, { store, now: NOW });
+  const press = async (label, now = NOW) => {
+    const card = [...log.calls].reverse().find((c) => c.reply_markup?.inline_keyboard?.flat().some((b) => b.text.includes(label)));
+    assert.ok(card, 'нет кнопки ' + label);
+    const b = card.reply_markup.inline_keyboard.flat().find((x) => x.text.includes(label));
+    const message_id = card.message_id;
+    await onUpdate({ callback_query: { id: 'q', data: b.callback_data, message: { chat: { id: 5 }, message_id } } }, { store, tg: log.tg, now });
+  };
+  const last = () => [...log.calls].reverse().find((c) => c.method === 'sendMessage' || c.method === 'editMessageText');
+  return { store, ...log, press, last };
+}
+const fwdMsg = (text) => ({ message: { chat: { id: 5, type: 'private' }, from: { first_name: 'Аня' }, text, forward_origin: { type: 'user', sender_user: { id: 7, first_name: 'Ольга' } } } });
+
+test('пересланное: черновик с догадкой, в очередь — только после «✅ Создать»', async () => {
+  const b = await linked();
+  await onUpdate(fwdMsg('Привет! Можешь прислать скетч таверны до пятницы 15:00? Заказчик ждёт'), { store: b.store, tg: b.tg, now: NOW });
+  assert.equal(b.store.q.length, 0);
+  assert.match(b.last().text, /Черновик.*Ольга[\s\S]*Прислать скетч таверны[\s\S]*пт, 30 окт\. · 15:00[\s\S]*Заказы клиентов/);
+  await b.press('Создать');
+  const [x] = b.store.q;
+  assert.deepEqual([x.draft.title, x.draft.due, x.draft.time, x.draft.listId], ['Прислать скетч таверны', '2026-10-30', '15:00', 'Z']);
+  assert.match(x.draft.notes, /переслано от Ольга/);
+  assert.match(b.last().text, /Записал/);
+  // трекер забрал — карточка «В Спутнике» без кнопок
+  await ackDrafts('5', [x.id], { store: b.store, tg: b.tg, now: NOW });
+  assert.match(b.last().text, /В Спутнике/);
+  assert.deepEqual(b.last().reply_markup.inline_keyboard, []);
+  assert.equal(b.store.q.length, 0);
+});
+
+test('кнопки: срок, список, приоритет; выбранный список запоминается для отправителя', async () => {
+  const b = await linked();
+  await onUpdate(fwdMsg('глянуть рендер'), { store: b.store, tg: b.tg, now: NOW });
+  await b.press('Срок'); await b.press('Завтра'); await b.press('19:00');
+  await b.press('Список'); await b.press('Заказы');
+  await b.press('Приоритет'); await b.press('высокий');
+  await b.press('Создать');
+  const [x] = b.store.q;
+  assert.deepEqual([x.draft.due, x.draft.time, x.draft.listId, x.draft.prio], ['2026-10-28', '19:00', 'Z', 1]);
+  await onUpdate(fwdMsg('и ещё одно дело'), { store: b.store, tg: b.tg, now: NOW + 3600e3 });
+  assert.match(b.last().text, /Заказы клиентов.*как в прошлый раз от Ольга/);
+});
+
+test('свой текст: сразу в очередь, кнопки правят запись, текст «@заказы» тоже; «Отменить» убирает', async () => {
+  const b = await linked();
+  await onUpdate(msg('купить корм коту'), { store: b.store, tg: b.tg, now: NOW });
+  assert.equal(b.store.q[0].draft.listId, 'W'); // выученное слово «корм»
+  await b.press('Срок'); await b.press('Завтра');
+  assert.equal(b.store.q[0].draft.due, '2026-10-28');
+  await onUpdate(msg('@заказы !!'), { store: b.store, tg: b.tg, now: NOW + 60e3 });
+  assert.equal(b.store.q.length, 1);
+  assert.deepEqual([b.store.q[0].draft.listId, b.store.q[0].draft.prio], ['Z', 2]);
+  assert.ok(b.calls.some((c) => c.method === 'deleteMessage'));
+  await b.press('Отменить', NOW + 120e3);
+  assert.equal(b.store.q.length, 0);
+  assert.match(b.last().text, /Отменил/);
+});
+
+test('трекер уже забрал — правка честно говорит «поправь в Спутнике»', async () => {
+  const b = await linked();
+  await onUpdate(msg('позвонить в банк'), { store: b.store, tg: b.tg, now: NOW });
+  await ackDrafts('5', [b.store.q[0].id], { store: b.store, tg: b.tg, now: NOW });
+  await onUpdate(msg('завтра'), { store: b.store, tg: b.tg, now: NOW + 60e3 });
+  assert.equal(b.store.q.length, 0);
+  assert.match(b.last().text, /уже в Спутнике/);
+});
+
+test('/ask on — свой текст черновиком; несколько пересланных подряд — «Разделить»', async () => {
+  const b = await linked();
+  await onUpdate(msg('/ask on'), { store: b.store, tg: b.tg, now: NOW });
+  await onUpdate(msg('сделать иконки'), { store: b.store, tg: b.tg, now: NOW });
+  assert.equal(b.store.q.length, 0);
+  assert.match(b.last().text, /Черновик/);
+  await onUpdate(fwdMsg('поправить шрифт'), { store: b.store, tg: b.tg, now: NOW + 5000 });
+  await onUpdate(fwdMsg('обновить превью'), { store: b.store, tg: b.tg, now: NOW + 6000 });
+  assert.match(b.last().text, /2 сообщ/);
+  await b.press('Разделить', NOW + 7000);
+  assert.deepEqual(b.store.q.map((x) => x.draft.title), ['Поправить шрифт', 'Обновить превью']);
+});
+
+test('«📅 На завтра» под напоминанием — запись move для трекера', async () => {
+  const b = await linked();
+  const item = { key: 't1|x', taskId: 't1', listId: 'L', title: 'Рендер', due: '2026-10-27', fireAt: '2026-10-27T08:59:00Z' };
+  await putState('5', { items: [item], today: [] }, { store: b.store, now: NOW });
+  await tick({ store: b.store, tg: b.tg, now: NOW });
+  await b.press('На завтра');
+  assert.deepEqual(b.store.q.map((x) => [x.type, x.taskId, x.due]), [['move', 't1', '2026-10-28']]);
+  // списки от трекера не потерялись после PUT /state без них
+  assert.equal(b.store.users.get('5').state.lists.length, 2);
 });

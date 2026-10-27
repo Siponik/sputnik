@@ -3,9 +3,14 @@
 // Таблица утренней сводки появилась позже остальных — создаём её сами, чтобы выкладка не требовала миграции.
 const BRIEF_SQL = 'CREATE TABLE IF NOT EXISTS brief (chat TEXT PRIMARY KEY, at INTEGER, days TEXT, off INTEGER DEFAULT 0, sent TEXT)';
 let briefReady = null;
+// Черновики задач (drafts.js) — тоже своя таблица, создаётся сама. Строка с id '~' — настройки и выученное (draftMeta).
+const DRAFT_SQL = 'CREATE TABLE IF NOT EXISTS drafts (chat TEXT NOT NULL, id TEXT NOT NULL, body TEXT NOT NULL, at INTEGER, PRIMARY KEY (chat, id))';
+const DRAFT_TTL = 2 * 864e5;
+let draftReady = null;
 
 export function d1Store(db) {
   const briefTable = () => (briefReady ??= db.prepare(BRIEF_SQL).run().catch((e) => { briefReady = null; throw e; }));
+  const draftTable = () => (draftReady ??= db.prepare(DRAFT_SQL).run().catch((e) => { draftReady = null; throw e; }));
   const one = (sql, ...a) => db.prepare(sql).bind(...a).first();
   const all = async (sql, ...a) => (await db.prepare(sql).bind(...a).all()).results ?? [];
   const run = (sql, ...a) => db.prepare(sql).bind(...a).run();
@@ -27,7 +32,8 @@ export function d1Store(db) {
       chat, hash, tz, name, Date.now()),
     async unlink(chat) {
       await briefTable();
-      for (const t of ['users', 'inbox', 'sent', 'codes', 'brief']) await run(`DELETE FROM ${t} WHERE chat = ?`, chat);
+      await draftTable();
+      for (const t of ['users', 'inbox', 'sent', 'codes', 'brief', 'drafts']) await run(`DELETE FROM ${t} WHERE chat = ?`, chat);
     },
     setMuted: (chat, v) => run('UPDATE users SET muted = ? WHERE chat = ?', v ? 1 : 0, chat),
     async state(chat) { const r = await one('SELECT state FROM users WHERE chat = ?', chat); return r?.state ? JSON.parse(r.state) : null; },
@@ -51,7 +57,21 @@ export function d1Store(db) {
     },
     async tries(ip, since) { return (await one('SELECT COUNT(*) AS n FROM tries WHERE ip = ? AND at > ?', ip, since))?.n ?? 0; },
     addTry: (ip, at) => run('INSERT INTO tries (ip, at) VALUES (?, ?)', ip, at),
-    addInbox: (chat, body) => run('INSERT INTO inbox (chat, body, at) VALUES (?, ?, ?)', chat, JSON.stringify(body), Date.now()),
+    async addInbox(chat, body) { const r = await run('INSERT INTO inbox (chat, body, at) VALUES (?, ?, ?)', chat, JSON.stringify(body), Date.now()); return r.meta.last_row_id; },
+    /** Поменять запись в очереди, пока трекер её не забрал. false — уже забрал. */
+    async updateInbox(chat, id, body) { const r = await run('UPDATE inbox SET body = ? WHERE chat = ? AND id = ?', JSON.stringify(body), chat, id ?? -1); return r.meta.changes > 0; },
+    async dropInbox(chat, id) { const r = await run('DELETE FROM inbox WHERE chat = ? AND id = ?', chat, id ?? -1); return r.meta.changes > 0; },
+    // черновики задач (drafts.js)
+    async draft(chat, id) { await draftTable(); const r = await one('SELECT body FROM drafts WHERE chat = ? AND id = ?', chat, id); return r ? JSON.parse(r.body) : null; },
+    async lastDraft(chat) { await draftTable(); const r = await one("SELECT body FROM drafts WHERE chat = ? AND id <> '~' ORDER BY at DESC LIMIT 1", chat); return r ? JSON.parse(r.body) : null; },
+    async putDraft(chat, d, at) {
+      await draftTable();
+      await run('INSERT OR REPLACE INTO drafts (chat, id, body, at) VALUES (?, ?, ?, ?)', chat, d.id, JSON.stringify({ ...d, at }), at);
+      await run("DELETE FROM drafts WHERE id <> '~' AND at < ?", at - DRAFT_TTL);
+    },
+    async dropDraft(chat, id) { await draftTable(); await run('DELETE FROM drafts WHERE chat = ? AND id = ?', chat, id); },
+    async draftMeta(chat) { await draftTable(); const r = await one("SELECT body FROM drafts WHERE chat = ? AND id = '~'", chat); return r ? JSON.parse(r.body) : null; },
+    async setDraftMeta(chat, meta) { await draftTable(); await run("INSERT OR REPLACE INTO drafts (chat, id, body, at) VALUES (?, '~', ?, ?)", chat, JSON.stringify(meta), Date.now()); },
     async inbox(chat) { return (await all('SELECT id, body FROM inbox WHERE chat = ? ORDER BY id LIMIT 100', chat)).map((r) => ({ id: r.id, ...JSON.parse(r.body) })); },
     async ack(chat, ids) { for (const id of ids) await run('DELETE FROM inbox WHERE chat = ? AND id = ?', chat, id); },
     // утренняя сводка (brief.js)

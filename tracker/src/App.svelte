@@ -155,10 +155,11 @@
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
     const week = tgKey ? sharedbot.snapshot(boardLists, mineTasks, lay.tasks) : null;
+    const guess = tgKey ? sharedbot.guessCtx(boardLists.filter((l) => !l.lost), lay) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       // Общий бот (lib/sharedbot.js) — те же напоминания, кроме проверки личного бота, и задачи на неделю для /today.
-      if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week).then(() => (tgStat = { ...tgStat, err: '' }))
+      if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week, guess).then(() => (tgStat = { ...tgStat, err: '' }))
         .catch((e) => (tgStat = { ...tgStat, err: String(e.message ?? e), unlinked: !!e.unlinked }));
       // Файл на Drive читает только свой бот владельца (Apps Script). Выключили — один раз очищаем файл, чтобы скрипт замолчал.
       if (!own.on && !remStat.at) return;
@@ -1320,8 +1321,13 @@
       let added = 0;
       for (const x of r.items ?? []) {
         if (x.type === 'add') {
-          const t = sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
+          // Карточка из бота (поля выбраны там) или старая запись — просто текст.
+          const t = x.draft ? sharedbot.fromDraft(x.draft, { lists: boardLists, layer: lay, tasks }) : sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
           if (t) { if (!(await quickCreate(t, true))) continue; added++; }
+        } else if (x.type === 'move') {
+          // «📅 На завтра» под напоминанием: срок меняется, время в слое остаётся.
+          const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
+          if (task && task.status !== 'completed' && !(await schedule(task, x.listId, x.due, lay.tasks?.[task.id]?.slot ?? null))) continue;
         } else if (x.type === 'done') {
           const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
           if (task && task.status !== 'completed' && !(await toggle(task, true, x.listId, true))) continue;

@@ -4,9 +4,11 @@
 //
 // Ключей Google здесь нет. Трекер сам присылает список напоминаний и задачи на неделю (PUT /state)
 // и забирает то, что человек написал боту (GET /inbox) — задачи в Google создаёт уже трекер.
-// Утренняя сводка (задачи дня + новости) — brief.js.
+// Утренняя сводка (задачи дня + новости) — brief.js. Черновики задач (пересланное, кнопки правки) — drafts.js.
 
 import { briefCommand } from './brief.js';
+import { onDraftMessage, onDraftButton, askCommand } from './drafts.js';
+import { senderOf, parseData } from './draft.js';
 
 export const CODE_TTL = 15 * 60e3; // код привязки живёт 15 минут
 export const LATE_LIMIT = 12 * 3600e3; // опоздавшее больше чем на 12 ч не шлём
@@ -19,11 +21,13 @@ const DOW = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
 export const HELP = [
   '🛰 <b>Спутник</b>',
-  'Пиши сюда задачи обычным текстом — «купить корм завтра 18:00» — они появятся в Спутнике.',
+  'Пиши сюда задачи обычным текстом — «купить корм завтра 18:00» — они появятся в Спутнике. Под ответом — кнопки: срок, список, приоритет, напоминание.',
+  'Перешли любое сообщение — пришлю черновик задачи: создашь одной кнопкой или поправишь.',
   '',
   '/today — задачи на сегодня',
   '/week — на неделю',
   '/brief — утренняя сводка сейчас, /brief 7:30 — время, /brief выкл — не присылать',
+  '/ask on — свои сообщения тоже черновиком, /ask off — сразу задачей',
   '/off — не присылать напоминания, /on — снова присылать',
   '/unlink — отключить этот чат от Спутника',
 ].join('\n');
@@ -96,12 +100,12 @@ export async function onUpdate(u, { store, tg, news = async () => null, now = Da
   const msg = u.message;
   if (!msg?.chat || msg.chat.type !== 'private') return;
   const chat = String(msg.chat.id);
-  const text = String(msg.text ?? '').trim();
+  const text = String(msg.text ?? msg.caption ?? '').trim();
   const say = (t, markup) => tg('sendMessage', { chat_id: chat, text: t, parse_mode: 'HTML', disable_web_page_preview: true, ...(markup ? { reply_markup: markup } : {}) });
   const user = await store.user(chat);
   const cmd = (text.match(/^\/(\w+)/)?.[1] ?? '').toLowerCase();
 
-  if (cmd === 'start' || (!user && !cmd && text)) {
+  if (cmd === 'start' || (!user && !cmd && (text || senderOf(msg)))) {
     if (user && cmd === 'start') return say('Этот чат уже подключён к Спутнику ✓\n\n' + HELP);
     const code = newCode(rand);
     await store.putCode(code, chat, msg.from?.first_name ?? '', now + CODE_TTL);
@@ -115,20 +119,25 @@ export async function onUpdate(u, { store, tg, news = async () => null, now = Da
     return say(agenda(st?.today, user.tz, now, cmd === 'week' ? 7 : 1) + head);
   }
   if (cmd === 'brief') return briefCommand(chat, text.replace(/^\/\w+(@\w+)?/, ''), { store, tg, news, now });
+  if (cmd === 'ask') return askCommand(chat, text.replace(/^\/\w+(@\w+)?/, '').trim(), { store, tg });
   if (cmd === 'off') { await store.setMuted(chat, true); return say('Напоминания на паузе. Включить — /on'); }
   if (cmd === 'on') { await store.setMuted(chat, false); return say('Напоминания снова включены ✓'); }
   if (cmd === 'unlink' || cmd === 'stop') { await store.unlink(chat); return say('Чат отключён от Спутника. Подключить снова — /start'); }
   if (cmd) return say('Не знаю такой команды.\n\n' + HELP);
-  if (!text) return;
-  await store.addInbox(chat, { type: 'add', text: text.slice(0, 1000), at: now });
-  return say('📥 Записал. Задача появится в Спутнике при следующей синхронизации — когда он открыт, это пара минут.');
+  return onDraftMessage(msg, chat, user, { store, tg, now }); // пересланное, правка карточки или новая задача
 }
 
 async function onButton(q, { store, tg, now }) {
   const chat = String(q.message?.chat?.id ?? q.from?.id ?? '');
+  if (parseData(q.data)) { // карточка черновика (drafts.js)
+    if (!(await store.user(chat))) return tg('answerCallbackQuery', { callback_query_id: q.id, text: 'Сначала подключи Спутник: /start' });
+    const note = await onDraftButton(q, chat, { store, tg, now });
+    return tg('answerCallbackQuery', { callback_query_id: q.id, text: String(note || '').slice(0, 190) });
+  }
   const [act, id] = String(q.data ?? '').split(':');
-  const sent = id ? await store.sentById(chat, +id) : null;
   const answer = (text) => tg('answerCallbackQuery', { callback_query_id: q.id, text });
+  if (act === 'x') return answer(''); // подпись «уже сделано» на месте кнопки
+  const sent = id ? await store.sentById(chat, +id) : null;
   if (!sent) return answer('Это напоминание уже не найти');
   const item = sent.item;
   if (act === 'd' && item.taskId) {
@@ -136,8 +145,14 @@ async function onButton(q, { store, tg, now }) {
     await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message?.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
     return answer('✓ Отмечу в Спутнике');
   }
-  if (act === 'z') {
-    const at = new Date(now + SNOOZE_MIN * 60e3);
+  if (act === 'n' && item.taskId) { // «📅 На завтра»: срок задачи переносит трекер
+    const day = parts(new Date(now + 864e5), (await store.user(chat))?.tz).ymd;
+    await store.addInbox(chat, { type: 'move', taskId: item.taskId, listId: item.listId, title: item.title, due: day, at: now });
+    await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message?.message_id, reply_markup: { inline_keyboard: [[{ text: '📅 Перенесено на завтра', callback_data: 'x:0' }]] } }).catch(() => {});
+    return answer('Перенесу на завтра');
+  }
+  if (act === 'z' || act === 'q') { // «⏰ Через час» / «⏰ 15 мин»
+    const at = new Date(now + (act === 'q' ? 15 : SNOOZE_MIN) * 60e3);
     await store.addSnooze(chat, { ...item, key: `snooze|${id}|${at.getTime()}`, fireAt: at.toISOString() });
     const p = parts(at, (await store.user(chat))?.tz);
     return answer(`Напомню в ${p.hh}:${p.mm}`);
@@ -164,7 +179,11 @@ export async function putState(chat, body, { store, now = Date.now() }) {
   const items = Array.isArray(body?.items) ? body.items.slice(0, 500) : [];
   const today = Array.isArray(body?.today) ? body.today.slice(0, 300) : [];
   const prev = (await store.state(chat)) ?? {};
-  const state = { items, today, snoozed: (prev.snoozed ?? []).filter((x) => now - Date.parse(x.fireAt) <= LATE_LIMIT), at: now };
+  // Списки, основной и выученные слова — для догадки в черновиках (drafts.js). Старый трекер их не шлёт — остаются прежние.
+  const lists = Array.isArray(body?.lists) ? body.lists.slice(0, 100).map((l) => ({ id: String(l.id), title: String(l.title).slice(0, 80) })) : prev.lists;
+  const words = body?.words && typeof body.words === 'object' ? Object.fromEntries(Object.entries(body.words).slice(0, 500)) : prev.words;
+  const state = { items, today, snoozed: (prev.snoozed ?? []).filter((x) => now - Date.parse(x.fireAt) <= LATE_LIMIT), at: now,
+    ...(lists ? { lists } : {}), ...(words ? { words } : {}), ...(body?.def || prev.def ? { def: body?.def ?? prev.def } : {}) };
   await store.putState(chat, state, body?.tz, nextAt(state, await store.sentKeys(chat), now));
   return { status: 200, body: { ok: true } };
 }
@@ -180,11 +199,11 @@ export async function tick({ store, tg, now = Date.now() }) {
       if (!at || at > now || sentKeys.has(it.key)) continue;
       if (now - at <= LATE_LIMIT) {
         const id = await store.markSent(u.chat, it, now);
-        const row = [];
-        if (it.taskId && it.listId && it.kind !== 'milestone' && it.kind !== 'habit') row.push({ text: '✓ Готово', callback_data: `d:${id}` });
-        if (it.kind !== 'milestone' && it.kind !== 'test' && it.kind !== 'assigned') row.push({ text: '⏰ Через час', callback_data: `z:${id}` });
+        const rows = [];
+        if (it.taskId && it.listId && it.kind !== 'milestone' && it.kind !== 'habit') rows.push([{ text: '✓ Готово', callback_data: `d:${id}` }, { text: '📅 На завтра', callback_data: `n:${id}` }]);
+        if (it.kind !== 'milestone' && it.kind !== 'test' && it.kind !== 'assigned') rows.push([{ text: '⏰ 15 мин', callback_data: `q:${id}` }, { text: '⏰ Через час', callback_data: `z:${id}` }]);
         try {
-          await tg('sendMessage', { chat_id: u.chat, text: format(it, u.tz), parse_mode: 'HTML', disable_web_page_preview: true, ...(row.length ? { reply_markup: { inline_keyboard: [row] } } : {}) });
+          await tg('sendMessage', { chat_id: u.chat, text: format(it, u.tz), parse_mode: 'HTML', disable_web_page_preview: true, ...(rows.length ? { reply_markup: { inline_keyboard: rows } } : {}) });
           n++;
         } catch (e) {
           // Человек заблокировал бота — дальше не шлём, пока снова не напишет /on.
