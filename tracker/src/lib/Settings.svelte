@@ -8,13 +8,19 @@
   import { calendarsAll, backupsLast, openPlace } from './api.js';
   import { BOT_NAME } from './sharedbot.js';
   import { ACCENTS, accentOf } from './accent.js';
+  import { sync, refresh, offline as isOffline } from '../stores/sync.svelte.js';
+  import { layer, cloudLogin } from '../stores/layer.svelte.js';
+  import { upd, check, install } from '../stores/update.svelte.js';
 
   let {
     tab: tab0 = 'look', settings = {}, lists = [], hiddenLists = [], hiddenCals = [], sphereName = () => '',
-    version = '', upd, sync, offline = false, cloud, rem = null, ownBot = { show: false, on: false }, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
+    rem = null, ownBot = { show: false, on: false }, remind = { task: [], event: [], birthday: [] }, dupes = [], ondedupe = () => {},
     tgbot = null, tgStat = { err: '' }, ontglink, ontgtest, ontgunlink,
-    onset, onhidelist, onhidecal, onremind, ontestbot, onlogout, onrefresh, oncloudlogin, oninstall, oncheck, onclose,
+    onset, onhidelist, onhidecal, onremind, ontestbot, onlogout, onclose,
   } = $props();
+  const cloud = $derived(layer.cloud);
+  const version = $derived(upd.version);
+  const offline = $derived(isOffline());
 
   let tab = $state(tab0);
   let q = $state('');
@@ -249,9 +255,9 @@
             {@render tx('acct', 'Google-аккаунт', `${email ? email + ' · ' : ''}задачи, календарь, скрытая папка`)}
             <button type="button" class="stg-btn dng" onclick={onlogout}>Выйти</button></div>
           <div class="it" class:hit={hit.has('google')}>{@render tx('google', 'Google Задачи и Календарь', g.text.replace('раз в 2 минуты', 'автоматически раз в 2 минуты'), g.cls)}
-            <button type="button" class="stg-btn" disabled={sync.busy} onclick={onrefresh}>Обновить · R</button></div>
+            <button type="button" class="stg-btn" disabled={sync.busy} onclick={refresh}>Обновить · R</button></div>
           <div class="it" class:hit={hit.has('cloud')}>{@render tx('cloud', 'Между компьютерами', c.text, c.cls)}
-            {#if cloud.state === 'login'}<button type="button" class="stg-btn pri" onclick={oncloudlogin}>Разрешить</button>{/if}</div>
+            {#if cloud.state === 'login'}<button type="button" class="stg-btn pri" onclick={cloudLogin}>Разрешить</button>{/if}</div>
           <div class="it" class:hit={hit.has('dupes')}>{@render tx('dupes', 'Дубли задач', dupExtra.length ? `лишних копий: ${dupExtra.length} — одинаковые название и срок в одном списке` : 'не найдено', dupExtra.length ? 'w' : '')}
             {#if dupExtra.length}<button type="button" class="stg-btn" aria-expanded={dupOpen} onclick={() => (dupOpen = !dupOpen)}>{dupOpen ? 'Скрыть' : 'Показать'}</button>{/if}</div>
           {#if dupOpen && dupExtra.length}
@@ -272,8 +278,8 @@
       {:else if tab === 'upd'}
         <div class="stg-grp">
           <div class="it" class:hit={hit.has('ver')}>{@render tx('ver', `Спутник ${version}`, upd.found && !upd.busy ? `${ver.text}, данные не пострадают` : ver.text, ver.cls === 'c' ? 'w' : ver.cls)}
-            {#if upd.found && !upd.busy}<button type="button" class="stg-btn pri" onclick={oninstall}>Обновить</button>
-            {:else if !upd.busy}<button type="button" class="stg-btn" onclick={oncheck}>Проверить</button>{/if}</div>
+            {#if upd.found && !upd.busy}<button type="button" class="stg-btn pri" onclick={install}>Обновить</button>
+            {:else if !upd.busy}<button type="button" class="stg-btn" onclick={() => check(true)}>Проверить</button>{/if}</div>
           {#if upd.found && notes.length}<ul class="stg-notes">{#each notes as n, i (i)}<li>{n}</li>{/each}</ul>{/if}
           <div class="it" class:hit={hit.has('auto')}>{@render tx('auto', 'Проверять самому', 'через 30 секунд после запуска и раз в 6 часов')}
             {@render sw(updPref.auto !== false, (x) => onset('update', { auto: x }), 'Проверять обновления самому')}</div>

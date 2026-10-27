@@ -26,6 +26,7 @@
   - `tasks` — `board.lists` / `board.tasks` (в App — `lists` / `tasks`), действия без экрана: `toggle`, `rollRepeats`, `removeUndo` (удаление через 6 с, «Отменить»), `duplicate`, `moveToList`, `doneUndo`, `topicUndo`, `whenUndo`; общие помощники `guard(что, fn)` — ошибка плашкой «Не удалось …», `undoable(текст, run, undo)` — правка с «Отменить».
   - `sync` — обмен с Google: `sync` (`busy/err/at/flash`), `refresh` (один цикл за раз, ошибки, вход слетел → `onAuthLost`), `start()` — опрос раз в 2 мин, по фокусу, через минуту без связи. Что забирать — `configure({ pull })` (в App — `pullAll`).
   - `share` — общие сферы: `share` (`ver/err/hidden`), `me`, `peopleOf`, `together`, `applyShared` (записи календарей ↔ слой), `pushShared`, `shareTick` (раз в 30 с), `moveListsToShared`, `setWho`, `inviteTo`, `removePerson`, `saveProfile`, `unseenOf`, `waitOf`, `mineByDefault`. Окна-вопросы (сделать общей, выйти, перестать делиться) остаются в App.
+  - `update` — обновление приложения: `upd` (`version/found/busy/progress/…`), `check`, `install`, `later`, `skip`, `recheck`, `minute` (ночная установка), `start()` — проверки по расписанию.
 
 ## План разбора `App.svelte`
 
@@ -37,7 +38,15 @@
    «оптимистичная правка»: сразу показать → запрос в Google → откат или «Отменить».
 4. ✅ `sync` — опрос Google раз в 2 мин, «Нет связи», повторы, «Входящие от Claude».
 5. ✅ `share` — общие сферы.
-6. Экраны берут действия из сторов вместо длинных пропсов (`boardAct` и т.п.).
+6. ✅ Экраны берут общее состояние из сторов: «Состояние» (`StatusPop`) и Настройки читают `sync`, `layer.cloud`, `upd`
+   и сами зовут `refresh` / `cloudLogin` / `check` / `install`; первый запуск (`Setup`) по умолчанию говорит ошибки плашкой.
+
+## Что сознательно оставлено пропсами
+
+- `boardAct` (доска, стикеры, Конвейер, список) и действия окон (`ShareSphere`, `Create`, `TaskDrawer`) — это «интерфейс
+  экрана»: экран не знает, откуда действие (активный список, открытая задача, демо). Так их можно показывать в демо и
+  переиспользовать; в сторы уходит то, что за этими действиями стоит (`tasks`, `share`).
+- Окна-вопросы (`askDel`) и переходы между разделами — в App: это раскладка экрана, а не данные.
 
 ## Чеклист новой функции
 
