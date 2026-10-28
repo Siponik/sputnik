@@ -1538,7 +1538,7 @@
             shared={sh.isSharedId(L.id)} count={(colId) => listCount(L.id, colId)} sample={listSample(L.id)}
             onpick={(id) => { listSetId = id; activeId = id; }} onback={() => go('board')}
             onsave={(p) => saveListSettings(L.id, p)} onreset={() => boardStore.resetList(L.id)}
-            onastemplate={(name, d) => boardStore.listAsTemplate(L.id, name, d)} ondelete={() => askDeleteList(L.id)} />
+            onastemplate={(name, d) => boardStore.listAsTemplate(L.id, name, d)} templates={allTemplates} onswitch={(tid, map) => boardStore.switchTemplate(L.id, tid, map)} ondelete={() => askDeleteList(L.id)} />
         {:else if view === 'sphere' && curSphere?.noAccess}
           <ShareStates kind="lost" sphere={curSphere.name} onask={() => askAccess(curSphere.id)} onforget={() => forgetSphere(curSphere.id)} />
         {:else if view === 'sphere' && curSphere}

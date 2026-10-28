@@ -195,3 +195,19 @@
 .be-name.sm { flex: 0 1 260px; height: 36px; font-size: 15px; }
 .be-mr .be-seg.inline button { padding: 0 11px; }
 
+/* «Взять колонки из шаблона» (lib/ListTemplateSwitch.svelte) */
+.dialog.be-sw-dlg { width: min(600px, calc(100vw - 32px)); display: flex; flex-direction: column; gap: 14px; font-family: var(--font-sans); }
+.be-sw-dlg .be-kind { align-self: flex-start; }
+.be-sw-dlg h2 { margin: 0; font: 600 22px/28px var(--font-display); }
+.be-sw-dlg .be-seg button small { font-size: 10.5px; color: var(--gold); font-weight: 600; }
+.be-sw-dlg .be-seg button:disabled { cursor: default; opacity: .7; }
+.be-map { display: grid; grid-template-columns: minmax(0, 1fr) 26px minmax(0, 1fr); gap: 8px 6px; align-items: center; }
+.be-map .a, .be-map .b { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: 10px; background: var(--bg); border: 1px solid var(--edge); font-size: 13px; min-width: 0; }
+.be-map .a i, .be-map .b i { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.be-map .a small { margin-left: auto; font: 500 11.5px/1 var(--font-mono); color: var(--ink-faint); }
+.be-map .b em { margin-left: auto; font-style: normal; font-size: 11.5px; color: var(--ink-faint); }
+.be-map > .be-li { color: var(--ink-faint); justify-self: center; }
+.be-map .dd, .be-map > div { min-width: 0; }
+.be-sw-dlg .actions { display: flex; justify-content: flex-end; gap: 8px; }
+.be-map .be-ddw { width: 100%; }
+.be-map .be-ddw .ddb { width: 100%; height: 36px; border-radius: 10px; justify-content: space-between; }

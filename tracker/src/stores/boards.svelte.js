@@ -69,3 +69,11 @@ export function listAsTemplate(listId, name, draft) {
   return id;
 }
 
+/** «Взять колонки из другого шаблона»: список переходит на шаблон tid (и идёт за ним), задачи — по сопоставлению map. */
+export function switchTemplate(listId, tid, map) {
+  const p = T.switchPlan(lay(), listId, tid, board.tasks[listId], map);
+  moveAll(p.moves);
+  touch('lists', listId, p.patch);
+  save();
+  say(`Колонки из шаблона «${T.templateOf(tid, lay()).name}»${p.moves.length ? ` · переехало задач: ${p.moves.length}` : ''}`);
+}
