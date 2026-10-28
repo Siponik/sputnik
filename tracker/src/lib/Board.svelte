@@ -11,12 +11,12 @@
   import CardMenu from './CardMenu.svelte';
   import PeekCoon, { peekVariant } from './PeekCoon.svelte';
   import { ymd, dueToYmd, dueState } from './api.js';
-  import { isArchived, archiveDays, colColor } from './templates.js';
+  import BoardTitle from './BoardTitle.svelte';
+  import { isArchived, archiveDays, colColor, sortOf, orderTasks } from './templates.js';
   import Conveyor from './Conveyor.svelte';
   import ListView from './ListView.svelte';
   import Stickers from './Stickers.svelte';
   import { startOfWeek, addDays } from './calendar.js';
-  import { priorityRank } from './meta.js';
   import * as keys from './keys.js';
   import { flip } from 'svelte/animate';
   import { cardCrossfade, flipMs } from './motion.js';
@@ -31,7 +31,7 @@
   // layList — запись списка в слое (для «Стикеров»: темы, раскладка).
   let { list, tasks, template, colOf, typeOf, layTasks, layList = {}, project = null, remindOf = () => '', view = 'kanban',
     act, lists = [], fold = {}, onfold, sphereName = '', share = null,
-    oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate } = $props();
+    oncreate, onarchive, onview, ontoggle, onaddsub, onedittemplate, onsettings, onrename } = $props();
 
   // Три основных вида; «Список» — только у списка, где он выбран (в редакторе шаблонов).
   const VIEW_TABS = $derived([
@@ -83,14 +83,13 @@
   const visible = (t) => passes(t);
 
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
-  const byPos = (a, b) => (a.position || '').localeCompare(b.position || '');
-  // Порядок в колонке: свой (tasks[id].ord, Alt+↑↓ и перетаскивание), иначе — приоритет, потом порядок Google.
+  // Порядок в колонке — как выбрано у списка (lists[id].sort, templates.orderTasks): свой (tasks[id].ord, Alt+↑↓ и
+  // перетаскивание; без него — приоритет, потом порядок Google), по сроку или по приоритету.
+  const sort = $derived(sortOf(layList));
   function column(id) {
     const items = live.filter((t) => colOf(t, cols) === id && passes(t));
     if (id === endId) return items.sort((a, b) => (b.completed || '').localeCompare(a.completed || ''));
-    const base = items.sort((a, b) => priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority) || byPos(a, b));
-    const key = new Map(base.map((t, i) => [t.id, layTasks?.[t.id]?.ord ?? i - 0.5]));
-    return [...base].sort((a, b) => key.get(a.id) - key.get(b.id));
+    return orderTasks(items, layTasks, sort);
   }
   const columns = $derived(Object.fromEntries(cols.map((c) => [c.id, column(c.id)])));
   const nextOf = (colId) => { const i = cols.findIndex((c) => c.id === colId); return i >= 0 && i < cols.length - 1 ? cols[i + 1] : null; };
@@ -295,16 +294,16 @@
 {#if view === 'stickers'}
 <div class="page bd stk-page">
   <Stickers {list} {tasks} {layList} {layTasks} cols={template.cols} {remindOf} {act} {lists} tabs={viewTabs} {share} {sphereName}
-    headLine="{sphereName ? `${sphereName} · ` : ''}шаблон «{template.name}»" {onedittemplate} {onarchive} />
+    headLine="{sphereName ? `${sphereName} · ` : ''}{template.own ? 'своя доска' : `шаблон «${template.name}»`}" {onedittemplate} {onsettings} {onrename} tplName={template.name} {onarchive} />
 </div>
 {:else}
 <div class="page bd">
   <!-- Шапка по design/screens/Kanban.dc.html: сфера · шаблон над названием, справа фильтры и вид. -->
   <header class="bd-head">
     <div class="bd-title">
-      <p>{#if sphereName}<span class="bd-path">{sphereName}{#if share}<SharedTag small />{/if}</span>{' · '}{/if}шаблон «{template.name}»{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
-        · <button type="button" class="link" title="Колонки, цвета, лимиты и поля шаблона" onclick={onedittemplate}>настроить</button></p>
-      <h1>{list?.title ?? 'Задачи'}{#if share}<ShareBits {share} />{/if}</h1>
+      <p>{#if sphereName}<span class="bd-path">{sphereName}{#if share}<SharedTag small />{/if}</span>{' · '}{/if}{template.own ? `своя доска (из шаблона «${template.name}»)` : `шаблон «${template.name}»`}{view === 'pipe' ? ' · Конвейер' : ''}{project ? ` · проект «${project}»` : ''}
+        · <button type="button" class="link" title="Вид, колонки, поля и порядок этого списка · Ctrl+." onclick={onsettings}>настроить</button></p>
+      <BoardTitle title={list?.title ?? 'Задачи'} tplName={template.name} {onrename} {onsettings} {onedittemplate}>{#if share}<ShareBits {share} />{/if}</BoardTitle>
     </div>
     <div class="tb" role="group" aria-label="Фильтры">
       {#if share}
@@ -328,7 +327,7 @@
     <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {layList} {share} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
       onmenu={openMenu} />
   {:else if view === 'list'}
-    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {days} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
+    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {days} {sort} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
   {:else}
   <div class="board kb">
     {#each cols as col, i (col.id)}

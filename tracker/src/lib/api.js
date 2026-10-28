@@ -36,7 +36,7 @@ export async function listLists() {
 
 export const createList = (title) => gapi('POST', `${TASKS}/users/@me/lists`, { title });
 /** Удалить список вместе с задачами — в Google Tasks насовсем. Основной список Google удалить не даёт. */
-export const renameList = (listId, title) => gapi('PATCH', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`, { title });
+export const renameList = (listId, title) => isSharedId(listId) ? shared.renameList(listId, title) : gapi('PATCH', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`, { title });
 export const deleteList = (listId) => isSharedId(listId) ? shared.deleteList(listId) : gapi('DELETE', `${TASKS}/users/@me/lists/${encodeURIComponent(listId)}`);
 /** id основного списка Google Tasks («Мои задачи»). */
 export const defaultListId = async () => (await gapi('GET', `${TASKS}/users/@me/lists/@default`))?.id ?? null;

@@ -1,6 +1,7 @@
 <script>
   import SharedTag from './SharedTag.svelte';
   import ShareBits from './ShareBits.svelte';
+  import BoardTitle from './BoardTitle.svelte';
   import Avatar from './Avatar.svelte';
   import WhoPick from './WhoPick.svelte';
   import { memberOf, whoOf, whoCounts, whoTally, assignedMatch } from './sharedcore.js';
@@ -20,7 +21,7 @@
   // act — действия App (open, rename, priority, order, moveList, duplicate, remove, done, topic, pin, when, add, topics, set).
   // tabs — переключатель вида из доски; headLine — «Сфера · шаблон … » над названием.
   let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '', share = null, sphereName = '',
-    onedittemplate, onarchive } = $props();
+    onedittemplate, onsettings, onrename, tplName = '', onarchive } = $props();
 
   const [send, receive] = stickerCrossfade();
 
@@ -325,8 +326,8 @@
 
 <header class="bd-head">
   <div class="bd-title">
-    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
-    <h1>{list?.title ?? 'Дела'}{#if share}<ShareBits {share} />{/if}</h1>
+    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Вид, колонки, поля и порядок этого списка · Ctrl+." onclick={onsettings}>настроить</button></p>
+    <BoardTitle title={list?.title ?? 'Дела'} {tplName} {onrename} {onsettings} {onedittemplate}>{#if share}<ShareBits {share} />{/if}</BoardTitle>
   </div>
   <div class="tb">
     {#if share}

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   boardOf, follows, isOwn, ownPatch, resetPatch, matchCols, relocate, lostMoves,
-  saveListPlan, resetListPlan, archiveDays, isArchived, templateOf,
+  saveListPlan, resetListPlan, archiveDays, isArchived, templateOf, sameShape, sortOf, orderTasks,
 } from '../src/lib/templates.js';
 
 const T = (id, extra = {}) => ({ id, title: id, status: 'needsAction', ...extra });
@@ -108,3 +108,24 @@ test('архив: сразу / 3 дня / неделя, по умолчанию 
   assert.equal(isArchived(done(4), 7, now), false);
   assert.equal(isArchived({ status: 'needsAction' }, 0, now), false);
 });
+
+test('sameShape: только вид поменяли — форма та же, список не становится «своим»', () => {
+  const b = boardOf('A', { lists: { A: { template: 'work' } } });
+  assert.equal(sameShape(b, { ...b, view: 'list' }), true);
+  assert.equal(sameShape(b, { ...b, fields: [...b.fields].reverse() }), true);
+  assert.equal(sameShape(b, { ...b, fields: ['due'] }), false);
+  assert.equal(sameShape(b, { ...b, cols: b.cols.map((c, i) => (i ? c : { ...c, limit: 5 })) }), false);
+});
+
+test('порядок в колонке: свой / срок / приоритет', () => {
+  const items = [T('a', { position: '1', due: '2026-11-05T00:00:00.000Z' }), T('b', { position: '2' }), T('c', { position: '3', due: '2026-10-30T00:00:00.000Z' })];
+  const lay = { a: { priority: 3 }, b: { priority: 1 }, c: {} };
+  const ids = (xs) => xs.map((t) => t.id).join('');
+  assert.equal(sortOf({}), 'own');
+  assert.equal(sortOf({ sort: 'pin' }), 'own'); // у стикеров своё значение — для доски это «свой»
+  assert.equal(ids(orderTasks(items, lay, 'own')), 'bca'); // приоритет, без него — между !! и !
+  assert.equal(ids(orderTasks(items, { ...lay, a: { priority: 3, ord: -5 } }, 'own')), 'abc'); // свой порядок главнее
+  assert.equal(ids(orderTasks(items, lay, 'due')), 'cab'); // без срока внизу
+  assert.equal(ids(orderTasks(items, lay, 'prio')), 'bca');
+});
+

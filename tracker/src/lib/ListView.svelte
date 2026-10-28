@@ -2,20 +2,19 @@
   // Вид «Список» (шаблоны с малым числом этапов, например «Учёба»): строка = задача, этап — метка с выбором,
   // прогресс по подзадачам «3 из 10». Выполнить — перевести метку на последний этап.
   import { humanDue, dueState } from './api.js';
-  import { colColor, isArchived } from './templates.js';
-  import { priorityOf, priorityRank } from './meta.js';
+  import { colColor, isArchived, orderTasks } from './templates.js';
+  import { priorityOf } from './meta.js';
   import Dropdown from './Dropdown.svelte';
 
-  let { tasks, cols, colOf, layTasks, fields = [], days = 3, visible = () => true, onopen, onmove, onmenu } = $props();
+  let { tasks, cols, colOf, layTasks, fields = [], days = 3, sort = 'own', visible = () => true, onopen, onmove, onmenu } = $props();
   // Правый клик по строке — то же меню задачи, что на канбане (onmenu от доски).
 
   const has = (f) => fields.includes(f);
   const stageOpts = $derived(cols.map((x) => ({ id: x.id, label: x.name, color: colColor(x) })));
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
-  const rows = $derived(tasks.filter((t) => !t.parent && visible(t) && !isArchived(t, days))
-    .sort((a, b) => cols.findIndex((c) => c.id === colOf(a, cols)) - cols.findIndex((c) => c.id === colOf(b, cols))
-      || priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority)
-      || (a.position || '').localeCompare(b.position || '')));
+  // по этапам, внутри — в порядке списка (lists[id].sort)
+  const rows = $derived(orderTasks(tasks.filter((t) => !t.parent && visible(t) && !isArchived(t, days)), layTasks, sort)
+    .sort((a, b) => cols.findIndex((c) => c.id === colOf(a, cols)) - cols.findIndex((c) => c.id === colOf(b, cols))));
 </script>
 
 <div class="lv">

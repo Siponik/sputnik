@@ -128,6 +128,10 @@ export const ownPatch = (draft) => ({
   cols: draft.cols.map(({ id, name, color, limit }) => ({ id, name: String(name ?? '').trim() || 'Без названия', color: color ?? 0, limit: limit ?? 0 })),
 });
 
+/** Одинаковы ли колонки и поля (вид не считается — его у списка можно менять и без «своего»). */
+export const sameShape = (a, b) => JSON.stringify(ownPatch(a).cols) === JSON.stringify(ownPatch(b).cols)
+  && [...(a.fields ?? [])].sort().join() === [...(b.fields ?? [])].sort().join();
+
 /** «Вернуть как в шаблоне»: убрать свою копию. null, а не undefined — иначе другой компьютер не узнает, что поле стёрли. */
 export const resetPatch = () => ({ cols: null, fields: null, view: null });
 
@@ -181,6 +185,23 @@ export function saveListPlan(lay, listId, draft, taskList, removed = []) {
 export function resetListPlan(lay, listId, taskList) {
   const cur = boardOf(listId, lay);
   return { patch: resetPatch(), moves: relocate(taskList, lay?.tasks, lostMoves(cur.cols, cur.base.cols)) };
+}
+
+// Порядок задач в колонке — lists[id].sort: own — свой (перетаскивание, tasks[id].ord; без него — приоритет),
+// due — по сроку (без срока внизу), prio — по приоритету. У стикеров то же поле: due — по срокам, иначе — закреп.
+export const SORTS = [{ id: 'own', name: 'Свой' }, { id: 'due', name: 'Срок' }, { id: 'prio', name: 'Приоритет' }];
+export const sortOf = (L) => (L?.sort === 'due' || L?.sort === 'prio' ? L.sort : 'own');
+const rank = (n) => (n === 1 ? 0 : n === 2 ? 1 : n === 3 ? 3 : 2); // как meta.priorityRank: без приоритета — между !! и !
+const pos = (a, b) => (a.position || '').localeCompare(b.position || '');
+const dueKey = (t) => (t.due ? t.due.slice(0, 10) : '9999');
+/** Задачи колонки в порядке списка. */
+export function orderTasks(items, layTasks, sort = 'own') {
+  const pr = (t) => rank(layTasks?.[t.id]?.priority);
+  if (sort === 'due') return [...items].sort((a, b) => dueKey(a).localeCompare(dueKey(b)) || pr(a) - pr(b) || pos(a, b));
+  if (sort === 'prio') return [...items].sort((a, b) => pr(a) - pr(b) || dueKey(a).localeCompare(dueKey(b)) || pos(a, b));
+  const base = [...items].sort((a, b) => pr(a) - pr(b) || pos(a, b));
+  const key = new Map(base.map((t, i) => [t.id, layTasks?.[t.id]?.ord ?? i - 0.5]));
+  return base.sort((a, b) => key.get(a.id) - key.get(b.id));
 }
 
 // Выполненные задачи старше этого срока уходят с доски в архив. У списка можно поменять: lists[id].archive — 0 | 3 | 7.

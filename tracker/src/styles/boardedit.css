@@ -55,7 +55,7 @@
 .be-seg button:hover { color: var(--ink); }
 .be-seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
 .be-seg.sm { padding: 2px; flex: none; }
-.be-seg.sm button { height: 28px; padding: 0 8px; font-size: 12.5px; }
+.be-seg.sm button { height: 28px; padding: 0 7px; font-size: 12px; }
 .be-seg.inline { display: inline-flex; flex: none; }
 .be-seg.inline button { flex: none; height: 30px; }
 
@@ -192,3 +192,6 @@
 .be-fr.off { opacity: .35; }
 .be-moves { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-soft); }
 .be-moves span { padding: 6px 10px; border-radius: 9px; background: var(--wash); }
+.be-name.sm { flex: 0 1 260px; height: 36px; font-size: 15px; }
+.be-mr .be-seg.inline button { padding: 0 11px; }
+

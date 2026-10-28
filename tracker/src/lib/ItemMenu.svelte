@@ -1,7 +1,7 @@
 <script>
   import { pop } from './motion.js';
   // Короткое меню по правому клику (или Shift+F10) для списка, сферы, шаблона в левой колонке.
-  // items — [{ id, label, danger?, sep? }]: sep — черта перед пунктом. Внешний вид — как у меню задачи (.cmenu).
+  // items — [{ id, label, danger?, sep?, kbd? }]: sep — черта перед пунктом, kbd — клавиша справа. Внешний вид — как у меню задачи (.cmenu).
   import { untrack } from 'svelte';
 
   let { at, label = 'Действия', items = [], onaction, onclose } = $props();
@@ -33,6 +33,6 @@
 <div transition:pop class="cmenu" role="menu" aria-label={label} bind:this={el} style="left: {pos.x}px; top: {pos.y}px; transform-origin: top left">
   {#each items as it (it.id)}
     {#if it.sep}<hr />{/if}
-    <button type="button" role="menuitem" class:danger={it.danger} onclick={() => act(it.id)}>{it.label}</button>
+    <button type="button" role="menuitem" class:danger={it.danger} onclick={() => act(it.id)}>{it.label}{#if it.kbd}<kbd>{it.kbd}</kbd>{/if}</button>
   {/each}
 </div>
