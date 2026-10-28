@@ -120,7 +120,9 @@ export function seedLayer() {
   const L = (o) => ({ ...o, t });
   return {
     version: 1,
-    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }), Lload: L({ template: 'work', sphere: 'sTest' }),
+    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }), Lload: L({ template: 'work', sphere: 'sTest', archive: 7, // «своё»: колонки и поля отвязаны от шаблона «Работа»
+        view: 'kanban', fields: ['due', 'prio', 'time'], cols: [{ id: 'inbox', name: 'Входящие', color: 0, limit: 0 }, { id: 'doing', name: 'В работе', color: 2, limit: 4 },
+          { id: 'cLtest', name: 'Проверка', color: 4, limit: 0 }, { id: 'review', name: 'На ревью', color: 3, limit: 0 }, { id: 'done', name: 'Готово', color: 6, limit: 0 }] }),
       Lhome: L({ template: 'personal', view: 'stickers', sphere: 'sMe', topics: [
         { id: 'docs', name: 'Документы', color: 'clay' }, { id: 'buy', name: 'Покупки', color: 'gold' },
         { id: 'call', name: 'Звонки', color: 'work' }, { id: 'health', name: 'Здоровье', color: 'study' },

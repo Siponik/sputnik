@@ -11,7 +11,7 @@
   import CardMenu from './CardMenu.svelte';
   import PeekCoon, { peekVariant } from './PeekCoon.svelte';
   import { ymd, dueToYmd, dueState } from './api.js';
-  import { isArchived, ARCHIVE_AFTER_DAYS, colColor } from './templates.js';
+  import { isArchived, archiveDays, colColor } from './templates.js';
   import Conveyor from './Conveyor.svelte';
   import ListView from './ListView.svelte';
   import Stickers from './Stickers.svelte';
@@ -62,7 +62,8 @@
   const cols = $derived(template.cols);
   const endId = $derived(cols[cols.length - 1].id);
   const top = $derived(tasks.filter((t) => !t.parent));
-  const live = $derived(top.filter((t) => !isArchived(t)));
+  const days = $derived(archiveDays(layList));
+  const live = $derived(top.filter((t) => !isArchived(t, days)));
   const archived = $derived(top.length - live.length);
   const open = $derived(top.filter((t) => t.status !== 'completed'));
   const weekA = ymd(startOfWeek(new Date())), weekB = ymd(addDays(startOfWeek(new Date()), 6));
@@ -327,7 +328,7 @@
     <Conveyor {list} {tasks} {cols} {colOf} {layTasks} {layList} {share} {visible} gallery={view === 'gallery'} {act} {ontoggle} {onaddsub} {remindOf}
       onmenu={openMenu} />
   {:else if view === 'list'}
-    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
+    <ListView {tasks} {cols} {colOf} {layTasks} {fields} {visible} {days} onopen={(t) => act.open(t)} onmove={(t, c) => act.stage(t, c)} onmenu={openMenu} />
   {:else}
   <div class="board kb">
     {#each cols as col, i (col.id)}
@@ -391,7 +392,7 @@
           <button class="more" type="button" onclick={() => (showDone = !showDone)}>{showDone ? 'Свернуть' : `Ещё ${items.length - 2} →`}</button>
         {/if}
         {#if isDoneCol && archived}
-          <button class="col-foot" type="button" onclick={onarchive}>Старше {ARCHIVE_AFTER_DAYS} дней — в архиве · {archived}</button>
+          <button class="col-foot" type="button" onclick={onarchive}>{days ? `Старше ${days} дней — в архиве` : 'Сделанное — в архиве'} · {archived}</button>
         {/if}
 
         {#if !isDoneCol}

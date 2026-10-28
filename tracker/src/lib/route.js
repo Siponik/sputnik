@@ -6,7 +6,7 @@
 // Слой: lists[id].template / view / topics, tasks[id].project, settings.route[основа] = { list, topic?, n }.
 import { parseWhen } from './when.js';
 import { takeRepeat } from './repeat.js';
-import { templateOf } from './templates.js';
+import { boardOf } from './templates.js';
 import { topicsOf } from './stickers.js';
 
 const norm = (s) => String(s ?? '').toLowerCase().replace(/ё/g, 'е');
@@ -132,7 +132,7 @@ const MIN_SCORE = 4;
 const MONTH = 30 * 864e5;
 
 /** Вид доски списка: свой или вид шаблона. */
-export const viewOf = (listId, layer) => layer?.lists?.[listId]?.view ?? templateOf(layer?.lists?.[listId]?.template, layer).view ?? 'kanban';
+export const viewOf = (listId, layer) => boardOf(listId, layer).view;
 
 /** Проекты списка (Конвейер): имена из tasks[id].project, по частоте. */
 export function projectsOf(listTasks = [], layTasks = {}) {
@@ -171,7 +171,7 @@ export function route(text, { lists = [], layer = {}, tasks = {}, current = null
   const out = lists.map((l, i) => {
     const r = { listId: l.id, score: 0, i, parts: {}, word: null, topic: null, topicWord: null, project: null, projectWord: null, simN: 0 };
     const add = (kind, pts) => { r.score += pts; r.parts[kind] = (r.parts[kind] ?? 0) + pts; };
-    const tpl = templateOf(layer?.lists?.[l.id]?.template, layer).id;
+    const tpl = boardOf(l.id, layer).id;
     const view = viewOf(l.id, layer);
 
     if (atList?.id === l.id) add('at', W.at);
