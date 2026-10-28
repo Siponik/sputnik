@@ -1,0 +1,136 @@
+/* Окно задачи v2 (lib/TaskDrawer.svelte, корень .drawer.tp) — макеты design/screens/TaskPanel*.dc.html.
+   Всё под .tp и классами tp-*: общие имена (.c, .rw, .chips, .more) уже заняты другими экранами. */
+
+.drawer.tp { width: min(560px, 100%); background: var(--raised); }
+.drawer.tp .scroll { padding: 18px 24px; gap: 16px; }
+.tp .tp-i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+/* шапка: «Куда», ⋯, ✕ */
+.tp-top { display: flex; align-items: center; gap: 6px; }
+.tp-sp { flex: 1; }
+.tp-dest { display: inline-flex; align-items: center; gap: 10px; height: 40px; max-width: 400px; padding: 0 10px 0 6px; border-radius: 12px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: inherit; cursor: pointer; }
+.tp-dest:hover:not(:disabled) { border-color: var(--ink-faint); }
+.tp-dest[aria-expanded="true"] { border-color: var(--clay); box-shadow: 0 0 0 3px color-mix(in srgb, var(--clay) 14%, transparent); }
+.tp-dest:disabled { cursor: default; }
+.tp-dest:focus-visible, .tp-ib:focus-visible, .tp-c:focus-visible, .tp-track button:focus-visible, .tp-more:focus-visible, .tp-del:focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+.tp-nosph { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--wash); color: var(--ink-faint); }
+.tp-dn { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+.tp-dn b { font-size: 13.5px; font-weight: 600; }
+.tp-dn small { font-size: 12px; color: var(--ink-faint); }
+.tp-dest .chev { width: 15px; height: 15px; color: var(--ink-faint); }
+.tp-ib { width: 34px; height: 34px; border-radius: 10px; border: 0; background: none; color: var(--ink-faint); display: grid; place-items: center; cursor: pointer; }
+.tp-ib:hover, .tp-ib[aria-expanded="true"] { background: var(--wash); color: var(--ink); }
+.tp-ib .dots { stroke-width: 3.2; }
+
+/* название */
+.tp-ttl { width: 100%; margin: 0 0 0 -10px; width: calc(100% + 10px); padding: 8px 10px; border-radius: 12px; border: 1.5px solid transparent; background: none; color: var(--ink);
+  font: 600 24px/31px var(--font-display); resize: none; overflow: hidden; outline: none; }
+.tp-ttl:hover { border-color: var(--edge); }
+.tp-ttl:focus { border-color: var(--clay); }
+.tp-chg { margin: -10px 0 0; font-size: 12px; color: var(--ink-faint); }
+
+/* серая плашка: «подпись | чипы» */
+.tp-blk { display: flex; flex-direction: column; gap: 12px; padding: 14px 14px 12px; border-radius: 14px; background: var(--wash); }
+.tp-rw { display: grid; grid-template-columns: 84px minmax(0, 1fr); align-items: center; gap: 10px; }
+.tp-rw.top { align-items: start; }
+.tp-rw.top > span { padding-top: 6px; }
+.tp-rw > span, .tp-rw > label { font-size: 13px; color: var(--ink-soft); }
+.tp-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; min-width: 0; }
+.tp-hint { margin: -4px 0 0 94px; font-size: 12px; line-height: 16px; color: var(--ink-faint); }
+
+.tp-c { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 11px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised);
+  color: var(--ink-soft); font: 500 12.5px/1 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.tp-c:hover { color: var(--ink); }
+.tp-c[aria-pressed="true"] { border-color: var(--clay); color: var(--ink); background: color-mix(in srgb, var(--clay) 12%, var(--raised)); }
+.tp-c .tp-i { width: 14px; height: 14px; }
+.tp-c.col { padding-left: 8px; }
+.tp-c.col i { width: 4px; height: 16px; border-radius: 2px; background: var(--tc); }
+.tp-c.col.dot i { width: 8px; height: 8px; border-radius: 3px; }
+.tp-c .lim { font: 600 10.5px/1 var(--font-mono); color: var(--ink-faint); }
+.tp-c .lim.full { color: var(--gold); }
+.tp-c.p1 b { color: var(--clay); font-family: var(--font-mono); }
+.tp-c.p2 b { color: var(--gold); font-family: var(--font-mono); }
+.tp-c.p3 b { color: var(--ink-faint); font-family: var(--font-mono); }
+.tp-c.when { color: var(--ink); }
+.tp-c.when.empty { color: var(--ink-faint); }
+.tp-c.rem { cursor: default; padding-right: 6px; }
+.tp-c.rem .own { display: inline-flex; align-items: center; gap: 6px; border: 0; background: none; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.tp-c .x { display: grid; place-items: center; width: 18px; height: 18px; border: 0; border-radius: 50%; background: none; color: var(--ink-faint); padding: 0; cursor: pointer; }
+.tp-c .x:hover { background: var(--wash); color: var(--ink); }
+.tp-c .x .tp-i { width: 12px; height: 12px; }
+.tp .ddb.tp-add { width: 30px; min-width: 0; height: 30px; padding: 0; justify-content: center; border-radius: 999px; border-style: dashed; background: none; color: var(--ink-soft); }
+.tp .ddb.tp-add .tp-i { width: 14px; height: 14px; }
+.tp-who { padding-left: 4px; }
+.tp-who.mine { border-color: var(--clay); }
+.tp-in { height: 30px; width: 100%; max-width: 280px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink); font: 400 13px/1 var(--font-sans); outline: none; }
+.tp-in.short { max-width: 140px; }
+.tp-in:focus { border-color: var(--clay); }
+
+/* дорожка этапов Конвейера */
+.tp-track { display: flex; gap: 3px; min-width: 0; }
+.tp-track button { flex: 1; min-width: 0; height: 30px; border: 0; border-radius: 7px; background: var(--raised); color: var(--ink-faint); font: 500 11px/1 var(--font-sans);
+  cursor: pointer; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-track button:hover { color: var(--ink); }
+.tp-track button.past { color: var(--ink-soft); background: color-mix(in srgb, var(--clay) 10%, var(--raised)); }
+.tp-track button[aria-pressed="true"] { background: var(--clay); color: var(--on-clay); font-weight: 600; }
+
+/* подзадачи */
+.tp-lbl { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font: 600 11.5px/1 var(--font-sans); letter-spacing: .07em; text-transform: uppercase; color: var(--ink-soft); }
+.tp-lbl span { font: 500 12px/1 var(--font-mono); letter-spacing: 0; text-transform: none; color: var(--ink-faint); }
+.tp-subs { display: flex; flex-direction: column; gap: 2px; }
+.tp-sb { display: flex; align-items: center; gap: 10px; min-height: 32px; font-size: 14px; }
+.tp-sb .bx { flex: none; width: 17px; height: 17px; padding: 0; border-radius: 5px; border: 1.6px solid var(--ink-faint); background: none; display: grid; place-items: center; color: transparent; cursor: pointer; }
+.tp-sb .bx .tp-i { width: 12px; height: 12px; stroke-width: 3; }
+.tp-sb .bx:hover { border-color: var(--ink-soft); }
+.tp-sb .bx.dash { border-style: dashed; cursor: default; }
+.tp-sb.done .bx { background: var(--signal-done); border-color: var(--signal-done); color: var(--bg); }
+.tp-sb .sub-title, .tp-sb.tp-new input { flex: 1; min-width: 0; height: 30px; padding: 0 6px; margin-left: -6px; border: 1px solid transparent; border-radius: 8px; background: none; color: var(--ink); font: 400 14px/1 var(--font-sans); outline: none; }
+.tp-sb .sub-title:hover { border-color: var(--edge); }
+.tp-sb .sub-title:focus, .tp-sb.tp-new input:focus { border-color: var(--clay); background: var(--bg); }
+.tp-sb.done .sub-title { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: var(--hairline); }
+.tp-sb.tp-new input::placeholder { color: var(--ink-faint); }
+.tp-sb .sub-del { opacity: 0; width: 26px; height: 26px; border: 0; border-radius: 7px; background: none; color: var(--ink-faint); display: grid; place-items: center; cursor: pointer; }
+.tp-sb:hover .sub-del, .tp-sb .sub-del:focus-visible { opacity: 1; }
+.tp-sb .sub-del:hover { background: var(--wash); color: var(--signal-overdue); }
+
+/* заметка */
+.tp-note { display: flex; flex-direction: column; }
+.tp-note textarea { width: 100%; min-height: 76px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--edge); background: var(--bg); color: var(--ink);
+  font: 400 14px/21px var(--font-sans); resize: none; overflow: hidden; outline: none; }
+.tp-note textarea::placeholder { color: var(--ink-faint); }
+.tp-note textarea:focus { border-color: var(--clay); }
+
+/* «▸ Ещё» */
+.tp-more { display: flex; align-items: center; gap: 8px; align-self: flex-start; border: 0; background: none; padding: 2px 0; color: var(--ink-soft); font: 500 13px/1 var(--font-sans); cursor: pointer; }
+.tp-more:hover { color: var(--ink); }
+.tp-more span { color: var(--ink-faint); font-weight: 400; }
+.tp-more .tw { width: 14px; height: 14px; transition: transform var(--dur-2) var(--ease-out); }
+.tp-more[aria-expanded="true"] .tw { transform: rotate(90deg); }
+.tp-more + .tp-blk { margin-top: -6px; }
+
+/* подвал */
+.drawer.tp .tp-ft { display: flex; align-items: center; justify-content: flex-start; gap: 10px; padding: 12px 24px; }
+.tp-saved { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+.tp-saved i { width: 6px; height: 6px; border-radius: 50%; background: var(--signal-done); }
+.tp-saved.busy i { background: var(--gold); animation: tp-pulse 1s ease-in-out infinite; }
+.tp-saved.err { color: var(--signal-overdue); }
+.tp-saved.err i { background: var(--signal-overdue); }
+.tp-saved.err button { border: 0; background: none; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+@keyframes tp-pulse { 50% { opacity: .35; } }
+[data-motion="off"] .tp-saved.busy i { animation: none; }
+.tp-k { flex: 1; text-align: right; font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tp-k kbd { font: 500 10.5px/1 var(--font-mono); padding: 3px 5px; border-radius: 4px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink-soft); }
+.tp-del { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 13px; border-radius: 10px; border: 1px solid transparent; background: none; color: var(--ink-soft); font: 600 13px/1 var(--font-sans); cursor: pointer; }
+.tp-del:hover { color: var(--signal-overdue); }
+.tp-danger { color: var(--signal-overdue); border-color: currentColor; }
+
+/* меню ⋯ и окно «в своё время» (внутри Popover — .st-pop) */
+.tp-menu { display: flex; flex-direction: column; gap: 1px; padding: 6px; }
+.tp-menu .ddo:hover { background: var(--wash); }
+.tp-menu .tp-i, .tp-own .tp-i { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-faint); }
+.tp-menu .ddo.danger .tp-i { color: currentColor; }
+.tp-own { display: flex; flex-direction: column; gap: 10px; padding: 14px; }
+.tp-own .tp-lbl { margin: 0; }
+.tp-own .ddb, .tp-own .dd { width: 100%; }
+.tp-own .tp-in { max-width: none; }
+.tp-ownft { display: flex; justify-content: flex-end; gap: 8px; }

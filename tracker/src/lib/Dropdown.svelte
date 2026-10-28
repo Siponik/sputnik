@@ -13,7 +13,8 @@
   let { value = null, options = [], onchange, label = '', placeholder = 'Выбрать', id = undefined,
     ghost = false, small = false, disabled = false, mark = null, search = false, searchPlaceholder = 'Найти…',
     groups = null, multi = false, extras = [], oncreate = null, createLabel = (q) => `Создать «${q}»`,
-    emptyText = (q) => `Ничего не нашлось по «${q}»`, foot = false, cls = '', title = undefined } = $props();
+    emptyText = (q) => `Ничего не нашлось по «${q}»`, foot = false, cls = '', bcls = '', title = undefined,
+    children = null } = $props(); // children — своё содержимое кнопки (например, «＋» у напоминаний), bcls — её класс
 
   const uid = `dd${Math.random().toString(36).slice(2, 8)}`;
   let open = $state(false);
@@ -117,14 +118,16 @@
 <svelte:window onpointerdown={down} onresize={() => open && hide(false)} onscrollcapture={scrolled} />
 
 <span class="dd {cls}">
-  <button bind:this={btn} {id} type="button" class="ddb" class:ghost class:small {disabled} {title}
+  <button bind:this={btn} {id} type="button" class="ddb {bcls}" class:ghost class:small {disabled} {title}
     aria-haspopup="listbox" aria-expanded={open} aria-label={label || undefined} aria-controls={open ? `${uid}-m` : undefined}
     aria-activedescendant={open && !search && act >= 0 ? `${uid}-o${act}` : undefined}
     onclick={() => (open ? hide() : show())} onkeydown={key}>
-    {#if btnColor}<i class="mk" class:bar={mark === 'bar'} style="--mc: {btnColor}"></i>{/if}
-    <span class="v" class:ph={!text}>{text || placeholder}</span>
-    {#if btnCount != null}<span class="cnt" class:warn={selected?.warn}>{btnCount}</span>{/if}
-    <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+    {#if children}{@render children()}{:else}
+      {#if btnColor}<i class="mk" class:bar={mark === 'bar'} style="--mc: {btnColor}"></i>{/if}
+      <span class="v" class:ph={!text}>{text || placeholder}</span>
+      {#if btnCount != null}<span class="cnt" class:warn={selected?.warn}>{btnCount}</span>{/if}
+      <svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+    {/if}
   </button>
 </span>
 
