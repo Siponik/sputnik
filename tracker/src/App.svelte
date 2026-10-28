@@ -61,6 +61,7 @@
   import * as shareStore from './stores/share.svelte.js';
   import * as updStore from './stores/update.svelte.js';
   import * as boardStore from './stores/boards.svelte.js';
+  import { sampleTask } from './lib/boardedit.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -331,7 +332,7 @@
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Comma') { e.preventDefault(); if (settingsTab) settingsTab = null; else if (!keys.overlay()) openSettings(); return; }
-    const onBoard = view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates';
+    const onBoard = view === 'board' || view === 'archive' || view === 'sphere';
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyB' && onBoard) { e.preventDefault(); togglePin(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
     if (e.key === 'Escape' && onBoard && !keys.overlay() && sideApi?.hide()) { e.preventDefault(); return; }
@@ -530,7 +531,18 @@
 
   const allTemplates = $derived(templatesFrom(lay));
   // «Используется» — только списки, которые идут за шаблоном: свои копии правка шаблона не меняет.
-  const templateUsage = (tid) => boardLists.filter((l) => follows(l.id, lay, tid)).map((l) => l.title);
+  const listColor = (listId) => { const sid = sphereOf(listId, lay); return sid ? sphereColor(spheres.find((x) => x.id === sid)) : null; };
+  const templateUsage = (tid) => boardLists.filter((l) => follows(l.id, lay, tid)).map((l) => ({ id: l.id, title: l.title, color: listColor(l.id) }));
+  const templateUsers = (tid) => boardLists.filter((l) => templateFor(l.id).id === tid).map((l) => l.title);
+  /** Настоящая задача для превью карточки: из списков, где шаблон используется. */
+  function templateSample(tid) {
+    for (const l of boardLists.filter((x) => templateFor(x.id).id === tid)) {
+      const all = tasks[l.id] ?? [], subsOf = (id) => all.filter((x) => x.parent === id);
+      const t = sampleTask(all, lay.tasks, subsOf);
+      if (t) return { task: t, lay: lay.tasks?.[t.id] ?? {}, subs: subsOf(t.id), from: l.title };
+    }
+    return null;
+  }
   /** Открытых задач в колонке шаблона по всем его спискам. */
   function templateCount(tid, colId) {
     let n = 0;
@@ -1464,7 +1476,7 @@
     {/if}
 
     <div class="body">
-      {#if view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates'}
+      {#if view === 'board' || view === 'archive' || view === 'sphere'}
         <Side {spheres} listsOf={sphereLists} {peopleOf} {together} me={meEmail} noSphere={noSphereLists} count={openCount} viewOf={viewFor} {activeId}
           current={view} {activeSphere} folded={(id) => !!lay.settings?.sphereFold?.[id]}
           tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
@@ -1502,7 +1514,7 @@
           <Habits {habits} log={lay.log} {cele} open={habitOpen} onopened={() => (habitOpen = null)} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onday={setHabitDay} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
-          <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
+          <Templates templates={allTemplates} usage={templateUsage} users={templateUsers} sample={templateSample} count={templateCount} current={activeList ? templateFor(activeId).id : null}
             onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
         {:else if view === 'sphere' && curSphere?.noAccess}
           <ShareStates kind="lost" sphere={curSphere.name} onask={() => askAccess(curSphere.id)} onforget={() => forgetSphere(curSphere.id)} />
