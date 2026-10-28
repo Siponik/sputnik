@@ -76,6 +76,12 @@ export function ageAt(year, day, today) {
   return a > 0 && a < 130 ? a : null;
 }
 
+/** «через …» до дня: «1 день», «3 дня», «135 дней». */
+export function daysTill(day, today) {
+  const n = Math.round((parse(day) - parse(today)) / 864e5), a = n % 100, b = n % 10;
+  return `${n} ${a > 10 && a < 20 ? 'дней' : b === 1 ? 'день' : b > 1 && b < 5 ? 'дня' : 'дней'}`;
+}
+
 /** «лет»: 1 год, 2 года, 5 лет. */
 export function years(n) {
   const a = n % 100, b = n % 10;
@@ -263,5 +269,38 @@ export function parseHabit(raw, off = {}) {
   for (const mk of out.marks) { name += text.slice(i, mk.from) + ' '; i = mk.to; }
   name = (name + text.slice(i)).replace(/\s+/g, ' ').trim();
   out.name = name && name[0].toUpperCase() + name.slice(1);
+  return out;
+}
+
+// ---------- подарок ко дню рождения ----------
+// Событие дня рождения помнит, за сколько дней нужен подарок: extendedProperties.private.sputnikGift = дней
+// (и sputnikGiftList — в какой список). Задача «Подарок Ане» появляется сама, когда до дня рождения остаётся столько дней.
+
+export const GIFT_DAYS = [[3, 'за 3 дня'], [7, 'за неделю'], [14, 'за 2 недели'], [30, 'за месяц']];
+
+/** День задачи «Подарок …»: день рождения минус days. */
+export const giftDate = (bday, days) => plus(bday, -days);
+
+/** Имя из названия события дня рождения: «🎂 Аня» → «Аня». */
+export const bdayName = (summary) => String(summary ?? '').replace(/^[^\p{L}]+/u, '').trim();
+
+/**
+ * Какие задачи про подарок пора завести: events — вхождения дней рождения (singleEvents, start.date),
+ * today — 'ГГГГ-ММ-ДД'. → [{ key, title, due, bday, listId }]; key — «id события|год», чтобы не заводить дважды.
+ * Срок — день из sputnikGift; если трекер в тот день не запускали — сегодня.
+ */
+export function giftsDue(events, today) {
+  const out = [];
+  for (const e of events ?? []) {
+    const p = e.extendedProperties?.private ?? {};
+    const days = Number(p.sputnikGift);
+    const bday = e.start?.date;
+    if (p.sputnik !== 'birthday' || !(days > 0) || !bday) continue;
+    const from = giftDate(bday, days);
+    if (today < from || today > bday) continue;
+    const name = bdayName(e.summary);
+    if (!name) continue;
+    out.push({ key: `${e.recurringEventId || e.id}|${bday.slice(0, 4)}`, title: `Подарок ${dative(name)}`, due: from, bday, listId: p.sputnikGiftList || null });
+  }
   return out;
 }

@@ -1,7 +1,7 @@
 // Окно «Создать» v2 — помощники (src/lib/create.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf, parseHabit } from '../src/lib/create.js';
+import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf, parseHabit, giftDate, giftsDue, bdayName, daysTill } from '../src/lib/create.js';
 
 const T = '2026-10-21'; // среда
 
@@ -144,4 +144,25 @@ test('привычка: строка понимает цель, частоту �
   // крестик на чипе возвращает кусок в название
   assert.equal(parseHabit('Пить воду 8 стаканов', { goal: true }).name, 'Пить воду 8 стаканов');
   assert.equal(parseHabit('').name, '');
+});
+
+test('подарок ко дню рождения: дата задачи и когда она появляется', () => {
+  assert.equal(giftDate('2027-03-12', 7), '2027-03-05');
+  assert.equal(giftDate('2027-03-12', 30), '2027-02-10');
+  assert.equal(giftDate('2027-03-02', 3), '2027-02-27');
+  assert.equal(bdayName('🎂 Аня'), 'Аня');
+  const ev = { id: 'e1_20270312', recurringEventId: 'e1', summary: '🎂 Аня', start: { date: '2027-03-12' },
+    extendedProperties: { private: { sputnik: 'birthday', sputnikGift: '7', sputnikGiftList: 'L1' } } };
+  assert.deepEqual(giftsDue([ev], '2027-03-04'), []); // рано
+  assert.deepEqual(giftsDue([ev], '2027-03-05'), [{ key: 'e1|2027', title: 'Подарок Ане', due: '2027-03-05', bday: '2027-03-12', listId: 'L1' }]);
+  assert.equal(giftsDue([ev], '2027-03-12').length, 1); // в сам день ещё можно
+  assert.deepEqual(giftsDue([ev], '2027-03-13'), []); // прошёл
+  const noGift = { ...ev, extendedProperties: { private: { sputnik: 'birthday' } } };
+  assert.deepEqual(giftsDue([noGift], '2027-03-05'), []);
+});
+
+test('«через N дней»', () => {
+  assert.equal(daysTill('2027-03-12', T), '142 дня');
+  assert.equal(daysTill('2026-10-22', T), '1 день');
+  assert.equal(daysTill('2026-11-02', T), '12 дней');
 });

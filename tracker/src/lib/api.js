@@ -199,16 +199,18 @@ export function createEvent({ title, day, slot, notes = '', remind = [], calenda
 }
 
 /** День рождения: ежегодное событие на весь день в основном календаре с меткой Спутника (видно как день рождения). */
-export function createBirthday({ name, day, remind = [], year = null }) {
+export function createBirthday({ name, day, remind = [], year = null, calendarId = 'primary', gift = null }) {
   const [y, m, d] = day.split('-').map(Number);
-  return gapi('POST', `${CAL}/calendars/primary/events`, {
+  // gift = { days, listId } — задача «Подарок …» появится сама за days дней (create.giftsDue)
+  const giftProps = gift?.days > 0 ? { sputnikGift: String(gift.days), ...(gift.listId ? { sputnikGiftList: gift.listId } : {}) } : {};
+  return gapi('POST', `${CAL}/calendars/${encodeURIComponent(calendarId || 'primary')}/events`, {
     summary: `🎂 ${name}`,
     start: { date: day },
     end: { date: ymd(new Date(y, m - 1, d + 1)) },
     recurrence: ['RRULE:FREQ=YEARLY'],
     transparency: 'transparent', // не занимает время
     // Год рождения (необязательно) — для «исполнится N» в календаре и сводке.
-    extendedProperties: { private: { sputnik: 'birthday', ...(year ? { sputnikYear: String(year) } : {}), ...remindProps(remind) } },
+    extendedProperties: { private: { sputnik: 'birthday', ...(year ? { sputnikYear: String(year) } : {}), ...giftProps, ...remindProps(remind) } },
     reminders: { useDefault: false },
   });
 }
@@ -223,6 +225,17 @@ export async function remindEvents() {
   const all = await Promise.all(ids.map((id) => gapi('GET', `${CAL}/calendars/${encodeURIComponent(id)}/events?${q}`)
     .then((r) => r?.items ?? []).catch((e) => { if (id === 'primary') throw e; return []; })));
   return all.flat().filter((e) => e.status !== 'cancelled');
+}
+
+/** Дни рождения Спутника на ближайшие 32 дня (хватает для подарка «за месяц») — для задач «Подарок …». */
+export async function giftEvents() {
+  const now = Date.now();
+  const q = new URLSearchParams({ timeMin: new Date(now - 864e5).toISOString(), timeMax: new Date(now + 32 * 864e5).toISOString(),
+    singleEvents: 'true', privateExtendedProperty: 'sputnik=birthday', maxResults: '250' });
+  const own = (await calendarList().catch(() => [])).filter((c) => ['owner', 'writer'].includes(c.accessRole) && !c.primary && !isService(c) && calKind(c) === 'event');
+  const all = await Promise.all(['primary', ...own.map((c) => c.id)].map((id) => gapi('GET', `${CAL}/calendars/${encodeURIComponent(id)}/events?${q}`)
+    .then((r) => r?.items ?? []).catch((e) => { if (id === 'primary') throw e; return []; })));
+  return all.flat().filter((e) => e.status !== 'cancelled' && e.extendedProperties?.private?.sputnikGift);
 }
 
 const isBirthday = (e) => e.eventType === 'birthday' || e.extendedProperties?.private?.sputnik === 'birthday';
