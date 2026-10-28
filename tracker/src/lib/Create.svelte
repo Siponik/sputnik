@@ -1,5 +1,5 @@
 <script>
-  import { fade, pop } from './motion.js';
+  import { fade, fly, pop } from './motion.js';
   import { untrack, tick } from 'svelte';
   import { ymd } from './api.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
@@ -53,6 +53,21 @@
   // ---------- состояние ----------
   const init = untrack(() => ({ list: listId, day, s, e, from: { ...from }, rem: { ...remindDefaults }, line }));
   let kind = $state('task');
+  // Подложка сегмента вида переезжает под выбранную кнопку (место — по самой кнопке, следит за шириной окна).
+  let kindsEl = $state(null);
+  let ink = $state(null);
+  $effect(() => {
+    kind;
+    if (!kindsEl) return;
+    const place = () => {
+      const b = kindsEl.querySelector('button[aria-pressed="true"]');
+      if (b) ink = { x: b.offsetLeft, w: b.offsetWidth };
+    };
+    place();
+    const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(place) : null;
+    ro?.observe(kindsEl);
+    return () => ro?.disconnect();
+  });
   let text = $state(init.line); // Shift+Enter в строке «Сегодня» — текст оттуда
   let off = $state({}); // куски, возвращённые в текст крестиком: when, prio, at, tag, topic, project
   let manualList = $state(null);
@@ -603,7 +618,8 @@
   <div class="cr-main">
     <div class="cr-head">
       <div class="cr-top">
-        <div class="cr-kinds" role="group" aria-label="Что создать">
+        <div class="cr-kinds" role="group" aria-label="Что создать" bind:this={kindsEl}>
+          {#if ink}<span class="cr-ink" style="width: {ink.w}px; transform: translateX({ink.x}px)" aria-hidden="true"></span>{/if}
           {#each KINDS as k (k.id)}
             <button type="button" aria-pressed={kind === k.id} style="--kc: {k.c}" onclick={() => { kind = k.id; input?.focus(); }}>
               {@render kindIcon(k.id)}{k.label}<kbd title="Alt+{k.key}">{k.key}</kbd>
@@ -612,12 +628,14 @@
         </div>
         <button type="button" class="cr-x" aria-label="Закрыть" title="Закрыть · Esc" onclick={onclose}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
       </div>
-      <p class="cr-what">
+      {#key kind}
+      <p class="cr-what" in:fade={{ duration: 160 }}>
         {#if kind === 'task'}<b>Задача</b> — то, что нужно <b>сделать</b>. Ляжет на доску и в «Сегодня», в конце отметишь сделанной.
         {:else if kind === 'event'}<b>Событие</b> — то, что <b>случится в своё время</b>: встреча, созвон, врач. Займёт место в календаре, отмечать не надо.
         {:else if kind === 'habit'}<b>Привычка</b> — то, что <b>повторяешь</b> регулярно. Енот считает серию и празднует вехи.
         {:else}<b>День рождения</b> — раз в год. Напомню заранее и подскажу про подарок.{/if}
       </p>
+      {/key}
     </div>
 
     <div class="cr-body">
@@ -654,6 +672,9 @@
       </div>
     {/if}
 
+    <!-- Поля вида: при смене вида приходят со сдвигом снизу (motion.fly), старые уходят сразу -->
+    {#key kind}
+    <div class="cr-kind" in:fly={{ y: 6, duration: 200 }}>
     {#if kind === 'task'}
       <div class="cr-where">
         <div class="cr-lbl">Куда <span>— {manualList ? 'выбрано вручную' : 'угадано по словам, можно поменять'}</span></div>
@@ -937,6 +958,8 @@
       {@render calDest('событие на весь день, повтор каждый год')}
     {/if}
     </div>
+    {/key}
+    </div>
 
     <div class="cr-foot">
       <span class="cr-keys"><kbd>Enter</kbd> добавить</span>
@@ -949,7 +972,7 @@
     <h4>Так будет выглядеть</h4>
     <div class="cr-stage">
       {#key kind === 'task' ? view : kind}
-      <div class="cr-pvwrap" in:fade={{ duration: 160 }}>
+      <div class="cr-pvwrap" in:fly={{ y: 6, duration: 200 }}>
         {#if kind === 'event'}
           {#if chunk}
             <div class="cr-pvday">
@@ -1005,7 +1028,7 @@
       {/key}
     </div>
     <p class="cr-lands">{lands[0]}<b>{lands[1]}</b>{lands[2]}</p>
-    <div class="cr-tip"><Coon pose={kind === 'habit' ? 'flag' : 'think'} size={54} label="Енот думает" /><p>{kindTip}</p></div>
+    <div class="cr-tip"><Coon pose={kind === 'habit' ? 'flag' : 'think'} size={54} label="Енот думает" />{#key kind}<p in:fade={{ duration: 160 }}>{kindTip}</p>{/key}</div>
   </aside>
 </form>
 
