@@ -1,7 +1,7 @@
 // Вид «Стикеры»: раскладка по срокам, порядок, перенос срока, наклон (src/lib/stickers.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { visibleLanes, bucket, weekEnd, whenDue, newDue, dueLabel, order, lanes, tilt, parseSticker, jarCount, todaySub, DEFAULT_TOPICS } from '../src/lib/stickers.js';
+import { visibleLanes, bucket, weekEnd, whenDue, newDue, dueLabel, order, lanes, tilt, parseSticker, jarCount, todaySub, nextGroup, DEFAULT_TOPICS } from '../src/lib/stickers.js';
 
 const T = '2026-10-21'; // среда
 const SUN = '2026-10-25';
@@ -136,4 +136,14 @@ test('peopleLanes: «Я» первым, «Ничьи» последней, не 
   assert.deepEqual(ls.map((l) => l.items.map((t) => t.id)), [['a'], ['b'], ['c'], ['d', 'e']]);
   assert.equal(ls[3].id, '');
   assert.equal(visibleLanes([{ id: 'x', items: [] }, { id: '', items: [{ id: 'z' }] }], { group: 'people' }).shown.length, 2);
+});
+
+test('смена раскладки: по кругу, нужная — сразу, событие клика — не раскладка', () => {
+  assert.equal(nextGroup('topic'), 'when');
+  assert.equal(nextGroup('when'), 'topic');
+  assert.equal(nextGroup('when', undefined, true), 'people');
+  assert.equal(nextGroup('people', undefined, true), 'topic');
+  assert.equal(nextGroup('topic', 'when'), 'when');
+  assert.equal(nextGroup('topic', 'people'), 'when'); // «по людям» — только в общей сфере
+  assert.equal(nextGroup('topic', { type: 'click' }), 'when'); // onclick={flipGroup} передавал событие
 });

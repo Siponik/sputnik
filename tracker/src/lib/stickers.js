@@ -147,6 +147,14 @@ export function peopleLanes(tasks, { layTasks = {}, today, sort = 'pin', people 
  * если пусто везде — показываем все, чтобы было куда приклеить первый. По срокам — всегда три.
  * Возвращает { shown, hidden } — hidden идут кнопками «＋ в тему».
  */
+/** Следующая раскладка: to — нужная (строка), иначе по кругу «темы → сроки (→ люди)».
+ *  Кнопка-переключатель зовёт с событием клика — его не принимаем за раскладку. */
+export function nextGroup(cur, to, shared = false) {
+  const all = shared ? ['topic', 'when', 'people'] : ['topic', 'when'];
+  if (typeof to === 'string' && all.includes(to)) return to;
+  return all[(all.indexOf(cur) + 1) % all.length];
+}
+
 export function visibleLanes(all, { group = 'topic', keep = null } = {}) {
   if (group === 'when' || group === 'people' || all.every((l) => !l.items.length)) return { shown: all, hidden: [] };
   const vis = (l) => l.items.length > 0 || (keep != null && l.id === keep);
