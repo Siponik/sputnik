@@ -151,3 +151,27 @@ test('напоминания привычек: время части дня, в�
   assert.equal(habitWinDue([win], {}, [], at).length, 1);
   assert.equal(habitWinDue([win], {}, ['m|2030-01-07'], at).length, 0);
 });
+
+test('время «с … до …»: интервал, конец позже начала, перенос сохраняет длительность', () => {
+  assert.equal(H.normEnd('21:00', '22:30'), '22:30');
+  assert.equal(H.normEnd('21:00', '20:00'), null); // раньше начала
+  assert.equal(H.normEnd('21:00', '21:00'), null);
+  assert.equal(H.normEnd(null, '22:00'), null); // конец без начала не бывает
+  assert.equal(H.normEnd('7:05', '8:00'), '08:00');
+  assert.deepEqual(H.habitSpan({ time: '21:00', end: '22:30' }), { s: 1260, e: 1350, end: true });
+  assert.deepEqual(H.habitSpan({ time: '21:00' }), { s: 1260, e: 1290, end: false }); // без конца — полчаса
+  assert.deepEqual(H.habitSpan({ time: '23:50' }), { s: 1430, e: 1440, end: false });
+  assert.deepEqual(H.habitSpan({ time: '21:00', end: '20:00' }), { s: 1260, e: 1290, end: false });
+  assert.equal(H.habitSpan({ part: 'evening' }), null);
+  assert.equal(H.spanLabel({ time: '21:00', end: '22:30' }), '21:00–22:30');
+  assert.equal(H.spanLabel({ time: '21:00' }), '21:00');
+  assert.equal(H.spanLabel({}), '');
+  assert.equal(H.endAfter('21:00'), '22:00');
+  assert.equal(H.endAfter('23:30'), '23:59');
+  assert.equal(H.endAfter('23:59'), null);
+  assert.equal(H.moveEnd({ time: '21:00', end: '22:30' }, '19:00'), '20:30');
+  assert.equal(H.moveEnd({ time: '21:00' }, '19:00'), null);
+  assert.equal(H.scheduleLine({ days: [], time: '07:00', end: '07:45' }), 'каждый день · утро · 07:00–07:45');
+  assert.match(H.cardLine({ id: 'x', time: '07:00', end: '07:45' }, {}), /07:00–07:45/);
+  assert.match(H.cardLine({ id: 'x', time: '07:00' }, {}), /в 07:00/);
+});

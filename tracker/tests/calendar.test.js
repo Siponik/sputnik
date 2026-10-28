@@ -65,3 +65,30 @@ test('inbox.layerPatches: проверяет поля и не переносит
   assert.deepEqual(p.z, { pulled: true });
   assert.equal(p.done, undefined);
 });
+
+test('привычки со временем — блоки недели: только по расписанию, отмеченная не занимает время', async () => {
+  const { habitBlocks, busy } = await import('../src/lib/calendar.js');
+  const habits = [
+    { id: 'run', name: 'Бег', days: [0], time: '07:00', end: '07:45' }, // только пн
+    { id: 'read', name: 'Чтение', days: [], time: '21:00' },
+    { id: 'any', name: 'Вода', days: [] }, // без времени — в сетку не идёт
+  ];
+  const mon = '2026-10-26', tue = '2026-10-27';
+  const log = { 'read|2026-10-26': { done: true } };
+  const m = habitBlocks(habits, log, mon, tue);
+  assert.deepEqual(m.map((b) => [b.title, b.s, b.e, b.end, b.done]), [['Бег', 420, 465, true, false], ['Чтение', 1260, 1290, false, true]]);
+  assert.equal(m[0].kind, 'habit');
+  assert.deepEqual(habitBlocks(habits, log, tue, tue).map((b) => b.title), ['Чтение']);
+  assert.deepEqual(busy(m, 0, 1440), [[420, 465]]);
+});
+
+test('блоки недели: короткие соседние блоки в сжатом часе встают рядом, а не друг на друга', async () => {
+  const { layoutBlocks } = await import('../src/lib/calendar.js');
+  const yAt = (m) => (m / 60) * 26; // час — 26 px: полчаса уже меньше 20 px
+  const bl = layoutBlocks([{ id: 'a', s: 1350, e: 1380 }, { id: 'b', s: 1380, e: 1410 }, { id: 'c', s: 600, e: 720 }], yAt);
+  const by = Object.fromEntries(bl.map((b) => [b.id, b]));
+  assert.equal(by.a.cols, 2); assert.notEqual(by.a.col, by.b.col);
+  assert.equal(by.c.cols, 1);
+  const wide = layoutBlocks([{ id: 'a', s: 600, e: 660 }, { id: 'b', s: 660, e: 720 }], (m) => (m / 60) * 40);
+  assert.deepEqual(wide.map((b) => b.cols), [1, 1]); // час 40 px — встык, без колонок
+});
