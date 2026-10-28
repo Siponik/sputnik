@@ -46,7 +46,7 @@
 .cr-input::placeholder { color: var(--ink-faint); font-weight: 400; }
 .cr-input::selection { background: color-mix(in srgb, var(--clay) 35%, transparent); color: transparent; }
 .cr-m { background: color-mix(in srgb, var(--clay) 18%, transparent); color: var(--clay); border-radius: 5px; box-shadow: 0 0 0 2px color-mix(in srgb, var(--clay) 18%, transparent); animation: cr-mark var(--dur-1) var(--ease-out); }
-.cr-m.prio { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 18%, transparent); }
+.cr-m.prio, .cr-m.goal { background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 18%, transparent); }
 @keyframes cr-mark { from { background: transparent; box-shadow: none; } }
 :root[data-motion="off"] .cr-m { animation: none; }
 .cr-got { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-faint); }
@@ -157,6 +157,27 @@
 .cr-free.clash { color: var(--signal-overdue); }
 .cr-free.clash::before { content: "!"; }
 .cr-note { margin: 0; line-height: 18px; }
+/* привычка */
+.cr-lrow { display: flex; align-items: center; gap: 10px; }
+.cr-lrow .cr-line { flex: 1; min-width: 0; }
+.cr-icp { flex: none; position: relative; width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; cursor: pointer;
+  border: 1.5px dashed color-mix(in srgb, var(--hc) 55%, transparent); background: color-mix(in srgb, var(--hc) 16%, transparent); color: var(--hc); }
+.cr-icp svg { width: 19px; height: 19px; }
+.cr-icp i { position: absolute; right: -4px; bottom: -4px; width: 12px; height: 12px; border-radius: 50%; background: var(--hc); box-shadow: 0 0 0 2px var(--bg); }
+.cr-col { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cr-c.cr-day { min-width: 38px; justify-content: center; padding: 0 8px; }
+.cr-c svg { width: 14px; height: 14px; }
+.cr-chips > .cr-muted { align-self: center; }
+.cr-num { display: inline-flex; align-items: center; gap: 10px; height: 30px; padding: 0 4px; border-radius: 999px; border: 1px solid var(--edge); background: var(--raised); font: 600 13px/1 var(--font-sans); color: var(--ink); }
+.cr-num button { width: 22px; height: 22px; border-radius: 50%; border: 0; background: none; color: var(--ink-soft); cursor: pointer; font: 500 14px/1 var(--font-sans); }
+.cr-num button:hover { background: var(--wash); color: var(--ink); }
+.cr-icg { display: flex; flex-wrap: wrap; gap: 4px; }
+.cr-icg button { width: 32px; height: 32px; border-radius: 9px; border: 1px solid transparent; background: var(--raised); color: var(--ink-soft); display: grid; place-items: center; cursor: pointer; }
+.cr-icg button svg { width: 16px; height: 16px; }
+.cr-icg button[aria-pressed="true"] { border-color: var(--hc); color: var(--hc); background: color-mix(in srgb, var(--hc) 14%, var(--raised)); }
+.cr-cols { display: flex; gap: 8px; }
+.cr-cols button { width: 20px; height: 20px; border-radius: 50%; border: 0; background: var(--c); cursor: pointer; }
+.cr-cols button[aria-pressed="true"] { box-shadow: 0 0 0 2px var(--wash), 0 0 0 4px var(--c); }
 .cr-c.when svg { width: 14px; height: 14px; }
 .cr-c.when { color: var(--ink); font-size: 13px; }
 .cr-place { display: inline-flex; align-items: center; gap: 8px; justify-self: start; width: min(100%, 260px); height: 32px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--edge); background: var(--raised); box-sizing: border-box; color: var(--ink-faint); }

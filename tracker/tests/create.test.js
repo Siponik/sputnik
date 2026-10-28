@@ -1,7 +1,7 @@
 // Окно «Создать» v2 — помощники (src/lib/create.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf } from '../src/lib/create.js';
+import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf, parseHabit } from '../src/lib/create.js';
 
 const T = '2026-10-21'; // среда
 
@@ -121,4 +121,27 @@ test('событие: «Когда» и повтор', () => {
   assert.deepEqual(recurrenceOf({ every: 'weekdays' }), ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR']);
   assert.deepEqual(recurrenceOf({ every: 'month' }), ['RRULE:FREQ=MONTHLY']);
   assert.equal(recurrenceOf(null), null);
+});
+
+test('привычка: строка понимает цель, частоту и часть дня', () => {
+  const a = parseHabit('Пить воду 8 стаканов каждый день');
+  assert.equal(a.name, 'Пить воду');
+  assert.deepEqual(a.goal, { n: 8, unit: 'стаканов' });
+  assert.equal(a.freq, 'daily');
+  assert.deepEqual(a.toks.map((t) => t.l), ['цель 8 стаканов', 'каждый день']);
+  assert.deepEqual(a.marks.map((m) => m.kind), ['goal', 'freq']);
+  const b = parseHabit('английский 3 раза в неделю вечером');
+  assert.equal(b.name, 'Английский');
+  assert.equal(b.freq, 'week');
+  assert.equal(b.perWeek, 3);
+  assert.equal(b.part, 'evening');
+  assert.equal(b.goal, undefined); // «3 раза» — частота, не цель
+  const c = parseHabit('чтение 20 страниц по будням');
+  assert.deepEqual(c.days, [0, 1, 2, 3, 4]);
+  assert.deepEqual(c.goal, { n: 20, unit: 'страниц' });
+  assert.equal(parseHabit('зарядка каждое утро').part, 'morning');
+  assert.equal(parseHabit('зарядка каждое утро').freq, 'daily');
+  // крестик на чипе возвращает кусок в название
+  assert.equal(parseHabit('Пить воду 8 стаканов', { goal: true }).name, 'Пить воду 8 стаканов');
+  assert.equal(parseHabit('').name, '');
 });

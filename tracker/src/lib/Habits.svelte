@@ -97,7 +97,7 @@
   }
   function moveTip() {
     if (!tip) return;
-    onupdate(tip.habit.id, { name: tip.habit.name, time: tip.time, end: H.moveEnd(tip.habit, tip.time), part: H.partOf({ time: tip.time }) });
+    onupdate(tip.habit.id, { name: tip.habit.name, ...H.winFields(H.moveWin(tip.habit, tip.time)), part: H.partOf({ time: tip.time }) });
   }
   function hideTip() {
     if (!tip) return;
@@ -286,7 +286,7 @@
 
 {#if openH && !edit}
   <HabitPanel h={openH} {log} i={idx.get(openH.id)} onclose={() => (openId = null)} {ontoggle} onpick={pickDay}
-    onedit={() => openForm(openH)} ondelete={() => (delId = openH.id)} />
+    onedit={() => openForm(openH)} ondelete={() => (delId = openH.id)} onupdate={(f) => onupdate(openH.id, f)} />
 {/if}
 
 {#if edit}

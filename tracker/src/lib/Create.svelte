@@ -15,6 +15,10 @@
   import Coon from './Coon.svelte';
   import Avatar from './Avatar.svelte';
   import { memberByWord } from './sharedcore.js';
+  import * as H from './habits.js';
+  import { ICONS, ICON_IDS, COLORS, COLOR_IDS, UNITS, guessIcon } from './habitIcons.js';
+  import HabitWin from './HabitWin.svelte';
+  import Dropdown from './Dropdown.svelte';
 
   // Окно «Создать» v2 (docs/design-v2.md — «Окно «Создать» v2», макеты design/screens/Create.dc.html и CreateMore.dc.html):
   // умная строка → «Куда» (lib/route.js) → поля по виду доски → превью справа. Событие и день рождения — в Google Календаре.
@@ -127,7 +131,10 @@
 
   // Название: без «для таверны», если таверна стала проектом.
   const projectAuto = $derived(view === 'pipe' && !off.project && !manualProject ? destR.project ?? null : null);
+  // Привычка: своя разборка строки — цель («8 стаканов»), частота, часть дня (create.parseHabit).
+  const hp = $derived(kind === 'habit' ? cr.parseHabit(text, off) : null);
   const title = $derived.by(() => {
+    if (hp) return hp.name;
     let t = parsed.title;
     if (projectAuto && destR.projectWord) t = t.replace(new RegExp(`\\s+(для|в|во)\\s+${destR.projectWord}(?=\\s|$)`, 'i'), '').trim();
     return t;
@@ -164,6 +171,7 @@
 
   // ---------- «Понял:» ----------
   const toks = $derived.by(() => {
+    if (hp) return hp.toks.map((t) => ({ ...t, c: t.k === 'goal' ? 'var(--gold)' : 'var(--clay)' }));
     const out = [];
     if (parsed.day || parsed.time) out.push({ k: 'when', l: [parsed.day ? cr.shortDay(parsed.day) : 'сегодня', parsed.time].filter(Boolean).join(' · ') });
     if (parsed.repeat) out.push({ k: 'repeat', l: REPEATS.find((r) => r.id === parsed.repeat.every)?.short ?? '' });
@@ -182,7 +190,7 @@
   const segs = $derived.by(() => {
     const out = [];
     let i = 0;
-    for (const m of parsed.marks) {
+    for (const m of hp ? hp.marks : parsed.marks) {
       if (m.from > i) out.push({ t: text.slice(i, m.from) });
       out.push({ t: text.slice(m.from, m.to), k: m.kind });
       i = m.to;
@@ -246,6 +254,44 @@
   const free = $derived(kind === 'event' && dueDay ? cr.freeCheck(dayEvents, dueDay, slot) : null);
   const chunk = $derived(kind === 'event' && dueDay ? cr.dayChunk(dayEvents, dueDay, slot, title || 'Событие') : null);
   const HOUR_PX = 34; // высота часа в превью сетки дня
+
+  // ---------- привычка ----------
+  // Руками выбранное главнее строки; undefined — берём из строки (hp) или по умолчанию.
+  let hFreq = $state(undefined), hDays = $state(undefined), hPer = $state(undefined);
+  let hGoalOn = $state(undefined), hGoalN = $state(undefined), hUnit = $state(undefined);
+  let hPart = $state(undefined), hWin = $state(undefined);
+  let hTg = $state(true), hWinOn = $state(false);
+  let hIcon = $state(null), hColor = $state('work');
+  const hab = $derived.by(() => {
+    if (!hp) return null;
+    const freq = hFreq ?? hp.freq ?? 'daily';
+    const goalOn = hGoalOn ?? !!hp.goal;
+    const part = hPart ?? hp.part ?? 'any';
+    const win = part === 'any' ? null : hWin ?? H.partWin(part);
+    return {
+      freq, part, win, goalOn,
+      days: hDays ?? hp.days ?? [0, 1, 2, 3, 4],
+      perWeek: hPer ?? hp.perWeek ?? 3,
+      goalN: hGoalN ?? hp.goal?.n ?? 8,
+      unit: hUnit ?? hp.goal?.unit ?? 'раз',
+      icon: hIcon ?? guessIcon(hp.name) ?? 'heart',
+    };
+  });
+  // То, что уходит в слой habits[id] (как у окна привычки HabitEdit).
+  const habitFields = $derived(hab ? {
+    name: title, icon: hab.icon, color: hColor,
+    days: hab.freq === 'days' ? [...hab.days].sort() : [],
+    perWeek: hab.freq === 'week' ? hab.perWeek : null,
+    goal: hab.goalOn && hab.goalN > 1 ? { n: hab.goalN, unit: hab.unit } : null,
+    part: hab.part, ...H.winFields(hab.win),
+    remind: { tg: hTg, win: hWinOn },
+    notes: notes.trim(),
+  } : null);
+  function pickPart(id) { hPart = id; hWin = undefined; }
+  function toggleDay(d) { const ds = hab.days; hDays = ds.includes(d) ? ds.filter((x) => x !== d) : [...ds, d]; }
+  const unitOpts = $derived([...new Set([...UNITS, hab?.unit ?? 'раз'])].map((u) => ({ id: u, label: u })));
+  const habLine = $derived(hab ? [hab.win ? `${hab.win.s}–${hab.win.e}` : H.PARTS.find((p) => p.id === hab.part).name,
+    habitFields.goal ? `0 из ${habitFields.goal.n} ${habitFields.goal.unit}` : hab.freq === 'week' ? `0 из ${hab.perWeek} на неделе` : hab.freq === 'days' ? H.scheduleLabel(hab.days).toLowerCase() : 'каждый день'].join(' · ') : '');
 
   // ---------- день рождения ----------
   // «Подарок …» — в список со стикерами, где больше всего дел (личный), иначе в список шаблона «Личное».
@@ -311,7 +357,7 @@
   const lands = $derived.by(() => {
     if (kind === 'event') return dueDay ? ['Событие встанет в ', 'Google Календарь', ` на ${evWhen}. На доску не попадёт — только в «Календарь» и «Сегодня».`]
       : ['Выбери день — событие встанет в ', 'Google Календарь', '.'];
-    if (kind === 'habit') return ['Привычка появится на экране ', '«Привычки»', ' и в «Сегодня». Хранится в Google Tasks, список «Привычки».'];
+    if (kind === 'habit') return ['Привычка появится на экране ', '«Привычки»', ` и в «Сегодня»${hab?.win ? ` с ${hab.win.s} до ${hab.win.e}` : ''}. Хранится в Google Tasks, список «Привычки».`];
     if (kind === 'birthday') return ['В календаре — строка ', '«весь день»', bday ? ` каждый год ${cr.dayMonth(bday)}.${gift && giftList ? ` Задача про подарок появится сама — в «${giftList.title}».` : ''}` : ' каждый год.'];
     const n = destList?.title ?? '';
     if (view === 'stickers') return [`Доска «${n}», тема `, topicObj?.name ?? 'Разное', `, в раскладке по срокам — «${{ today: 'Сегодня', week: 'На неделе', later: 'Когда-нибудь', date: 'Когда-нибудь' }[whenChip]}».`];
@@ -321,7 +367,7 @@
   });
 
   // ---------- создать ----------
-  const canSubmit = $derived(!!title && !busy && (kind === 'task' ? !!dest : kind === 'habit' ? !!oncreatehabit : !!dueDay));
+  const canSubmit = $derived(!!title && !busy && (kind === 'task' ? !!dest : kind === 'habit' ? !!oncreatehabit && (hab.freq !== 'days' || hab.days.length > 0) : !!dueDay));
 
   async function submit(more = false) {
     if (!canSubmit) return;
@@ -329,7 +375,7 @@
     let ok;
     try {
       if (kind === 'task') ok = await createTask();
-      else if (kind === 'habit') ok = await oncreatehabit({ name: title });
+      else if (kind === 'habit') ok = await oncreatehabit(habitFields);
       else if (kind === 'event') ok = await oncreateevent({ title, day: dueDay, slot, notes: notes.trim(), remind, calendarId: calId, location: place.trim(), recurrence: cr.recurrenceOf(repeatRule) });
       else {
         ok = await oncreatebirthday({ name: title, day: dueDay, remind, year: Number(year) || null });
@@ -345,6 +391,7 @@
     // «Создать и ещё»: Куда, тема/колонка и «Когда» остаются.
     if (kind === 'task') { manualList = dest; if (topic) manualTopic = topic; manualCol = col; if (project) manualProject = project; }
     whenSet = { day: due ?? null, slot };
+    if (kind === 'habit') { hIcon = null; hGoalOn = hGoalN = hUnit = hFreq = hDays = hPer = undefined; }
     text = ''; subs = []; subDraft = ''; notes = ''; off = {}; client = ''; money = ''; place = ''; year = '';
     await tick();
     input?.focus();
@@ -542,12 +589,18 @@
     <div class="cr-body">
     <!-- Умная строка: пишешь как человеку, распознанное подсвечивается, под полем — «Понял:» -->
     <div class="cr-smart">
+      <div class="cr-lrow">
+      {#if hab}
+        <button type="button" class="cr-icp" style="--hc: {COLORS[hColor]}" aria-label="Значок и цвет" title="Значок и цвет" onclick={() => (moreOpen = true)}>
+          <svg viewBox="0 0 24 24" aria-hidden="true">{@html ICONS[hab.icon]}</svg><i></i></button>
+      {/if}
       <div class="cr-line">
         <div class="cr-mirror" aria-hidden="true" bind:this={mirror}>{#each segs as g, i (i)}{#if g.k}<mark class="cr-m {g.k}">{g.t}</mark>{:else}{g.t}{/if}{/each}&#8203;</div>
         <!-- svelte-ignore a11y_autofocus -->
         <input class="cr-input" bind:this={input} bind:value={text} autofocus onscroll={syncScroll} oninput={syncScroll} spellcheck="false" autocomplete="off"
           aria-label={kind === 'birthday' ? 'Чей день рождения' : kind === 'event' ? 'Что за событие' : kind === 'habit' ? 'Что повторять' : 'Что сделать'}
           placeholder={kind === 'birthday' ? 'Чей? Например «Аня 12 марта»' : kind === 'event' ? 'Что за событие? «созвон завтра 14:00»' : kind === 'habit' ? 'Что повторять? «пить воду 8 стаканов»' : 'Что сделать? «купить лампочки в субботу»'} />
+      </div>
       </div>
       {#if toks.length}
         <div class="cr-got"><span>Понял:</span>
@@ -772,8 +825,72 @@
           </div>
         </div>
       {/if}
-    {:else if kind === 'habit'}
-      <p class="cr-muted cr-note">Как часто, цель на день и время поправишь на экране «Привычки» — по клику на карточку.</p>
+    {:else if kind === 'habit' && hab}
+      <!-- Привычка: те же поля, что в окне привычки (HabitEdit); ▸ Ещё — значок и цвет, заметка -->
+      <div class="cr-block">
+        <div class="cr-row top"><span>Как часто</span>
+          <div class="cr-col">
+            <div class="cr-chips">
+              <button type="button" class="cr-c" aria-pressed={hab.freq === 'daily'} onclick={() => (hFreq = 'daily')}>Каждый день</button>
+              <button type="button" class="cr-c" aria-pressed={hab.freq === 'days'} onclick={() => (hFreq = 'days')}>По дням недели</button>
+              <button type="button" class="cr-c" aria-pressed={hab.freq === 'week'} onclick={() => (hFreq = 'week')}>N раз в неделю</button>
+            </div>
+            {#if hab.freq === 'days'}
+              <div class="cr-chips" role="group" aria-label="Дни">
+                {#each H.WEEKDAYS as w, d (w)}<button type="button" class="cr-c cr-day" aria-pressed={hab.days.includes(d)} onclick={() => toggleDay(d)}>{w}</button>{/each}
+              </div>
+            {:else if hab.freq === 'week'}
+              <div class="cr-chips">
+                <span class="cr-num"><button type="button" aria-label="Меньше" onclick={() => (hPer = Math.max(1, hab.perWeek - 1))}>−</button>{hab.perWeek}<button type="button" aria-label="Больше" onclick={() => (hPer = Math.min(6, hab.perWeek + 1))}>+</button></span>
+                <span class="cr-muted">{H.plural(hab.perWeek, ['раз', 'раза', 'раз'])} в неделю — серия считается в неделях</span>
+              </div>
+            {/if}
+          </div>
+        </div>
+        <div class="cr-row"><span>Цель на день</span>
+          <div class="cr-chips">
+            <button type="button" class="cr-c" aria-pressed={!hab.goalOn} onclick={() => (hGoalOn = false)}>Просто отметка</button>
+            <button type="button" class="cr-c" aria-pressed={hab.goalOn} onclick={() => (hGoalOn = true)}>Количество</button>
+            {#if hab.goalOn}
+              <span class="cr-num"><button type="button" aria-label="Меньше" onclick={() => (hGoalN = Math.max(2, hab.goalN - 1))}>−</button>{hab.goalN}<button type="button" aria-label="Больше" onclick={() => (hGoalN = Math.min(999, hab.goalN + 1))}>+</button></span>
+              <Dropdown ghost small label="Чего" value={hab.unit} options={unitOpts} onchange={(v) => (hUnit = v)} />
+            {/if}
+          </div>
+        </div>
+        <div class="cr-row top"><span>Когда</span>
+          <div class="cr-col">
+            <div class="cr-chips">
+              {#each H.PARTS as p (p.id)}<button type="button" class="cr-c" aria-pressed={hab.part === p.id} onclick={() => pickPart(p.id)}>{p.name}</button>{/each}
+            </div>
+            {#if hab.win}
+              <div class="cr-chips"><HabitWin win={hab.win} onchange={(w) => (hWin = w)} /><span class="cr-muted">можно сузить, например с 7:30 до 8:00</span></div>
+            {/if}
+          </div>
+        </div>
+        <div class="cr-row"><span>Напомнить</span>
+          <div class="cr-chips">
+            <button type="button" class="cr-c" aria-pressed={hTg} onclick={() => (hTg = !hTg)}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.5L20 5l-3 14-5-4-3 3v-5l8-7" /></svg>Telegram</button>
+            <button type="button" class="cr-c" aria-pressed={hWinOn} onclick={() => (hWinOn = !hWinOn)}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2" /><path d="M8 20h8" /></svg>Windows</button>
+            <span class="cr-muted">{hab.win ? (hTg || hWinOn ? `в ${hab.win.s}, если не отмечено до ${hab.win.e}` : 'не напоминать') : 'когда угодно — без напоминания'}</span>
+          </div>
+        </div>
+      </div>
+      <button type="button" class="cr-more" aria-expanded={moreOpen} onclick={() => (moreOpen = !moreOpen)}>{moreOpen ? '▾' : '▸'} Ещё <span>значок и цвет · заметка</span></button>
+      {#if moreOpen}
+        <div class="cr-block more">
+          <div class="cr-row top"><span>Значок</span>
+            <div class="cr-col">
+              <div class="cr-icg" role="group" aria-label="Значок" style="--hc: {COLORS[hColor]}">
+                {#each ICON_IDS as id (id)}<button type="button" aria-pressed={hab.icon === id} aria-label="Значок" onclick={() => (hIcon = id)}><svg viewBox="0 0 24 24" aria-hidden="true">{@html ICONS[id]}</svg></button>{/each}
+              </div>
+              <div class="cr-cols" role="group" aria-label="Цвет">
+                {#each COLOR_IDS as c (c)}<button type="button" style="--c: {COLORS[c]}" aria-pressed={hColor === c} aria-label="Цвет" onclick={() => (hColor = c)}></button>{/each}
+              </div>
+            </div>
+          </div>
+          <textarea class="cr-notes" bind:value={notes} use:autosize={notes} aria-label="Заметка" placeholder="Заметка: зачем эта привычка, как делать…"></textarea>
+        </div>
+      {/if}
     {:else}
       <!-- День рождения: дата крупной строкой, поля -->
       <button type="button" class="cr-big gold" aria-haspopup="dialog" onclick={() => (picking = true)}>
@@ -822,8 +939,8 @@
             <span class="cr-muted">Выбери день — покажу кусок календаря.</span>
           {/if}
         {:else if kind === 'habit'}
-          <div class="cr-pvhb">
-            <div class="h"><span class="ic">{@render kindIcon('habit')}</span><div><b>{title || 'Новая привычка'}</b><small>каждый день</small></div><span class="plus">✓</span></div>
+          <div class="cr-pvhb" style="--hc: {COLORS[hColor]}">
+            <div class="h"><span class="ic"><svg viewBox="0 0 24 24" aria-hidden="true">{@html ICONS[hab?.icon ?? 'heart']}</svg></span><div><b>{title || 'Новая привычка'}</b><small>{habLine}</small></div><span class="plus">{habitFields?.goal ? '+1' : '✓'}</span></div>
             <div class="n"><b>0</b><small>начнём сегодня</small><span class="dots">{#each Array(7) as _, i (i)}<i class:today={i === 6}></i>{/each}</span></div>
           </div>
         {:else if kind === 'birthday'}

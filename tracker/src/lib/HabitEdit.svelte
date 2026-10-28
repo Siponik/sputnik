@@ -5,6 +5,7 @@
   import Dropdown from './Dropdown.svelte';
   import { ICONS, ICON_IDS, COLORS, COLOR_IDS, iconOf, UNITS } from './habitIcons.js';
   import { fade, pop } from './motion.js';
+  import HabitWin from './HabitWin.svelte';
 
   let { habit = null, preset = null, i = 0, onsave, onclose } = $props();
 
@@ -19,11 +20,12 @@
   let goalOn = $state(H.goalN(src) > 0);
   let goalN = $state(H.goalN(src) || 8);
   let unit = $state(src.goal?.unit || 'раз');
-  let when = $state(src.time ? 'time' : H.partOf(src));
-  let time = $state(src.time ?? '');
-  let end = $state(H.normEnd(src.time, src.end) ?? ''); // «до» — необязательно
+  // «Когда»: часть дня заполняет окно «с — до» (утро 6–12, день 12–18, вечер 18–24), окно можно сузить.
+  let when = $state(H.partOf(src));
+  let win = $state(H.habitWin(src));
+  function pickPart(id) { when = id; win = H.partWin(id); }
   let tg = $state(src.remind?.tg !== false);
-  let win = $state(!!src.remind?.win);
+  let winOn = $state(!!src.remind?.win);
   let busy = $state(false);
   let nameEl = $state(null);
   $effect(() => { nameEl?.focus(); });
@@ -34,13 +36,11 @@
     days: freq === 'days' ? [...days].sort() : [],
     perWeek: freq === 'week' ? perWeek : null,
     goal: goalOn && goalN > 1 ? { n: goalN, unit } : null,
-    part: when === 'time' ? H.partOf({ time }) : when,
-    time: when === 'time' && /^\d{1,2}:\d{2}$/.test(time) ? time : null,
-    end: when === 'time' ? H.normEnd(time, end) : null,
-    remind: { tg, win },
+    part: when,
+    ...H.winFields(when === 'any' ? null : win),
+    remind: { tg, win: winOn },
   });
-  const endBad = $derived(when === 'time' && !!end && !fields.end); // «до» раньше «с» — не сохраняем
-  const ok = $derived(!!fields.name && (freq !== 'days' || days.length > 0) && (when !== 'time' || !!fields.time) && !endBad);
+  const ok = $derived(!!fields.name && (freq !== 'days' || days.length > 0) && (when === 'any' || !!fields.win));
   const at = $derived(H.remindAt(fields));
   const prevLine = $derived(H.cardLine({ ...fields, id: '_' }, {}, new Date()));
 
@@ -116,22 +116,13 @@
   <div class="fr"><span>Когда</span>
     <div>
       <div class="ops">
-        {#each H.PARTS as p (p.id)}<button type="button" class="op" aria-pressed={when === p.id} onclick={() => (when = p.id)}>{p.name}</button>{/each}
-        <button type="button" class="op" aria-pressed={when === 'time'} onclick={() => { when = 'time'; time ||= '21:00'; }}>Точное время…</button>
+        {#each H.PARTS as p (p.id)}<button type="button" class="op" aria-pressed={when === p.id} onclick={() => pickPart(p.id)}>{p.name}</button>{/each}
       </div>
-      {#if when === 'time'}
+      {#if when !== 'any'}
         <div class="ops" style="margin-top: 8px">
-          <span class="hint" style="margin: 0">с</span>
-          <input class="op tm" type="time" bind:value={time} aria-label="Начало" />
-          <span class="hint" style="margin: 0">до</span>
-          {#if end}
-            <input class="op tm" type="time" bind:value={end} aria-label="Конец" />
-            <button type="button" class="hb-ib" aria-label="Без конца" title="Без конца" onclick={() => (end = '')}><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
-          {:else}
-            <button type="button" class="op" aria-pressed="false" onclick={() => (end = H.endAfter(time) ?? '')}>＋ конец</button>
-          {/if}
+          <HabitWin {win} onchange={(w) => (win = w)} />
+          <span class="hint" style="margin: 0">можно сузить, например с 7:30 до 8:00</span>
         </div>
-        <p class="hint">{endBad ? 'Конец должен быть позже начала.' : fields.end ? 'В календаре привычка займёт этот промежуток.' : 'В календаре — блок на полчаса. Можно указать конец.'}</p>
       {/if}
     </div>
   </div>
@@ -140,9 +131,9 @@
     <div>
       <div class="ops">
         <button type="button" class="op" aria-pressed={tg} onclick={() => (tg = !tg)}><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11.5L20 5l-3 14-5-4-3 3v-5l8-7" /></svg>Telegram</button>
-        <button type="button" class="op" aria-pressed={win} onclick={() => (win = !win)}><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2" /><path d="M8 20h8" /></svg>Windows</button>
+        <button type="button" class="op" aria-pressed={winOn} onclick={() => (winOn = !winOn)}><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2" /><path d="M8 20h8" /></svg>Windows</button>
       </div>
-      <p class="hint">{at ? (tg || win ? `в ${at}, если к этому времени не отмечено` : 'не напоминать') : 'когда угодно — без напоминания; выбери часть дня или время'}</p>
+      <p class="hint">{at ? (tg || winOn ? `в ${at}, если не отмечено до ${fields.win.e}` : 'не напоминать') : 'когда угодно — без напоминания; выбери часть дня'}</p>
     </div>
   </div>
 

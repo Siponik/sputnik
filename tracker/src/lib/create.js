@@ -200,3 +200,68 @@ export function kindHint(text, p, kind) {
 const RRULES = { day: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', week: 'FREQ=WEEKLY', month: 'FREQ=MONTHLY', year: 'FREQ=YEARLY' };
 /** Правило повтора Спутника { every } → ['RRULE:…'] для события; без повтора — null. */
 export const recurrenceOf = (rule) => (RRULES[rule?.every] ? [`RRULE:${RRULES[rule.every]}`] : null);
+
+// ---------- привычка: умная строка «Пить воду 8 стаканов каждый день» ----------
+
+// Фраза целиком, с границами слова для кириллицы; группа 1 — сама фраза.
+const P = (re) => new RegExp(`(?:^|[^а-яёa-z0-9])(${re})(?=$|[^а-яёa-z0-9])`, 'i');
+const H_FREQ = [
+  [P('(\\d+)\\s+раза?\\s+в\\s+неделю'), (m) => ({ freq: 'week', perWeek: Math.min(6, Math.max(1, +m[2])) }), (m) => `${m[2]} ${+m[2] % 10 >= 2 && +m[2] % 10 <= 4 ? 'раза' : 'раз'} в неделю`],
+  [P('по будням'), () => ({ freq: 'days', days: [0, 1, 2, 3, 4] }), () => 'по будням'],
+  [P('по выходным'), () => ({ freq: 'days', days: [5, 6] }), () => 'по выходным'],
+  [P('каждый день|ежедневно'), () => ({ freq: 'daily' }), () => 'каждый день'],
+];
+const H_PART = [
+  [P('каждое утро|по утрам|утром'), 'morning', 'утро'],
+  [P('днём|днем|после обеда'), 'day', 'день'],
+  [P('каждый вечер|по вечерам|вечером|перед сном'), 'evening', 'вечер'],
+];
+const H_UNITS = [
+  [/^стакан/, 'стаканов'], [/^страниц/, 'страниц'], [/^мин/, 'минут'], [/^км$/, 'км'], [/^шаг/, 'шагов'], [/^раз/, 'раз'],
+];
+const H_GOAL = P('(\\d{1,5})\\s+(стакан[а-яё]*|страниц[а-яё]*|минут[а-яё]*|мин|км|шаг[а-яё]*|раз|раза|отжиман[а-яё]*|приседан[а-яё]*|глав[а-яё]*|слов[а-яё]*)');
+
+/**
+ * Разбор строки привычки. off — куски, возвращённые в текст крестиком: { freq, part, goal }.
+ * → { name, freq?, perWeek?, days?, part?, goal? { n, unit }, marks: [{ from, to, kind }], toks: [{ k, l }] }
+ */
+export function parseHabit(raw, off = {}) {
+  const text = String(raw ?? '');
+  const out = { marks: [], toks: [] };
+  const taken = [];
+  const free = (a, b) => taken.every(([x, y]) => b <= x || a >= y);
+  const take = (m, kind) => {
+    const from = m.index + m[0].length - m[1].length, to = from + m[1].length;
+    if (!free(from, to)) return false;
+    taken.push([from, to]);
+    out.marks.push({ from, to, kind });
+    return true;
+  };
+  if (!off.freq) for (const [re, val, label] of H_FREQ) {
+    const m = re.exec(text);
+    if (m && take(m, 'freq')) { Object.assign(out, val(m)); out.toks.push({ k: 'freq', l: label(m) }); break; }
+  }
+  if (!off.part) for (const [re, part, label] of H_PART) {
+    const m = re.exec(text);
+    if (m && take(m, 'part')) {
+      out.part = part; out.toks.push({ k: 'part', l: label });
+      if (!out.freq && /^кажд/i.test(m[1])) out.freq = 'daily';
+      break;
+    }
+  }
+  if (!off.goal) {
+    const m = H_GOAL.exec(text);
+    if (m && +m[2] > 1 && take(m, 'goal')) {
+      const word = m[3].toLowerCase();
+      const unit = H_UNITS.find(([re]) => re.test(word))?.[1] ?? word;
+      out.goal = { n: Math.min(999, +m[2]), unit };
+      out.toks.unshift({ k: 'goal', l: `цель ${out.goal.n} ${unit}` });
+    }
+  }
+  out.marks.sort((a, b) => a.from - b.from);
+  let name = '', i = 0;
+  for (const mk of out.marks) { name += text.slice(i, mk.from) + ' '; i = mk.to; }
+  name = (name + text.slice(i)).replace(/\s+/g, ' ').trim();
+  out.name = name && name[0].toUpperCase() + name.slice(1);
+  return out;
+}
