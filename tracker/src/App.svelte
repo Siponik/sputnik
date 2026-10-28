@@ -12,14 +12,14 @@
   import Today from './lib/Today.svelte';
   import Habits from './lib/Habits.svelte';
   import NewList from './lib/NewList.svelte';
-  import EditList from './lib/EditList.svelte';
+  import ListSettings from './lib/ListSettings.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import Calendar from './lib/Calendar.svelte';
   import Create from './lib/Create.svelte';
   import Coon from './lib/Coon.svelte';
   import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
-  import { templatesFrom, blankTemplate, shortName, isHabitList, HABITS, boardOf, follows, archiveDays } from './lib/templates.js';
+  import { templatesFrom, blankTemplate, shortName, isHabitList, HABITS, boardOf, follows, archiveDays, sameShape } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
   import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
@@ -65,7 +65,7 @@
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
-  let view = $state('today'); // today | calendar | board | archive | habits | templates | sphere
+  let view = $state('today'); // today | calendar | board | archive | habits | templates | listset | sphere
   // Списки и задачи — в сторе tasks; lists и tasks — его текущие значения (tasks[listId] = … менять можно).
   const lists = $derived(taskStore.board.lists);
   let activeId = $state(null);
@@ -95,7 +95,7 @@
   const openCount = (l) => (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
   const todayCount = $derived.by(() => {
     const t = api.ymd(new Date());
-    return boardLists.reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
+    return boardLists.filter((l) => !lay.lists?.[l.id]?.quiet).reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
   });
 
   const habitsRaw = $derived(habitList
@@ -156,7 +156,7 @@
       ...reminders.assignedItems(boardLists, tasks, lay.tasks), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
-    const week = tgKey ? sharedbot.snapshot(boardLists, mineTasks, lay.tasks) : null;
+    const week = tgKey ? sharedbot.snapshot(boardLists.filter((l) => !lay.lists?.[l.id]?.quiet), mineTasks, lay.tasks) : null;
     const guess = tgKey ? sharedbot.guessCtx(boardLists.filter((l) => !l.lost), lay) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
@@ -302,7 +302,7 @@
   }
   let habitOpen = $state(null);
   function searchOpenTask(listId, id) { searchOpen = false; openRef = { listId, id }; }
-  const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
+  const section = (v) => (['archive', 'templates', 'listset', 'sphere'].includes(v) ? 'board' : v);
   /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
   function go(v) {
     if (v === view) return;
@@ -337,6 +337,7 @@
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
     if (e.key === 'Escape' && onBoard && !keys.overlay() && sideApi?.hide()) { e.preventDefault(); return; }
     if (e.key === 'Escape' && view === 'templates' && !keys.overlay() && !keys.typing(e)) { e.preventDefault(); view = 'board'; return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Period' && view === 'board' && activeList && !keys.overlay()) { e.preventDefault(); openListSettings(activeId); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') { e.preventDefault(); if (!keys.overlay() && !helpOpen) searchOpen = true; return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
@@ -833,7 +834,7 @@
     }
     return [
       { id: 'open', label: 'Открыть доску' },
-      { id: 'edit', label: 'Изменить список' },
+      { id: 'edit', label: 'Настроить список…' },
       ...(sphereOf(sideMenu.id, lay) && !sh.isSharedId(sideMenu.id) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
       { id: 'delete', label: 'Удалить список…', danger: true, sep: true },
     ];
@@ -852,28 +853,43 @@
       else if (a === 'leave') askLeaveSphere(id);
     } else {
       if (a === 'open') openList(id);
-      else if (a === 'edit') listEdit = id;
+      else if (a === 'edit') openListSettings(id);
       else if (a === 'unsphere') { touch('lists', id, { sphere: null }); saveLayer(); say('Список — в «Без сферы»'); }
       else if (a === 'delete') askDeleteList(id);
     }
   }
 
-  // «Изменить список»: название, сфера и вид доски. Шаблон здесь не трогаем — он правится в «Шаблонах досок».
-  let listEdit = $state(null);
-  async function applyListEdit(id, { title, sphere, view: v }) {
+  // «Настроить список» (lib/ListSettings.svelte): тот же редактор, что у шаблона, но только для этого списка.
+  let listSetId = $state(null);
+  function openListSettings(id) { listSetId = id; activeId = id; go('listset'); }
+  $effect(() => { if (view === 'listset' && taskStore.board.lists.length && !taskStore.board.lists.some((l) => l.id === listSetId)) view = 'board'; });
+  /** Переименовать список — и в Google Tasks (у общих сфер — в календаре сферы). */
+  async function renameList(id, title) {
     const l = lists.find((x) => x.id === id);
-    if (!l) return;
-    if (title && title !== l.title) {
-      try {
-        if (!sh.isSharedId(id)) await api.renameList(id, title);
-        taskStore.board.lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
-      } catch (e) { say('Не удалось переименовать: ' + e); return; }
-    }
-    if (!sh.isSharedId(id)) touch('lists', id, { sphere: sphere ?? null });
-    touch('lists', id, { view: v });
-    saveLayer();
-    listEdit = null;
-    say('Список изменён');
+    if (!l || !title || title === l.title) return true;
+    try {
+      await api.renameList(id, title);
+      taskStore.board.lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
+      return true;
+    } catch (e) { say('Не удалось переименовать: ' + e); return false; }
+  }
+  async function saveListSettings(id, p) {
+    if (!(await renameList(id, p.title))) return;
+    const own = p.draft && !sameShape(templateFor(id), p.draft);
+    boardStore.saveListSettings(id, p, { shared: sh.isSharedId(id) });
+    say(own ? 'Сохранено только для этого списка — шаблон не тронут' : 'Список сохранён');
+  }
+  const listGroups = $derived([...spheres.map((sp) => ({ sphere: sp, lists: sphereLists(sp.id) })), { sphere: null, lists: noSphereLists }]
+    .map((g) => ({ ...g, lists: g.lists.map((l) => ({ id: l.id, title: l.title, own: templateFor(l.id).own, n: openCount(l), view: viewFor(l.id) })) })));
+  function listSample(id) {
+    const all = tasks[id] ?? [], subsOf = (tid) => all.filter((x) => x.parent === tid);
+    const t = sampleTask(all, lay.tasks, subsOf);
+    return t ? { task: t, lay: lay.tasks?.[t.id] ?? {}, subs: subsOf(t.id) } : null;
+  }
+  /** Задач в колонке списка сейчас (выполненные — в последней). */
+  function listCount(id, colId) {
+    const cols = templateFor(id).cols;
+    return (tasks[id] ?? []).filter((x) => !x.parent && colOf(x, cols) === colId).length;
   }
 
   function askDeleteSphere(id) {
@@ -1493,7 +1509,7 @@
           <div class="sh-invs">{#each invites as inv (inv.cal)}<ShareStates kind="invite" invite={inv} onaccept={() => acceptInvite(inv)} ondecline={() => declineInvite(inv)} />{/each}</div>
         {/if}
         {#if view === 'today'}
-          <Today lists={shownLists} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
+          <Today lists={shownLists.filter((l) => !lay.lists?.[l.id]?.quiet)} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
@@ -1516,6 +1532,13 @@
         {:else if view === 'templates'}
           <Templates templates={allTemplates} usage={templateUsage} users={templateUsers} sample={templateSample} count={templateCount} current={activeList ? templateFor(activeId).id : null}
             onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
+        {:else if view === 'listset' && lists.some((l) => l.id === listSetId)}
+          {@const L = lists.find((l) => l.id === listSetId)}
+          <ListSettings list={L} board={templateFor(L.id)} layList={lay.lists?.[L.id] ?? {}} groups={listGroups} {spheres} sphere={sphereOf(L.id, lay) ?? null}
+            shared={sh.isSharedId(L.id)} count={(colId) => listCount(L.id, colId)} sample={listSample(L.id)}
+            onpick={(id) => { listSetId = id; activeId = id; }} onback={() => go('board')}
+            onsave={(p) => saveListSettings(L.id, p)} onreset={() => boardStore.resetList(L.id)}
+            onastemplate={(name, d) => boardStore.listAsTemplate(L.id, name, d)} ondelete={() => askDeleteList(L.id)} />
         {:else if view === 'sphere' && curSphere?.noAccess}
           <ShareStates kind="lost" sphere={curSphere.name} onask={() => askAccess(curSphere.id)} onforget={() => forgetSphere(curSphere.id)} />
         {:else if view === 'sphere' && curSphere}
@@ -1544,7 +1567,7 @@
             share={together(sphereOf(activeId, lay)) ? { people: peopleOf(sphereOf(activeId, lay)), me: meEmail, owner: shared.isOwner(sh.calOfSphere(sphereOf(activeId, lay))),
               oninvite: () => (sharePanel = { id: sphereOf(activeId, lay), mode: 'people' }),
               mode: lay.settings?.whoFilter?.[activeId] ?? 'all', waitOf: (id) => waitOf(activeId, id), onmode: (m) => { touch('settings', 'whoFilter', { [activeId]: m }); saveLayer(); } } : null} fold={boardFold} onfold={foldCol}
-            onedittemplate={() => (view = 'templates')}
+            onedittemplate={() => (view = 'templates')} onsettings={() => openListSettings(activeId)} onrename={(t) => renameList(activeId, t)}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}
             onarchive={() => (view = 'archive')} />
@@ -1656,13 +1679,6 @@
 
   {#if askDel}
     <ConfirmDelete title={askDel.title} text={askDel.text} note={askDel.note} yes={askDel.yes} danger={askDel.danger ?? true} onconfirm={confirmDel} onclose={() => (askDel = null)} />
-  {/if}
-
-  {#if listEdit}
-    {@const el = lists.find((x) => x.id === listEdit)}
-    {#if el}
-      <EditList list={el} sphere={sphereOf(el.id, lay) ?? null} {spheres} view={viewFor(el.id)} shared={sh.isSharedId(el.id)} onsave={(p) => applyListEdit(el.id, p)} onclose={() => (listEdit = null)} />
-    {/if}
   {/if}
 
   {#if newList}

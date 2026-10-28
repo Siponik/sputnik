@@ -128,3 +128,10 @@
 .bd-head .seg3 button { height: 28px; padding: 0 12px; font-size: 12.5px; }
 /* Колонки сжимаются до 230 px, чтобы четыре помещались рядом с левой колонкой сфер. */
 .bd .bcol { flex: 1 1 240px; min-width: 230px; max-width: 300px; width: auto; }
+
+/* Название доски (lib/BoardTitle.svelte): двойной клик — переименовать, «⋯» — меню списка. */
+.bd-h1 { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.bd-h1 .bd-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+.bd-h1 .bd-rn { flex: 1; min-width: 0; max-width: 560px; height: 38px; padding: 0 8px; margin-left: -9px; border-radius: 9px; border: 1px solid var(--clay); background: var(--bg); color: var(--ink); font: inherit; outline: none; }
+.bd-h1 .bd-more { flex: none; width: 30px; height: 30px; border: 0; border-radius: 8px; background: none; color: var(--ink-faint); font: 600 18px/1 var(--font-sans); cursor: pointer; }
+.bd-h1 .bd-more:hover, .bd-h1 .bd-more[aria-expanded="true"] { background: var(--wash); color: var(--ink); }

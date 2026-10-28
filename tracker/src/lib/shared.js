@@ -249,6 +249,14 @@ export async function createList(cal, title, layer = {}) {
   return core.listView(await write(cal, core.make(core.newKey('l'), f)), cal);
 }
 
+/** Переименовать общий список (видно всем участникам). */
+export async function renameList(id, title) {
+  const { lk, cal } = need(id);
+  const rec = await patchRec(cal, lk, { title });
+  if (!rec) throw new Error('404 общий список не найден');
+  return core.listView(rec, cal);
+}
+
 export async function deleteList(id) {
   const { lk, cal } = need(id);
   const recs = stores[cal].recs;

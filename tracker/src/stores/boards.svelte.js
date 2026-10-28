@@ -38,3 +38,34 @@ export function resetList(listId) {
   save();
   say(p.moves.length ? `Список снова как в шаблоне · переехало задач: ${p.moves.length}` : 'Список снова как в шаблоне');
 }
+
+/** Сохранить окно списка: «Основное» всегда; доску — только если меняли колонки или поля (тогда список «своё»).
+ *  Сменили только вид — список по-прежнему идёт за шаблоном. */
+export function saveListSettings(listId, { sphere, sort, quiet, archive, draft, removed = [] }, { shared = false } = {}) {
+  touch('lists', listId, { sort, quiet, archive, ...(shared ? {} : { sphere: sphere ?? null }) });
+  if (draft) {
+    const cur = T.boardOf(listId, lay());
+    const onlyView = !T.isOwn(lay().lists?.[listId]) && T.sameShape(cur, draft);
+    if (onlyView) touch('lists', listId, { view: draft.view });
+    else {
+      const p = T.saveListPlan(lay(), listId, draft, board.tasks[listId], removed);
+      moveAll(p.moves);
+      touch('lists', listId, p.patch);
+    }
+  }
+  save();
+}
+
+/** «Сохранить как новый шаблон…»: шаблон из доски списка, и список дальше идёт за ним (своя копия убирается). */
+export function listAsTemplate(listId, name, draft) {
+  const id = 'tpl' + Date.now().toString(36);
+  const p = T.ownPatch(draft);
+  touch('templates', id, { name, view: p.view, fields: p.fields, cols: p.cols, removed: false });
+  const plan = T.saveListPlan(lay(), listId, draft, board.tasks[listId]);
+  moveAll(plan.moves);
+  touch('lists', listId, { template: id, ...T.resetPatch() });
+  save();
+  say(`Шаблон «${name}» создан — список идёт за ним`);
+  return id;
+}
+
