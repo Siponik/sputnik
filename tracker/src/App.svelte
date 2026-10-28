@@ -1276,7 +1276,8 @@
       tasks[l.id] = [...(tasks[l.id] ?? []), t];
       touch('habits', t.id, { ...habitPatch(f), createdAt: api.ymd(new Date()) });
       saveLayer();
-    } catch (e) { say('Не удалось добавить привычку: ' + e); }
+      return true;
+    } catch (e) { say('Не удалось добавить привычку: ' + e); return false; }
   }
 
   async function updateHabit(id, f) {
@@ -1613,6 +1614,7 @@
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange} loadCalendars={api.calendarsAll}
       {remindDefaults} onremindDefault={setRemindDefault}
       oncreate={createFromWindow} oncreateevent={createEvent} oncreatebirthday={createBirthday}
+      oncreatehabit={async (f) => { const ok = await createHabit(f); if (ok) say(`«${f.name}» — в привычках`, () => { quick = null; go('habits'); }, 'Открыть'); return ok; }}
       onlearn={learnRoute} onnewlist={(name) => { quick = null; newListName = name; newList = true; }}
       peopleOf={(lid) => { const sid = sphereOf(lid, lay); return sh.isSharedId(lid) && together(sid) ? peopleOf(sid) : []; }} me={meEmail}
       onclose={() => (quick = null)} />

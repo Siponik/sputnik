@@ -110,7 +110,7 @@ for (const theme of ['dark', 'light']) {
   });
   await p.keyboard.press('Escape');
   await create('Аня 12 марта', 'create-др', async () => {
-    await p.keyboard.press('Alt+Digit3');
+    await p.keyboard.press('Alt+Digit4');
     await p.locator('.cr-fld').fill('1997');
   });
   await p.keyboard.press('Escape');
