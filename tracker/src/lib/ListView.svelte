@@ -6,13 +6,13 @@
   import { priorityOf, priorityRank } from './meta.js';
   import Dropdown from './Dropdown.svelte';
 
-  let { tasks, cols, colOf, layTasks, fields = [], visible = () => true, onopen, onmove, onmenu } = $props();
+  let { tasks, cols, colOf, layTasks, fields = [], days = 3, visible = () => true, onopen, onmove, onmenu } = $props();
   // Правый клик по строке — то же меню задачи, что на канбане (onmenu от доски).
 
   const has = (f) => fields.includes(f);
   const stageOpts = $derived(cols.map((x) => ({ id: x.id, label: x.name, color: colColor(x) })));
   const subsOf = (id) => tasks.filter((t) => t.parent === id);
-  const rows = $derived(tasks.filter((t) => !t.parent && visible(t) && !isArchived(t))
+  const rows = $derived(tasks.filter((t) => !t.parent && visible(t) && !isArchived(t, days))
     .sort((a, b) => cols.findIndex((c) => c.id === colOf(a, cols)) - cols.findIndex((c) => c.id === colOf(b, cols))
       || priorityRank(layTasks?.[a.id]?.priority) - priorityRank(layTasks?.[b.id]?.priority)
       || (a.position || '').localeCompare(b.position || '')));

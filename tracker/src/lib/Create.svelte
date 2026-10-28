@@ -4,7 +4,7 @@
   import { ymd } from './api.js';
   import { TYPES, PRIORITIES, autosize } from './meta.js';
   import { REPEATS } from './repeat.js';
-  import { templateOf, colColor, VIEWS } from './templates.js';
+  import { boardOf, colColor, VIEWS } from './templates.js';
   import { topicsOf, topicColor, plusDays } from './stickers.js';
   import { spheresFrom, sphereOf, sphereColor } from './spheres.js';
   import { leadName, leadsText, fireAt } from './reminders.js';
@@ -111,7 +111,7 @@
   const who = $derived(!destPeople.length ? null : manualWho !== undefined ? manualWho
     : atWho && destPeople.some((p) => p.email === atWho.email) ? atWho.email : null);
   const whoRows = $derived([...destPeople.filter((p) => p.email === me), ...destPeople.filter((p) => p.email !== me)]);
-  const tpl = $derived(templateOf(layer?.lists?.[dest]?.template, layer));
+  const tpl = $derived(boardOf(dest, layer));
   const spheres = $derived(spheresFrom(layer));
   const sphereFor = (id) => spheres.find((x) => x.id === sphereOf(id, layer)) ?? null;
   const colorOf = (id) => { const sp = sphereFor(id); return sp ? sphereColor(sp) : 'var(--ink-faint)'; };
@@ -230,7 +230,7 @@
   // «Подарок …» — в список со стикерами, где больше всего дел (личный), иначе в список шаблона «Личное».
   const openN = (id) => (tasksByList[id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
   const giftList = $derived(lists.filter((l) => viewOf(l.id, layer) === 'stickers').sort((a, b) => openN(b.id) - openN(a.id))[0]
-    ?? lists.find((l) => templateOf(layer?.lists?.[l.id]?.template, layer).id === 'personal') ?? null);
+    ?? lists.find((l) => boardOf(l.id, layer).id === 'personal') ?? null);
   const bday = $derived(dueDay ? cr.nextBirthday(dueDay, today) : null);
   const age = $derived(bday ? cr.ageAt(year, bday, today) : null);
   const giftTitle = $derived(`Подарок ${cr.dative(title || 'имениннику')}`);

@@ -19,7 +19,7 @@
   import Coon from './lib/Coon.svelte';
   import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
-  import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
+  import { templatesFrom, blankTemplate, shortName, isHabitList, HABITS, boardOf, follows, archiveDays } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
   import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
@@ -60,6 +60,7 @@
   import * as syncStore from './stores/sync.svelte.js';
   import * as shareStore from './stores/share.svelte.js';
   import * as updStore from './stores/update.svelte.js';
+  import * as boardStore from './stores/boards.svelte.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
@@ -85,9 +86,9 @@
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
   const habitList = $derived(lists.find((l) => isHabitList(l, lay)) ?? null);
   const activeList = $derived(boardLists.find((l) => l.id === activeId));
-  const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template, lay);
-  // Вид доски списка: свой (lists[id].view) или вид шаблона по умолчанию.
-  const viewFor = (listId) => lay.lists?.[listId]?.view ?? templateFor(listId).view ?? 'kanban';
+  // Доска списка: шаблон + своя копия списка (колонки, поля, вид) — templates.boardOf.
+  const templateFor = (listId) => boardOf(listId, lay);
+  const viewFor = (listId) => templateFor(listId).view;
   const openTask = $derived(openRef ? (tasks[openRef.listId] ?? []).find((t) => t.id === openRef.id) : null);
   const openSubs = $derived(openTask ? (tasks[openRef.listId] ?? []).filter((t) => t.parent === openTask.id).sort((a, b) => (a.position || '').localeCompare(b.position || '')) : []);
   const openCount = (l) => (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
@@ -528,35 +529,20 @@
   // ---------- шаблоны досок ----------
 
   const allTemplates = $derived(templatesFrom(lay));
-  const templateUsage = (tid) => boardLists.filter((l) => templateFor(l.id).id === tid).map((l) => l.title);
+  // «Используется» — только списки, которые идут за шаблоном: свои копии правка шаблона не меняет.
+  const templateUsage = (tid) => boardLists.filter((l) => follows(l.id, lay, tid)).map((l) => l.title);
   /** Открытых задач в колонке шаблона по всем его спискам. */
   function templateCount(tid, colId) {
     let n = 0;
     for (const l of boardLists) {
+      if (!follows(l.id, lay, tid)) continue;
       const t = templateFor(l.id);
-      if (t.id !== tid) continue;
       for (const x of tasks[l.id] ?? []) if (!x.parent && x.status !== 'completed' && colOf(x, t.cols) === colId) n++;
       if (colId === 'done') n += (tasks[l.id] ?? []).filter((x) => !x.parent && x.status === 'completed').length;
     }
     return n;
   }
-  /** Сохранить шаблон; removed — удалённые колонки: их задачи переезжают в соседнюю. */
-  function saveTemplate(id, draft, removed = []) {
-    const moves = Object.fromEntries(removed.map((r) => [r.id, r.to]));
-    for (const l of boardLists) {
-      if (templateFor(l.id).id !== id) continue;
-      for (const t of tasks[l.id] ?? []) {
-        let s = lay.tasks?.[t.id]?.status, guard = 0;
-        if (!s || !moves[s]) continue;
-        while (moves[s] && guard++ < 20) s = moves[s];
-        touch('tasks', t.id, { status: s });
-      }
-    }
-    if (isBuiltin(id)) touch('templatesEdit', id, { ...draft, removed: false });
-    else touch('templates', id, { ...draft, removed: false });
-    saveLayer();
-    say(`Шаблон «${draft.name}» сохранён`);
-  }
+  const saveTemplate = boardStore.saveTemplate;
   function resetTemplate(id) { touch('templatesEdit', id, { removed: true }); saveLayer(); say('Шаблон возвращён как был'); }
   function createTemplate() {
     const id = 'tpl' + Date.now().toString(36);
@@ -1527,7 +1513,7 @@
             onedit={() => (sphereEditOpen = true)} onaddlist={() => newListIn(curSphere.id)}
             onopenlist={openList} onopentask={(t, listId) => (openRef = { listId, id: t.id })} />
         {:else if view === 'archive'}
-          <Archive lists={boardLists} tasksByList={tasks} {activeId} jar={(listId) => viewFor(listId) === 'stickers'}
+          <Archive lists={boardLists} tasksByList={tasks} {activeId} jar={(listId) => viewFor(listId) === 'stickers'} daysOf={(listId) => archiveDays(lay.lists?.[listId])}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
