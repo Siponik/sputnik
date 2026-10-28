@@ -79,14 +79,9 @@ export function years(n) {
 
 // ---------- событие: свободно ли время ----------
 
-/**
- * events — события Google за день (start.dateTime/end.dateTime), slot — { s, e } нового события.
- * → { clash: 'название' } | { until: 'ЧЧ:ММ' } (следующее событие) | { free: true } (до конца дня свободно).
- */
-export function freeCheck(events, day, slot) {
-  if (!slot?.s) return null;
-  const s = toMin(slot.s), e = toMin(slot.e || slot.s);
-  const timed = (events ?? [])
+/** События дня со временем → [{ a, b, title }] в минутах суток (начало до этого дня — 0, конец после — 1440). */
+function timedOf(events, day) {
+  return (events ?? [])
     .filter((x) => x.start?.dateTime && x.end?.dateTime && x.start.dateTime.slice(0, 10) <= day && x.end.dateTime.slice(0, 10) >= day)
     .map((x) => {
       const a = new Date(x.start.dateTime), b = new Date(x.end.dateTime);
@@ -94,6 +89,31 @@ export function freeCheck(events, day, slot) {
       const bm = fmt(b) > day ? 1440 : b.getHours() * 60 + b.getMinutes();
       return { a: am, b: bm, title: x.summary || 'событие' };
     });
+}
+
+/**
+ * Кусок сетки дня для превью события: hours часов вокруг slot (час до начала), без времени — с 9:00.
+ * → { hours: [14, 15, …], items: [{ top, h, title, mine }] } — top и h в часах от начала куска.
+ */
+export function dayChunk(events, day, slot, title = '', hours = 5) {
+  const s = slot?.s ? toMin(slot.s) : null;
+  const start = s == null ? 9 : Math.max(0, Math.min(24 - hours, Math.floor(s / 60) - 1));
+  const from = start * 60, to = from + hours * 60;
+  const piece = (a, b, t, mine) => (b <= from || a >= to ? null
+    : { top: (Math.max(a, from) - from) / 60, h: Math.max(0.25, (Math.min(b, to) - Math.max(a, from)) / 60), title: t, mine });
+  const items = timedOf(events, day).map((x) => piece(x.a, x.b, x.title, false));
+  if (s != null) items.push(piece(s, slot.e ? toMin(slot.e) : s + 60, title, true));
+  return { hours: Array.from({ length: hours }, (_, i) => start + i), items: items.filter(Boolean) };
+}
+
+/**
+ * events — события Google за день (start.dateTime/end.dateTime), slot — { s, e } нового события.
+ * → { clash: 'название' } | { until: 'ЧЧ:ММ' } (следующее событие) | { free: true } (до конца дня свободно).
+ */
+export function freeCheck(events, day, slot) {
+  if (!slot?.s) return null;
+  const s = toMin(slot.s), e = toMin(slot.e || slot.s);
+  const timed = timedOf(events, day);
   const clash = timed.find((x) => x.a < e && x.b > s);
   if (clash) return { clash: clash.title };
   const next = timed.filter((x) => x.a >= e).sort((x, y) => x.a - y.a)[0];
@@ -130,3 +150,42 @@ export function stageChecklist(listTasks = [], layTasks = {}) {
 
 /** Две буквы для миниатюры ассета: «Сундук с золотом» → «СУ». */
 export const initials = (title) => (String(title ?? '').replace(/[^a-zа-яё0-9]/gi, '').slice(0, 2) || '··').toUpperCase();
+
+// ---------- подсказка вида: «Похоже на встречу — сделать событием?» ----------
+
+// Границы слова для кириллицы (\b в JS — только латиница).
+const W = (re) => new RegExp(`(?:^|[^а-яёa-z0-9])(?:${re})(?=$|[^а-яёa-z0-9])`, 'i');
+const MEET = W('созвон\\S*|встреч[аиеуы]|встречу|врач\\S*|к врачу|стоматолог\\S*|собеседовани\\S*|митинг\\S*|свидани\\S*|консультаци\\S*');
+// «с Олей», «со Светой» — имя с большой буквы; или люди словом: клиент, команда, друзья…
+const WITH = /(?:^|\s)(?:с|со)\s+(?:[А-ЯЁ][а-яё]+|(?:клиент|заказчик|команд|друз|друг|мам|пап|коллег|ребят)[а-яё]*)/;
+const HABIT = W('каждый день|каждое утро|каждый вечер|ежедневно|по утрам|по вечерам|по будням|\\d+\\s+раза?\\s+в\\s+неделю');
+const BDAY = W('день рождени[яе]|дня рождения|днюх[аиу]|др');
+
+/**
+ * На что похожа строка: { kind: 'event' | 'habit' | 'birthday', what, why } или null.
+ * text — строка как есть, p — parseLine(text) (day, time, repeat). Вид окна сама не меняет —
+ * окно показывает плашку с кнопкой (kindHint).
+ */
+export function suggestKind(text, p = {}) {
+  const t = String(text ?? '');
+  if (BDAY.test(t) && p.day) return { kind: 'birthday', what: 'день рождения', why: 'раз в год' };
+  const h = HABIT.exec(t);
+  if (h || p.repeat?.every === 'day' || p.repeat?.every === 'weekdays') {
+    const phrase = h ? h[0].trim().toLowerCase() : p.repeat.every === 'day' ? 'каждый день' : 'по будням';
+    return { kind: 'habit', what: 'привычку', why: `повторяется ${phrase}` };
+  }
+  const meet = MEET.test(t), withSb = WITH.test(t), time = !!p.time;
+  if (meet || (time && withSb)) {
+    const why = time && withSb ? 'у неё есть время и с кем-то' : time ? 'у неё есть время' : withSb ? 'она с кем-то' : 'её не отмечают сделанной';
+    return { kind: 'event', what: 'встречу', why };
+  }
+  return null;
+}
+
+/** Подсказка для текущего вида: null — молчим (тот же вид, у события повтор нормален, день рождения не трогаем). */
+export function kindHint(text, p, kind) {
+  const s = suggestKind(text, p);
+  if (!s || s.kind === kind || kind === 'birthday') return null;
+  if (kind === 'event' && s.kind === 'habit') return null;
+  return s;
+}
