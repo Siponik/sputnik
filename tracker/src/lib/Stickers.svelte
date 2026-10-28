@@ -1,6 +1,7 @@
 <script>
   import SharedTag from './SharedTag.svelte';
   import ShareBits from './ShareBits.svelte';
+  import BoardTitle from './BoardTitle.svelte';
   import Avatar from './Avatar.svelte';
   import WhoPick from './WhoPick.svelte';
   import { memberOf, whoOf, whoCounts, whoTally, assignedMatch } from './sharedcore.js';
@@ -20,7 +21,7 @@
   // act — действия App (open, rename, priority, order, moveList, duplicate, remove, done, topic, pin, when, add, topics, set).
   // tabs — переключатель вида из доски; headLine — «Сфера · шаблон … » над названием.
   let { list, tasks, layList = {}, layTasks, cols = [], remindOf = () => '', act, lists = [], tabs, headLine = '', share = null, sphereName = '',
-    onedittemplate, onarchive } = $props();
+    onedittemplate, onsettings, onrename, tplName = '', onarchive } = $props();
 
   const [send, receive] = stickerCrossfade();
 
@@ -28,7 +29,6 @@
   const topics = $derived(stk.topicsOf(layList));
   // «По людям» — только в общей сфере (docs/design-v2.md, «Общие сферы» 7).
   const group = $derived(layList?.group === 'when' ? 'when' : layList?.group === 'people' && share ? 'people' : 'topic');
-  const GROUPS = $derived(share ? ['topic', 'when', 'people'] : ['topic', 'when']);
   const me = $derived(share?.me ?? '');
   const whoMode = $derived(share?.mode ?? 'all');
   const whoN = $derived(share ? whoTally(tasks, layTasks, me) : null);
@@ -161,7 +161,8 @@
   // Смена раскладки — без Svelte-переходов (с |global старые колонки ждали улёта стикеров и оставались на экране
   // вперемешку с новыми), перелёт стикеров — FLIP из motion.js.
   let wallEl = $state(null);
-  async function flipGroup(to = GROUPS[(GROUPS.indexOf(group) + 1) % GROUPS.length]) {
+  async function flipGroup(want) {
+    const to = stk.nextGroup(group, want, !!share);
     if (to === group) return;
     const before = rectsOf(wallEl);
     adding = null;
@@ -325,8 +326,8 @@
 
 <header class="bd-head">
   <div class="bd-title">
-    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Колонки и вид шаблона" onclick={onedittemplate}>настроить</button></p>
-    <h1>{list?.title ?? 'Дела'}{#if share}<ShareBits {share} />{/if}</h1>
+    <p>{#if share && sphereName}<span class="bd-path">{sphereName}<SharedTag small /></span>{' · '}{headLine.slice(sphereName.length + 3)}{:else}{headLine}{/if} · вид «Стикеры» · <button type="button" class="link" title="Вид, колонки, поля и порядок этого списка · Ctrl+." onclick={onsettings}>настроить</button></p>
+    <BoardTitle title={list?.title ?? 'Дела'} {tplName} {onrename} {onsettings} {onedittemplate}>{#if share}<ShareBits {share} />{/if}</BoardTitle>
   </div>
   <div class="tb">
     {#if share}
@@ -341,7 +342,7 @@
         <button type="button" aria-pressed={whoMode === 'none'} title="Ничьи · Shift+U" onclick={() => share.onmode('none')}><Avatar m={null} size={18} />Ничьи<small>{whoN.none}</small></button>
       </div>
     {:else}
-    <button type="button" class="grpsw" title="Разложить по-другому · G" aria-label={group === 'when' ? 'Сейчас по срокам. Разложить по темам' : 'Сейчас по темам. Разложить по срокам'} onclick={flipGroup}>
+    <button type="button" class="grpsw" title="Разложить по-другому · G" aria-label={group === 'when' ? 'Сейчас по срокам. Разложить по темам' : 'Сейчас по темам. Разложить по срокам'} onclick={() => flipGroup()}>
       <span class:on={group === 'topic'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="16" rx="2" /><rect x="14" y="4" width="6" height="10" rx="2" /></svg>По темам</span>
       <span class:on={group === 'when'}><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l3 2" /></svg>По срокам</span>
     </button>

@@ -4,6 +4,9 @@
 // У колонки стабильный id — задача ссылается на него (слой tasks[id].status), переименование ничего не ломает.
 // Последняя колонка всегда «готово»: задача в ней выполнена в Google Tasks. Её id — 'done'.
 // Шаблон списка — слой lists[listId].template, вид списка (если поменяли) — lists[listId].view.
+// Шаблон и список — раздельно (docs/design-v2.md, 28.10): у списка может быть своя копия колонок и полей —
+// lists[listId].cols / lists[listId].fields. Есть копия — список «своё», правки шаблона до него не доходят.
+// Нет — список идёт за шаблоном. Доску списка собирает boardOf, а не templateOf.
 
 /** 7 цветов колонок (клик по точке в редакторе перебирает их). В шаблоне хранится номер. */
 export const PALETTE = [
@@ -98,11 +101,136 @@ export const shortName = (t) => ({ work: 'работа', client: 'заказы',
 export const HABITS = 'habits';
 export const isHabitList = (list, lay) => lay.lists?.[list.id]?.template === HABITS || /(^|\s)привычки$/i.test(list.title ?? '');
 
-// Выполненные задачи старше этого срока уходят с доски в архив.
+// ---------- доска списка: шаблон + своя копия ----------
+
+const okCols = (c) => Array.isArray(c) && c.length >= 2 && c[c.length - 1]?.id === 'done';
+
+/** Своё ли у списка (колонки или поля отвязаны от шаблона). */
+export const isOwn = (L) => okCols(L?.cols) || Array.isArray(L?.fields);
+
+/** Доска списка: шаблон с наложенной копией списка (cols / fields / view).
+ *  id и name — шаблона (по ним считают «Используется»), own — список отвязан от шаблона, base — сам шаблон. */
+export function boardOf(listId, lay) {
+  const L = lay?.lists?.[listId] ?? {};
+  const base = templateOf(L.template, lay);
+  const cols = okCols(L.cols) ? L.cols.map((c) => ({ ...c })) : base.cols;
+  const fields = Array.isArray(L.fields) ? [...L.fields] : base.fields;
+  return { ...base, view: L.view ?? base.view ?? 'kanban', cols, fields, own: isOwn(L), base };
+}
+
+/** Идёт ли список за шаблоном tid (без своей копии) — его меняет правка шаблона. */
+export const follows = (listId, lay, tid) => boardOf(listId, lay).id === tid && !isOwn(lay?.lists?.[listId]);
+
+/** Что записать в lists[id], чтобы сохранить доску «только для этого списка». */
+export const ownPatch = (draft) => ({
+  view: draft.view,
+  fields: [...draft.fields],
+  cols: draft.cols.map(({ id, name, color, limit }) => ({ id, name: String(name ?? '').trim() || 'Без названия', color: color ?? 0, limit: limit ?? 0 })),
+});
+
+/** Одинаковы ли колонки и поля (вид не считается — его у списка можно менять и без «своего»). */
+export const sameShape = (a, b) => JSON.stringify(ownPatch(a).cols) === JSON.stringify(ownPatch(b).cols)
+  && [...(a.fields ?? [])].sort().join() === [...(b.fields ?? [])].sort().join();
+
+/** «Вернуть как в шаблоне»: убрать свою копию. null, а не undefined — иначе другой компьютер не узнает, что поле стёрли. */
+export const resetPatch = () => ({ cols: null, fields: null, view: null });
+
+const norm = (s) => String(s ?? '').trim().toLowerCase().replace(/ё/g, 'е');
+
+/** Куда переедут задачи при смене колонок: { старый id: новый id } для каждой старой колонки.
+ *  Сначала по названию, потом тот же id, иначе по порядку; «готово» — всегда в последнюю. */
+export function matchCols(oldCols, newCols) {
+  const last = newCols.length - 1, out = {};
+  const byName = new Map(newCols.map((c) => [norm(c.name), c.id]));
+  oldCols.forEach((c, i) => {
+    if (c.id === 'done') { out[c.id] = newCols[last].id; return; }
+    const n = byName.get(norm(c.name));
+    if (n && n !== 'done') out[c.id] = n;
+    else if (newCols.some((x) => x.id === c.id && x.id !== 'done')) out[c.id] = c.id;
+    else out[c.id] = newCols[Math.min(i, Math.max(0, last - 1))].id;
+  });
+  return out;
+}
+
+/** Перенос задач из исчезающих колонок: moves { старый id: новый id } (цепочки тоже — a → b → c).
+ *  Возвращает правки [{ id, status }] для слоя; задачи без своей колонки (в первой) и уже на месте не трогает. */
+export function relocate(taskList, layTasks, moves) {
+  const out = [];
+  for (const t of taskList ?? []) {
+    const from = layTasks?.[t.id]?.status;
+    if (!from || moves[from] === undefined || moves[from] === from) continue;
+    let s = from, guard = 0;
+    while (moves[s] !== undefined && moves[s] !== s && guard++ < 20) s = moves[s];
+    if (s !== from) out.push({ id: t.id, status: s });
+  }
+  return out;
+}
+
+/** Колонки, которые пропадут при переходе oldCols → newCols, — с их задачами (для relocate). */
+export function lostMoves(oldCols, newCols) {
+  const keep = new Set(newCols.map((c) => c.id)), m = matchCols(oldCols, newCols), out = {};
+  for (const c of oldCols) if (!keep.has(c.id)) out[c.id] = m[c.id];
+  return out;
+}
+
+/** Сохранить доску «только для этого списка»: правка слоя списка и переезды задач из пропавших колонок.
+ *  removed — [{ id, to }] из редактора (куда человек сам отправил задачи удалённой колонки), главнее авто-сопоставления. */
+export function saveListPlan(lay, listId, draft, taskList, removed = []) {
+  const cur = boardOf(listId, lay);
+  const moves = { ...lostMoves(cur.cols, draft.cols), ...Object.fromEntries(removed.map((r) => [r.id, r.to])) };
+  return { patch: ownPatch(draft), moves: relocate(taskList, lay?.tasks, moves) };
+}
+
+/** «Вернуть как в шаблоне»: убрать свою копию, задачи из своих колонок — в колонки шаблона. */
+export function resetListPlan(lay, listId, taskList) {
+  const cur = boardOf(listId, lay);
+  return { patch: resetPatch(), moves: relocate(taskList, lay?.tasks, lostMoves(cur.cols, cur.base.cols)) };
+}
+
+/** «Взять колонки из другого шаблона»: список переходит на шаблон newTplId и снова идёт за ним (своя копия убирается).
+ *  mapping — { старая колонка: новая } (по умолчанию matchCols); «готово» всегда в последнюю. Задачи без своей колонки
+ *  стоят в первой — их тоже переносим, если первая колонка нового шаблона другая. */
+export function switchPlan(lay, listId, newTplId, taskList, mapping = null) {
+  const cur = boardOf(listId, lay), next = templateOf(newTplId, lay);
+  const map = { ...matchCols(cur.cols, next.cols), ...(mapping ?? {}) };
+  const ids = new Set(next.cols.map((c) => c.id)), last = next.cols[next.cols.length - 1].id;
+  const moves = [];
+  for (const t of taskList ?? []) {
+    if (t.parent || t.status === 'completed') continue;
+    const s = lay?.tasks?.[t.id]?.status;
+    const from = s && s !== 'done' && cur.cols.some((c) => c.id === s) ? s : cur.cols[0].id;
+    let to = map[from] ?? next.cols[0].id;
+    if (to === last || !ids.has(to)) to = next.cols[0].id; // открытая задача в «готово» не попадает
+    const now = s && s !== 'done' && ids.has(s) ? s : next.cols[0].id;
+    if (to !== now) moves.push({ id: t.id, status: to });
+  }
+  return { patch: { template: next.id, ...resetPatch() }, moves, map, fresh: (next.fields ?? []).filter((f) => !(cur.fields ?? []).includes(f)) };
+}
+
+// Порядок задач в колонке — lists[id].sort: own — свой (перетаскивание, tasks[id].ord; без него — приоритет),
+// due — по сроку (без срока внизу), prio — по приоритету. У стикеров то же поле: due — по срокам, иначе — закреп.
+export const SORTS = [{ id: 'own', name: 'Свой' }, { id: 'due', name: 'Срок' }, { id: 'prio', name: 'Приоритет' }];
+export const sortOf = (L) => (L?.sort === 'due' || L?.sort === 'prio' ? L.sort : 'own');
+const rank = (n) => (n === 1 ? 0 : n === 2 ? 1 : n === 3 ? 3 : 2); // как meta.priorityRank: без приоритета — между !! и !
+const pos = (a, b) => (a.position || '').localeCompare(b.position || '');
+const dueKey = (t) => (t.due ? t.due.slice(0, 10) : '9999');
+/** Задачи колонки в порядке списка. */
+export function orderTasks(items, layTasks, sort = 'own') {
+  const pr = (t) => rank(layTasks?.[t.id]?.priority);
+  if (sort === 'due') return [...items].sort((a, b) => dueKey(a).localeCompare(dueKey(b)) || pr(a) - pr(b) || pos(a, b));
+  if (sort === 'prio') return [...items].sort((a, b) => pr(a) - pr(b) || dueKey(a).localeCompare(dueKey(b)) || pos(a, b));
+  const base = [...items].sort((a, b) => pr(a) - pr(b) || pos(a, b));
+  const key = new Map(base.map((t, i) => [t.id, layTasks?.[t.id]?.ord ?? i - 0.5]));
+  return base.sort((a, b) => key.get(a.id) - key.get(b.id));
+}
+
+// Выполненные задачи старше этого срока уходят с доски в архив. У списка можно поменять: lists[id].archive — 0 | 3 | 7.
 export const ARCHIVE_AFTER_DAYS = 3;
-export function isArchived(task) {
+export const ARCHIVE_CHOICES = [0, 3, 7];
+export const archiveDays = (L) => (ARCHIVE_CHOICES.includes(L?.archive) ? L.archive : ARCHIVE_AFTER_DAYS);
+export function isArchived(task, days = ARCHIVE_AFTER_DAYS, now = Date.now()) {
   if (task.status !== 'completed' || !task.completed) return false;
-  return Date.now() - new Date(task.completed).getTime() > ARCHIVE_AFTER_DAYS * 864e5;
+  return now - new Date(task.completed).getTime() > days * 864e5;
 }
 
 // Старое имя: список встроенных (для мест, где слой не нужен).

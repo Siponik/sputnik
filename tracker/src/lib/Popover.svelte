@@ -15,8 +15,9 @@
     pos = { x: Math.max(8, Math.min(r.left + r.width / 2 - width / 2, innerWidth - width - 8)), y: up ? r.top - 6 - h : r.bottom + 6 };
   }
   $effect(() => { if (el) place(); });
-  function down(e) { if (el && !el.contains(e.target) && !anchor?.contains(e.target)) onclose(); }
-  function key(e) { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onclose(); anchor?.focus(); } }
+  // Меню выпадающего списка внутри поповера живёт в <body> — клик по нему и Esc достаются ему, а не поповеру.
+  function down(e) { if (el && !el.contains(e.target) && !anchor?.contains(e.target) && !e.target.closest?.('.ddm')) onclose(); }
+  function key(e) { if (e.key === 'Escape' && !document.querySelector('.ddm')) { e.preventDefault(); e.stopPropagation(); onclose(); anchor?.focus(); } }
 </script>
 
 <svelte:window onpointerdown={down} onkeydowncapture={key} onresize={place} />

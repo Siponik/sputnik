@@ -16,6 +16,9 @@
 @import './styles/stickers.css';
 @import './styles/create.css';
 @import './styles/shell.css';
+@import './styles/dropdown.css';
+@import './styles/taskpanel.css';
+@import './styles/boardedit.css';
 @import './styles/motion.css';
 
 /* Раскладка приложения */
@@ -168,7 +171,8 @@ button, input, textarea, select { font: inherit; color: inherit; }
 
 /* Напоминание в окне задачи и на карточке */
 .remind { display: flex; flex-wrap: wrap; gap: 8px; }
-.remind select { flex: 1 1 160px; width: auto; }
+.remind .dd { flex: 1 1 160px; }
+.remind .ddb { width: 100%; }
 .remind input { flex: 0 1 auto; width: auto; }
 .remind-hint { margin: -10px 0 0 124px; font-size: 12px; line-height: 16px; color: var(--ink-soft); }
 
@@ -274,6 +278,14 @@ svg.flip { transform: rotate(180deg); }
 .blk.k-event { background: var(--raised); box-shadow: inset 0 0 0 1px var(--edge); }
 .blk.k-task { background: color-mix(in srgb, var(--c) 14%, var(--bg)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 45%, transparent); }
 .blk.done { opacity: .5; }
+/* Привычка со временем: полупрозрачная плашка цвета привычки с пунктиром; отмечена — плотнее и сплошная рамка, пропуск — бледнее. */
+.blk.k-habit { background: color-mix(in srgb, var(--c) 9%, transparent); box-shadow: none; border: 1px dashed color-mix(in srgb, var(--c) 60%, transparent); }
+.blk.k-habit.done { opacity: 1; background: color-mix(in srgb, var(--c) 20%, var(--bg)); border-style: solid; color: inherit; text-decoration: none; }
+.blk.k-habit.miss { opacity: .55; }
+.blk.k-habit .ring { width: 15px; height: 15px; }
+.blk.k-habit .ring svg { width: 9px; height: 9px; }
+.blk.k-habit .ring.tdy { border: 2px solid var(--clay); } /* не .now: в сетке это линия «сейчас» */
+.blk.k-habit .ring.plan { border-color: color-mix(in srgb, var(--c) 70%, transparent); }
 .blk .bt { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 12px; line-height: 16px; font-weight: 600; }
 .blk .tm { font: 400 11px/14px var(--font-mono); color: var(--ink-soft); }
 .wk-grid .free { position: absolute; left: 3px; right: 3px; box-sizing: border-box; border-radius: 7px; border: 1.5px dashed color-mix(in srgb, var(--gold) 70%, transparent); display: grid; place-items: center; font-size: 11.5px; color: var(--gold); pointer-events: none; }

@@ -5,6 +5,7 @@
 // Выкладка и настройка — bot/README.md.
 
 import { onUpdate, link, putState, tick, sha256, MAX_STATE } from './logic.js';
+import { ackDrafts } from './drafts.js';
 import { d1Store } from './store.js';
 import { briefTick, NEWS_URL } from './brief.js';
 
@@ -68,7 +69,7 @@ export default {
         return json(r.body, r.status);
       }
       if (url.pathname === '/inbox' && req.method === 'GET') return json({ items: await store.inbox(user.chat), muted: !!user.muted });
-      if (url.pathname === '/ack' && req.method === 'POST') { await store.ack(user.chat, ((await req.json()).ids ?? []).map(Number)); return json({ ok: true }); }
+      if (url.pathname === '/ack' && req.method === 'POST') { await ackDrafts(user.chat, ((await req.json()).ids ?? []).map(Number), { store, tg }); return json({ ok: true }); }
       if (url.pathname === '/test' && req.method === 'POST') { await tg('sendMessage', { chat_id: user.chat, text: 'Спутник: проверка связи — напоминания доходят ✓' }); return json({ ok: true }); }
       if (url.pathname === '/unlink' && req.method === 'POST') { await store.unlink(user.chat); return json({ ok: true }); }
       return json({ error: 'нет такого адреса' }, 404);

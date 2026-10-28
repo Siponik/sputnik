@@ -10,7 +10,7 @@
 // а скрипт Google Apps Script (reminders/Code.gs) раз в минуту читает его и пишет в Telegram.
 import { gapi, dueToYmd, ymd } from './api.js';
 import { habitDay } from './calendar.js';
-import { remindAt } from './habits.js';
+import { remindAt, habitWin } from './habits.js';
 
 export const BEFORE = [
   { days: 0, name: 'В день срока' },
@@ -23,6 +23,7 @@ export const BEFORE = [
 // «До начала»: сколько минут до срока/времени задачи.
 export const LEADS = [
   { min: 0, name: 'В момент начала' },
+  { min: 5, name: 'За 5 минут' },
   { min: 15, name: 'За 15 минут' },
   { min: 60, name: 'За час' },
   { min: 1440, name: 'За день' },
@@ -209,7 +210,7 @@ export function assignedItems(lists, tasksByList, layTasks, now = Date.now()) {
   return items;
 }
 
-/** Напоминания о привычках со временем (habits[id].time, или время части дня: утро 10:00, день 15:00, вечер 21:00)
+/** Напоминания о привычках — в начале окна (habits.habitWin: свои «с — до» или часть дня: утро 6–12, день 12–18, вечер 18–24)
  *  — на 7 дней вперёд, только по расписанию. habits[id].remind.tg === false — в Telegram не слать.
  *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
  *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
@@ -228,7 +229,7 @@ export function habitItems(habits, log, now = new Date()) {
         key: `habit|${h.id}|${day}`,
         kind: 'habit',
         title: h.name,
-        note: h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '',
+        note: [h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '', `Отметь до ${habitWin(h).e}`].filter(Boolean).join(' · '),
         list: 'Привычки',
         due: '',
         fireAt: at.toISOString(),
@@ -238,17 +239,18 @@ export function habitItems(habits, log, now = new Date()) {
   return items;
 }
 
-/** Уведомления Windows о привычках (habits[id].remind.win): какие пора показать сейчас — время прошло не больше 30 мин
- *  назад, по расписанию, не отмечено, и сегодня ещё не показывали (sent — ключи «id|день»). */
+/** Уведомления Windows о привычках (habits[id].remind.win): какие пора показать сейчас — идёт окно привычки (с начала
+ *  до конца: компьютер могли включить позже), по расписанию, не отмечено, и сегодня ещё не показывали (sent — ключи «id|день»). */
 export function habitWinDue(habits, log, sent = [], now = new Date()) {
   const today = ymd(now);
   return habits.filter((h) => {
     if (!h.remind?.win || sent.includes(`${h.id}|${today}`)) return false;
-    const m = /^(\d{1,2}):(\d{2})$/.exec(remindAt(h) ?? '');
-    if (!m) return false;
-    const at = new Date(now.getFullYear(), now.getMonth(), now.getDate(), +m[1], +m[2]).getTime();
+    const w = habitWin(h);
+    if (!w) return false;
+    const mins = (s) => { const [hh, mm] = s.split(':').map(Number); return hh * 60 + mm; };
+    const cur = now.getHours() * 60 + now.getMinutes();
     const d = habitDay(h, log, today, today);
-    return d.sched && !d.done && now.getTime() >= at && now.getTime() - at < 30 * 60e3;
+    return d.sched && !d.done && cur >= mins(w.s) && cur < mins(w.e);
   });
 }
 

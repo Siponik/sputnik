@@ -20,6 +20,7 @@ function tasksApi(method, path, q, body) {
   if ((m = /^users\/@me\/lists\/([^/]+)$/.exec(path))) {
     const id = decodeURIComponent(m[1]);
     if (method === 'GET') return id === '@default' ? lists[0] : lists.find((l) => l.id === id);
+    if (method === 'PATCH') { const l = lists.find((x) => x.id === id); Object.assign(l, body); return l; }
     if (method === 'DELETE') {
       if (id === lists[0]?.id) throw new Error('400 Invalid Value'); // основной список Google не удаляет
       lists.splice(lists.findIndex((l) => l.id === id), 1); delete tasks[id]; return null;

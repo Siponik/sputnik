@@ -10,7 +10,7 @@
   import ConfirmDelete from './ConfirmDelete.svelte';
   import { fade, pop } from './motion.js';
 
-  // habits: [{ id, name, days, time, part, perWeek, goal, icon, color, remind, tipHide, createdAt }]; log — отметки из слоя;
+  // habits: [{ id, name, days, time, end, part, perWeek, goal, icon, color, remind, tipHide, createdAt }]; log — отметки из слоя;
   // cele — свежая веха { id, text, n }.
   let { habits, log, cele = null, open = null, onopened, ontoggle, onday, onclosecele, oncreate, onupdate, ondelete, onregister } = $props();
 
@@ -97,7 +97,7 @@
   }
   function moveTip() {
     if (!tip) return;
-    onupdate(tip.habit.id, { name: tip.habit.name, time: tip.time, part: H.partOf({ time: tip.time }) });
+    onupdate(tip.habit.id, { name: tip.habit.name, ...H.winFields(H.moveWin(tip.habit, tip.time)), part: H.partOf({ time: tip.time }) });
   }
   function hideTip() {
     if (!tip) return;
@@ -286,7 +286,7 @@
 
 {#if openH && !edit}
   <HabitPanel h={openH} {log} i={idx.get(openH.id)} onclose={() => (openId = null)} {ontoggle} onpick={pickDay}
-    onedit={() => openForm(openH)} ondelete={() => (delId = openH.id)} />
+    onedit={() => openForm(openH)} ondelete={() => (delId = openH.id)} onupdate={(f) => onupdate(openH.id, f)} />
 {/if}
 
 {#if edit}

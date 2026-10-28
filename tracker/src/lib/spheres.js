@@ -41,3 +41,14 @@ export function sphereOf(listId, lay) {
   const id = lay?.lists?.[listId]?.sphere;
   return id && lay.spheres?.[id] && !lay.spheres[id].removed ? id : null;
 }
+
+/** Списки для выпадающего списка с группами по сферам: { options, groups } (lib/Dropdown.svelte, вид «с поиском»). */
+export function listChoices(lists, lay) {
+  const spheres = spheresFrom(lay);
+  const color = Object.fromEntries(spheres.map((s) => [s.id, sphereColor(s)]));
+  const options = lists.map((l) => { const sp = sphereOf(l.id, lay); return { id: l.id, label: l.title, group: sp ?? '', color: sp ? color[sp] : 'var(--ink-faint)' }; });
+  const used = new Set(options.map((o) => o.group));
+  const groups = [...spheres.filter((s) => used.has(s.id)).map((s) => ({ id: s.id, name: s.name, color: color[s.id] })),
+    ...(used.has('') && used.size > 1 ? [{ id: '', name: 'Без сферы', color: 'var(--ink-faint)' }] : [])];
+  return { options, groups: groups.length ? groups : null };
+}

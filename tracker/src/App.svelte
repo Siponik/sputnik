@@ -12,13 +12,14 @@
   import Today from './lib/Today.svelte';
   import Habits from './lib/Habits.svelte';
   import NewList from './lib/NewList.svelte';
+  import ListSettings from './lib/ListSettings.svelte';
   import TaskDrawer from './lib/TaskDrawer.svelte';
   import Calendar from './lib/Calendar.svelte';
   import Create from './lib/Create.svelte';
   import Coon from './lib/Coon.svelte';
   import * as worktime from './lib/timer.js';
   import * as api from './lib/api.js';
-  import { templateOf, templatesFrom, isBuiltin, blankTemplate, shortName, isHabitList, HABITS } from './lib/templates.js';
+  import { templatesFrom, blankTemplate, shortName, isHabitList, HABITS, boardOf, follows, archiveDays, sameShape } from './lib/templates.js';
   import Templates from './lib/Templates.svelte';
   import { spheresFrom, sphereOf, sphereColor, SPHERE_COLORS, SPHERE_ICONS } from './lib/spheres.js';
   import SphereIcon from './lib/SphereIcon.svelte';
@@ -39,6 +40,7 @@
   import * as fresh from './lib/fresh.js';
   import { findDupes } from './lib/dupes.js';
   import * as stickers from './lib/stickers.js';
+  import * as cr from './lib/create.js';
   import * as reminders from './lib/reminders.js';
   import * as pictures from './lib/previewDrive.js';
   import * as sharedbot from './lib/sharedbot.js';
@@ -52,39 +54,49 @@
   import { accentCss } from './lib/accent.js';
   import StatusPop from './lib/StatusPop.svelte';
   import Popover from './lib/Popover.svelte';
+  import Toast from './lib/Toast.svelte';
+  import { say, busy as toastBusy } from './stores/toast.svelte.js';
+  import * as layerStore from './stores/layer.svelte.js';
+  import * as taskStore from './stores/tasks.svelte.js';
+  import * as syncStore from './stores/sync.svelte.js';
+  import * as shareStore from './stores/share.svelte.js';
+  import * as updStore from './stores/update.svelte.js';
+  import * as boardStore from './stores/boards.svelte.js';
+  import { sampleTask } from './lib/boardedit.js';
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
-  let view = $state('today'); // today | calendar | board | archive | habits | templates | sphere
-  let lists = $state([]);
+  let view = $state('today'); // today | calendar | board | archive | habits | templates | listset | sphere
+  // Списки и задачи — в сторе tasks; lists и tasks — его текущие значения (tasks[listId] = … менять можно).
+  const lists = $derived(taskStore.board.lists);
   let activeId = $state(null);
-  let tasks = $state({}); // listId → задачи (вместе с подзадачами)
-  let lay = $state(layerSync.emptyLayer()); // слой Спутника: то, чего нет в Google
+  const tasks = $derived(taskStore.board.tasks); // listId → задачи (вместе с подзадачами)
+  // Слой Спутника (то, чего нет в Google) — в сторе; lay — его текущий объект (менять поля можно, заменять целиком — нет).
+  const lay = $derived(layerStore.layer.data);
+  const cloud = $derived(layerStore.layer.cloud);
+  const { touch, sync: syncLayer, cloudLogin } = layerStore;
+  const saveLayer = layerStore.save;
   let events = $state([]);
   let inboxSt = $state(null); // статус «Входящих от Claude»
   let openRef = $state(null); // { listId, id }
   let newList = $state(false);
   let newListName = $state(''); // название из окна «Создать»
   let quick = $state(null); // окно «Создать»: { day, s, e } — что подставить
-  let sync = $state({ busy: false, err: '', at: null });
-  let toast = $state('');
-  let toastLabel = $state('Отменить');
-  let syncFlash = $state(false); // короткая вспышка точки синхронизации по окончании обмена
-  let toastTimer;
+  const sync = syncStore.sync; // { busy, err, at, flash } — обмен с Google
 
   // Скрытые на первом запуске списки (lists[id].hidden) на доске и в «Сегодня» не показываем.
   const boardLists = $derived(lists.filter((l) => !isHabitList(l, lay) && !lay.lists?.[l.id]?.hidden));
   const habitList = $derived(lists.find((l) => isHabitList(l, lay)) ?? null);
   const activeList = $derived(boardLists.find((l) => l.id === activeId));
-  const templateFor = (listId) => templateOf(lay.lists?.[listId]?.template, lay);
-  // Вид доски списка: свой (lists[id].view) или вид шаблона по умолчанию.
-  const viewFor = (listId) => lay.lists?.[listId]?.view ?? templateFor(listId).view ?? 'kanban';
+  // Доска списка: шаблон + своя копия списка (колонки, поля, вид) — templates.boardOf.
+  const templateFor = (listId) => boardOf(listId, lay);
+  const viewFor = (listId) => templateFor(listId).view;
   const openTask = $derived(openRef ? (tasks[openRef.listId] ?? []).find((t) => t.id === openRef.id) : null);
   const openSubs = $derived(openTask ? (tasks[openRef.listId] ?? []).filter((t) => t.parent === openTask.id).sort((a, b) => (a.position || '').localeCompare(b.position || '')) : []);
   const openCount = (l) => (tasks[l.id] ?? []).filter((t) => !t.parent && t.status !== 'completed').length;
   const todayCount = $derived.by(() => {
     const t = api.ymd(new Date());
-    return boardLists.reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
+    return boardLists.filter((l) => !lay.lists?.[l.id]?.quiet).reduce((n, l) => n + (tasks[l.id] ?? []).filter((x) => !x.parent && x.status !== 'completed' && x.due && api.dueToYmd(x.due) <= t).length, 0);
   });
 
   const habitsRaw = $derived(habitList
@@ -92,7 +104,7 @@
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
         .map((t) => {
           const m = lay.habits?.[t.id] ?? {};
-          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], time: m.time ?? null, createdAt: m.createdAt,
+          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], win: m.win ?? null, time: m.time ?? null, end: m.end ?? null, createdAt: m.createdAt,
             part: m.part ?? null, perWeek: m.perWeek ?? null, goal: m.goal ?? null, icon: m.icon ?? null, color: m.color ?? null, remind: m.remind ?? null, tipHide: m.tipHide ?? null };
         })
     : []);
@@ -100,33 +112,6 @@
   const habits = $derived(sortHabits(habitsRaw));
   const inboxItems = $derived(inbox.pending(inboxSt, boardLists, tasks, lay.tasks));
   const habitsLeft = $derived(habits.filter((h) => !isDone(lay.log, h.id, api.ymd(new Date()))).length);
-
-  // Плашка внизу; undo — кнопка «Отменить» (перенос этапа, удаление). Таймер 6 с, на наведении — пауза.
-  let toastUndo = $state(null);
-  let toastN = $state(0); // номер плашки — заново запускает полоску-таймер
-  let toastLeft = 0, toastStart = 0;
-  /** Плашка внизу; undo — действие кнопки (по умолчанию «Отменить», label — другая подпись, например «Открыть»). */
-  function say(msg, undo = null, label = 'Отменить') {
-    toast = msg;
-    toastUndo = undo;
-    toastLabel = label;
-    toastN++;
-    toastLeft = 6000;
-    resumeToast();
-  }
-  function resumeToast() {
-    clearTimeout(toastTimer);
-    toastStart = Date.now();
-    toastTimer = setTimeout(() => { toast = ''; toastUndo = null; }, toastLeft);
-  }
-  function pauseToast() { clearTimeout(toastTimer); toastLeft = Math.max(800, toastLeft - (Date.now() - toastStart)); }
-  function undoToast() { const fn = toastUndo; toast = ''; toastUndo = null; fn?.(); }
-
-  // Каждая запись слоя несёт t — время изменения, по нему слой потом сливается между компьютерами.
-  function touch(section, key, patch) {
-    lay[section] ??= {};
-    lay[section][key] = { ...(lay[section][key] ?? {}), ...patch, t: Date.now() };
-  }
 
   /** Колонка задачи на доске с данными колонками. */
   function colOf(task, cols) {
@@ -172,11 +157,12 @@
       ...reminders.assignedItems(boardLists, tasks, lay.tasks), ...(botTest ? [botTest] : [])];
     const tgKey = lay.settings?.tgbot?.key;
     const own = ownBot;
-    const week = tgKey ? sharedbot.snapshot(boardLists, mineTasks, lay.tasks) : null;
+    const week = tgKey ? sharedbot.snapshot(boardLists.filter((l) => !lay.lists?.[l.id]?.quiet), mineTasks, lay.tasks) : null;
+    const guess = tgKey ? sharedbot.guessCtx(boardLists.filter((l) => !l.lost), lay) : null;
     clearTimeout(publishTimer);
     publishTimer = setTimeout(() => {
       // Общий бот (lib/sharedbot.js) — те же напоминания, кроме проверки личного бота, и задачи на неделю для /today.
-      if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week).then(() => (tgStat = { ...tgStat, err: '' }))
+      if (tgKey) sharedbot.push(tgKey, items.filter((x) => x.kind !== 'test'), week, guess).then(() => (tgStat = { ...tgStat, err: '' }))
         .catch((e) => (tgStat = { ...tgStat, err: String(e.message ?? e), unlinked: !!e.unlinked }));
       // Файл на Drive читает только свой бот владельца (Apps Script). Выключили — один раз очищаем файл, чтобы скрипт замолчал.
       if (!own.on && !remStat.at) return;
@@ -190,58 +176,6 @@
     }, 3000);
   });
 
-  async function saveLayer() {
-    try { await api.layer.write($state.snapshot(lay)); } catch (e) { say('Не удалось сохранить: ' + e); }
-    clearTimeout(cloudTimer);
-    cloudTimer = setTimeout(syncLayer, 4000);
-    clearTimeout(sharePushTimer);
-    if (shared.calendars().length) sharePushTimer = setTimeout(pushShared, 1500);
-  }
-
-  // ---------- слой между компьютерами (lib/layer.js) ----------
-  // Копия слоя — в скрытой папке приложения на Google Drive. Сливаем при каждой синхронизации (раз в 2 мин и по фокусу)
-  // и через 4 с после изменения. state: idle | busy | ok | login (нет права — войти заново) | err.
-  let cloud = $state({ state: 'idle', at: null, err: '' });
-  let cloudTimer;
-  let cloudRun = null, cloudAgain = false;
-  async function syncLayer() {
-    if (phase !== 'ready' || cloud.state === 'login') return;
-    if (cloudRun) { cloudAgain = true; return cloudRun; }
-    cloudRun = (async () => {
-      cloud.state = 'busy';
-      try {
-        const remote = await layerSync.pull();
-        // Сливаем с тем, что на экране сейчас: правки, сделанные, пока шёл запрос, не теряются.
-        const { merged, localChanged, remoteChanged } = layerSync.merge($state.snapshot(lay), remote);
-        if (localChanged) {
-          lay = merged;
-          api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
-          await api.layer.write(merged).catch((e) => say('Не удалось сохранить: ' + e));
-        }
-        if (remoteChanged) await layerSync.push(merged);
-        cloud = { state: 'ok', at: new Date(), err: '' };
-      } catch (e) {
-        if (layerSync.needsLogin(e)) {
-          cloud = { state: 'login', at: null, err: String(e) };
-          say('Чтобы доска, привычки и настройки совпадали на всех компьютерах, войди в Google заново: «Состояние» в шапке → «Войти».');
-        } else cloud = { ...cloud, state: 'err', err: String(e) };
-      } finally {
-        cloudRun = null;
-        if (cloudAgain) { cloudAgain = false; setTimeout(syncLayer, 0); }
-      }
-    })();
-    return cloudRun;
-  }
-  // Вход с новым правом drive.appdata (кто входил до синхронизации).
-  async function cloudLogin() {
-    try {
-      await api.auth.login();
-      cloud = { state: 'idle', at: null, err: '' };
-      await syncLayer();
-      if (cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
-    } catch (e) { say('Не удалось войти: ' + e); }
-  }
-
   // Привычкам без записи в слое ставим дату начала — сегодня, чтобы старые дни не считались пропусками.
   function ensureHabitMeta() {
     if (!habitList) return;
@@ -252,50 +186,44 @@
     if (changed) saveLayer();
   }
 
-  async function refresh() {
-    if (sync.busy) return;
-    sync.busy = true;
-    sync.err = '';
-    try {
-      const t0 = Date.now();
-      const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
-      // Общие сферы (календари) — до списков: их списки и задачи api берёт из того, что забрали здесь.
-      const shr = await shared.pullAll().catch((e) => { if (api.isOffline(e)) throw e; shareErr = String(e); return null; });
-      const ls = await api.listLists();
-      const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
-      // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
-      // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
-      await syncLayer();
-      if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareVer++; }).catch(() => {});
-      if (shr) applyShared(shr);
-      lists = ls;
-      // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
-      tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
-      if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
-      // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
-      // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
-      ensureHabitMeta();
-      events = await api.eventsForDay().catch(() => []);
-      inboxSt = await api.inboxStatus().catch(() => inboxSt);
-      await loadRemindEvents();
-      pullInboxLayer();
-      await rollRepeats();
-      await pullTg();
-      sync.at = new Date();
-      syncLayer();
-    } catch (e) {
-      sync.err = String(e);
-      if (/войдите|sign in|invalid_grant/i.test(sync.err)) { phase = 'setup'; authInfo = await api.auth.status(); }
-      else if (!api.isOffline(e)) say('Не удалось обновить: ' + e);
-    } finally {
-      sync.busy = false;
-      if (!sync.err) { syncFlash = true; setTimeout(() => (syncFlash = false), 650); }
-    }
+  // Один обмен с Google (порядок и ошибки — stores/sync.svelte.js): общие сферы, списки и задачи, слой, события, «Входящие».
+  async function pullAll() {
+    const t0 = Date.now();
+    const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
+    // Общие сферы (календари) — до списков: их списки и задачи api берёт из того, что забрали здесь.
+    const shr = await shared.pullAll().catch((e) => { if (api.isOffline(e)) throw e; shareStore.share.err = String(e); return null; });
+    const ls = await api.listLists();
+    const all = await Promise.all(ls.map((l) => api.listTasks(l.id)));
+    // Слой с других компьютеров — до того, как показать задачи: иначе новая задача с другого ПК сначала
+    // мелькала в «Разное» и без полей, а повтор, уже продолженный там (repeatNext), продолжался второй раз.
+    await syncLayer();
+    if (shr) shared.applyProfile(lay.settings?.profile).then((n) => { if (n) shareStore.share.ver++; }).catch(() => {});
+    if (shr) applyShared(shr);
+    taskStore.board.lists = ls;
+    // Правки, сделанные пока шёл ответ (отметка, создание, удаление), ответ не затирает.
+    taskStore.board.tasks = Object.fromEntries(ls.map((l, i) => [l.id, fresh.keepLocal(all[i], tasks[l.id], before[l.id], touchedAt, t0)]));
+    if (!activeId || !boardLists.some((l) => l.id === activeId)) activeId = boardLists[0]?.id ?? null;
+    // Первый обмен слоем (выше) — до того, как трекер сам что-то в него допишет (дата начала привычек, поля
+    // из «Входящих»): иначе на втором компьютере свежие, но пустые записи перебили бы настоящие с первого.
+    ensureHabitMeta();
+    events = await api.eventsForDay().catch(() => []);
+    inboxSt = await api.inboxStatus().catch(() => inboxSt);
+    await loadRemindEvents();
+    pullInboxLayer();
+    await rollRepeats();
+    await giftTasks();
+    await pullTg();
+    syncLayer();
   }
+  syncStore.configure({
+    pull: pullAll,
+    ready: () => phase === 'ready',
+    onAuthLost: async () => { phase = 'setup'; authInfo = await api.auth.status(); },
+  });
+  const refresh = syncStore.refresh;
 
   async function start() {
-    lay = { ...layerSync.emptyLayer(), ...(await api.layer.read().catch(() => ({}))) };
-    api.setHiddenCalendars(Object.keys(lay.cals ?? {}).filter((id) => lay.cals[id]?.hidden));
+    await layerStore.load();
     authInfo = await api.auth.status();
     if (!authInfo.has_secret || !authInfo.signed_in) { phase = 'setup'; return; }
     let last = null;
@@ -325,29 +253,8 @@
 
   // ---------- обновление из приложения ----------
 
-  let version = $state('');
-  let upd = $state({ found: null, busy: false, progress: 0, err: '', fail: '', note: '', checkedAt: null });
-  async function checkUpdate(manual = false) {
-    if (upd.busy) return;
-    upd.err = '';
-    upd.note = manual ? 'Проверяю…' : '';
-    try {
-      upd.found = await updater.findUpdate(!!lay.settings?.update?.beta); // бета-канал — только у владельца
-      upd.checkedAt = new Date();
-      upd.note = manual && !upd.found ? 'У тебя последняя версия.' : '';
-    } catch (e) {
-      upd.note = '';
-      if (manual) upd.err = 'Не удалось проверить обновления: ' + e;
-    }
-  }
-  async function installUpdate() {
-    if (!upd.found || upd.busy) return;
-    upd.busy = true;
-    upd.err = ''; upd.fail = '';
-    upd.progress = 0;
-    try { await updater.install(upd.found, (p) => (upd.progress = p)); }
-    catch (e) { upd.fail = 'Не удалось обновиться: ' + e; upd.busy = false; }
-  }
+  const upd = updStore.upd; // { version, found, busy, progress, … }
+  const checkUpdate = updStore.check, installUpdate = updStore.install;
   // Чип «✦ Версия …» в шапке: «Вечером» — напомнить в 20:00, «Пропустить» — не показывать для этой версии
   // (точка «версия» в «Состоянии» остаётся). settings.update = { skip, remindAt, auto, night }.
   const updPref = $derived(lay.settings?.update ?? {});
@@ -355,16 +262,11 @@
   const updChip = $derived(upd.busy || shell.showUpdChip(upd.found, updPref, nowMin));
   let updOpen = $state(false);
   let updBtn = $state(null);
-  function updLater() { touch('settings', 'update', { remindAt: shell.eveningAt() }); saveLayer(); updOpen = false; say('Напомню про обновление вечером, в 20:00'); }
-  function updSkip() { touch('settings', 'update', { skip: upd.found.version, remindAt: null }); saveLayer(); updOpen = false; say(`Версию ${upd.found.version} пропускаю — поставить можно в «Состоянии»`); }
+  function updLater() { updStore.later(); updOpen = false; }
+  function updSkip() { updStore.skip(); updOpen = false; }
 
   // Нет связи с Google — енот oops и повтор через минуту.
   const offline = $derived(phase === 'ready' && !!sync.err && api.isOffline(sync.err));
-  let retryTimer;
-  $effect(() => {
-    clearTimeout(retryTimer);
-    if (offline) retryTimer = setTimeout(refresh, 60e3);
-  });
 
   // ---------- быстрое добавление: кнопка «Создать» и Ctrl+N ----------
 
@@ -402,7 +304,7 @@
   }
   let habitOpen = $state(null);
   function searchOpenTask(listId, id) { searchOpen = false; openRef = { listId, id }; }
-  const section = (v) => (['archive', 'templates', 'sphere'].includes(v) ? 'board' : v);
+  const section = (v) => (['archive', 'templates', 'listset', 'sphere'].includes(v) ? 'board' : v);
   /** Смена раздела (вкладки, 1–4, Q/E): через View Transitions — новый экран приходит со стороны направления. */
   function go(v) {
     if (v === view) return;
@@ -432,11 +334,12 @@
     if (phase !== 'ready' || choosing) return;
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyN') { e.preventDefault(); newTask(true); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Comma') { e.preventDefault(); if (settingsTab) settingsTab = null; else if (!keys.overlay()) openSettings(); return; }
-    const onBoard = view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates';
+    const onBoard = view === 'board' || view === 'archive' || view === 'sphere';
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyB' && onBoard) { e.preventDefault(); togglePin(); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && e.shiftKey && e.code === 'KeyL' && onBoard) { e.preventDefault(); sideApi?.focusFilter(); return; }
     if (e.key === 'Escape' && onBoard && !keys.overlay() && sideApi?.hide()) { e.preventDefault(); return; }
     if (e.key === 'Escape' && view === 'templates' && !keys.overlay() && !keys.typing(e)) { e.preventDefault(); view = 'board'; return; }
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'Period' && view === 'board' && activeList && !keys.overlay()) { e.preventDefault(); openListSettings(activeId); return; }
     if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.code === 'KeyK') { e.preventDefault(); if (!keys.overlay() && !helpOpen) searchOpen = true; return; }
     if (!keys.plain(e) || keys.typing(e) || helpOpen) return;
     if (e.key === '?' || (e.shiftKey && e.code === 'Slash')) { e.preventDefault(); helpOpen = true; return; }
@@ -473,82 +376,20 @@
 
   onMount(() => {
     start();
-    updater.currentVersion().then((v) => (version = v));
-    // Обновления: через полминуты после запуска и дальше раз в 6 часов.
-    // «Проверять самому» (settings.update.auto) выключено — только вручную.
-    const autoCheck = () => { if (lay.settings?.update?.auto !== false) checkUpdate(); };
-    const updFirst = setTimeout(autoCheck, import.meta.env.MODE === 'demo' ? 1500 : 30e3); // в демо — сразу
-    const updTimer = setInterval(autoCheck, 6 * 3600e3);
+    const stopUpd = updStore.start();
     // «Ставить ночью»: компьютер не спит в 3:00 и есть версия — ставим.
     const minTimer = setInterval(() => {
       nowMin = Date.now();
-      if (upd.found && !upd.busy && shell.nightNow(lay.settings?.update)) installUpdate();
+      updStore.minute();
       if (phase === 'ready') habitWin();
     }, 60e3);
-    const timer = setInterval(() => { if (phase === 'ready') refresh(); }, 120000);
-    const onFocus = () => { if (phase === 'ready' && (!sync.at || Date.now() - sync.at > 30000)) refresh(); };
-    window.addEventListener('focus', onFocus);
-    return () => { clearInterval(timer); clearTimeout(updFirst); clearInterval(updTimer); clearInterval(minTimer); window.removeEventListener('focus', onFocus); };
+    const stopSync = syncStore.start();
+    return () => { stopSync(); stopUpd(); clearInterval(minTimer); };
   });
 
   // Когда трекер сам менял задачу — чтобы ответ синхронизации, запрошенный раньше, её не откатил (lib/fresh.js).
-  const touchedAt = new Map();
-  function replace(listId, updated) {
-    touchedAt.set(updated.id, Date.now());
-    tasks[listId] = (tasks[listId] ?? []).map((t) => (t.id === updated.id ? updated : t));
-  }
-
-  // ---------- повтор: выполненная задача с правилом → следующая с новым сроком ----------
-  let rolling = false;
-  async function rollRepeats(quiet = false) {
-    if (rolling) return;
-    rolling = true;
-    try {
-      const todo = repeat.dueRepeats(lists.filter((l) => !isHabitList(l, lay)), tasks, lay.tasks);
-      for (const { listId, task, rule } of todo) {
-        const day = repeat.nextDue(rule, api.dueToYmd(task.due), api.ymd(new Date()));
-        if (!day) continue;
-        try {
-          // Копию мог уже сделать другой компьютер — тогда только ссылаемся на неё (иначе на двух ПК задачи двоились).
-          const have = repeat.existingNext(tasks[listId], task, day);
-          if (have) { touch('tasks', task.id, { repeatNext: have.id, repeatAt: Date.now() }); saveLayer(); continue; }
-          const r = await api.createTask(listId, { title: task.title, notes: task.notes ?? '', due: api.ymdToDue(day) });
-          tasks[listId] = [r, ...(tasks[listId] ?? [])];
-          const L = lay.tasks?.[task.id] ?? {};
-          touch('tasks', r.id, Object.fromEntries(repeat.CARRY.filter((k) => L[k] != null).map((k) => [k, L[k]])));
-          touch('tasks', task.id, { repeatNext: r.id, repeatAt: Date.now() });
-          saveLayer();
-          if (!quiet && !toastUndo) say(`Повтор: «${task.title}» — снова ${api.humanDue(r.due)}`);
-        } catch (e) { say('Не удалось создать следующую повторяющуюся задачу: ' + e); break; }
-      }
-    } finally { rolling = false; }
-  }
-
-  // Отметку сняли сразу после выполнения («Отменить») — следующую копию убираем, пока её не трогали (10 мин).
-  async function unrollRepeat(task, listId) {
-    const L = lay.tasks?.[task.id];
-    if (!L?.repeatNext || Date.now() - (L.repeatAt ?? 0) > 10 * 60e3) return;
-    const next = (tasks[listId] ?? []).find((x) => x.id === L.repeatNext);
-    touch('tasks', task.id, { repeatNext: null, repeatAt: null });
-    saveLayer();
-    if (!next || next.status === 'completed') return;
-    tasks[listId] = tasks[listId].filter((x) => x.id !== next.id);
-    await api.deleteTask(listId, next.id).catch(() => {});
-  }
-
-  async function toggle(task, done, listId = openRef?.listId ?? activeId, quiet = false) {
-    try {
-      const r = await api.completeTask(listId, task.id, done);
-      replace(listId, r);
-      if (done && lay.tasks?.[task.id]?.repeat?.every) rollRepeats(quiet);
-      if (!done) unrollRepeat(task, listId);
-      if (done && !task.parent && !quiet) say(`«${task.title}» выполнено`);
-      if (done && lay.tasks?.[task.id]?.timer?.start) { touch('tasks', task.id, worktime.stopPatch(lay.tasks[task.id])); saveLayer(); } // выполнено — таймер стоп
-      // Общая сфера: кто сделал — кружок на штампе «сделано» у всех.
-      if (sh.isSharedId(listId) && !task.parent && (lay.tasks?.[task.id]?.doneBy ?? null) !== (done ? meEmail : null)) { touch('tasks', task.id, { doneBy: done ? meEmail : null }); saveLayer(); }
-      return true;
-    } catch (e) { say('Не удалось отметить: ' + e); return false; }
-  }
+  const { touchedAt, replace, rollRepeats } = taskStore;
+  const toggle = (task, done, listId = openRef?.listId ?? activeId, quiet = false) => taskStore.toggle(task, done, listId, quiet);
 
   async function move(task, col, listId = activeId) {
     // stageAt[колонка] — когда задача пришла на этап (учёт времени в «Конвейере»).
@@ -605,57 +446,19 @@
   // ---------- действия над задачей на доске (меню ⋯, правый клик, клавиши) ----------
 
   const colName = (listId, col) => templateFor(listId).cols.find((c) => c.id === col)?.name ?? col;
-  const findTask = (listId, id) => (tasks[listId] ?? []).find((t) => t.id === id);
+  const findTask = taskStore.find;
   /** Перенос этапа с плашкой «… → Этап · Отменить». */
   async function stageUndo(t, col, listId = activeId) {
     const prev = colOf(t, templateFor(listId).cols);
     if (prev === col) return;
-    await move(t, col, listId);
-    say(`«${t.title || 'Без названия'}» → ${colName(listId, col)}`, () => { const cur = findTask(listId, t.id); if (cur) move(cur, prev, listId); });
+    await taskStore.undoable(`«${t.title || 'Без названия'}» → ${colName(listId, col)}`, () => move(t, col, listId),
+      () => { const cur = findTask(listId, t.id); if (cur) move(cur, prev, listId); });
   }
-  const pendingDel = new Map(); // id → таймер удаления (6 с на «Отменить»)
-  function removeUndo(t, listId = activeId) {
-    const before = tasks[listId] ?? [];
-    tasks[listId] = before.filter((x) => x.id !== t.id && x.parent !== t.id);
-    if (openRef?.id === t.id) openRef = null;
-    const timer = setTimeout(async () => {
-      pendingDel.delete(t.id);
-      try { await api.deleteTask(listId, t.id); }
-      catch (e) { tasks[listId] = before; say('Не удалось удалить: ' + e); }
-    }, 6000);
-    pendingDel.set(t.id, timer);
-    say(`«${t.title || 'Без названия'}» удалена`, () => {
-      clearTimeout(pendingDel.get(t.id));
-      pendingDel.delete(t.id);
-      const back = before.filter((x) => x.id === t.id || x.parent === t.id);
-      tasks[listId] = [...back, ...(tasks[listId] ?? []).filter((x) => !back.some((b) => b.id === x.id))];
-    });
-  }
-  async function duplicateTask(t, listId = activeId) {
-    try {
-      const r = await api.createTask(listId, { title: t.title, notes: t.notes, due: t.due });
-      tasks[listId] = [r, ...(tasks[listId] ?? [])];
-      const L = lay.tasks?.[t.id] ?? {};
-      const copy = Object.fromEntries(['type', 'priority', 'status', 'project', 'slot', 'client', 'money'].filter((k) => L[k] != null).map((k) => [k, L[k]]));
-      if (Object.keys(copy).length) { touch('tasks', r.id, copy); saveLayer(); }
-      say(`Копия «${t.title}» создана`);
-    } catch (e) { say('Не удалось дублировать: ' + e); }
-  }
-  async function moveToList(t, dest, listId = activeId) {
-    try {
-      const r = await api.moveTask(listId, t.id, dest);
-      // Если Google выдал задаче в новом списке другой id — переносим её поля Спутника (статус, тип, время…).
-      if (r?.id && r.id !== t.id && lay.tasks?.[t.id]) {
-        const { t: _, ...rest } = lay.tasks[t.id];
-        touch('tasks', r.id, rest);
-        saveLayer();
-      }
-      const [a, b] = await Promise.all([api.listTasks(listId), api.listTasks(dest)]);
-      tasks[listId] = a; tasks[dest] = b;
-      say(`«${t.title}» → список «${lists.find((l) => l.id === dest)?.title ?? ''}»`);
-      return r?.id ?? t.id;
-    } catch (e) { say('Не удалось перенести в другой список: ' + e); return null; }
-  }
+  const removeUndo = (t, listId = activeId) => taskStore.removeUndo(t, listId);
+  const duplicateTask = (t, listId = activeId) => taskStore.duplicate(t, listId);
+  const moveToList = (t, dest, listId = activeId) => taskStore.moveToList(t, dest, listId);
+  const { doneUndo, topicUndo, whenUndo } = taskStore;
+  taskStore.configure({ onRemoved: (id) => { if (openRef?.id === id) openRef = null; } });
   const boardAct = {
     open: (t, pick = false) => (openRef = { listId: activeId, id: t.id, pick }),
     rename: (t, title) => renameTask(activeId, t, title),
@@ -685,34 +488,6 @@
     topics: (topics) => { touch('lists', activeId, { topics }); saveLayer(); },
     set: (patch) => { touch('lists', activeId, patch); saveLayer(); },
   };
-  /** Стикер сделан / возвращён: плашка «Сделано: «…» · Отменить». */
-  async function doneUndo(t, d, listId, onundo) {
-    const ok = await toggle(t, d, listId, true);
-    if (!ok || !d) return ok;
-    say(`Сделано: «${t.title || 'Без названия'}»`, () => { onundo?.(); const cur = findTask(listId, t.id); if (cur) toggle(cur, false, listId, true); });
-    return true;
-  }
-  function topicUndo(t, id, listId) {
-    const prev = lay.tasks?.[t.id]?.topic ?? null;
-    if (prev === id) return;
-    touch('tasks', t.id, { topic: id });
-    saveLayer();
-    const name = stickers.topicsOf(lay.lists?.[listId]).find((x) => x.id === id)?.name ?? stickers.MISC.name;
-    say(`«${t.title || 'Без названия'}» → ${name}`, () => { touch('tasks', t.id, { topic: prev }); saveLayer(); });
-  }
-  /** Перенос по срокам: сегодня / на неделе / когда-нибудь. Время (slot) и напоминания идут за сроком. */
-  async function whenUndo(t, target, listId) {
-    const today = api.ymd(new Date());
-    const cur = api.dueToYmd(t.due) || null;
-    const next = stickers.whenDue(target, cur, today);
-    if (next === cur) return;
-    try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(next) })); }
-    catch (e) { say('Не удалось перенести: ' + e); return; }
-    const where = { today: 'сегодня', week: next ? api.humanDue(api.ymdToDue(next)) : 'на неделе', later: 'когда-нибудь' }[target];
-    say(`«${t.title || 'Без названия'}» → ${where}`, async () => {
-      try { replace(listId, await api.patchTask(listId, t.id, { due: api.ymdToDue(cur) })); } catch (e) { say('Не удалось вернуть срок: ' + e); }
-    });
-  }
   const boardFold = $derived(lay.settings?.fold?.[activeId] ?? {});
   function foldCol(col, v) {
     const all = lay.settings?.fold ?? {};
@@ -723,14 +498,6 @@
   // ---------- доска: проекты и совет енота ----------
 
   let boardProject = $state(null);
-  const projects = $derived.by(() => {
-    const n = {};
-    for (const t of tasks[activeId] ?? []) {
-      const p = !t.parent && t.status !== 'completed' && lay.tasks?.[t.id]?.project;
-      if (p) n[p] = (n[p] ?? 0) + 1;
-    }
-    return Object.entries(n).sort((a, b) => a[0].localeCompare(b[0], 'ru'));
-  });
   // Советы енота (2–3 для текущей доски): «Начни с …», лимит колонки, разбор входящих. Ссылка под советом — делает то, что
   // предлагает енот. «×» — скрыть до завтра (settings.tipHide), совсем — Настройки → Вид → «Енот-советчик» (settings.tips).
   const boardTips = $derived.by(() => {
@@ -766,35 +533,31 @@
   // ---------- шаблоны досок ----------
 
   const allTemplates = $derived(templatesFrom(lay));
-  const templateUsage = (tid) => boardLists.filter((l) => templateFor(l.id).id === tid).map((l) => l.title);
+  // «Используется» — только списки, которые идут за шаблоном: свои копии правка шаблона не меняет.
+  const listColor = (listId) => { const sid = sphereOf(listId, lay); return sid ? sphereColor(spheres.find((x) => x.id === sid)) : null; };
+  const templateUsage = (tid) => boardLists.filter((l) => follows(l.id, lay, tid)).map((l) => ({ id: l.id, title: l.title, color: listColor(l.id) }));
+  const templateUsers = (tid) => boardLists.filter((l) => templateFor(l.id).id === tid).map((l) => l.title);
+  /** Настоящая задача для превью карточки: из списков, где шаблон используется. */
+  function templateSample(tid) {
+    for (const l of boardLists.filter((x) => templateFor(x.id).id === tid)) {
+      const all = tasks[l.id] ?? [], subsOf = (id) => all.filter((x) => x.parent === id);
+      const t = sampleTask(all, lay.tasks, subsOf);
+      if (t) return { task: t, lay: lay.tasks?.[t.id] ?? {}, subs: subsOf(t.id), from: l.title };
+    }
+    return null;
+  }
   /** Открытых задач в колонке шаблона по всем его спискам. */
   function templateCount(tid, colId) {
     let n = 0;
     for (const l of boardLists) {
+      if (!follows(l.id, lay, tid)) continue;
       const t = templateFor(l.id);
-      if (t.id !== tid) continue;
       for (const x of tasks[l.id] ?? []) if (!x.parent && x.status !== 'completed' && colOf(x, t.cols) === colId) n++;
       if (colId === 'done') n += (tasks[l.id] ?? []).filter((x) => !x.parent && x.status === 'completed').length;
     }
     return n;
   }
-  /** Сохранить шаблон; removed — удалённые колонки: их задачи переезжают в соседнюю. */
-  function saveTemplate(id, draft, removed = []) {
-    const moves = Object.fromEntries(removed.map((r) => [r.id, r.to]));
-    for (const l of boardLists) {
-      if (templateFor(l.id).id !== id) continue;
-      for (const t of tasks[l.id] ?? []) {
-        let s = lay.tasks?.[t.id]?.status, guard = 0;
-        if (!s || !moves[s]) continue;
-        while (moves[s] && guard++ < 20) s = moves[s];
-        touch('tasks', t.id, { status: s });
-      }
-    }
-    if (isBuiltin(id)) touch('templatesEdit', id, { ...draft, removed: false });
-    else touch('templates', id, { ...draft, removed: false });
-    saveLayer();
-    say(`Шаблон «${draft.name}» сохранён`);
-  }
+  const saveTemplate = boardStore.saveTemplate;
   function resetTemplate(id) { touch('templatesEdit', id, { removed: true }); saveLayer(); say('Шаблон возвращён как был'); }
   function createTemplate() {
     const id = 'tpl' + Date.now().toString(36);
@@ -859,115 +622,27 @@
   // ---------- общие сферы (lib/shared.js, lib/sharedcore.js) ----------
   // Сфера в своём Google Календаре, которым владелец делится по почте. Её списки и задачи api.js отдаёт как обычные,
   // а поля слоя (колонка, этап, тема, приоритет…) сводим с записями календаря здесь: забрали — в слой, поменяли слой — в календарь.
-  let shareErr = $state('');
   let sharePushTimer;
-  let sharePushing = null;
+  layerStore.configure({
+    canSync: () => phase === 'ready',
+    afterSave: () => { clearTimeout(sharePushTimer); if (shared.calendars().length) sharePushTimer = setTimeout(pushShared, 1500); },
+  });
+  const { peopleOf, together, isSharedSphere, applyShared, unseenOf, waitOf, mineByDefault, setWho, pushShared,
+    moveListsToShared, saveProfile, inviteTo, removePerson, copyInvite, askAccess } = shareStore;
+  const meEmail = $derived(shareStore.me());
+  shareStore.configure({
+    ready: () => phase === 'ready',
+    open: (listId, id) => (openRef = { listId, id }),
+    onListMoved: (from, to) => { if (activeId === from) activeId = to; },
+  });
+  onMount(() => { const h = setInterval(shareStore.shareTick, 30e3); return () => clearInterval(h); });
   let sharePanel = $state(null); // окно общей сферы: { id, mode: 'make' | 'people' }
   let joinOpen = $state(false);
-  // Участники общих сфер живут в кэше shared.js; shareVer — чтобы экран перечитал их после обмена или правки.
-  let shareVer = $state(0);
-  const meEmail = $derived((shareVer, shared.myEmail()));
-  const leaving = new Map(); // почта → таймер «Убрать» (6 с на «Отменить»)
-  let hiddenPeople = $state([]); // «sid|почта», убранные, пока идут 6 с на «Отменить»
-  /** Участники общей сферы по порядку, с цветами; у личной — пусто. */
-  function peopleOf(sid) {
-    void shareVer;
-    const cal = sh.calOfSphere(sid);
-    return cal ? shared.people(cal).filter((p) => !hiddenPeople.includes(`${sid}|${p.email}`)) : [];
-  }
-  /** Сфера по-настоящему общая (есть кто-то кроме владельца) — для метки «общая» и кружков. */
-  const together = (sid) => isSharedSphere(sid) && sh.isTogether(peopleOf(sid));
-  const isSharedSphere = (sid) => !!sid && sh.isSharedId(sid);
-
-  /** Записи календарей, которые пришли или поменялись, — в слой; что поменяли здесь, пока их не было, — обратно. */
-  function applyShared({ changes, gone }) {
-    let changed = false;
-    const back = [];
-    const put = (sec, key, patch, t) => {
-      lay[sec] ??= {};
-      const cur = lay[sec][key] ?? {};
-      lay[sec][key] = { ...cur, ...patch, t: Math.max(cur.t ?? 0, t || Date.now()) };
-      changed = true;
-    };
-    const given = [], closed = [];
-    const me = shared.myEmail();
-    const active = new Set(shared.activeCalendars()); // приглашение до «Принять» в слой не попадает
-    for (const { cal, k, base, rec } of changes) {
-      if (!rec || !active.has(cal)) continue;
-      const kind = sh.kindOf(k), t = sh.lastTime(rec);
-      // Новую запись (base нет) считаем «отданной мне», только если её завели недавно — иначе при первом входе в сферу
-      // посыпались бы уведомления обо всех старых задачах.
-      if (sh.assignedToMe(base, rec, me) && (base || Date.now() - t < 15 * 60e3)) given.push({ cal, k, rec });
-      if (kind === 'task' && base && base.f.status !== 'completed' && rec.f.status === 'completed' && rec.f.by && rec.f.by !== me && !rec.f.parent) closed.push({ cal, k, rec });
-      if (kind === 'task') {
-        const { toLayer, toRec } = sh.reconcile(lay.tasks?.[k], base, rec, 'task');
-        if (Object.keys(toLayer).length) put('tasks', k, toLayer, t);
-        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
-      } else if (kind === 'list') {
-        const id = sh.listId(k);
-        const { toLayer, toRec } = sh.reconcile(lay.lists?.[id], base, rec, 'list');
-        if (Object.keys(toLayer).length) put('lists', id, toLayer, t);
-        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
-      } else if (kind === 'sphere') {
-        const { toLayer, toRec } = sh.reconcileSphere(lay.spheres?.[sh.sphereId(cal)], base, rec);
-        if (Object.keys(toLayer).length) put('spheres', sh.sphereId(cal), toLayer, t);
-        if (Object.keys(toRec).length) back.push([cal, k, toRec]);
-      }
-    }
-    // У каждой сферы, где я участник, — запись в слое, у её списков — эта сфера. Приглашения ждут «Принять».
-    for (const cal of shared.activeCalendars()) {
-      const sid = sh.sphereId(cal);
-      const S = lay.spheres?.[sid];
-      if (S?.noAccess) put('spheres', sid, { noAccess: false });
-      if (!S || S.removed || S.gone || !S.shared) {
-        const rec = shared.sphereRec(cal);
-        put('spheres', sid, { name: rec?.f?.name ?? 'Общая сфера', color: rec?.f?.color ?? 'gold', icon: rec?.f?.icon ?? 'users',
-          order: S?.order ?? Math.max(0, ...spheres.map((x) => x.order ?? 0)) + 1, removed: false, gone: undefined, shared: { cal } });
-      }
-      for (const l of shared.lists().filter((x) => x.shared === cal)) if (lay.lists?.[l.id]?.sphere !== sid) put('lists', l.id, { sphere: sid });
-    }
-    // Доступа к календарю больше нет: сферу удалил владелец или нас убрали. Сфера остаётся бледной с «нет доступа».
-    for (const cal of gone) {
-      const sid = sh.sphereId(cal);
-      if (lay.spheres?.[sid] && !lay.spheres[sid].removed) { put('spheres', sid, { noAccess: true }); say(`Нет доступа к сфере «${lay.spheres[sid].name}»: её удалили или тебя убрали из участников`); }
-    }
-    for (const g of given) {
-      const name = shared.people(g.cal).find((p) => p.email === g.rec.f.by)?.name ?? sh.nameOf(g.rec.f.by);
-      put('tasks', g.k, { given: { by: g.rec.f.by, name, at: new Date().toISOString() } });
-    }
-    if (changed) saveLayer();
-    shareVer++;
-    if (given.length) tellGiven(given);
-    else if (closed.length) {
-      // «Оля закрыла «…» · Вернуть» (docs/design-v2.md, «Общие сферы» 7).
-      const c = closed[0], lid = sh.listId(c.rec.f.list ?? '');
-      const name = shared.people(c.cal).find((p) => p.email === c.rec.f.by)?.name ?? sh.nameOf(c.rec.f.by);
-      say(closed.length === 1 ? `${name} · сделано «${c.rec.f.title || 'Без названия'}»` : `Участники закрыли задач: ${closed.length}`,
-        closed.length === 1 ? () => { const cur = findTask(lid, c.k); if (cur) toggle(cur, false, lid, true); } : null, 'Вернуть');
-    }
-    for (const [cal, k, p] of back) shared.patchRec(cal, k, p).catch(() => {});
-  }
-
-  /** Тебе отдали задачи: плашка в приложении и уведомление Windows (бот — через файл напоминаний, kind 'assigned'). */
-  async function tellGiven(given) {
-    const g = given[0], name = lay.tasks?.[g.k]?.given?.name ?? 'Участник';
-    const title = g.rec.f.title || 'Без названия';
-    const text = given.length === 1 ? `${name} отдаёт тебе «${title}»` : `Тебе отдали задач: ${given.length}`;
-    const lid = sh.listId(g.rec.f.list ?? '');
-    say(text, given.length === 1 && g.rec.f.list ? () => (openRef = { listId: lid, id: g.k }) : null, 'Открыть');
-    if (lay.settings?.notify?.v === false) return;
-    try {
-      let ok = await notify.isPermissionGranted();
-      if (!ok) ok = (await notify.requestPermission()) === 'granted';
-      if (ok) notify.sendNotification({ title: 'Спутник · тебе отдали задачу', body: given.length === 1 ? `${name}: ${title}` : text });
-    } catch { /* уведомления недоступны — плашка и бот всё равно скажут */ }
-  }
-
   // «Сегодня» и календарь: из общих сфер — только мои и ничьи задачи (docs/design-v2.md, «Общие сферы» 5).
-  const mineTasks = $derived((shareVer, sh.forMe(tasks, lay.tasks, meEmail, (lid) => sh.isSharedId(lid) && together(sphereOf(lid, lay)))));
+  const mineTasks = $derived((shareStore.share.ver, sh.forMe(tasks, lay.tasks, meEmail, (lid) => sh.isSharedId(lid) && together(sphereOf(lid, lay)))));
 
   // ---------- состояния общей сферы (docs/design-v2.md, «Общие сферы» 6) ----------
-  const invites = $derived((shareVer, shared.invites()));
+  const invites = $derived((shareStore.share.ver, shared.invites()));
   async function acceptInvite(inv) {
     try {
       await shared.accept(inv.cal);
@@ -976,7 +651,7 @@
     catch (e) { say('Не удалось принять приглашение: ' + e); }
   }
   async function declineInvite(inv) {
-    try { await shared.decline(inv.cal); shareVer++; say(`Приглашение в «${inv.name}» отклонено`); }
+    try { await shared.decline(inv.cal); shareStore.share.ver++; say(`Приглашение в «${inv.name}» отклонено`); }
     catch (e) { say('Не получилось отказаться: ' + e); }
   }
   /** «Нет доступа» → «Убрать из колонки»: сфера и её списки уходят из колонки на этом компьютере. */
@@ -985,39 +660,15 @@
     await shared.forget(cal);
     touch('spheres', sid, { removed: true, noAccess: false });
     saveLayer();
-    shareVer++;
+    shareStore.share.ver++;
     if (activeSphere === sid) view = 'board';
     await refresh();
     say(`Сфера «${name}» убрана из колонки`);
   }
-  function askAccess(sid) {
-    const cal = sh.calOfSphere(sid), owner = shared.people(cal).find((p) => p.owner);
-    navigator.clipboard?.writeText(sh.askAccessText(lay.spheres?.[sid]?.name ?? '', owner?.email ?? '')).then(() => say('Письмо владельцу скопировано — вставь его в почту'), () => say('Не удалось скопировать'));
-  }
-  /** Сколько моих правок ещё не видел самый «отставший» участник сферы (плашка над доской). */
-  function unseenOf(sid) {
-    void shareVer;
-    const cal = sh.calOfSphere(sid);
-    if (!cal || !together(sid)) return null;
-    const u = sh.unseenBy(shared.storeOf(cal)?.recs, peopleOf(sid), meEmail)[0];
-    return u && u.n >= 2 ? u : null;
-  }
-  /** Задача отдана, а Спутник исполнителя её ещё не забрал — «ждёт Аню». */
-  function waitOf(listId, taskId) {
-    void shareVer;
-    const cal = shared.calOfListId(listId);
-    return cal ? sh.waitingFor(shared.storeOf(cal)?.recs?.[taskId], shared.people(cal), meEmail) : null;
-  }
-
-  /** Задача из строки «Сегодня» в общую сферу — сразу моя (в «Создать» по умолчанию «Никто»). */
-  function mineByDefault(p) {
-    if (!p?.listId || !sh.isSharedId(p.listId) || !together(sphereOf(p.listId, lay)) || p.layer?.who !== undefined) return p;
-    return { ...p, layer: { ...(p.layer ?? {}), who: meEmail } };
-  }
 
   /** Окно задачи в общей сфере: исполнитель, последнее чужое изменение, счётчики для выбора. */
   const drawerShare = $derived.by(() => {
-    void shareVer;
+    void shareStore.share.ver;
     if (!openTask || !openRef || !sh.isSharedId(openRef.listId)) return null;
     const sid = sphereOf(openRef.listId, lay);
     if (!together(sid)) return null;
@@ -1030,12 +681,6 @@
   });
   // «Отдано тебе» гаснет, когда задачу открыли.
   $effect(() => { if (openTask && lay.tasks?.[openTask.id]?.given) untrack(() => { touch('tasks', openTask.id, { given: null }); saveLayer(); }); });
-
-  /** Исполнитель задачи общей сферы (w — почта или null). «Отдано мне» снимается: сам выбрал. */
-  function setWho(id, w) {
-    touch('tasks', id, { who: w ?? null, ...(lay.tasks?.[id]?.given ? { given: null } : {}) });
-    saveLayer();
-  }
 
   // ---------- картинка задачи (lib/preview.js, lib/previewDrive.js) ----------
   /** Почему у задачи этого списка нельзя поставить картинку ('' — можно). */
@@ -1059,81 +704,6 @@
     setTimeout(() => { if (!undone && old.file && !lay.tasks?.[id]?.preview) pictures.remove(old.file); }, 7000);
   }
 
-  /** Правки слоя общих задач, списков и сфер — в их календари. */
-  async function pushShared() {
-    if (sharePushing) { await sharePushing; }
-    sharePushing = (async () => {
-      for (const cal of shared.activeCalendars()) {
-        const recs = shared.storeOf(cal)?.recs ?? {};
-        for (const rec of Object.values(recs)) {
-          const kind = sh.kindOf(rec.k);
-          const L = kind === 'task' ? lay.tasks?.[rec.k] : kind === 'list' ? lay.lists?.[sh.listId(rec.k)] : lay.spheres?.[sh.sphereId(cal)];
-          if (!L) continue;
-          const { toRec } = kind === 'sphere' ? sh.reconcileSphere(L, rec, rec) : sh.reconcile(L, rec, rec, kind);
-          if (!Object.keys(toRec).length) continue;
-          try { await shared.patchRec(cal, rec.k, toRec); shareErr = ''; }
-          catch (e) { shareErr = String(e); if (!api.isOffline(e)) say('Не удалось передать правку в общую сферу: ' + e); return; }
-        }
-      }
-    })();
-    try { await sharePushing; } finally { sharePushing = null; shareVer++; }
-  }
-
-  /** Раз в 30 с — изменения общих сфер (дёшево: Google отдаёт только новое). */
-  async function shareTick() {
-    if (phase !== 'ready' || sync.busy || !shared.calendars().length || document.hidden) return;
-    const t0 = Date.now();
-    const before = Object.fromEntries(Object.entries(tasks).map(([id, ts]) => [id, new Set(ts.map((t) => t.id))]));
-    let r;
-    try { r = await shared.pullAll({ discover: false }); shareErr = ''; } catch (e) { shareErr = String(e); return; }
-    if (!r.changes.length && !r.gone.length) return;
-    applyShared(r);
-    const shl = shared.lists();
-    lists = [...lists.filter((l) => !sh.isSharedId(l.id)), ...shl];
-    for (const l of shl) tasks[l.id] = fresh.keepLocal(shared.tasks(l.id), tasks[l.id], before[l.id], touchedAt, t0);
-    for (const id of Object.keys(tasks)) if (sh.isSharedId(id) && !shl.some((l) => l.id === id)) delete tasks[id];
-  }
-  onMount(() => { const h = setInterval(shareTick, 30e3); return () => clearInterval(h); });
-
-  /** Перенести списки обычной сферы в общий календарь: задачи с подзадачами и полями слоя, потом удалить их из Google Tasks. */
-  async function moveListsToShared(cal, sid, ls) {
-    const def = await api.defaultListId().catch(() => null);
-    for (const l of ls) {
-      if (l.id === def) { say(`«${l.title}» — основной список Google Tasks, его перенести нельзя. Убери его из сферы и попробуй снова.`); return false; }
-    }
-    for (const l of ls) {
-      say(`Переношу «${l.title}» в общую сферу…`);
-      const L = lay.lists?.[l.id] ?? {};
-      const { t: _t, gone: _g, hidden: _h, sphere: _s, ...listLayer } = L;
-      const nl = await shared.createList(cal, l.title, listLayer);
-      const all = tasks[l.id] ?? (await api.listTasks(l.id));
-      const own = (id) => { const T = lay.tasks?.[id] ?? {}; return Object.fromEntries(['remind', 'spent', 'timer', 'inbox', 'pulled'].filter((k) => T[k] != null).map((k) => [k, T[k]])); };
-      const shareable = (id) => Object.fromEntries(Object.entries(sh.sharedOf(lay.tasks?.[id], 'task')).map(([k, v]) => [k.slice(1), v]));
-      const ids = new Map();
-      const body = (x) => ({ title: x.title, notes: x.notes ?? '', ...(x.due ? { due: x.due } : {}), status: x.status, ...(x.completed ? { completed: x.completed } : {}) });
-      // По порядку Google: первые сверху остаются сверху.
-      const byPos = (a, b) => (b.position || '').localeCompare(a.position || '');
-      for (const x of all.filter((x) => !x.parent).sort(byPos)) {
-        const r = await shared.createTask(nl.id, body(x), null, shareable(x.id));
-        ids.set(x.id, r.id);
-        lay.tasks ??= {};
-        lay.tasks[r.id] = { ...sh.layerOf(shared.storeOf(cal).recs[r.id]), ...own(x.id), t: Date.now() };
-      }
-      for (const x of all.filter((x) => x.parent && ids.has(x.parent)).sort(byPos)) {
-        const r = await shared.createTask(nl.id, body(x), ids.get(x.parent), shareable(x.id));
-        lay.tasks[r.id] = { ...sh.layerOf(shared.storeOf(cal).recs[r.id]), ...own(x.id), t: Date.now() };
-      }
-      lay.lists[nl.id] = { ...listLayer, sphere: sid, t: Date.now() };
-      await api.deleteList(l.id);
-      layerSync.forgetList(lay, l.id, all.map((x) => x.id));
-      lists = [...lists.filter((x) => x.id !== l.id), nl];
-      delete tasks[l.id];
-      tasks[nl.id] = shared.tasks(nl.id);
-      if (activeId === l.id) activeId = nl.id;
-    }
-    return true;
-  }
-
   /** «Сделать общей» из окна (ShareSphere, mode 'make'): календарь, перенос списков, приглашения. */
   async function makeShared(id, emails = []) {
     const sp = spheres.find((s) => s.id === id);
@@ -1151,7 +721,7 @@
       const ok = await moveListsToShared(cal, sid, ls);
       await saveLayer();
       for (const e of emails) await shared.invite(cal, e).catch((err) => say(`Не удалось позвать ${e}: ${err}`));
-      shareVer++;
+      shareStore.share.ver++;
       if (ok) say(emails.length ? `Сфера «${sp.name}» теперь общая · позвали: ${emails.length}` : `Сфера «${sp.name}» теперь общая`, () => (sharePanel = { id: sid, mode: 'people' }), 'Участники');
     } catch (e) { saveLayer(); say('Не удалось сделать сферу общей: ' + e); }
   }
@@ -1191,7 +761,7 @@
         catch (e) { say((owner ? 'Не удалось удалить сферу: ' : 'Не удалось выйти: ') + e); return; }
         const gone = lists.filter((l) => l.shared === cal);
         for (const l of gone) { layerSync.forgetList(lay, l.id, (tasks[l.id] ?? []).map((t) => t.id)); delete tasks[l.id]; }
-        lists = lists.filter((l) => l.shared !== cal);
+        taskStore.board.lists = lists.filter((l) => l.shared !== cal);
         touch('spheres', id, { removed: true });
         saveLayer();
         if (view === 'sphere' && activeSphere === id) view = 'board';
@@ -1199,44 +769,6 @@
         say(owner ? 'Общая сфера удалена' : 'Ты вышел из сферы');
       },
     };
-  }
-
-  /** «Как меня видят» (окно «Участники»): имя, цвет, фото — одно на все общие сферы, хранится в настройках слоя. */
-  async function saveProfile(p) {
-    const f = sh.profileFields(p);
-    touch('settings', 'profile', f);
-    saveLayer();
-    try { await shared.applyProfile(f); shareVer++; say('Готово: так тебя видят во всех общих сферах'); }
-    catch (e) { say('Не удалось обновить профиль в сферах: ' + e); }
-  }
-
-  async function inviteTo(sid, emails) {
-    const cal = sh.calOfSphere(sid);
-    let n = 0;
-    for (const e of emails) {
-      try { await shared.invite(cal, e); n++; } catch (err) { say(`Не удалось позвать ${e}: ${err}`); }
-      shareVer++;
-    }
-    if (n) say(n === 1 ? `Позвали ${emails[0]} — Google пришлёт письмо` : `Позвали ${n} ${plural(n, ['человека', 'человек', 'человек'])} — Google пришлёт письма`);
-  }
-
-  /** «Убрать» / «Отозвать» — без вопроса, но 6 с на «Отменить» (docs/design-v2.md, «Общие сферы» 1). */
-  function removePerson(sid, p) {
-    const key = `${sid}|${p.email}`;
-    hiddenPeople = [...hiddenPeople, key];
-    const timer = setTimeout(async () => {
-      leaving.delete(key);
-      try { await shared.removeMember(sh.calOfSphere(sid), p.email); }
-      catch (e) { say('Не удалось убрать: ' + e); }
-      hiddenPeople = hiddenPeople.filter((x) => x !== key);
-      shareVer++;
-    }, 6000);
-    leaving.set(key, timer);
-    say(p.joined ? `${p.name} больше не в сфере` : `Приглашение ${p.email} отозвано`, () => {
-      clearTimeout(leaving.get(key));
-      leaving.delete(key);
-      hiddenPeople = hiddenPeople.filter((x) => x !== key);
-    });
   }
 
   function askStopSharing(sid) {
@@ -1250,16 +782,10 @@
       run: async () => {
         try { await shared.stopSharing(sh.calOfSphere(sid)); say('Больше никто, кроме тебя, не видит эту сферу'); }
         catch (e) { say('Не удалось: ' + e); }
-        shareVer++;
+        shareStore.share.ver++;
         sharePanel = null;
       },
     };
-  }
-
-  async function copyInvite(sid) {
-    const sp = spheres.find((s) => s.id === sid);
-    try { await navigator.clipboard.writeText(shared.inviteText(sh.calOfSphere(sid), sp?.name ?? '')); say('Приглашение скопировано — отправь его в любой мессенджер'); }
-    catch { say('Не удалось скопировать'); }
   }
 
   async function joinSphere(code) {
@@ -1310,6 +836,7 @@
     }
     return [
       { id: 'open', label: 'Открыть доску' },
+      { id: 'edit', label: 'Настроить список…' },
       ...(sphereOf(sideMenu.id, lay) && !sh.isSharedId(sideMenu.id) ? [{ id: 'unsphere', label: 'Убрать из сферы' }] : []),
       { id: 'delete', label: 'Удалить список…', danger: true, sep: true },
     ];
@@ -1328,9 +855,43 @@
       else if (a === 'leave') askLeaveSphere(id);
     } else {
       if (a === 'open') openList(id);
+      else if (a === 'edit') openListSettings(id);
       else if (a === 'unsphere') { touch('lists', id, { sphere: null }); saveLayer(); say('Список — в «Без сферы»'); }
       else if (a === 'delete') askDeleteList(id);
     }
+  }
+
+  // «Настроить список» (lib/ListSettings.svelte): тот же редактор, что у шаблона, но только для этого списка.
+  let listSetId = $state(null);
+  function openListSettings(id) { listSetId = id; activeId = id; go('listset'); }
+  $effect(() => { if (view === 'listset' && taskStore.board.lists.length && !taskStore.board.lists.some((l) => l.id === listSetId)) view = 'board'; });
+  /** Переименовать список — и в Google Tasks (у общих сфер — в календаре сферы). */
+  async function renameList(id, title) {
+    const l = lists.find((x) => x.id === id);
+    if (!l || !title || title === l.title) return true;
+    try {
+      await api.renameList(id, title);
+      taskStore.board.lists = lists.map((x) => (x.id === id ? { ...x, title } : x));
+      return true;
+    } catch (e) { say('Не удалось переименовать: ' + e); return false; }
+  }
+  async function saveListSettings(id, p) {
+    if (!(await renameList(id, p.title))) return;
+    const own = p.draft && !sameShape(templateFor(id), p.draft);
+    boardStore.saveListSettings(id, p, { shared: sh.isSharedId(id) });
+    say(own ? 'Сохранено только для этого списка — шаблон не тронут' : 'Список сохранён');
+  }
+  const listGroups = $derived([...spheres.map((sp) => ({ sphere: sp, lists: sphereLists(sp.id) })), { sphere: null, lists: noSphereLists }]
+    .map((g) => ({ ...g, lists: g.lists.map((l) => ({ id: l.id, title: l.title, own: templateFor(l.id).own, n: openCount(l), view: viewFor(l.id) })) })));
+  function listSample(id) {
+    const all = tasks[id] ?? [], subsOf = (tid) => all.filter((x) => x.parent === tid);
+    const t = sampleTask(all, lay.tasks, subsOf);
+    return t ? { task: t, lay: lay.tasks?.[t.id] ?? {}, subs: subsOf(t.id) } : null;
+  }
+  /** Задач в колонке списка сейчас (выполненные — в последней). */
+  function listCount(id, colId) {
+    const cols = templateFor(id).cols;
+    return (tasks[id] ?? []).filter((x) => !x.parent && colOf(x, cols) === colId).length;
   }
 
   function askDeleteSphere(id) {
@@ -1375,7 +936,7 @@
     try { await api.deleteList(id); }
     catch (e) { say('Не удалось удалить список: ' + e); return; }
     const ids = (tasks[id] ?? []).map((t) => t.id);
-    lists = lists.filter((x) => x.id !== id);
+    taskStore.board.lists = lists.filter((x) => x.id !== id);
     delete tasks[id];
     // Надгробия, а не delete: иначе другой компьютер при слиянии вернул бы записи списка и его задач.
     layerSync.forgetList(lay, id, ids);
@@ -1421,7 +982,7 @@
       touch('lists', l.id, newListSphere ? { template, sphere: newListSphere } : { template });
       newListSphere = null;
       saveLayer();
-      lists = [...lists, l];
+      taskStore.board.lists = [...lists, l];
       tasks[l.id] = [];
       activeId = l.id;
       view = blank ? 'templates' : 'board';
@@ -1431,10 +992,17 @@
   }
 
 
+  /** Правка открытой задачи в Google Tasks; true — сохранилось (окно задачи пишет это в подвале). */
   async function save(patch) {
     const { listId, id } = openRef;
-    try { replace(listId, await api.patchTask(listId, id, patch)); }
-    catch (e) { say('Не удалось сохранить: ' + e); }
+    try { replace(listId, await api.patchTask(listId, id, patch)); return true; }
+    catch (e) { say('Не удалось сохранить: ' + e); return false; }
+  }
+  /** Окно задачи → «Куда»: перенос в другой список, окно остаётся открытым на той же задаче. */
+  async function moveOpen(dest) {
+    const { listId } = openRef;
+    const id = await moveToList(openTask, dest, listId);
+    if (id) openRef = { listId: dest, id };
   }
 
   async function renameTask(listId, t, title) {
@@ -1570,6 +1138,31 @@
   }
   let calReload = $state(0); // календарю — перечитать события
 
+  // Задача «Подарок …»: день рождения из «Создать» помнит, за сколько дней (sputnikGift) и в какой список (sputnikGiftList).
+  // Раз в час смотрим ближайшие дни рождения; заведённое отмечаем в settings.gifts[«событие|год»], чтобы не завести второй раз
+  // (и если задачу удалили руками). Такая же задача в списке (её завело окно «Создать» или другой компьютер) — только отметка.
+  let giftAt = 0;
+  async function giftTasks() {
+    if (Date.now() - giftAt < 3600e3) return;
+    giftAt = Date.now();
+    const evs = await api.giftEvents().catch(() => null);
+    if (!evs) return;
+    const today = api.ymd(new Date());
+    for (const g of cr.giftsDue(evs, today)) {
+      if (lay.settings?.gifts?.[g.key]) continue;
+      const l = boardLists.find((x) => x.id === g.listId) ?? boardLists.find((x) => boardOf(x.id, lay).id === 'personal');
+      if (!l) continue;
+      const has = (tasks[l.id] ?? []).some((t) => t.title === g.title && (!t.due || (api.dueToYmd(t.due) >= cr.plus(g.due, -1) && api.dueToYmd(t.due) <= g.bday)));
+      if (!has) {
+        const buy = boardOf(l.id, lay).view === 'stickers' && stickers.topicsOf(lay.lists?.[l.id]).some((t) => t.id === 'buy');
+        if (!(await quickCreate({ title: g.title, listId: l.id, due: g.due < today ? today : g.due, slot: null, layer: buy ? { topic: 'buy' } : {} }, true))) continue;
+        say(`🎁 «${g.title}» — пора подумать о подарке`);
+      }
+      touch('settings', 'gifts', { [g.key]: today });
+    }
+    saveLayer();
+  }
+
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
   async function quickCreate({ title, listId, due, slot, layer = null, notes = '', subs = [] }, quiet = false) {
     try {
@@ -1693,8 +1286,8 @@
     return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
   }));
 
-  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, time, part, perWeek, goal, icon, color, remind, tipHide).
-  const HABIT_FIELDS = ['days', 'time', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
+  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, win, time, end, part, perWeek, goal, icon, color, remind, tipHide).
+  const HABIT_FIELDS = ['days', 'win', 'time', 'end', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
   const habitPatch = (f) => Object.fromEntries(HABIT_FIELDS.filter((k) => k in f).map((k) => [k, f[k]]));
   async function createHabit(f) {
     const name = f.name;
@@ -1703,14 +1296,15 @@
       if (!l) {
         l = await api.createList('Привычки');
         touch('lists', l.id, { template: HABITS });
-        lists = [...lists, l];
+        taskStore.board.lists = [...lists, l];
         tasks[l.id] = [];
       }
-      const t = await api.createTask(l.id, { title: name });
+      const t = await api.createTask(l.id, { title: name, ...(f.notes ? { notes: f.notes } : {}) });
       tasks[l.id] = [...(tasks[l.id] ?? []), t];
       touch('habits', t.id, { ...habitPatch(f), createdAt: api.ymd(new Date()) });
       saveLayer();
-    } catch (e) { say('Не удалось добавить привычку: ' + e); }
+      return true;
+    } catch (e) { say('Не удалось добавить привычку: ' + e); return false; }
   }
 
   async function updateHabit(id, f) {
@@ -1739,8 +1333,8 @@
 
   async function logout() {
     await api.auth.logout().catch(() => {});
-    lists = []; tasks = {}; events = []; openRef = null;
-    layerSync.reset(); cloud = { state: 'idle', at: null, err: '' };
+    taskStore.board.lists = []; taskStore.board.tasks = {}; events = []; openRef = null;
+    layerStore.reset();
     authInfo = await api.auth.status();
     phase = 'setup';
   }
@@ -1754,7 +1348,7 @@
   function setPref(key, patch) {
     touch('settings', key, patch);
     saveLayer();
-    if (key === 'update' && 'beta' in patch) { upd.found = null; checkUpdate(true); } // канал сменился — проверить сразу
+    if (key === 'update' && 'beta' in patch) updStore.recheck(); // канал сменился — проверить сразу
   }
   function hideList(id, hide) { touch('lists', id, { hidden: hide }); saveLayer(); }
   async function hideCal(id, hide) {
@@ -1776,8 +1370,13 @@
       let added = 0;
       for (const x of r.items ?? []) {
         if (x.type === 'add') {
-          const t = sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
+          // Карточка из бота (поля выбраны там) или старая запись — просто текст.
+          const t = x.draft ? sharedbot.fromDraft(x.draft, { lists: boardLists, layer: lay, tasks }) : sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
           if (t) { if (!(await quickCreate(t, true))) continue; added++; }
+        } else if (x.type === 'move') {
+          // «📅 На завтра» под напоминанием: срок меняется, время в слое остаётся.
+          const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
+          if (task && task.status !== 'completed' && !(await schedule(task, x.listId, x.due, lay.tasks?.[task.id]?.slot ?? null))) continue;
         } else if (x.type === 'done') {
           const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
           if (task && task.status !== 'completed' && !(await toggle(task, true, x.listId, true))) continue;
@@ -1847,9 +1446,9 @@
 {#if phase === 'loading'}
   <div class="setup"><span class="spinner" aria-label="Загрузка"></span></div>
 {:else if phase === 'setup'}
-  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} onerror={say} />
+  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} />
 {:else if choosing}
-  <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} onerror={say} oncancel={() => (choosing = false)} />
+  <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} oncancel={() => (choosing = false)} />
 {:else}
   <div class="shell">
     <!-- Шапка 0.6 — она же полоса окна: тянуть за пустое место, двойной клик — развернуть. Ничего не переносится. -->
@@ -1884,7 +1483,7 @@
       </button>
       <button class="hd-stat" bind:this={statBtn} type="button" aria-expanded={statOpen} aria-haspopup="dialog" title="Состояние: Google, компьютеры, версия"
         onclick={() => (statOpen = !statOpen)}>
-        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && syncFlash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
+        <span class="st-dots" aria-hidden="true">{#each stat.dots as d, i (i)}<i class={d.c} class:busy={d.busy || (i === 0 && sync.flash)}></i>{/each}</span><span class="lbl">{stat.label}</span>
       </button>
       {#if inboxItems.length}
         <button class="hd-ib" type="button" title="Входящие от Claude · {inboxItems.length} — разобрать на «Сегодня»"
@@ -1921,13 +1520,13 @@
     {/if}
 
     <div class="body">
-      {#if view === 'board' || view === 'archive' || view === 'sphere' || view === 'templates'}
+      {#if view === 'board' || view === 'archive' || view === 'sphere'}
         <Side {spheres} listsOf={sphereLists} {peopleOf} {together} me={meEmail} noSphere={noSphereLists} count={openCount} viewOf={viewFor} {activeId}
           current={view} {activeSphere} folded={(id) => !!lay.settings?.sphereFold?.[id]}
-          {projects} project={boardProject} tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
+          tips={view === 'board' && activeList ? boardTips : []} tipsOn={tipsOn}
           pinned={sidePinned} hold={!!sideMenu}
           onlist={openList} onsphere={openSphere} onfold={foldSphere} onmenu={openSideMenu} onadd={openAddMenu}
-          onproject={(p) => (boardProject = p)} ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
+          ontemplates={() => (view = 'templates')} onarchive={() => (view = 'archive')}
           onshow={() => openSettings('show')} onpin={togglePin} ontip={runTip} ontiphide={hideTips}
           onregister={(api) => (sideApi = api)} />
       {/if}
@@ -1938,7 +1537,7 @@
           <div class="sh-invs">{#each invites as inv (inv.cal)}<ShareStates kind="invite" invite={inv} onaccept={() => acceptInvite(inv)} ondecline={() => declineInvite(inv)} />{/each}</div>
         {/if}
         {#if view === 'today'}
-          <Today lists={shownLists} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
+          <Today lists={shownLists.filter((l) => !lay.lists?.[l.id]?.quiet)} tasksByList={mineTasks} {events} layTasks={lay.tasks} layer={lay} log={lay.log} {habits}
             {inboxItems} inboxOn={!!inboxSt} {inboxFocus} {typeOf}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId, quiet) => toggle(t, d, listId, quiet)}
@@ -1947,7 +1546,7 @@
             onregister={(fn) => (quickLine = fn)} onlearn={learnRoute} onfull={(line) => { if (boardLists.length) quick = { line }; }}
             onhabits={() => (view = 'habits')} oncalendar={() => (view = 'calendar')} filter={sphFilter} />
         {:else if view === 'calendar'}
-          <Calendar lists={shownLists} tasksByList={mineTasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
+          <Calendar lists={shownLists} layer={lay} tasksByList={mineTasks} layTasks={lay.tasks} log={lay.log} {habits} {typeOf}
             loadEvents={api.eventsRange} syncAt={sync.at} reloadKey={calReload} oncreatebirthday={createBirthday}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             ontoggle={(t, d, listId) => toggle(t, d, listId)}
@@ -1959,8 +1558,15 @@
           <Habits {habits} log={lay.log} {cele} open={habitOpen} onopened={() => (habitOpen = null)} onregister={(fn) => (habitForm = fn)} ontoggle={toggleHabit} onday={setHabitDay} onclosecele={() => (cele = null)}
             oncreate={createHabit} onupdate={updateHabit} ondelete={deleteHabit} />
         {:else if view === 'templates'}
-          <Templates templates={allTemplates} usage={templateUsage} count={templateCount} current={activeList ? templateFor(activeId).id : null}
+          <Templates templates={allTemplates} usage={templateUsage} users={templateUsers} sample={templateSample} count={templateCount} current={activeList ? templateFor(activeId).id : null}
             onsave={saveTemplate} onreset={resetTemplate} oncreate={createTemplate} ondelete={deleteTemplate} onback={() => (view = 'board')} />
+        {:else if view === 'listset' && lists.some((l) => l.id === listSetId)}
+          {@const L = lists.find((l) => l.id === listSetId)}
+          <ListSettings list={L} board={templateFor(L.id)} layList={lay.lists?.[L.id] ?? {}} groups={listGroups} {spheres} sphere={sphereOf(L.id, lay) ?? null}
+            shared={sh.isSharedId(L.id)} count={(colId) => listCount(L.id, colId)} sample={listSample(L.id)}
+            onpick={(id) => { listSetId = id; activeId = id; }} onback={() => go('board')}
+            onsave={(p) => saveListSettings(L.id, p)} onreset={() => boardStore.resetList(L.id)}
+            onastemplate={(name, d) => boardStore.listAsTemplate(L.id, name, d)} templates={allTemplates} onswitch={(tid, map) => boardStore.switchTemplate(L.id, tid, map)} ondelete={() => askDeleteList(L.id)} />
         {:else if view === 'sphere' && curSphere?.noAccess}
           <ShareStates kind="lost" sphere={curSphere.name} onask={() => askAccess(curSphere.id)} onforget={() => forgetSphere(curSphere.id)} />
         {:else if view === 'sphere' && curSphere}
@@ -1970,7 +1576,7 @@
             onedit={() => (sphereEditOpen = true)} onaddlist={() => newListIn(curSphere.id)}
             onopenlist={openList} onopentask={(t, listId) => (openRef = { listId, id: t.id })} />
         {:else if view === 'archive'}
-          <Archive lists={boardLists} tasksByList={tasks} {activeId} jar={(listId) => viewFor(listId) === 'stickers'}
+          <Archive lists={boardLists} tasksByList={tasks} {activeId} jar={(listId) => viewFor(listId) === 'stickers'} daysOf={(listId) => archiveDays(lay.lists?.[listId])}
             onopen={(t, listId) => (openRef = { listId, id: t.id })}
             onrestore={(t, listId) => move(t, templateFor(listId).cols[0].id, listId)}
             onback={() => (view = 'board')} />
@@ -1989,7 +1595,7 @@
             share={together(sphereOf(activeId, lay)) ? { people: peopleOf(sphereOf(activeId, lay)), me: meEmail, owner: shared.isOwner(sh.calOfSphere(sphereOf(activeId, lay))),
               oninvite: () => (sharePanel = { id: sphereOf(activeId, lay), mode: 'people' }),
               mode: lay.settings?.whoFilter?.[activeId] ?? 'all', waitOf: (id) => waitOf(activeId, id), onmode: (m) => { touch('settings', 'whoFilter', { [activeId]: m }); saveLayer(); } } : null} fold={boardFold} onfold={foldCol}
-            onedittemplate={() => (view = 'templates')}
+            onedittemplate={() => (view = 'templates')} onsettings={() => openListSettings(activeId)} onrename={(t) => renameList(activeId, t)}
             layTasks={lay.tasks} project={boardProject}
             oncreate={create}
             onarchive={() => (view = 'archive')} />
@@ -2004,7 +1610,9 @@
 
   {#if openTask}
     {@const cols = templateFor(openRef.listId).cols}
-    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={colOf(openTask, cols)} {cols}
+    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} lists={boardLists} view={viewFor(openRef.listId)}
+      onmove={moveOpen} onduplicate={() => duplicateTask(openTask, openRef.listId)}
+      subs={openSubs} status={colOf(openTask, cols)} {cols}
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
@@ -2014,7 +1622,7 @@
       preview={lay.tasks?.[openTask.id]?.preview ?? null} previewOff={previewOff(openRef.listId)}
       onpreview={(f) => setPreview(openTask.id, f, openTask.title)} onpreviewclear={() => clearPreview(openTask.id, openTask.title)}
       share={drawerShare} onwho={(w) => setWho(openTask.id, w)}
-      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id} ontimer={() => toggleTimer(openTask.id)}
+      spent={worktime.spentMin(lay.tasks?.[openTask.id], nowTick)} running={runId === openTask.id}
       dueDays={dueDaysExcept(openTask.id)} loadEvents={api.eventsRange}
       onclose={() => (openRef = null)}
       onsave={save}
@@ -2033,6 +1641,7 @@
       dueDays={dueDaysExcept()} loadEvents={api.eventsRange} loadCalendars={api.calendarsAll}
       {remindDefaults} onremindDefault={setRemindDefault}
       oncreate={createFromWindow} oncreateevent={createEvent} oncreatebirthday={createBirthday}
+      oncreatehabit={async (f) => { const ok = await createHabit(f); if (ok) say(`«${f.name}» — в привычках`, () => { quick = null; go('habits'); }, 'Открыть'); return ok; }}
       onlearn={learnRoute} onnewlist={(name) => { quick = null; newListName = name; newList = true; }}
       peopleOf={(lid) => { const sid = sphereOf(lid, lay); return sh.isSharedId(lid) && together(sid) ? peopleOf(sid) : []; }} me={meEmail}
       onclose={() => (quick = null)} />
@@ -2057,19 +1666,16 @@
     </Popover>
   {/if}
   {#if statOpen}
-    <StatusPop anchor={statBtn} {sync} {offline} {cloud} {upd} {version} rem={remView} notes={shell.notesOf(upd.found?.notes)}
-      onrefresh={refresh} onlogin={() => { statOpen = false; cloudLogin(); }} oncheck={() => checkUpdate(true)}
-      oninstall={() => { statOpen = false; installUpdate(); }} onsettings={() => { statOpen = false; openSettings(); }}
+    <StatusPop anchor={statBtn} rem={remView} onsettings={() => { statOpen = false; openSettings(); }}
       onclose={() => (statOpen = false)} />
   {/if}
   {#if settingsTab}
     <Settings tab={settingsTab} settings={lay.settings ?? {}} lists={lists.filter((l) => !isHabitList(l, lay)).map((l) => ({ ...l, color: sphereOf(l.id, lay) ? sphereColor(spheres.find((x) => x.id === sphereOf(l.id, lay))) : null }))}
       hiddenLists={hiddenNow.lists} hiddenCals={hiddenNow.cals} sphereName={(id) => spheres.find((x) => x.id === sphereOf(id, lay))?.name ?? (id === lists[0]?.id ? 'основной список Google' : '')}
-      {version} {upd} {sync} {offline} {cloud} rem={remStat} {ownBot} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
+      rem={remStat} {ownBot} remind={remindDefaults} dupes={dupeGroups} ondedupe={askDedupe}
       onset={setPref} onhidelist={hideList} onhidecal={hideCal} onremind={setRemindDefault} ontestbot={testBot}
       tgbot={lay.settings?.tgbot} {tgStat} ontglink={tgLink} ontgtest={tgTest} ontgunlink={tgUnlink}
-      onlogout={() => { settingsTab = null; logout(); }} onrefresh={refresh} oncloudlogin={cloudLogin}
-      oninstall={installUpdate} oncheck={() => checkUpdate(true)} onclose={() => (settingsTab = null)} />
+      onlogout={() => { settingsTab = null; logout(); }} onclose={() => (settingsTab = null)} />
   {/if}
   {#if searchOpen}
     <Search lists={boardLists} {tasks} places={searchPlaces} onopen={searchOpenTask} ongo={searchGo} onclose={() => (searchOpen = false)} />
@@ -2109,11 +1715,4 @@
   {/if}
 {/if}
 
-{#if toast}
-  <div class="toast" role="status" onmouseenter={pauseToast} onmouseleave={resumeToast}>
-    {#key toastN}<span class="timer" aria-hidden="true"></span>{/key}
-    <span>{toast}</span>
-    {#if toastUndo}<button type="button" class="undo" onclick={undoToast}>{toastLabel}</button>{/if}
-    <button type="button" onclick={() => { toast = ''; toastUndo = null; }}>Скрыть</button>
-  </div>
-{/if}
+<Toast />

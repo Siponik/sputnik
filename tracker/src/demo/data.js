@@ -96,8 +96,8 @@ export function seedTasks() {
 // Привычки как на макете «Привычки: карточки» (Habits.dc.html): серии, срыв, количество, «3 раза в неделю».
 function demoHabits(L) {
   const habits = {
-    h1: L({ icon: 'pencil', color: 'gold', part: 'evening', time: '21:00', createdAt: ymd(-60) }),
-    h2: L({ icon: 'gym', color: 'clay', part: 'morning', createdAt: ymd(-40) }),
+    h1: L({ icon: 'pencil', color: 'gold', part: 'evening', time: '21:00', end: '22:00', createdAt: ymd(-60) }),
+    h2: L({ icon: 'gym', color: 'clay', part: 'morning', time: '07:30', end: '08:15', createdAt: ymd(-40) }),
     h3: L({ icon: 'cup', color: 'work', part: 'morning', goal: { n: 8, unit: 'стаканов' }, createdAt: ymd(-50) }),
     h4: L({ icon: 'book', color: 'personal', part: 'evening', time: '22:30', createdAt: ymd(-45) }),
     h5: L({ icon: 'moon', color: 'done', part: 'evening', time: '23:00', createdAt: ymd(-30) }),
@@ -120,7 +120,9 @@ export function seedLayer() {
   const L = (o) => ({ ...o, t });
   return {
     version: 1,
-    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }), Lload: L({ template: 'work', sphere: 'sTest' }),
+    lists: { Lwork: L({ template: 'work', sphere: 'sWork' }), L3d: L({ template: 'asset3d', view: 'pipe', sphere: 'sArt' }), Lme: L({ template: 'personal' }), Lhab: L({ template: 'habits' }), Lload: L({ template: 'work', sphere: 'sTest', archive: 7, // «своё»: колонки и поля отвязаны от шаблона «Работа»
+        view: 'kanban', fields: ['due', 'prio', 'time'], cols: [{ id: 'inbox', name: 'Входящие', color: 0, limit: 0 }, { id: 'doing', name: 'В работе', color: 2, limit: 4 },
+          { id: 'cLtest', name: 'Проверка', color: 4, limit: 0 }, { id: 'review', name: 'На ревью', color: 3, limit: 0 }, { id: 'done', name: 'Готово', color: 6, limit: 0 }] }),
       Lhome: L({ template: 'personal', view: 'stickers', sphere: 'sMe', topics: [
         { id: 'docs', name: 'Документы', color: 'clay' }, { id: 'buy', name: 'Покупки', color: 'gold' },
         { id: 'call', name: 'Звонки', color: 'work' }, { id: 'health', name: 'Здоровье', color: 'study' },

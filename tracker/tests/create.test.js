@@ -1,7 +1,7 @@
 // Окно «Создать» v2 — помощники (src/lib/create.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials } from '../src/lib/create.js';
+import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf, parseHabit, giftDate, giftsDue, bdayName, daysTill } from '../src/lib/create.js';
 
 const T = '2026-10-21'; // среда
 
@@ -67,4 +67,102 @@ test('чек-лист этапов берётся из последнего ас
   assert.deepEqual(stageChecklist(tasks, lay), [{ title: 'Сетка', stage: 'blockout' }, { title: 'Нормали', stage: 'retopo' }]);
   assert.deepEqual(stageChecklist([], {}), []);
   assert.equal(initials('Сундук с золотом'), 'СУ');
+});
+
+test('подсказка вида: встреча, привычка, день рождения', () => {
+  const ev = suggestKind('Созвон с Олей завтра в 15:00', { day: '2026-10-22', time: '15:00' });
+  assert.equal(ev.kind, 'event');
+  assert.equal(ev.why, 'у неё есть время и с кем-то');
+  assert.equal(suggestKind('Обсудить смету с клиентом 14:00', { time: '14:00' }).kind, 'event');
+  assert.equal(suggestKind('к врачу в пятницу', { day: '2026-10-23' }).kind, 'event');
+  assert.equal(suggestKind('Встреча по проекту', {}).why, 'её не отмечают сделанной');
+  // просто дело со временем — не встреча; «с утра» — не человек
+  assert.equal(suggestKind('купить лампочки 17:00', { time: '17:00' }), null);
+  assert.equal(suggestKind('позвонить маме', {}), null);
+  assert.equal(suggestKind('с утра отправить смету 10:00', { time: '10:00' }), null);
+  // «встречать» — не встреча
+  assert.equal(suggestKind('встречать гостей', {}), null);
+
+  assert.deepEqual(suggestKind('Пить воду 8 стаканов каждый день', {}), { kind: 'habit', what: 'привычку', why: 'повторяется каждый день' });
+  assert.equal(suggestKind('зарядка по будням', {}).why, 'повторяется по будням');
+  assert.equal(suggestKind('Бег 3 раза в неделю', {}).why, 'повторяется 3 раза в неделю');
+  assert.equal(suggestKind('медитация', { repeat: { every: 'day' } }).kind, 'habit');
+  assert.equal(suggestKind('отчёт', { repeat: { every: 'week' } }), null); // повтор раз в неделю — обычная задача
+
+  assert.equal(suggestKind('др Ани 12 марта', { day: '2027-03-12' }).kind, 'birthday');
+  assert.equal(suggestKind('День рождения мамы 5 мая', { day: '2027-05-05' }).kind, 'birthday');
+  assert.equal(suggestKind('подарок на день рождения', {}), null); // без даты — дело
+  assert.equal(suggestKind('драйвер обновить', { day: '2027-05-05' }), null); // «др» — только отдельным словом
+});
+
+test('подсказка вида молчит, когда вид уже подходит', () => {
+  const p = { day: '2026-10-22', time: '15:00' };
+  assert.equal(kindHint('Созвон с Олей завтра 15:00', p, 'task').kind, 'event');
+  assert.equal(kindHint('Созвон с Олей завтра 15:00', p, 'event'), null);
+  assert.equal(kindHint('планёрка каждый день', {}, 'event'), null); // повторяющееся событие — нормально
+  assert.equal(kindHint('планёрка каждый день', {}, 'task').kind, 'habit');
+  assert.equal(kindHint('встреча с Аней', {}, 'birthday'), null);
+});
+
+test('превью события: кусок сетки дня', () => {
+  const T2 = '2026-10-22';
+  const ev = (s, e, summary) => ({ summary, start: { dateTime: `${T2}T${s}:00` }, end: { dateTime: `${T2}T${e}:00` } });
+  const c = dayChunk([ev('17:00', '17:30', 'Спорт'), ev('08:00', '09:00', 'Утро')], T2, { s: '15:00', e: '16:00' }, 'Созвон');
+  assert.deepEqual(c.hours, [14, 15, 16, 17, 18]);
+  assert.deepEqual(c.items, [{ top: 3, h: 0.5, title: 'Спорт', mine: false }, { top: 1, h: 1, title: 'Созвон', mine: true }]);
+  assert.deepEqual(dayChunk([], T2, null).hours, [9, 10, 11, 12, 13]);
+  assert.deepEqual(dayChunk([], T2, { s: '23:00', e: '23:30' }, 'x').hours, [19, 20, 21, 22, 23]);
+});
+
+test('событие: «Когда» и повтор', () => {
+  assert.equal(eventDay('2026-10-22', T), 'завтра, чт 22 октября');
+  assert.equal(eventDay(T, T), 'сегодня, ср 21 октября');
+  assert.equal(eventDay('2026-10-30', T), 'пт 30 октября');
+  assert.deepEqual(recurrenceOf({ every: 'weekdays' }), ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR']);
+  assert.deepEqual(recurrenceOf({ every: 'month' }), ['RRULE:FREQ=MONTHLY']);
+  assert.equal(recurrenceOf(null), null);
+});
+
+test('привычка: строка понимает цель, частоту и часть дня', () => {
+  const a = parseHabit('Пить воду 8 стаканов каждый день');
+  assert.equal(a.name, 'Пить воду');
+  assert.deepEqual(a.goal, { n: 8, unit: 'стаканов' });
+  assert.equal(a.freq, 'daily');
+  assert.deepEqual(a.toks.map((t) => t.l), ['цель 8 стаканов', 'каждый день']);
+  assert.deepEqual(a.marks.map((m) => m.kind), ['goal', 'freq']);
+  const b = parseHabit('английский 3 раза в неделю вечером');
+  assert.equal(b.name, 'Английский');
+  assert.equal(b.freq, 'week');
+  assert.equal(b.perWeek, 3);
+  assert.equal(b.part, 'evening');
+  assert.equal(b.goal, undefined); // «3 раза» — частота, не цель
+  const c = parseHabit('чтение 20 страниц по будням');
+  assert.deepEqual(c.days, [0, 1, 2, 3, 4]);
+  assert.deepEqual(c.goal, { n: 20, unit: 'страниц' });
+  assert.equal(parseHabit('зарядка каждое утро').part, 'morning');
+  assert.equal(parseHabit('зарядка каждое утро').freq, 'daily');
+  // крестик на чипе возвращает кусок в название
+  assert.equal(parseHabit('Пить воду 8 стаканов', { goal: true }).name, 'Пить воду 8 стаканов');
+  assert.equal(parseHabit('').name, '');
+});
+
+test('подарок ко дню рождения: дата задачи и когда она появляется', () => {
+  assert.equal(giftDate('2027-03-12', 7), '2027-03-05');
+  assert.equal(giftDate('2027-03-12', 30), '2027-02-10');
+  assert.equal(giftDate('2027-03-02', 3), '2027-02-27');
+  assert.equal(bdayName('🎂 Аня'), 'Аня');
+  const ev = { id: 'e1_20270312', recurringEventId: 'e1', summary: '🎂 Аня', start: { date: '2027-03-12' },
+    extendedProperties: { private: { sputnik: 'birthday', sputnikGift: '7', sputnikGiftList: 'L1' } } };
+  assert.deepEqual(giftsDue([ev], '2027-03-04'), []); // рано
+  assert.deepEqual(giftsDue([ev], '2027-03-05'), [{ key: 'e1|2027', title: 'Подарок Ане', due: '2027-03-05', bday: '2027-03-12', listId: 'L1' }]);
+  assert.equal(giftsDue([ev], '2027-03-12').length, 1); // в сам день ещё можно
+  assert.deepEqual(giftsDue([ev], '2027-03-13'), []); // прошёл
+  const noGift = { ...ev, extendedProperties: { private: { sputnik: 'birthday' } } };
+  assert.deepEqual(giftsDue([noGift], '2027-03-05'), []);
+});
+
+test('«через N дней»', () => {
+  assert.equal(daysTill('2027-03-12', T), '142 дня');
+  assert.equal(daysTill('2026-10-22', T), '1 день');
+  assert.equal(daysTill('2026-11-02', T), '12 дней');
 });

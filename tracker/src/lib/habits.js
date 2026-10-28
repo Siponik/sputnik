@@ -1,7 +1,9 @@
 // Расчёт серий привычек. Отметки хранятся в слое: log["<habitId>|YYYY-MM-DD"] = { done, rest, skip, n, t }.
 // rest — «выходной» из прошлых версий, skip — «не считать» (болел, уезжал): такие дни серию не рвут и в % не входят.
 // n — сколько набрано у привычки с целью на день (habits[id].goal = { n, unit }); done ставится, когда n >= goal.n.
-// Время привычки — habits[id].time «ЧЧ:ММ» (необязательно), часть дня — habits[id].part, «N раз в неделю» — perWeek.
+// Время привычки — окно habits[id].win = { s, e } «ЧЧ:ММ» (конец до «24:00»): часть дня заполняет его (утро 6–12, день 12–18,
+// вечер 18–24), окно можно сузить; напоминание — в начале окна. Старые поля: habits[id].time = начало окна, habits[id].end — конец
+// (если он не конец суток); у привычек без win окно считается из них (habitWin). Часть дня — habits[id].part, «N раз в неделю» — perWeek.
 // Экран «Привычки: карточки» — docs/design-v2.md.
 import { ymd } from './api.js';
 
@@ -128,12 +130,12 @@ export function scheduleLabel(days) {
 
 // ---------- Привычки: карточки (23.10) ----------
 
-/** Части дня: время напоминания, если у привычки нет точного времени. */
+/** Части дня и их окна; «когда угодно» — без окна и без напоминания. */
 export const PARTS = [
-  { id: 'morning', name: 'Утро', at: '10:00' },
-  { id: 'day', name: 'День', at: '15:00' },
-  { id: 'evening', name: 'Вечер', at: '21:00' },
-  { id: 'any', name: 'Когда угодно', at: null },
+  { id: 'morning', name: 'Утро', win: { s: '06:00', e: '12:00' } },
+  { id: 'day', name: 'День', win: { s: '12:00', e: '18:00' } },
+  { id: 'evening', name: 'Вечер', win: { s: '18:00', e: '24:00' } },
+  { id: 'any', name: 'Когда угодно', win: null },
 ];
 /** Часть дня: явная habits[id].part, иначе по времени (утро до 12, день 12–18, вечер после), без времени — «когда угодно». */
 export function partOf(h) {
@@ -143,8 +145,93 @@ export function partOf(h) {
   return +m[1] < 12 ? 'morning' : +m[1] < 18 ? 'day' : 'evening';
 }
 export const partName = (h) => PARTS.find((p) => p.id === partOf(h)).name;
-/** Во сколько напоминать: точное время или время части дня («когда угодно» без времени — не напоминаем). */
-export const remindAt = (h) => h?.time || PARTS.find((p) => p.id === partOf(h)).at;
+
+const HHMM = /^(\d{1,2}):(\d{2})$/;
+const minOf = (s) => { const m = HHMM.exec(s ?? ''); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+// конец окна может быть «24:00» — конец суток
+const minEnd = (s) => (/^24:00$/.test(s ?? '') ? 1440 : minOf(s));
+const hhmmEnd = (m) => (m >= 1440 ? '24:00' : hhmm(m));
+
+/** Окно части дня { s, e } или null («когда угодно»). */
+export const partWin = (part) => { const w = PARTS.find((p) => p.id === part)?.win; return w ? { ...w } : null; };
+/** Окно, которое можно сохранить: «7:30» → «07:30», конец позже начала; иначе null. */
+export function cleanWin(w) {
+  const s = minOf(w?.s), e = minEnd(w?.e);
+  return s != null && e != null && e > s ? { s: hhmm(s), e: hhmmEnd(e) } : null;
+}
+/** Окно — целая часть дня (не сужено)? */
+export const wholePart = (w) => PARTS.some((p) => p.win && p.win.s === w?.s && p.win.e === w?.e);
+/**
+ * Окно привычки { s, e }: habits[id].win; у старых привычек — из time (конец — end, иначе конец части дня, где начало);
+ * без времени — окно части дня; «когда угодно» — null.
+ */
+export function habitWin(h) {
+  const w = cleanWin(h?.win);
+  if (w) return w;
+  const s = minOf(h?.time);
+  if (s != null) return { s: hhmm(s), e: normEnd(h.time, h.end) ?? partWin(partOf({ time: h.time })).e };
+  return partWin(partOf(h));
+}
+/** Поля слоя для окна: win, time = начало, end = конец (кроме конца суток) — старые поля для прежних версий. */
+export function winFields(win) {
+  const w = cleanWin(win);
+  return w ? { win: w, time: w.s, end: w.e === '24:00' ? null : w.e } : { win: null, time: null, end: null };
+}
+/** Окно после переноса начала на time: длина сохраняется, не дальше конца суток. */
+export function moveWin(h, time) {
+  const w = habitWin(h), s = minOf(time);
+  if (s == null) return w;
+  const len = w ? minEnd(w.e) - minOf(w.s) : 60;
+  return cleanWin({ s: hhmm(s), e: hhmmEnd(Math.min(1440, s + len)) });
+}
+/** Время из поля «с»/«до»: «7» → «07:00», «730» и «7.30» → «07:30»; «24» — только для конца. Иначе null. */
+export function normTime(raw, end = false) {
+  const t = String(raw ?? '').trim().replace(/[.,\-\s]/g, ':');
+  const m = /^(\d{1,2})(?::?(\d{2}))?$/.exec(t);
+  if (!m) return null;
+  const h = +m[1], mi = +(m[2] ?? 0);
+  if (end && h === 24 && mi === 0) return '24:00';
+  return h < 24 && mi < 60 ? hhmm(h * 60 + mi) : null;
+}
+/** Окно словами: «06:00–12:00», без окна — ''. */
+export const winLabel = (h) => { const w = habitWin(h); return w ? `${w.s}–${w.e}` : ''; };
+/** Во сколько напоминать — в начале окна («когда угодно» — не напоминаем). */
+export const remindAt = (h) => habitWin(h)?.s ?? null;
+export const HABIT_LEN = 30; // привычка без конца занимает в календаре полчаса
+
+/** Конец, который стоит сохранить: только при начале и только позже него (через полночь — нет), иначе null. */
+export function normEnd(time, end) {
+  const s = minOf(time), e = minOf(end);
+  return s != null && e != null && e > s ? hhmm(e) : null;
+}
+/** Интервал привычки в минутах суток { s, e, end } — для календаря; end — задан ли конец. Без времени — null.
+ *  Окно во всю часть дня («всё утро») блоком в календаре не ставим — только суженное. */
+export function habitSpan(h) {
+  if (h?.win) {
+    const w = cleanWin(h.win);
+    return !w || wholePart(w) ? null : { s: minOf(w.s), e: minEnd(w.e), end: true };
+  }
+  const s = minOf(h?.time);
+  if (s == null) return null;
+  const e = minOf(normEnd(h.time, h.end));
+  return e != null ? { s, e, end: true } : { s, e: Math.min(1440, s + HABIT_LEN), end: false };
+}
+/** Конец через min минут после time (не дальше 23:59); null — если позже некуда. */
+export function endAfter(time, min = 60) {
+  const s = minOf(time);
+  return s == null ? null : normEnd(time, hhmm(Math.min(1439, s + min)));
+}
+/** Конец после переноса начала на time: длительность сохраняется; без конца — null. */
+export function moveEnd(h, time) {
+  const sp = habitSpan(h);
+  return sp?.end ? endAfter(time, sp.e - sp.s) : null;
+}
+/** Время словами: «21:00–22:00», «21:00» или '' без времени. */
+export function spanLabel(h) {
+  const sp = habitSpan(h);
+  return !sp ? '' : sp.end ? `${hhmm(sp.s)}–${hhmm(sp.e)}` : hhmm(sp.s);
+}
 
 /** Порядок карточек: по части дня, внутри — по времени. */
 export function sortHabits(list) {
@@ -392,7 +479,7 @@ export function cardLine(h, log, now = new Date()) {
     const c = weekCount(h, log, mondayOf(now));
     bits.push(`${c.done} из ${h.perWeek} на неделе`);
   } else if (goalN(h)) bits.push(`${countOn(log, h, today)} из ${goalN(h)} ${h.goal.unit || ''}`.trim());
-  else if (h.time) bits.push(`в ${h.time}`);
+  else if (h.win || h.time) bits.push(winLabel(h));
   if (h.days?.length && h.days.length < 7 && !h.perWeek) bits.push(scheduleLabel(h.days).toLowerCase());
   return bits.join(' · ');
 }
@@ -400,7 +487,7 @@ export function cardLine(h, log, now = new Date()) {
 /** Расписание словами для панели: «каждый день · вечер · 21:00 · с 12 мая». */
 export function scheduleLine(h) {
   const bits = [h.perWeek > 0 ? `${h.perWeek} ${plural(h.perWeek, ['раз', 'раза', 'раз'])} в неделю` : scheduleLabel(h.days).toLowerCase(), partName(h).toLowerCase()];
-  if (h.time) bits.push(h.time);
+  if (h.win || h.time) bits.push(winLabel(h));
   if (h.createdAt) { const d = parseDay(h.createdAt.slice(0, 10)); bits.push(`с ${d.getDate()} ${MONTH_GEN[d.getMonth()]}`); }
   return bits.join(' · ');
 }

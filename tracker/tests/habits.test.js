@@ -60,7 +60,7 @@ test('часть дня: явная, по времени, без времени 
   assert.equal(H.partOf({ time: '12:00' }), 'day');
   assert.equal(H.partOf({ time: '21:00' }), 'evening');
   assert.equal(H.partOf({}), 'any');
-  assert.equal(H.remindAt({ part: 'morning' }), '10:00');
+  assert.equal(H.remindAt({ part: 'morning' }), '06:00'); // начало окна утра
   assert.equal(H.remindAt({ part: 'evening', time: '22:30' }), '22:30');
   assert.equal(H.remindAt({}), null);
   assert.deepEqual(H.sortHabits([{ id: 'a' }, { id: 'b', time: '21:00' }, { id: 'c', part: 'morning' }]).map((h) => h.id), ['c', 'b', 'a']);
@@ -142,12 +142,95 @@ test('месяц: процент и итог', () => {
 test('напоминания привычек: время части дня, выключенный Telegram, уведомление Windows', () => {
   const now = new Date(2030, 0, 7, 9, 0);
   const h = { id: 'm', name: 'Зарядка', part: 'morning', days: [] };
-  const items = habitItems([h, { ...h, id: 'n', remind: { tg: false } }], {}, now);
+  const items = habitItems([h, { ...h, id: 'n', remind: { tg: false } }], {}, new Date(2030, 0, 7, 5, 0));
   assert.equal(items.filter((x) => x.key.startsWith('habit|m|')).length, 7);
   assert.equal(items.some((x) => x.key.startsWith('habit|n|')), false);
   const win = { ...h, remind: { win: true } };
-  assert.equal(habitWinDue([win], {}, [], now).length, 0); // 9:00 — ещё рано
-  const at = new Date(2030, 0, 7, 10, 5);
+  assert.equal(habitWinDue([win], {}, [], new Date(2030, 0, 7, 5, 30)).length, 0); // 5:30 — окно утра ещё не началось
+  const at = new Date(2030, 0, 7, 6, 5);
   assert.equal(habitWinDue([win], {}, [], at).length, 1);
+  assert.equal(habitWinDue([win], {}, [], now).length, 1); // компьютер включили в 9:00 — окно ещё идёт
   assert.equal(habitWinDue([win], {}, ['m|2030-01-07'], at).length, 0);
+  assert.equal(habitWinDue([win], { 'm|2030-01-07': { done: true } }, [], at).length, 0);
+  assert.equal(habitWinDue([win], {}, [], new Date(2030, 0, 7, 12, 10)).length, 0); // окно кончилось
+});
+
+test('время «с … до …»: интервал, конец позже начала, перенос сохраняет длительность', () => {
+  assert.equal(H.normEnd('21:00', '22:30'), '22:30');
+  assert.equal(H.normEnd('21:00', '20:00'), null); // раньше начала
+  assert.equal(H.normEnd('21:00', '21:00'), null);
+  assert.equal(H.normEnd(null, '22:00'), null); // конец без начала не бывает
+  assert.equal(H.normEnd('7:05', '8:00'), '08:00');
+  assert.deepEqual(H.habitSpan({ time: '21:00', end: '22:30' }), { s: 1260, e: 1350, end: true });
+  assert.deepEqual(H.habitSpan({ time: '21:00' }), { s: 1260, e: 1290, end: false }); // без конца — полчаса
+  assert.deepEqual(H.habitSpan({ time: '23:50' }), { s: 1430, e: 1440, end: false });
+  assert.deepEqual(H.habitSpan({ time: '21:00', end: '20:00' }), { s: 1260, e: 1290, end: false });
+  assert.equal(H.habitSpan({ part: 'evening' }), null);
+  assert.equal(H.spanLabel({ time: '21:00', end: '22:30' }), '21:00–22:30');
+  assert.equal(H.spanLabel({ time: '21:00' }), '21:00');
+  assert.equal(H.spanLabel({}), '');
+  assert.equal(H.endAfter('21:00'), '22:00');
+  assert.equal(H.endAfter('23:30'), '23:59');
+  assert.equal(H.endAfter('23:59'), null);
+  assert.equal(H.moveEnd({ time: '21:00', end: '22:30' }, '19:00'), '20:30');
+  assert.equal(H.moveEnd({ time: '21:00' }, '19:00'), null);
+  assert.equal(H.scheduleLine({ days: [], time: '07:00', end: '07:45' }), 'каждый день · утро · 07:00–07:45');
+  assert.match(H.cardLine({ id: 'x', time: '07:00', end: '07:45' }, {}), /07:00–07:45/);
+  assert.match(H.cardLine({ id: 'x', time: '07:00' }, {}), /07:00–12:00/);
+});
+
+test('окно привычки «с — до»: старое time → win, часть дня заполняет окно', () => {
+  // старое: time — начало, end — конец; без end — конец части дня, где начало
+  assert.deepEqual(H.habitWin({ time: '07:30' }), { s: '07:30', e: '12:00' });
+  assert.deepEqual(H.habitWin({ time: '21:00' }), { s: '21:00', e: '24:00' });
+  assert.deepEqual(H.habitWin({ time: '21:00', end: '22:30' }), { s: '21:00', e: '22:30' });
+  assert.deepEqual(H.habitWin({ part: 'day' }), { s: '12:00', e: '18:00' });
+  assert.equal(H.habitWin({ part: 'any' }), null);
+  assert.equal(H.habitWin({}), null);
+  // новое поле главнее старых
+  assert.deepEqual(H.habitWin({ win: { s: '7:30', e: '8:00' }, time: '06:00' }), { s: '07:30', e: '08:00' });
+  assert.equal(H.cleanWin({ s: '09:00', e: '08:00' }), null);
+  assert.deepEqual(H.cleanWin({ s: '18:00', e: '24:00' }), { s: '18:00', e: '24:00' });
+  // что пишется в слой: старое time = начало, end — кроме конца суток
+  assert.deepEqual(H.winFields({ s: '18:00', e: '24:00' }), { win: { s: '18:00', e: '24:00' }, time: '18:00', end: null });
+  assert.deepEqual(H.winFields({ s: '07:30', e: '08:00' }), { win: { s: '07:30', e: '08:00' }, time: '07:30', end: '08:00' });
+  assert.deepEqual(H.winFields(null), { win: null, time: null, end: null });
+  // в календаре — только суженное окно
+  assert.equal(H.habitSpan({ win: { s: '06:00', e: '12:00' }, time: '06:00' }), null);
+  assert.deepEqual(H.habitSpan({ win: { s: '07:30', e: '08:00' } }), { s: 450, e: 480, end: true });
+  // перенос сохраняет длину окна
+  assert.deepEqual(H.moveWin({ win: { s: '07:30', e: '08:00' } }, '09:00'), { s: '09:00', e: '09:30' });
+  assert.deepEqual(H.moveWin({ win: { s: '18:00', e: '24:00' } }, '20:00'), { s: '20:00', e: '24:00' });
+  assert.equal(H.winLabel({ part: 'morning' }), '06:00–12:00');
+});
+
+test('напоминание привычки — в начале окна', () => {
+  const now = new Date(2030, 0, 7, 5, 0);
+  const h = { id: 'w', name: 'Вода', days: [], win: { s: '07:30', e: '09:00' }, part: 'morning' };
+  assert.equal(H.remindAt(h), '07:30');
+  const items = habitItems([h], {}, now);
+  assert.equal(new Date(items[0].fireAt).getHours(), 7);
+  assert.equal(new Date(items[0].fireAt).getMinutes(), 30);
+  assert.match(items[0].note, /до 09:00/);
+  assert.equal(H.remindAt({ part: 'evening' }), '18:00');
+  assert.equal(H.remindAt({ time: '21:00' }), '21:00'); // старая привычка — как раньше, в своё время
+});
+
+test('поля «с — до»: время словами', () => {
+  assert.equal(H.normTime('7'), '07:00');
+  assert.equal(H.normTime('730'), '07:30');
+  assert.equal(H.normTime('7.30'), '07:30');
+  assert.equal(H.normTime('07:30'), '07:30');
+  assert.equal(H.normTime('24'), null);
+  assert.equal(H.normTime('24', true), '24:00');
+  assert.equal(H.normTime('25:00', true), null);
+  assert.equal(H.normTime('утро'), null);
+});
+
+import { guessIcon } from '../src/lib/habitIcons.js';
+test('значок привычки по названию', () => {
+  assert.equal(guessIcon('Пить воду'), 'cup');
+  assert.equal(guessIcon('Зарядка'), 'gym');
+  assert.equal(guessIcon('Скетч 15 минут'), 'pencil');
+  assert.equal(guessIcon('Что-то своё'), null);
 });

@@ -5,11 +5,12 @@
   import WinControls from './WinControls.svelte';
   import { auth, listLists, calendarsAll, isOffline } from './api.js';
   import { plural } from './habits.js';
+  import { say as toast } from '../stores/toast.svelte.js';
 
   // Первый запуск: 1 ключ Google → 2 вход → 3 что показывать (только в первый раз) → готово.
   // firstRun = false — это повторный вход (например, токен истёк): после входа сразу в приложение.
   // hidden — что уже скрыто (когда шаг 3 открыт снова из приложения); oncancel — вернуться без изменений.
-  let { status, firstRun = true, hidden = { lists: [], cals: [] }, onready, onerror, oncancel = null } = $props();
+  let { status, firstRun = true, hidden = { lists: [], cals: [] }, onready, onerror = toast, oncancel = null } = $props();
 
   let hasSecret = $state(false);
   const builtIn = $derived(status?.built_in ?? false); // общий ключ встроен в сборку — свой файл не нужен

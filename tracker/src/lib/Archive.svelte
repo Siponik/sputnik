@@ -1,9 +1,9 @@
 <script>
-  import { isArchived, ARCHIVE_AFTER_DAYS } from './templates.js';
+  import { isArchived } from './templates.js';
 
-  // Архив: выполненные задачи старше ARCHIVE_AFTER_DAYS дней. Можно посмотреть все списки сразу.
+  // Архив: выполненные задачи старше срока списка (daysOf(listId), обычно 3 дня). Можно посмотреть все списки сразу.
   // jar(listId) — список со стикерами: сделанное сразу уходит сюда («баночка»), без 3 дней на доске.
-  let { lists, tasksByList, activeId, jar = () => false, onopen, onrestore, onback } = $props();
+  let { lists, tasksByList, activeId, jar = () => false, daysOf = () => 3, onopen, onrestore, onback } = $props();
 
   let scope = $state('list'); // list | all
   let q = $state('');
@@ -15,7 +15,7 @@
     const src = scope === 'all' ? lists : lists.filter((l) => l.id === activeId);
     const needle = q.trim().toLowerCase();
     return src
-      .flatMap((l) => (tasksByList[l.id] ?? []).filter((t) => !t.parent && (isArchived(t) || (jar(l.id) && t.status === 'completed'))).map((t) => ({ task: t, list: l })))
+      .flatMap((l) => (tasksByList[l.id] ?? []).filter((t) => !t.parent && (isArchived(t, daysOf(l.id)) || (jar(l.id) && t.status === 'completed'))).map((t) => ({ task: t, list: l })))
       .filter((x) => !needle || (x.task.title ?? '').toLowerCase().includes(needle) || (x.task.notes ?? '').toLowerCase().includes(needle))
       .sort((a, b) => (b.task.completed || '').localeCompare(a.task.completed || ''));
   });
@@ -38,7 +38,7 @@
   <header class="page-head">
     <div>
       <h1>Архив</h1>
-      <p>{jar(activeId) && scope === 'list' ? 'Баночка: всё сделанное в этом списке' : `Выполнено больше ${ARCHIVE_AFTER_DAYS} дней назад`} · {items.length}</p>
+      <p>{jar(activeId) && scope === 'list' ? 'Баночка: всё сделанное в этом списке' : (daysOf(activeId) && scope === 'list' ? `Выполнено больше ${daysOf(activeId)} дней назад` : 'Выполненные задачи')} · {items.length}</p>
     </div>
     <div class="head-tools">
       <div class="seg" role="group" aria-label="Какие списки">

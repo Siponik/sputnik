@@ -10,9 +10,11 @@
   import CalMonth from './CalMonth.svelte';
   import DateTimePicker from './DateTimePicker.svelte';
   import Coon from './Coon.svelte';
+  import Dropdown from './Dropdown.svelte';
+  import { listChoices } from './spheres.js';
 
   let { lists, tasksByList, layTasks, log, habits, typeOf, loadEvents, syncAt,
-    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0, filter = null } = $props();
+    onopen, ontoggle, ontogglehabit, onschedule, oncreatetask, oncreateevent, oncreatebirthday, reloadKey = 0, filter = null, layer = null } = $props();
 
   // Вид и фильтры запоминаем на этом компьютере — это удобство, не данные.
   const remember = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -80,6 +82,10 @@
   const evDays = $derived(cal.eventsByDay(events, days));
   const taskDays = $derived(cal.tasksByDay(lists, tasksByList, layTasks, typeOf, days));
   const allItems = $derived(Object.fromEntries(days.map((d) => [d, [...(evDays[d] ?? []), ...(taskDays[d] ?? [])]])));
+  // Привычки со временем — блоки в сетке недели (в своём интервале); в «Расписание» панели дня не идут — у них свой раздел.
+  const habDays = $derived(Object.fromEntries(days.map((d) => [d, show.habits ? cal.habitBlocks(habits, log, d, today) : []])));
+  // Что занимает время: свободное окно енота и загрузка недели учитывают и неотмеченные привычки.
+  const busyItems = $derived(Object.fromEntries(days.map((d) => [d, [...allItems[d], ...habDays[d]]])));
   const visible = (it) => (it.kind === 'event' ? show.events : it.kind === 'task' ? show.tasks : it.kind === 'birthday' ? show.birthdays : true);
   const ORDER = { holiday: 0, birthday: 1, task: 2, event: 3 };
   const byTime = (a, b) => (a.s ?? -1) - (b.s ?? -1) || ORDER[a.kind] - ORDER[b.kind];
@@ -89,7 +95,7 @@
   const weekKey = $derived(days[0]);
   $effect(() => { weekKey; openH = []; });
   // Сутки 0–24: часы, где за неделю что-то есть (и текущий, черновик, свободное окно), — полные, остальные сжаты.
-  const timedWeek = $derived(days.flatMap((d) => (allItems[d] ?? []).filter((i) => visible(i) && i.s != null)));
+  const timedWeek = $derived(days.flatMap((d) => [...(allItems[d] ?? []).filter((i) => visible(i) && i.s != null), ...habDays[d]]));
   const layout = $derived.by(() => {
     const hot = [...openH];
     if (days.includes(today)) hot.push(Math.floor(cal.nowMin() / 60));
@@ -108,7 +114,7 @@
       ymd: day, ...lbl, items, holiday,
       isToday: day === today, isSel: day === sel, future: day > today, weekend: cal.WD_SHORT.indexOf(lbl.short) >= 5,
       allday: items.filter((i) => i.s == null),
-      blocks: mode === 'week' ? cal.layoutBlocks(items, layout.yAt) : [],
+      blocks: mode === 'week' ? cal.layoutBlocks([...items, ...habDays[day]], layout.yAt) : [],
       habits: hs, hSched: sched.length, hDone: sched.filter((x) => x.done).length,
     };
   }));
@@ -116,7 +122,7 @@
 
   // ---------- обзор недели ----------
 
-  const free = $derived(mode === 'week' && show.tasks && !planned ? cal.bestWindow(allItems, days) : null);
+  const free = $derived(mode === 'week' && show.tasks && !planned ? cal.bestWindow(busyItems, days) : null);
   const candidate = $derived.by(() => {
     const open = lists.flatMap((l) => (tasksByList[l.id] ?? [])
       .filter((t) => !t.parent && t.status !== 'completed' && !layTasks?.[t.id]?.slot)
@@ -160,7 +166,7 @@
   // Ушли на другую неделю — предложение «Отменить» больше не к месту.
   $effect(() => { days[0]; planned = null; });
 
-  const load = $derived(mode === 'week' ? dayObjs.map((d) => ({ d, min: cal.busyMinutes(allItems[d.ymd] ?? []) })) : []);
+  const load = $derived(mode === 'week' ? dayObjs.map((d) => ({ d, min: cal.busyMinutes(busyItems[d.ymd] ?? []) })) : []);
   const maxLoad = $derived(Math.max(60, ...load.map((l) => l.min)));
   const loadNote = $derived.by(() => {
     const total = load.reduce((m, l) => m + l.min, 0);
@@ -191,6 +197,7 @@
 
   const TIMES = ['all', '10:00', '14:00', '19:00'];
   const cmpTimes = $derived(cmp.time !== 'all' && !TIMES.includes(cmp.time) ? [...TIMES, cmp.time] : TIMES);
+  const listPick = $derived(listChoices(lists, layer));
   const cmpList = $derived(cmp.listId && lists.some((l) => l.id === cmp.listId) ? cmp.listId : lists[0]?.id ?? '');
   const shortDay = (day) => { const d = cal.parseYmd(day); return `${d.getDate()} ${cal.MONTH_GEN[d.getMonth()].slice(0, 3)}.`; };
   const cmpHint = $derived(cmp.kind === 'event'
@@ -457,9 +464,9 @@
             <button type="button" title="Другой день или точное время" onclick={() => (cmpPick = true)}>Другое время…</button>
           </div>{/if}
           {#if cmp.kind === 'task' && lists.length > 1}
-            <select class="cmp-list" aria-label="Список" value={cmpList} onchange={(e) => (cmp.listId = e.currentTarget.value)}>
-              {#each lists as l (l.id)}<option value={l.id}>{l.title}</option>{/each}
-            </select>
+            <Dropdown cls="cmp-list" label="Список" search={lists.length > 6} searchPlaceholder="Найти список…" foot={lists.length > 6}
+              mark="dot" value={cmpList} options={listPick.options} groups={listPick.groups} emptyText={(q) => `Нет списка «${q}»`}
+              onchange={(v) => (cmp.listId = v)} />
           {/if}
           <p class="cmp-hint">{cmpHint}</p>
           <div style="display: flex; gap: 6px">

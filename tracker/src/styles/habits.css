@@ -1,5 +1,5 @@
 /* Экран «Привычки: карточки» (утверждено 23.10, design/screens/Habits*.dc.html). Всё под .hb-* — общие имена заняты. */
-.hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); } /* время привычки в панели дня календаря */
+.hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); margin-right: 6px; } /* время привычки в панели дня календаря */
 
 .hb-page { max-width: 1180px; width: 100%; margin: 0 auto; box-sizing: border-box; padding: 28px 32px 48px; }
 .hb-page svg.li, .hb-drw svg.li, .hb-dlg svg.li, .hb-menu svg.li { flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
@@ -224,7 +224,6 @@
 .hb-dlg .op[aria-pressed="true"] { border-color: var(--clay); background: var(--clay-soft); color: var(--ink); }
 .hb-dlg .op.day { min-width: 40px; justify-content: center; padding: 0 8px; }
 .hb-dlg .op.tm { border-color: var(--clay); background: var(--clay-soft); color: var(--ink); color-scheme: inherit; }
-.hb-dlg select.op { padding-right: 8px; }
 .hb-dlg .op svg.li { width: 14px; height: 14px; }
 .hb-dlg .icg { display: flex; gap: 6px; flex-wrap: wrap; }
 .hb-dlg .icg button { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--bg); color: var(--ink-soft); display: grid; place-items: center; cursor: pointer; padding: 0; }
@@ -243,3 +242,12 @@
 .hb-dlg .ft { display: flex; align-items: center; gap: 8px; }
 .hb-dlg .ft .nt { flex: 1; font-size: 12px; color: var(--ink-faint); }
 .hb-page :focus-visible, .hb-drw :focus-visible, .hb-dlg :focus-visible { outline: 2px solid var(--clay); outline-offset: 2px; }
+
+/* окно привычки «с — до» (lib/HabitWin.svelte): окно привычки, «Создать», панель привычки */
+.hw { display: inline-flex; align-items: center; gap: 6px; }
+.hw label { display: inline-flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--edge); background: var(--bg); box-sizing: border-box; cursor: text; }
+.hw label:focus-within { border-color: var(--gold); }
+.hw label > span { font-size: 12px; color: var(--ink-faint); }
+.hw input { width: 44px; border: 0; padding: 0; background: none; color: var(--ink); font: 600 13px/1 var(--font-mono); outline: none; }
+.hw.bad label { border-color: var(--signal-overdue); }
+.hb-win > span:first-of-type { flex: 1; }
