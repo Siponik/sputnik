@@ -976,10 +976,17 @@
   }
 
 
+  /** Правка открытой задачи в Google Tasks; true — сохранилось (окно задачи пишет это в подвале). */
   async function save(patch) {
     const { listId, id } = openRef;
-    try { replace(listId, await api.patchTask(listId, id, patch)); }
-    catch (e) { say('Не удалось сохранить: ' + e); }
+    try { replace(listId, await api.patchTask(listId, id, patch)); return true; }
+    catch (e) { say('Не удалось сохранить: ' + e); return false; }
+  }
+  /** Окно задачи → «Куда»: перенос в другой список, окно остаётся открытым на той же задаче. */
+  async function moveOpen(dest) {
+    const { listId } = openRef;
+    const id = await moveToList(openTask, dest, listId);
+    if (id) openRef = { listId: dest, id };
   }
 
   async function renameTask(listId, t, title) {
@@ -1554,7 +1561,9 @@
 
   {#if openTask}
     {@const cols = templateFor(openRef.listId).cols}
-    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} subs={openSubs} status={colOf(openTask, cols)} {cols}
+    <TaskDrawer task={openTask} list={lists.find((l) => l.id === openRef.listId)} lists={boardLists} view={viewFor(openRef.listId)}
+      onmove={moveOpen} onduplicate={() => duplicateTask(openTask, openRef.listId)}
+      subs={openSubs} status={colOf(openTask, cols)} {cols}
       remind={lay.tasks?.[openTask.id]?.remind ?? null} onremind={setRemind}
       slot={lay.tasks?.[openTask.id]?.slot ?? null} onslot={(s) => setSlot(openTask.id, s)}
       type={lay.tasks?.[openTask.id]?.type ?? null} priority={lay.tasks?.[openTask.id]?.priority ?? null}
