@@ -96,8 +96,8 @@ export function seedTasks() {
 // Привычки как на макете «Привычки: карточки» (Habits.dc.html): серии, срыв, количество, «3 раза в неделю».
 function demoHabits(L) {
   const habits = {
-    h1: L({ icon: 'pencil', color: 'gold', part: 'evening', time: '21:00', createdAt: ymd(-60) }),
-    h2: L({ icon: 'gym', color: 'clay', part: 'morning', createdAt: ymd(-40) }),
+    h1: L({ icon: 'pencil', color: 'gold', part: 'evening', time: '21:00', end: '22:00', createdAt: ymd(-60) }),
+    h2: L({ icon: 'gym', color: 'clay', part: 'morning', time: '07:30', end: '08:15', createdAt: ymd(-40) }),
     h3: L({ icon: 'cup', color: 'work', part: 'morning', goal: { n: 8, unit: 'стаканов' }, createdAt: ymd(-50) }),
     h4: L({ icon: 'book', color: 'personal', part: 'evening', time: '22:30', createdAt: ymd(-45) }),
     h5: L({ icon: 'moon', color: 'done', part: 'evening', time: '23:00', createdAt: ymd(-30) }),

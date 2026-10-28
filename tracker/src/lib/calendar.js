@@ -1,7 +1,7 @@
 // Календарь: раскладка событий, задач и привычек по дням. Только расчёты, без интерфейса.
 // Время задачи (в Google Tasks его нет) хранится в слое: tasks[id].slot = { s: 'ЧЧ:ММ', e: 'ЧЧ:ММ' }.
 import { ymd, dueToYmd } from './api.js';
-import { dow, isDone, scheduledOn } from './habits.js';
+import { dow, isDone, scheduledOn, habitSpan } from './habits.js';
 
 // Рабочие часы — для свободного окна и загрузки недели. Сетка недели — все сутки.
 export const GRID_START = 9 * 60;
@@ -141,20 +141,25 @@ export function tasksByDay(lists, tasksByList, layTasks, typeOf, days) {
   return out;
 }
 
-/** Блоки сетки недели: позиция и колонка, если пересекаются по времени. */
+/** Блоки сетки недели: позиция и колонка, если пересекаются. Пересечение — по высоте на экране:
+ *  короткий блок (полчаса в сжатом часе) тянется до 20 px и не должен наезжать на следующий. */
 export function layoutBlocks(items, yAt) {
   const clamp = (m) => Math.min(1440, Math.max(0, m));
   const xs = items.filter((i) => i.s != null)
-    .map((i) => ({ ...i, a: clamp(i.s), b: Math.max(clamp(i.e), clamp(i.s) + 30) }))
-    .sort((x, y) => x.a - y.a || y.b - x.b);
+    .map((i) => {
+      const a = clamp(i.s), top = yAt(a) + 1;
+      const height = Math.max(20, yAt(Math.max(clamp(i.e), a)) - yAt(a) - 2);
+      return { ...i, a, top, height, bot: Math.max(yAt(Math.max(clamp(i.e), a + 30)), top + height) };
+    })
+    .sort((x, y) => x.top - y.top || y.bot - x.bot);
   const out = [];
   let cluster = [], end = -1;
   const flush = () => {
     const cols = [];
     for (const it of cluster) {
-      let c = cols.findIndex((last) => last <= it.a);
+      let c = cols.findIndex((last) => last <= it.top);
       if (c < 0) { c = cols.length; cols.push(0); }
-      cols[c] = it.b;
+      cols[c] = it.bot;
       it.col = c;
     }
     for (const it of cluster) it.cols = cols.length;
@@ -162,21 +167,17 @@ export function layoutBlocks(items, yAt) {
     cluster = [];
   };
   for (const it of xs) {
-    if (cluster.length && it.a >= end) flush();
+    if (cluster.length && it.top >= end) flush();
     cluster.push(it);
-    end = Math.max(end, it.b);
+    end = Math.max(end, it.bot);
   }
   if (cluster.length) flush();
-  return out.map((it) => ({
-    ...it,
-    top: yAt(it.a) + 1,
-    height: Math.max(20, yAt(Math.max(clamp(it.e), it.a)) - yAt(it.a) - 2),
-  }));
+  return out;
 }
 
 /** Занятые промежутки дня в пределах [lo, hi], слитые. Выполненные задачи не занимают время. */
 export function busy(items, lo = GRID_START, hi = GRID_END) {
-  const xs = items.filter((i) => i.s != null && !(i.kind === 'task' && i.done))
+  const xs = items.filter((i) => i.s != null && !((i.kind === 'task' || i.kind === 'habit') && i.done))
     .map((i) => [Math.max(lo, i.s), Math.min(hi, i.e)])
     .filter(([a, b]) => b > a)
     .sort((x, y) => x[0] - y[0]);
@@ -222,6 +223,20 @@ export function habitDay(habit, log, day, today) {
   const done = isDone(log, habit.id, day);
   const before = !!habit.createdAt && day < habit.createdAt.slice(0, 10);
   return { sched: scheduledOn(habit, log, day) && (!before || done), done, isToday: day === today, future: day > today };
+}
+
+/** Привычки со временем на день — блоки сетки недели (kind 'habit'): только по расписанию, в своём интервале
+ *  (без конца — полчаса, habits.habitSpan). Отмеченная (done) время больше не занимает, как выполненная задача. */
+export function habitBlocks(habits, log, day, today) {
+  const out = [];
+  for (const h of habits) {
+    const sp = habitSpan(h);
+    if (!sp) continue;
+    const x = habitDay(h, log, day, today);
+    if (!x.sched) continue;
+    out.push({ kind: 'habit', id: `hab:${h.id}|${day}`, title: h.name, h, s: sp.s, e: sp.e, end: sp.end, ...x });
+  }
+  return out;
 }
 
 export function dayLabel(day) {

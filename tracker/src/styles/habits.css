@@ -1,5 +1,5 @@
 /* Экран «Привычки: карточки» (утверждено 23.10, design/screens/Habits*.dc.html). Всё под .hb-* — общие имена заняты. */
-.hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); } /* время привычки в панели дня календаря */
+.hrow .htime { font: 400 12px/1 var(--font-mono); color: var(--ink-soft); margin-right: 6px; } /* время привычки в панели дня календаря */
 
 .hb-page { max-width: 1180px; width: 100%; margin: 0 auto; box-sizing: border-box; padding: 28px 32px 48px; }
 .hb-page svg.li, .hb-drw svg.li, .hb-dlg svg.li, .hb-menu svg.li { flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }

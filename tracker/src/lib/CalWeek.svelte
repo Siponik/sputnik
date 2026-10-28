@@ -1,6 +1,7 @@
 <script>
   import { untrack } from 'svelte';
   import { fromMin, toMin, typeColor, nowMin } from './calendar.js';
+  import { COLORS } from './habitIcons.js';
 
   // layout — высоты часов (calendar.hourLayout): занятые 40 px, пустые сжаты в полосы (клик по полосе — onexpand раскрывает её часы); draft — черновик { day, time } из формы панели дня.
   let { days, habits, show, free, clock, layout, draft = null, stripOpen, fit = false, avail = $bindable(0), ontogglestrip, onpick, onopenhabits, onopen, ontoggle, ontogglehabit, oncompose, onmove = null, onexpand = null } = $props();
@@ -163,6 +164,20 @@
             style="top: {sl.top}px; height: {sl.ht}px" onclick={() => oncompose(d.ymd, sl.t)}></button>
         {/each}
         {#each d.blocks as b (b.id)}
+          {#if b.kind === 'habit'}
+          <!-- Привычка со временем: полупрозрачная плашка её цвета в своём интервале, кружок — отметка (только сегодня). -->
+          <div class="blk k-habit" class:done={b.done} class:miss={!b.done && !b.isToday && !b.future}
+            style="top: {b.top}px; height: {b.height}px; left: calc({(b.col / b.cols) * 100}% + 3px); width: calc({100 / b.cols}% - 6px); --c: {COLORS[b.h.color] ?? 'var(--gold)'}">
+            <div class="bt">
+              <button type="button" class="ring {b.done ? 'done' : b.isToday ? 'tdy' : b.future ? 'plan' : 'miss'}" disabled={!b.isToday} onclick={() => ontogglehabit(b.h)}
+                aria-label="{b.title}{b.done ? ' — сделано' : b.isToday ? ' — отметить' : b.future ? ' — по плану' : ' — пропуск'}">
+                {#if b.done}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>{/if}
+              </button>
+              <button type="button" class="tx link" onclick={() => onopenhabits(d.ymd)} title="Привычка · {b.title}">{b.title}</button>
+            </div>
+            {#if b.height >= 34}<span class="tm">{b.end ? `${fromMin(b.s)}–${fromMin(b.e)}` : fromMin(b.s)} · привычка</span>{/if}
+          </div>
+          {:else}
           <div class="blk k-{b.kind}" class:done={b.done} class:lift={drag?.it.id === b.id}
             draggable={b.kind === 'task' && !b.done && !!onmove} ondragstart={(e) => startDrag(e, { ...b, day: d.ymd })} ondragend={endDrag}
             style="top: {b.top}px; height: {b.height}px; left: calc({(b.col / b.cols) * 100}% + 3px); width: calc({100 / b.cols}% - 6px); --c: {b.type ? typeColor(b.type) : 'var(--ink-soft)'}">
@@ -176,6 +191,7 @@
             </div>
             {#if b.height >= 34}<span class="tm">{fromMin(b.s)}–{fromMin(Math.min(b.e, 1440))}</span>{/if}
           </div>
+          {/if}
         {/each}
         {#if free && free.day === d.ymd}
           <div class="free" style="top: {layout.yAt(free.s) + 1}px; height: {layout.yAt(free.e) - layout.yAt(free.s) - 2}px">свободное окно</div>

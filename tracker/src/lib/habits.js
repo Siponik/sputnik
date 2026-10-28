@@ -1,7 +1,7 @@
 // Расчёт серий привычек. Отметки хранятся в слое: log["<habitId>|YYYY-MM-DD"] = { done, rest, skip, n, t }.
 // rest — «выходной» из прошлых версий, skip — «не считать» (болел, уезжал): такие дни серию не рвут и в % не входят.
 // n — сколько набрано у привычки с целью на день (habits[id].goal = { n, unit }); done ставится, когда n >= goal.n.
-// Время привычки — habits[id].time «ЧЧ:ММ» (необязательно), часть дня — habits[id].part, «N раз в неделю» — perWeek.
+// Время привычки — habits[id].time «ЧЧ:ММ» (необязательно), конец — habits[id].end «ЧЧ:ММ» (необязательно, только вместе с time), часть дня — habits[id].part, «N раз в неделю» — perWeek.
 // Экран «Привычки: карточки» — docs/design-v2.md.
 import { ymd } from './api.js';
 
@@ -145,6 +145,39 @@ export function partOf(h) {
 export const partName = (h) => PARTS.find((p) => p.id === partOf(h)).name;
 /** Во сколько напоминать: точное время или время части дня («когда угодно» без времени — не напоминаем). */
 export const remindAt = (h) => h?.time || PARTS.find((p) => p.id === partOf(h)).at;
+
+const HHMM = /^(\d{1,2}):(\d{2})$/;
+const minOf = (s) => { const m = HHMM.exec(s ?? ''); return m && +m[1] < 24 && +m[2] < 60 ? +m[1] * 60 + +m[2] : null; };
+const hhmm = (m) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+export const HABIT_LEN = 30; // привычка без конца занимает в календаре полчаса
+
+/** Конец, который стоит сохранить: только при начале и только позже него (через полночь — нет), иначе null. */
+export function normEnd(time, end) {
+  const s = minOf(time), e = minOf(end);
+  return s != null && e != null && e > s ? hhmm(e) : null;
+}
+/** Интервал привычки в минутах суток { s, e, end } — для календаря; end — задан ли конец. Без времени — null. */
+export function habitSpan(h) {
+  const s = minOf(h?.time);
+  if (s == null) return null;
+  const e = minOf(normEnd(h.time, h.end));
+  return e != null ? { s, e, end: true } : { s, e: Math.min(1440, s + HABIT_LEN), end: false };
+}
+/** Конец через min минут после time (не дальше 23:59); null — если позже некуда. */
+export function endAfter(time, min = 60) {
+  const s = minOf(time);
+  return s == null ? null : normEnd(time, hhmm(Math.min(1439, s + min)));
+}
+/** Конец после переноса начала на time: длительность сохраняется; без конца — null. */
+export function moveEnd(h, time) {
+  const sp = habitSpan(h);
+  return sp?.end ? endAfter(time, sp.e - sp.s) : null;
+}
+/** Время словами: «21:00–22:00», «21:00» или '' без времени. */
+export function spanLabel(h) {
+  const sp = habitSpan(h);
+  return !sp ? '' : sp.end ? `${hhmm(sp.s)}–${hhmm(sp.e)}` : hhmm(sp.s);
+}
 
 /** Порядок карточек: по части дня, внутри — по времени. */
 export function sortHabits(list) {
@@ -392,7 +425,7 @@ export function cardLine(h, log, now = new Date()) {
     const c = weekCount(h, log, mondayOf(now));
     bits.push(`${c.done} из ${h.perWeek} на неделе`);
   } else if (goalN(h)) bits.push(`${countOn(log, h, today)} из ${goalN(h)} ${h.goal.unit || ''}`.trim());
-  else if (h.time) bits.push(`в ${h.time}`);
+  else if (h.time) bits.push(habitSpan(h).end ? spanLabel(h) : `в ${h.time}`);
   if (h.days?.length && h.days.length < 7 && !h.perWeek) bits.push(scheduleLabel(h.days).toLowerCase());
   return bits.join(' · ');
 }
@@ -400,7 +433,7 @@ export function cardLine(h, log, now = new Date()) {
 /** Расписание словами для панели: «каждый день · вечер · 21:00 · с 12 мая». */
 export function scheduleLine(h) {
   const bits = [h.perWeek > 0 ? `${h.perWeek} ${plural(h.perWeek, ['раз', 'раза', 'раз'])} в неделю` : scheduleLabel(h.days).toLowerCase(), partName(h).toLowerCase()];
-  if (h.time) bits.push(h.time);
+  if (h.time) bits.push(spanLabel(h));
   if (h.createdAt) { const d = parseDay(h.createdAt.slice(0, 10)); bits.push(`с ${d.getDate()} ${MONTH_GEN[d.getMonth()]}`); }
   return bits.join(' · ');
 }

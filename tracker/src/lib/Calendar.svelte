@@ -82,6 +82,10 @@
   const evDays = $derived(cal.eventsByDay(events, days));
   const taskDays = $derived(cal.tasksByDay(lists, tasksByList, layTasks, typeOf, days));
   const allItems = $derived(Object.fromEntries(days.map((d) => [d, [...(evDays[d] ?? []), ...(taskDays[d] ?? [])]])));
+  // Привычки со временем — блоки в сетке недели (в своём интервале); в «Расписание» панели дня не идут — у них свой раздел.
+  const habDays = $derived(Object.fromEntries(days.map((d) => [d, show.habits ? cal.habitBlocks(habits, log, d, today) : []])));
+  // Что занимает время: свободное окно енота и загрузка недели учитывают и неотмеченные привычки.
+  const busyItems = $derived(Object.fromEntries(days.map((d) => [d, [...allItems[d], ...habDays[d]]])));
   const visible = (it) => (it.kind === 'event' ? show.events : it.kind === 'task' ? show.tasks : it.kind === 'birthday' ? show.birthdays : true);
   const ORDER = { holiday: 0, birthday: 1, task: 2, event: 3 };
   const byTime = (a, b) => (a.s ?? -1) - (b.s ?? -1) || ORDER[a.kind] - ORDER[b.kind];
@@ -91,7 +95,7 @@
   const weekKey = $derived(days[0]);
   $effect(() => { weekKey; openH = []; });
   // Сутки 0–24: часы, где за неделю что-то есть (и текущий, черновик, свободное окно), — полные, остальные сжаты.
-  const timedWeek = $derived(days.flatMap((d) => (allItems[d] ?? []).filter((i) => visible(i) && i.s != null)));
+  const timedWeek = $derived(days.flatMap((d) => [...(allItems[d] ?? []).filter((i) => visible(i) && i.s != null), ...habDays[d]]));
   const layout = $derived.by(() => {
     const hot = [...openH];
     if (days.includes(today)) hot.push(Math.floor(cal.nowMin() / 60));
@@ -110,7 +114,7 @@
       ymd: day, ...lbl, items, holiday,
       isToday: day === today, isSel: day === sel, future: day > today, weekend: cal.WD_SHORT.indexOf(lbl.short) >= 5,
       allday: items.filter((i) => i.s == null),
-      blocks: mode === 'week' ? cal.layoutBlocks(items, layout.yAt) : [],
+      blocks: mode === 'week' ? cal.layoutBlocks([...items, ...habDays[day]], layout.yAt) : [],
       habits: hs, hSched: sched.length, hDone: sched.filter((x) => x.done).length,
     };
   }));
@@ -118,7 +122,7 @@
 
   // ---------- обзор недели ----------
 
-  const free = $derived(mode === 'week' && show.tasks && !planned ? cal.bestWindow(allItems, days) : null);
+  const free = $derived(mode === 'week' && show.tasks && !planned ? cal.bestWindow(busyItems, days) : null);
   const candidate = $derived.by(() => {
     const open = lists.flatMap((l) => (tasksByList[l.id] ?? [])
       .filter((t) => !t.parent && t.status !== 'completed' && !layTasks?.[t.id]?.slot)
@@ -162,7 +166,7 @@
   // Ушли на другую неделю — предложение «Отменить» больше не к месту.
   $effect(() => { days[0]; planned = null; });
 
-  const load = $derived(mode === 'week' ? dayObjs.map((d) => ({ d, min: cal.busyMinutes(allItems[d.ymd] ?? []) })) : []);
+  const load = $derived(mode === 'week' ? dayObjs.map((d) => ({ d, min: cal.busyMinutes(busyItems[d.ymd] ?? []) })) : []);
   const maxLoad = $derived(Math.max(60, ...load.map((l) => l.min)));
   const loadNote = $derived.by(() => {
     const total = load.reduce((m, l) => m + l.min, 0);

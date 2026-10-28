@@ -21,6 +21,7 @@
   let unit = $state(src.goal?.unit || 'раз');
   let when = $state(src.time ? 'time' : H.partOf(src));
   let time = $state(src.time ?? '');
+  let end = $state(H.normEnd(src.time, src.end) ?? ''); // «до» — необязательно
   let tg = $state(src.remind?.tg !== false);
   let win = $state(!!src.remind?.win);
   let busy = $state(false);
@@ -35,9 +36,11 @@
     goal: goalOn && goalN > 1 ? { n: goalN, unit } : null,
     part: when === 'time' ? H.partOf({ time }) : when,
     time: when === 'time' && /^\d{1,2}:\d{2}$/.test(time) ? time : null,
+    end: when === 'time' ? H.normEnd(time, end) : null,
     remind: { tg, win },
   });
-  const ok = $derived(!!fields.name && (freq !== 'days' || days.length > 0) && (when !== 'time' || !!fields.time));
+  const endBad = $derived(when === 'time' && !!end && !fields.end); // «до» раньше «с» — не сохраняем
+  const ok = $derived(!!fields.name && (freq !== 'days' || days.length > 0) && (when !== 'time' || !!fields.time) && !endBad);
   const at = $derived(H.remindAt(fields));
   const prevLine = $derived(H.cardLine({ ...fields, id: '_' }, {}, new Date()));
 
@@ -111,12 +114,24 @@
   </div>
 
   <div class="fr"><span>Когда</span>
-    <div class="ops">
-      {#each H.PARTS as p (p.id)}<button type="button" class="op" aria-pressed={when === p.id} onclick={() => (when = p.id)}>{p.name}</button>{/each}
+    <div>
+      <div class="ops">
+        {#each H.PARTS as p (p.id)}<button type="button" class="op" aria-pressed={when === p.id} onclick={() => (when = p.id)}>{p.name}</button>{/each}
+        <button type="button" class="op" aria-pressed={when === 'time'} onclick={() => { when = 'time'; time ||= '21:00'; }}>Точное время…</button>
+      </div>
       {#if when === 'time'}
-        <input class="op tm" type="time" bind:value={time} aria-label="Точное время" />
-      {:else}
-        <button type="button" class="op" aria-pressed="false" onclick={() => { when = 'time'; time ||= '21:00'; }}>Точное время…</button>
+        <div class="ops" style="margin-top: 8px">
+          <span class="hint" style="margin: 0">с</span>
+          <input class="op tm" type="time" bind:value={time} aria-label="Начало" />
+          <span class="hint" style="margin: 0">до</span>
+          {#if end}
+            <input class="op tm" type="time" bind:value={end} aria-label="Конец" />
+            <button type="button" class="hb-ib" aria-label="Без конца" title="Без конца" onclick={() => (end = '')}><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg></button>
+          {:else}
+            <button type="button" class="op" aria-pressed="false" onclick={() => (end = H.endAfter(time) ?? '')}>＋ конец</button>
+          {/if}
+        </div>
+        <p class="hint">{endBad ? 'Конец должен быть позже начала.' : fields.end ? 'В календаре привычка займёт этот промежуток.' : 'В календаре — блок на полчаса. Можно указать конец.'}</p>
       {/if}
     </div>
   </div>

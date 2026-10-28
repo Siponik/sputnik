@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { dueToYmd, ymd, humanDue } from './api.js';
-  import { stats, plural, isDone, goalN, countOn, unitForms } from './habits.js';
+  import { stats, plural, isDone, goalN, countOn, unitForms, spanLabel } from './habits.js';
   import { habitDay, fromMin, toMin, nowMin, MONTH_GEN } from './calendar.js';
   import Coon from './Coon.svelte';
   import ListPick from './ListPick.svelte';
@@ -306,7 +306,7 @@
               {@const g = goalN(h)}
               {@const n = g ? countOn(log, h, today) : 0}
               <!-- У привычки с количеством клик = «+1», рядом — сколько набрано: «5/8». -->
-              <button type="button" class="hpill" aria-pressed={d} title="{d ? 'Сделано' : g ? `Плюс один: ${n + 1} из ${g} ${h.goal.unit ?? ''}` : 'Отметить'}{h.time ? ` · ${h.time}` : ''}{s ? ` · ${s} ${plural(s, unitForms(h))} подряд` : ''}" onclick={() => ontogglehabit(h)}>
+              <button type="button" class="hpill" aria-pressed={d} title="{d ? 'Сделано' : g ? `Плюс один: ${n + 1} из ${g} ${h.goal.unit ?? ''}` : 'Отметить'}{h.time ? ` · ${spanLabel(h)}` : ''}{s ? ` · ${s} ${plural(s, unitForms(h))} подряд` : ''}" onclick={() => ontogglehabit(h)}>
                 <span class="hring" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg></span>
                 <span class="hn">{h.name}</span>
                 {#if g && !d}<span class="hs">{n}/{g}</span>{:else}<span class="hs" class:gold={s}>{s ? `✦ ${s}` : 'старт'}</span>{/if}

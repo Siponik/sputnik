@@ -101,7 +101,7 @@
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
         .map((t) => {
           const m = lay.habits?.[t.id] ?? {};
-          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], time: m.time ?? null, createdAt: m.createdAt,
+          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], time: m.time ?? null, end: m.end ?? null, createdAt: m.createdAt,
             part: m.part ?? null, perWeek: m.perWeek ?? null, goal: m.goal ?? null, icon: m.icon ?? null, color: m.color ?? null, remind: m.remind ?? null, tipHide: m.tipHide ?? null };
         })
     : []);
@@ -1245,8 +1245,8 @@
     return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
   }));
 
-  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, time, part, perWeek, goal, icon, color, remind, tipHide).
-  const HABIT_FIELDS = ['days', 'time', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
+  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, time, end, part, perWeek, goal, icon, color, remind, tipHide).
+  const HABIT_FIELDS = ['days', 'time', 'end', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
   const habitPatch = (f) => Object.fromEntries(HABIT_FIELDS.filter((k) => k in f).map((k) => [k, f[k]]));
   async function createHabit(f) {
     const name = f.name;
