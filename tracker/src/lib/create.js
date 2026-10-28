@@ -19,6 +19,11 @@ const MONG = ['января', 'февраля', 'марта', 'апреля', '�
 export const shortDay = (s) => { const d = parse(s); return `${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`; };
 /** Крупная строка события: «Чт, 22 октября» */
 export const longDay = (s) => { const d = parse(s); return `${WDF[d.getDay()]}, ${d.getDate()} ${MONG[d.getMonth()]}`; };
+/** «Когда» события: «завтра, чт 29 октября», «сегодня, ср 28 октября», «пт 30 октября». */
+export function eventDay(s, today) {
+  const d = parse(s), base = `${WD[d.getDay()]} ${d.getDate()} ${MONG[d.getMonth()]}`;
+  return s === today ? `сегодня, ${base}` : s === plus(today, 1) ? `завтра, ${base}` : base;
+}
 /** День рождения: «12 марта» */
 export const dayMonth = (s) => { const d = parse(s); return `${d.getDate()} ${MONG[d.getMonth()]}`; };
 export const weekday = (s) => WD[parse(s).getDay()];
@@ -189,3 +194,9 @@ export function kindHint(text, p, kind) {
   if (kind === 'event' && s.kind === 'habit') return null;
   return s;
 }
+
+// ---------- повтор события (Google Календарь, RRULE) ----------
+
+const RRULES = { day: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', week: 'FREQ=WEEKLY', month: 'FREQ=MONTHLY', year: 'FREQ=YEARLY' };
+/** Правило повтора Спутника { every } → ['RRULE:…'] для события; без повтора — null. */
+export const recurrenceOf = (rule) => (RRULES[rule?.every] ? [`RRULE:${RRULES[rule.every]}`] : null);

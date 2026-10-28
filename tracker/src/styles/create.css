@@ -65,7 +65,7 @@
 .cr-dest:hover { border-color: var(--ink-faint); }
 .cr-sw { flex: none; width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--sc) 20%, transparent); color: var(--sc); }
 .cr-sw svg { width: 18px; height: 18px; }
-.cr-n { flex: 1; min-width: 0; }
+.cr-n { flex: 1; min-width: 0; text-align: center; }
 .cr-n b { display: block; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cr-n small { font-size: 12.5px; color: var(--ink-faint); }
 .cr-why { display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px; border-radius: 999px; background: color-mix(in srgb, var(--gold) 14%, transparent); color: var(--gold); font: 600 11.5px/1 var(--font-sans); white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis; }
@@ -157,6 +157,13 @@
 .cr-free.clash { color: var(--signal-overdue); }
 .cr-free.clash::before { content: "!"; }
 .cr-note { margin: 0; line-height: 18px; }
+.cr-c.when svg { width: 14px; height: 14px; }
+.cr-c.when { color: var(--ink); font-size: 13px; }
+.cr-place { display: inline-flex; align-items: center; gap: 8px; justify-self: start; width: min(100%, 260px); height: 32px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--edge); background: var(--raised); box-sizing: border-box; color: var(--ink-faint); }
+.cr-place:focus-within { border-color: var(--kc); }
+.cr-place svg { flex: none; width: 14px; height: 14px; }
+.cr-place input { flex: 1; min-width: 0; border: 0; background: none; color: var(--ink); font: 400 13px/1 var(--font-sans); outline: none; }
+.cr-place input::placeholder { color: var(--ink-faint); }
 
 .cr-foot { flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 24px 16px; border-top: 1px solid var(--hairline); }
 .cr-keys { flex: 1; display: flex; align-items: center; gap: 5px; min-width: 0; white-space: nowrap; overflow: hidden; font-size: 11.5px; color: var(--ink-faint); }

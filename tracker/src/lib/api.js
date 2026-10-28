@@ -181,7 +181,7 @@ export async function eventsRange(start, end) {
 // Напоминания Спутника в событии: минуты до начала через запятую + метка для поиска (remindEvents).
 const remindProps = (mins) => (mins?.length ? { sputnikR: '1', sputnikRemind: [...new Set(mins)].join(',') } : {});
 
-export function createEvent({ title, day, slot, notes = '', remind = [], calendarId = 'primary', location = '' }) {
+export function createEvent({ title, day, slot, notes = '', remind = [], calendarId = 'primary', location = '', recurrence = null }) {
   const next = (d) => { const [y, m, dd] = d.split('-').map(Number); return ymd(new Date(y, m - 1, dd + 1)); };
   const local = (d, hhmm) => { const [y, m, dd] = d.split('-').map(Number); const [h, mi] = hhmm.split(':').map(Number); return new Date(y, m - 1, dd, h, mi).toISOString(); };
   const body = slot
@@ -189,6 +189,11 @@ export function createEvent({ title, day, slot, notes = '', remind = [], calenda
     : { summary: title, start: { date: day }, end: { date: next(day) } };
   if (notes) body.description = notes;
   if (location) body.location = location;
+  if (recurrence?.length) {
+    body.recurrence = recurrence;
+    // у повторяющегося события со временем Google требует часовой пояс
+    if (slot) { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; body.start.timeZone = tz; body.end.timeZone = tz; }
+  }
   if (remind.length) body.extendedProperties = { private: remindProps(remind) };
   return gapi('POST', `${CAL}/calendars/${encodeURIComponent(calendarId || 'primary')}/events`, body);
 }

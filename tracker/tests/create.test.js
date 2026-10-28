@@ -1,7 +1,7 @@
 // Окно «Создать» v2 — помощники (src/lib/create.js).
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk } from '../src/lib/create.js';
+import { dative, nextBirthday, ageAt, years, freeCheck, colCount, topOrd, stageChecklist, shortDay, dueShort, whenChip, initials, suggestKind, kindHint, dayChunk, eventDay, recurrenceOf } from '../src/lib/create.js';
 
 const T = '2026-10-21'; // среда
 
@@ -112,4 +112,13 @@ test('превью события: кусок сетки дня', () => {
   assert.deepEqual(c.items, [{ top: 3, h: 0.5, title: 'Спорт', mine: false }, { top: 1, h: 1, title: 'Созвон', mine: true }]);
   assert.deepEqual(dayChunk([], T2, null).hours, [9, 10, 11, 12, 13]);
   assert.deepEqual(dayChunk([], T2, { s: '23:00', e: '23:30' }, 'x').hours, [19, 20, 21, 22, 23]);
+});
+
+test('событие: «Когда» и повтор', () => {
+  assert.equal(eventDay('2026-10-22', T), 'завтра, чт 22 октября');
+  assert.equal(eventDay(T, T), 'сегодня, ср 21 октября');
+  assert.equal(eventDay('2026-10-30', T), 'пт 30 октября');
+  assert.deepEqual(recurrenceOf({ every: 'weekdays' }), ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR']);
+  assert.deepEqual(recurrenceOf({ every: 'month' }), ['RRULE:FREQ=MONTHLY']);
+  assert.equal(recurrenceOf(null), null);
 });

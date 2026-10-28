@@ -209,7 +209,19 @@
   function setRemind(v) { rems = { ...rems, [kind]: v }; }
 
   // ---------- событие ----------
-  const DURS = [[15, '15 мин'], [30, '30 мин'], [45, '45 мин'], [60, '1 ч'], [120, '2 ч']];
+  const DURS = [[15, '15 мин'], [30, '30 мин'], [60, '1 час'], [120, '2 часа']];
+  // «Куда» события — календарь с правом записи (по умолчанию основной), выбор — окошко под карточкой.
+  let calOpen = $state(false);
+  let calEl = $state(null);
+  let calPos = $state('');
+  const calObj = $derived(cals.find((c) => c.id === calId) ?? { id: 'primary', primary: true });
+  const calName = (c) => c.summaryOverride || (c.primary ? 'Основной календарь' : c.summary) || 'Календарь';
+  const calColor = $derived(calObj.backgroundColor ?? 'var(--signal-done)');
+  $effect(() => {
+    if (!calOpen) return;
+    const r = calEl?.getBoundingClientRect();
+    if (r) calPos = `left: ${r.left}px; top: ${r.bottom + 6}px; width: ${r.width}px; max-height: ${Math.max(180, innerHeight - r.bottom - 22)}px`;
+  });
   const evDur = $derived(slot ? cr.toMin(slot.e) - cr.toMin(slot.s) : 0);
   function setDur(min) {
     const d = dueDay ?? today;
@@ -318,7 +330,7 @@
     try {
       if (kind === 'task') ok = await createTask();
       else if (kind === 'habit') ok = await oncreatehabit({ name: title });
-      else if (kind === 'event') ok = await oncreateevent({ title, day: dueDay, slot, notes: notes.trim(), remind, calendarId: calId, location: place.trim() });
+      else if (kind === 'event') ok = await oncreateevent({ title, day: dueDay, slot, notes: notes.trim(), remind, calendarId: calId, location: place.trim(), recurrence: cr.recurrenceOf(repeatRule) });
       else {
         ok = await oncreatebirthday({ name: title, day: dueDay, remind, year: Number(year) || null });
         if (ok && gift && giftList) {
@@ -369,7 +381,7 @@
   // ---------- клавиши ----------
   function key(ev) {
     if (document.querySelector('.keyhelp, .dtp')) return; // открыто окно «Когда» — Esc закрывает его
-    if (ev.key === 'Escape') { ev.preventDefault(); if (pickOpen) { pickOpen = false; input?.focus(); } else onclose(); return; }
+    if (ev.key === 'Escape') { ev.preventDefault(); if (pickOpen || calOpen) { pickOpen = calOpen = false; input?.focus(); } else onclose(); return; }
     if (pickOpen) return; // клавиши окна выбора — в нём самом
     if (ev.altKey && /^Digit[1-4]$/.test(ev.code)) { ev.preventDefault(); kind = KINDS[ev.code.slice(5) - 1].id; return; }
     if (ev.altKey && ev.code === 'KeyL' && kind === 'task') { ev.preventDefault(); pickOpen = true; return; }
@@ -441,14 +453,14 @@
   <div class="cr-row"><span>Напомнить</span>
     <div class="cr-chips">
       <button type="button" class="cr-c" class:gold={kind === 'birthday'} aria-pressed={!remind.length} onclick={() => setRemind([])}>Нет</button>
-      {#each kind === 'birthday' ? [0, 1440, 4320, 10080, 43200] : quickLeads as min (min)}
+      {#each kind === 'birthday' ? [0, 1440, 4320, 10080, 43200] : kind === 'event' ? [15, 60, 1440] : quickLeads as min (min)}
         <button type="button" class="cr-c" class:gold={kind === 'birthday'} aria-pressed={remind.includes(min)}
           onclick={() => setRemind(remind.includes(min) ? remind.filter((m) => m !== min) : [...remind, min].sort((a, b) => b - a))}>{kind === 'birthday' && min === 10080 && gift ? 'За неделю — подарок' : remLabel(min)}</button>
       {/each}
-      {#if kind !== 'birthday'}<button type="button" class="cr-c" aria-expanded={remOpen} onclick={() => (remOpen = !remOpen)}>Ещё…</button>{/if}
+      {#if kind === 'task'}<button type="button" class="cr-c" aria-expanded={remOpen} onclick={() => (remOpen = !remOpen)}>Ещё…</button>{/if}
     </div>
   </div>
-  {#if remOpen && kind !== 'birthday'}
+  {#if remOpen && kind === 'task'}
     <div class="cr-row"><span></span>
       <div class="cr-remall">
         <RemindChips value={remind} {kind} onchange={setRemind} />
@@ -702,19 +714,35 @@
           </div>
         </div>
       {/if}
-    {:else if kind === 'habit'}
-      <p class="cr-muted cr-note">Как часто, цель на день и время поправишь на экране «Привычки» — по клику на карточку.</p>
-    {:else}
-      <!-- Событие и день рождения: дата крупной строкой, поля -->
-      <button type="button" class="cr-big" class:gold={kind === 'birthday'} aria-haspopup="dialog" onclick={() => (picking = true)}>
-        {#if kind === 'event'}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="3" /><path d="M4 10h16M9 3v4M15 3v4" /></svg>
-        {:else}<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14M6 20v-7h12v7M12 13V9" /></svg>{/if}
-        {#if !dueDay}<span class="cr-muted">Выбери дату — или напиши её в строке: «завтра 14:00»</span>
-        {:else if kind === 'event'}{cr.longDay(dueDay)}{slot ? ` · ${slot.s}–${slot.e}` : ' · весь день'}
-        {:else}{cr.dayMonth(dueDay)} · каждый год{/if}
-        <small>изменить</small>
-      </button>
-      {#if kind === 'event'}
+    {:else if kind === 'event'}
+      <!-- Событие: календарь, когда, сколько длится, место, напоминание; ▸ Ещё — заметка и повтор -->
+      <div class="cr-where">
+        <div class="cr-lbl">Куда</div>
+        <div class="cr-destwrap">
+          <button type="button" class="cr-dest" bind:this={calEl} style="--sc: {calColor}" aria-haspopup="listbox" aria-expanded={calOpen} onclick={() => (calOpen = !calOpen)}>
+            <span class="cr-sw">{@render kindIcon('event')}</span>
+            <span class="cr-n"><b>{calName(calObj)}</b><small>Google Календарь · видно и в телефоне</small></span>
+            <svg class="cr-chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+          </button>
+          {#if calOpen}
+            <button type="button" class="cr-pickback" aria-label="Закрыть выбор календаря" onclick={() => (calOpen = false)}></button>
+            <div class="cr-pick" style={calPos} role="listbox" aria-label="Календарь" tabindex="-1" transition:pop>
+              {#each cals.length ? cals : [{ id: 'primary', primary: true }] as c (c.id)}
+                <button type="button" class="cr-it" class:cur={c.id === calId} role="option" aria-selected={c.id === calId} style="--sc: {c.backgroundColor ?? 'var(--signal-done)'}"
+                  onclick={() => { calId = c.id; calOpen = false; input?.focus(); }}>
+                  <span class="cr-v">{@render kindIcon('event')}</span><span class="cr-itn">{calName(c)}<small>{c.primary ? 'основной' : 'можно писать'}</small></span>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+      </div>
+      <div class="cr-block">
+        <div class="cr-row"><span>Когда</span>
+          <div class="cr-chips">
+            <button type="button" class="cr-c when" aria-haspopup="dialog" onclick={() => (picking = true)}>{@render kindIcon('event')}{dueDay ? `${cr.eventDay(dueDay, today)} · ${slot ? `${slot.s}–${slot.e}` : 'весь день'}` : 'выбрать день'}</button>
+          </div>
+        </div>
         <div class="cr-row"><span>Длится</span>
           <div class="cr-chips">
             {#each DURS as [m, l] (m)}<button type="button" class="cr-c" aria-pressed={!!slot && evDur === m} onclick={() => setDur(m)}>{l}</button>{/each}
@@ -726,16 +754,34 @@
             <p class="cr-free" class:clash={!!free.clash}>{free.clash ? `пересекается с «${free.clash}»` : free.until ? `в это время свободно · до ${free.until} ничего нет` : 'в это время свободно · дальше день пустой'}</p>
           </div>
         {/if}
-        {#if cals.length > 1}
-          <div class="cr-row"><span>Календарь</span>
+        <div class="cr-row"><span>Место</span>
+          <label class="cr-place"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" /><circle cx="12" cy="10" r="2.3" /></svg>
+            <input bind:value={place} placeholder="Адрес или ссылка на созвон" aria-label="Место" /></label>
+        </div>
+        {@render remindRow()}
+      </div>
+      <button type="button" class="cr-more" aria-expanded={moreOpen} onclick={() => (moreOpen = !moreOpen)}>{moreOpen ? '▾' : '▸'} Ещё <span>заметка · повтор</span></button>
+      {#if moreOpen}
+        <div class="cr-block more">
+          <textarea class="cr-notes" bind:value={notes} use:autosize={notes} aria-label="Заметка" placeholder="Заметка: повестка, ссылки…"></textarea>
+          <div class="cr-row"><span>Повтор</span>
             <div class="cr-chips">
-              {#each cals as c (c.id)}<button type="button" class="cr-c" style="--tc: {c.backgroundColor ?? 'var(--type-work)'}" aria-pressed={calId === c.id} onclick={() => (calId = c.id)}><i></i>{c.primary ? 'Основной' : c.summaryOverride || c.summary}</button>{/each}
+              <button type="button" class="cr-c" aria-pressed={!repeatRule} onclick={() => (repeat = null)}>Нет</button>
+              {#each REPEATS as r (r.id)}<button type="button" class="cr-c" aria-pressed={repeatRule?.every === r.id} onclick={() => (repeat = { every: r.id })}>{r.label}</button>{/each}
             </div>
           </div>
-        {/if}
-        <div class="cr-row"><span>Где</span><input class="cr-fld" bind:value={place} placeholder="Ссылка на созвон или адрес" aria-label="Где" /></div>
-        {@render remindRow()}
-      {:else}
+        </div>
+      {/if}
+    {:else if kind === 'habit'}
+      <p class="cr-muted cr-note">Как часто, цель на день и время поправишь на экране «Привычки» — по клику на карточку.</p>
+    {:else}
+      <!-- День рождения: дата крупной строкой, поля -->
+      <button type="button" class="cr-big gold" aria-haspopup="dialog" onclick={() => (picking = true)}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14M6 20v-7h12v7M12 13V9" /></svg>
+        {#if !dueDay}<span class="cr-muted">Выбери дату — или напиши её в строке: «Аня 12 марта»</span>
+        {:else}{cr.dayMonth(dueDay)} · каждый год{/if}
+        <small>изменить</small>
+      </button>
         <div class="cr-row"><span>Год</span><input class="cr-fld" bind:value={year} inputmode="numeric" maxlength="4" aria-label="Год рождения"
           placeholder={bday ? `${Number(bday.slice(0, 4)) - 30} — необязательно, тогда напишу «исполнится 30»` : 'Год рождения — необязательно'} /></div>
         {@render remindRow()}
@@ -744,7 +790,6 @@
             <div class="cr-chips"><button type="button" class="cr-c" aria-pressed={gift} onclick={() => (gift = !gift)}>＋ «{giftTitle}» в «{giftList.title}» за неделю</button></div>
           </div>
         {/if}
-      {/if}
     {/if}
     </div>
 
