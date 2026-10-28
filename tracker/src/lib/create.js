@@ -19,6 +19,11 @@ const MONG = ['января', 'февраля', 'марта', 'апреля', '�
 export const shortDay = (s) => { const d = parse(s); return `${WD[d.getDay()]}, ${d.getDate()} ${MON[d.getMonth()]}`; };
 /** Крупная строка события: «Чт, 22 октября» */
 export const longDay = (s) => { const d = parse(s); return `${WDF[d.getDay()]}, ${d.getDate()} ${MONG[d.getMonth()]}`; };
+/** «Когда» события: «завтра, чт 29 октября», «сегодня, ср 28 октября», «пт 30 октября». */
+export function eventDay(s, today) {
+  const d = parse(s), base = `${WD[d.getDay()]} ${d.getDate()} ${MONG[d.getMonth()]}`;
+  return s === today ? `сегодня, ${base}` : s === plus(today, 1) ? `завтра, ${base}` : base;
+}
 /** День рождения: «12 марта» */
 export const dayMonth = (s) => { const d = parse(s); return `${d.getDate()} ${MONG[d.getMonth()]}`; };
 export const weekday = (s) => WD[parse(s).getDay()];
@@ -69,6 +74,12 @@ export function ageAt(year, day, today) {
   if (!y || y < 1900 || y > 2100) return null;
   const a = Number(nextBirthday(day, today).slice(0, 4)) - y;
   return a > 0 && a < 130 ? a : null;
+}
+
+/** «через …» до дня: «1 день», «3 дня», «135 дней». */
+export function daysTill(day, today) {
+  const n = Math.round((parse(day) - parse(today)) / 864e5), a = n % 100, b = n % 10;
+  return `${n} ${a > 10 && a < 20 ? 'дней' : b === 1 ? 'день' : b > 1 && b < 5 ? 'дня' : 'дней'}`;
 }
 
 /** «лет»: 1 год, 2 года, 5 лет. */
@@ -188,4 +199,108 @@ export function kindHint(text, p, kind) {
   if (!s || s.kind === kind || kind === 'birthday') return null;
   if (kind === 'event' && s.kind === 'habit') return null;
   return s;
+}
+
+// ---------- повтор события (Google Календарь, RRULE) ----------
+
+const RRULES = { day: 'FREQ=DAILY', weekdays: 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR', week: 'FREQ=WEEKLY', month: 'FREQ=MONTHLY', year: 'FREQ=YEARLY' };
+/** Правило повтора Спутника { every } → ['RRULE:…'] для события; без повтора — null. */
+export const recurrenceOf = (rule) => (RRULES[rule?.every] ? [`RRULE:${RRULES[rule.every]}`] : null);
+
+// ---------- привычка: умная строка «Пить воду 8 стаканов каждый день» ----------
+
+// Фраза целиком, с границами слова для кириллицы; группа 1 — сама фраза.
+const P = (re) => new RegExp(`(?:^|[^а-яёa-z0-9])(${re})(?=$|[^а-яёa-z0-9])`, 'i');
+const H_FREQ = [
+  [P('(\\d+)\\s+раза?\\s+в\\s+неделю'), (m) => ({ freq: 'week', perWeek: Math.min(6, Math.max(1, +m[2])) }), (m) => `${m[2]} ${+m[2] % 10 >= 2 && +m[2] % 10 <= 4 ? 'раза' : 'раз'} в неделю`],
+  [P('по будням'), () => ({ freq: 'days', days: [0, 1, 2, 3, 4] }), () => 'по будням'],
+  [P('по выходным'), () => ({ freq: 'days', days: [5, 6] }), () => 'по выходным'],
+  [P('каждый день|ежедневно'), () => ({ freq: 'daily' }), () => 'каждый день'],
+];
+const H_PART = [
+  [P('каждое утро|по утрам|утром'), 'morning', 'утро'],
+  [P('днём|днем|после обеда'), 'day', 'день'],
+  [P('каждый вечер|по вечерам|вечером|перед сном'), 'evening', 'вечер'],
+];
+const H_UNITS = [
+  [/^стакан/, 'стаканов'], [/^страниц/, 'страниц'], [/^мин/, 'минут'], [/^км$/, 'км'], [/^шаг/, 'шагов'], [/^раз/, 'раз'],
+];
+const H_GOAL = P('(\\d{1,5})\\s+(стакан[а-яё]*|страниц[а-яё]*|минут[а-яё]*|мин|км|шаг[а-яё]*|раз|раза|отжиман[а-яё]*|приседан[а-яё]*|глав[а-яё]*|слов[а-яё]*)');
+
+/**
+ * Разбор строки привычки. off — куски, возвращённые в текст крестиком: { freq, part, goal }.
+ * → { name, freq?, perWeek?, days?, part?, goal? { n, unit }, marks: [{ from, to, kind }], toks: [{ k, l }] }
+ */
+export function parseHabit(raw, off = {}) {
+  const text = String(raw ?? '');
+  const out = { marks: [], toks: [] };
+  const taken = [];
+  const free = (a, b) => taken.every(([x, y]) => b <= x || a >= y);
+  const take = (m, kind) => {
+    const from = m.index + m[0].length - m[1].length, to = from + m[1].length;
+    if (!free(from, to)) return false;
+    taken.push([from, to]);
+    out.marks.push({ from, to, kind });
+    return true;
+  };
+  if (!off.freq) for (const [re, val, label] of H_FREQ) {
+    const m = re.exec(text);
+    if (m && take(m, 'freq')) { Object.assign(out, val(m)); out.toks.push({ k: 'freq', l: label(m) }); break; }
+  }
+  if (!off.part) for (const [re, part, label] of H_PART) {
+    const m = re.exec(text);
+    if (m && take(m, 'part')) {
+      out.part = part; out.toks.push({ k: 'part', l: label });
+      if (!out.freq && /^кажд/i.test(m[1])) out.freq = 'daily';
+      break;
+    }
+  }
+  if (!off.goal) {
+    const m = H_GOAL.exec(text);
+    if (m && +m[2] > 1 && take(m, 'goal')) {
+      const word = m[3].toLowerCase();
+      const unit = H_UNITS.find(([re]) => re.test(word))?.[1] ?? word;
+      out.goal = { n: Math.min(999, +m[2]), unit };
+      out.toks.unshift({ k: 'goal', l: `цель ${out.goal.n} ${unit}` });
+    }
+  }
+  out.marks.sort((a, b) => a.from - b.from);
+  let name = '', i = 0;
+  for (const mk of out.marks) { name += text.slice(i, mk.from) + ' '; i = mk.to; }
+  name = (name + text.slice(i)).replace(/\s+/g, ' ').trim();
+  out.name = name && name[0].toUpperCase() + name.slice(1);
+  return out;
+}
+
+// ---------- подарок ко дню рождения ----------
+// Событие дня рождения помнит, за сколько дней нужен подарок: extendedProperties.private.sputnikGift = дней
+// (и sputnikGiftList — в какой список). Задача «Подарок Ане» появляется сама, когда до дня рождения остаётся столько дней.
+
+export const GIFT_DAYS = [[3, 'за 3 дня'], [7, 'за неделю'], [14, 'за 2 недели'], [30, 'за месяц']];
+
+/** День задачи «Подарок …»: день рождения минус days. */
+export const giftDate = (bday, days) => plus(bday, -days);
+
+/** Имя из названия события дня рождения: «🎂 Аня» → «Аня». */
+export const bdayName = (summary) => String(summary ?? '').replace(/^[^\p{L}]+/u, '').trim();
+
+/**
+ * Какие задачи про подарок пора завести: events — вхождения дней рождения (singleEvents, start.date),
+ * today — 'ГГГГ-ММ-ДД'. → [{ key, title, due, bday, listId }]; key — «id события|год», чтобы не заводить дважды.
+ * Срок — день из sputnikGift; если трекер в тот день не запускали — сегодня.
+ */
+export function giftsDue(events, today) {
+  const out = [];
+  for (const e of events ?? []) {
+    const p = e.extendedProperties?.private ?? {};
+    const days = Number(p.sputnikGift);
+    const bday = e.start?.date;
+    if (p.sputnik !== 'birthday' || !(days > 0) || !bday) continue;
+    const from = giftDate(bday, days);
+    if (today < from || today > bday) continue;
+    const name = bdayName(e.summary);
+    if (!name) continue;
+    out.push({ key: `${e.recurringEventId || e.id}|${bday.slice(0, 4)}`, title: `Подарок ${dative(name)}`, due: from, bday, listId: p.sputnikGiftList || null });
+  }
+  return out;
 }

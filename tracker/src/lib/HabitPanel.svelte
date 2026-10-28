@@ -5,8 +5,9 @@
   import { ICONS, iconOf, colorOf } from './habitIcons.js';
   import Coon from './Coon.svelte';
   import { fade, fly } from './motion.js';
+  import HabitWin from './HabitWin.svelte';
 
-  let { h, log, i = 0, onclose, ontoggle, onpick, onedit, ondelete } = $props();
+  let { h, log, i = 0, onclose, ontoggle, onpick, onedit, ondelete, onupdate = null } = $props();
 
   const now = new Date();
   const today = ymd(now);
@@ -31,6 +32,7 @@
     return `${d} ${H.MONTH_GEN[mm - 1]}${y !== now.getFullYear() ? ' ' + y : ''}`;
   });
   const at = $derived(H.remindAt(h));
+  const win = $derived(H.habitWin(h));
   const remLine = $derived.by(() => {
     if (!at) return null;
     const where = [h.remind?.tg !== false ? 'в Telegram' : '', h.remind?.win ? 'в Windows' : ''].filter(Boolean);
@@ -100,9 +102,13 @@
     <div><b>{s.best}</b><span>лучшая серия{since ? `, с ${since}` : ''}</span></div>
   </div>
 
+  {#if win && onupdate}
+    <div class="hb-rem hb-win"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" /><path d="M12 8v4l2.5 2.5" /></svg>
+      <span>{H.partName(h)}</span><HabitWin {win} onchange={(w) => onupdate(H.winFields(w))} /></div>
+  {/if}
   {#if remLine}
     <div class="hb-rem"><svg class="li" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20h4" /></svg>
-      <span>Напомнит в <b>{remLine.at}</b> {remLine.where}, если не отмечено</span></div>
+      <span>Напомнит в <b>{remLine.at}</b> {remLine.where}, если не отмечено до {win.e}</span></div>
   {/if}
 
   <div class="dft"><button type="button" class="hb-del" onclick={ondelete}>Удалить вместе с историей</button></div>

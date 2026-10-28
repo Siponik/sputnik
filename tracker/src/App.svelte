@@ -40,6 +40,7 @@
   import * as fresh from './lib/fresh.js';
   import { findDupes } from './lib/dupes.js';
   import * as stickers from './lib/stickers.js';
+  import * as cr from './lib/create.js';
   import * as reminders from './lib/reminders.js';
   import * as pictures from './lib/previewDrive.js';
   import * as sharedbot from './lib/sharedbot.js';
@@ -103,7 +104,7 @@
         .sort((a, b) => (a.position || '').localeCompare(b.position || ''))
         .map((t) => {
           const m = lay.habits?.[t.id] ?? {};
-          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], time: m.time ?? null, end: m.end ?? null, createdAt: m.createdAt,
+          return { id: t.id, name: t.title || 'Без названия', days: m.days ?? [], win: m.win ?? null, time: m.time ?? null, end: m.end ?? null, createdAt: m.createdAt,
             part: m.part ?? null, perWeek: m.perWeek ?? null, goal: m.goal ?? null, icon: m.icon ?? null, color: m.color ?? null, remind: m.remind ?? null, tipHide: m.tipHide ?? null };
         })
     : []);
@@ -210,6 +211,7 @@
     await loadRemindEvents();
     pullInboxLayer();
     await rollRepeats();
+    await giftTasks();
     await pullTg();
     syncLayer();
   }
@@ -1136,6 +1138,31 @@
   }
   let calReload = $state(0); // календарю — перечитать события
 
+  // Задача «Подарок …»: день рождения из «Создать» помнит, за сколько дней (sputnikGift) и в какой список (sputnikGiftList).
+  // Раз в час смотрим ближайшие дни рождения; заведённое отмечаем в settings.gifts[«событие|год»], чтобы не завести второй раз
+  // (и если задачу удалили руками). Такая же задача в списке (её завело окно «Создать» или другой компьютер) — только отметка.
+  let giftAt = 0;
+  async function giftTasks() {
+    if (Date.now() - giftAt < 3600e3) return;
+    giftAt = Date.now();
+    const evs = await api.giftEvents().catch(() => null);
+    if (!evs) return;
+    const today = api.ymd(new Date());
+    for (const g of cr.giftsDue(evs, today)) {
+      if (lay.settings?.gifts?.[g.key]) continue;
+      const l = boardLists.find((x) => x.id === g.listId) ?? boardLists.find((x) => boardOf(x.id, lay).id === 'personal');
+      if (!l) continue;
+      const has = (tasks[l.id] ?? []).some((t) => t.title === g.title && (!t.due || (api.dueToYmd(t.due) >= cr.plus(g.due, -1) && api.dueToYmd(t.due) <= g.bday)));
+      if (!has) {
+        const buy = boardOf(l.id, lay).view === 'stickers' && stickers.topicsOf(lay.lists?.[l.id]).some((t) => t.id === 'buy');
+        if (!(await quickCreate({ title: g.title, listId: l.id, due: g.due < today ? today : g.due, slot: null, layer: buy ? { topic: 'buy' } : {} }, true))) continue;
+        say(`🎁 «${g.title}» — пора подумать о подарке`);
+      }
+      touch('settings', 'gifts', { [g.key]: today });
+    }
+    saveLayer();
+  }
+
   /** Новая задача; layer — поля Спутника (тип, теги). Возвращает id или false. */
   async function quickCreate({ title, listId, due, slot, layer = null, notes = '', subs = [] }, quiet = false) {
     try {
@@ -1259,8 +1286,8 @@
     return c?.at && Date.now() - new Date(c.at).getTime() < 864e5 ? [{ habit: h, ...c }] : [];
   }));
 
-  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, time, end, part, perWeek, goal, icon, color, remind, tipHide).
-  const HABIT_FIELDS = ['days', 'time', 'end', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
+  // Поля окна привычки: name и всё, что живёт в слое habits[id] (days, win, time, end, part, perWeek, goal, icon, color, remind, tipHide).
+  const HABIT_FIELDS = ['days', 'win', 'time', 'end', 'part', 'perWeek', 'goal', 'icon', 'color', 'remind', 'tipHide'];
   const habitPatch = (f) => Object.fromEntries(HABIT_FIELDS.filter((k) => k in f).map((k) => [k, f[k]]));
   async function createHabit(f) {
     const name = f.name;
@@ -1272,7 +1299,7 @@
         taskStore.board.lists = [...lists, l];
         tasks[l.id] = [];
       }
-      const t = await api.createTask(l.id, { title: name });
+      const t = await api.createTask(l.id, { title: name, ...(f.notes ? { notes: f.notes } : {}) });
       tasks[l.id] = [...(tasks[l.id] ?? []), t];
       touch('habits', t.id, { ...habitPatch(f), createdAt: api.ymd(new Date()) });
       saveLayer();
