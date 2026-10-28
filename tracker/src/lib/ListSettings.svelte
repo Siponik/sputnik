@@ -8,11 +8,13 @@
   import SphereIcon from './SphereIcon.svelte';
   import { colColor, SORTS, sortOf, archiveDays } from './templates.js';
   import * as E from './boardedit.js';
+  import ListTemplateSwitch from './ListTemplateSwitch.svelte';
 
   // groups — [{ sphere | null, lists: [{ id, title, own, n, view }] }] для левой колонки; board — boardOf(списка);
   // layList — lists[id] в слое; spheres — [{ id, name }]; count(colId) — задач в колонке; sample — задача для превью.
   let { list, board, layList = {}, groups = [], spheres = [], sphere = null, shared = false, count, sample = null,
-    onpick, onback, onsave, onreset, onastemplate, ondelete } = $props();
+    templates = [], onpick, onback, onsave, onreset, onswitch, onastemplate, ondelete } = $props();
+  let switching = $state(false); // окно «Взять колонки из другого шаблона»
 
   let draft = $state(null);
   let removed = $state([]);
@@ -116,6 +118,7 @@
           </span>
           <span class="acts">
             {#if board.own}<button type="button" class="be-btn sm" onclick={reset}>Вернуть как в шаблоне</button>{/if}
+            {#if onswitch}<button type="button" class="be-btn ghost sm" onclick={() => { if (!dirtyBoard || confirm('Несохранённые изменения колонок и полей пропадут. Продолжить?')) switching = true; }}>Колонки из другого шаблона…</button>{/if}
           </span>
         </div>
       {/snippet}
@@ -164,3 +167,7 @@
   {/if}
 </div>
 
+{#if switching}
+  <ListTemplateSwitch {list} {board} {templates} {count} onclose={() => (switching = false)}
+    onswitch={(tid, map) => { switching = false; onswitch(tid, map); loadedFor = ''; }} />
+{/if}

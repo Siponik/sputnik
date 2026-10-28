@@ -187,6 +187,26 @@ export function resetListPlan(lay, listId, taskList) {
   return { patch: resetPatch(), moves: relocate(taskList, lay?.tasks, lostMoves(cur.cols, cur.base.cols)) };
 }
 
+/** «Взять колонки из другого шаблона»: список переходит на шаблон newTplId и снова идёт за ним (своя копия убирается).
+ *  mapping — { старая колонка: новая } (по умолчанию matchCols); «готово» всегда в последнюю. Задачи без своей колонки
+ *  стоят в первой — их тоже переносим, если первая колонка нового шаблона другая. */
+export function switchPlan(lay, listId, newTplId, taskList, mapping = null) {
+  const cur = boardOf(listId, lay), next = templateOf(newTplId, lay);
+  const map = { ...matchCols(cur.cols, next.cols), ...(mapping ?? {}) };
+  const ids = new Set(next.cols.map((c) => c.id)), last = next.cols[next.cols.length - 1].id;
+  const moves = [];
+  for (const t of taskList ?? []) {
+    if (t.parent || t.status === 'completed') continue;
+    const s = lay?.tasks?.[t.id]?.status;
+    const from = s && s !== 'done' && cur.cols.some((c) => c.id === s) ? s : cur.cols[0].id;
+    let to = map[from] ?? next.cols[0].id;
+    if (to === last || !ids.has(to)) to = next.cols[0].id; // открытая задача в «готово» не попадает
+    const now = s && s !== 'done' && ids.has(s) ? s : next.cols[0].id;
+    if (to !== now) moves.push({ id: t.id, status: to });
+  }
+  return { patch: { template: next.id, ...resetPatch() }, moves, map, fresh: (next.fields ?? []).filter((f) => !(cur.fields ?? []).includes(f)) };
+}
+
 // Порядок задач в колонке — lists[id].sort: own — свой (перетаскивание, tasks[id].ord; без него — приоритет),
 // due — по сроку (без срока внизу), prio — по приоритету. У стикеров то же поле: due — по срокам, иначе — закреп.
 export const SORTS = [{ id: 'own', name: 'Свой' }, { id: 'due', name: 'Срок' }, { id: 'prio', name: 'Приоритет' }];

@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   boardOf, follows, isOwn, ownPatch, resetPatch, matchCols, relocate, lostMoves,
-  saveListPlan, resetListPlan, archiveDays, isArchived, templateOf, sameShape, sortOf, orderTasks,
+  saveListPlan, resetListPlan, archiveDays, isArchived, templateOf, sameShape, sortOf, orderTasks, switchPlan,
 } from '../src/lib/templates.js';
 
 const T = (id, extra = {}) => ({ id, title: id, status: 'needsAction', ...extra });
@@ -129,3 +129,17 @@ test('порядок в колонке: свой / срок / приоритет
   assert.equal(ids(orderTasks(items, lay, 'prio')), 'bca');
 });
 
+test('switchPlan: колонки из другого шаблона — по названию, иначе по порядку, «готово» в последнюю', () => {
+  const lay = { lists: { A: { template: 'work', fields: ['due'], cols: work.cols } }, tasks: { t1: { status: 'doing' }, t2: { status: 'review' }, t4: { status: 'gone' } } };
+  const tasks = [T('t1'), T('t2'), T('t3'), T('t4'), T('t5', { status: 'completed' }), T('s', { parent: 't1' })];
+  const p = switchPlan(lay, 'A', 'client', tasks);
+  assert.deepEqual(p.map, { inbox: 'request', doing: 'doing', review: 'doing', done: 'done' });
+  assert.deepEqual(p.moves, [{ id: 't2', status: 'doing' }]); // t3 и t4 (колонки нет) — и так в первой
+  assert.deepEqual(p.patch, { template: 'client', cols: null, fields: null, view: null });
+  assert.deepEqual(p.fresh, ['prio', 'client', 'money']);
+  // строку можно поправить; открытую задачу в «готово» не отправляем
+  const q = switchPlan(lay, 'A', 'client', tasks, { review: 'revise', inbox: 'done' });
+  assert.deepEqual(q.moves, [{ id: 't2', status: 'revise' }]);
+  const r = switchPlan(lay, 'A', 'client', tasks, { inbox: 'estimate' });
+  assert.deepEqual(r.moves.map((m) => m.id + '>' + m.status), ['t2>doing', 't3>estimate', 't4>estimate']);
+});
