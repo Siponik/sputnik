@@ -17,12 +17,16 @@ const KEEP_LISTS_MAX = 20;
 const STATUS_BUDGET = 7800;
 const DEDUP_MS = 2 * 24 * 3600 * 1000;
 const OPS = ['list.ensure', 'task.create', 'task.complete'];
+// Перечень списков в статусе сверяется с Google Tasks раз в LISTS_EVERY_MS, даже когда очередь пуста:
+// иначе список, созданный в трекере, чаты Claude не видят до следующего запроса со списками.
+const LISTS_EVERY_MS = 15 * 60 * 1000;
+const LISTS_STALE_MS = 6 * 3600 * 1000; // без перемен — всё равно отметить проверку (`listsAt`) раз в 6 ч
 
 /** Запустить один раз: создаёт календарь-очередь и событие статуса. Повторный запуск безопасен. */
 function setupInbox() {
   const cal = inboxCalendar_(true);
   const status = readStatus_();
-  status.lists = (Tasks.Tasklists.list({ maxResults: 100 }).items || []).map((l) => l.title);
+  setLists_(status, (Tasks.Tasklists.list({ maxResults: 100 }).items || []).map((l) => l.title), Date.now());
   writeStatus_(status);
   console.log('Календарь-очередь: ' + cal.getId());
   send_('🛰 Спутник: «Входящие от Claude» подключены. Задачи из чатов Claude будут появляться в Google Tasks.');
@@ -52,7 +56,7 @@ function inboxTick_() {
   if (!cal) return;
   const now = new Date();
   const events = cal.getEvents(new Date(now.getTime() - 30 * 864e5), new Date(now.getTime() + 864e5));
-  if (!events.length) return;
+  if (!events.length) return listsTick_();
 
   const status = readStatus_();
   let changed = false;
@@ -85,8 +89,29 @@ function inboxTick_() {
   if (!changed) return;
   const cutoff = Date.now() - KEEP_PROCESSED_MS;
   for (const k of Object.keys(status.processed)) if (Date.parse(status.processed[k].at) < cutoff) delete status.processed[k];
-  if (lists) status.lists = lists.map((l) => l.title);
+  if (lists) setLists_(status, lists.map((l) => l.title), Date.now());
   writeStatus_(status);
+}
+
+/** Раз в 15 минут сверяет перечень списков в статусе с Google Tasks; пишет статус, только если он изменился или давно не отмечался. */
+function listsTick_() {
+  const props = PropertiesService.getScriptProperties();
+  const now = Date.now();
+  if (now - Number(props.getProperty('INBOX_LISTS_AT') || 0) < LISTS_EVERY_MS) return;
+  props.setProperty('INBOX_LISTS_AT', String(now));
+  const status = readStatus_();
+  const titles = (Tasks.Tasklists.list({ maxResults: 100 }).items || []).map((l) => l.title);
+  if (setLists_(status, titles, now)) writeStatus_(status);
+}
+
+/** Кладёт названия списков в статус и время проверки `listsAt`. true — статус стоит записать. */
+function setLists_(status, titles, now) {
+  const same = (status.lists || []).join('\n') === titles.join('\n');
+  const stale = !status.listsAt || now - Date.parse(status.listsAt) >= LISTS_STALE_MS;
+  if (same && !stale) return false;
+  status.lists = titles;
+  status.listsAt = new Date(now).toISOString();
+  return true;
 }
 
 /** Достаёт JSON из описания события, даже если Calendar обернул его в HTML. */
