@@ -112,3 +112,30 @@ test('Inbox.gs: статус укладывается в бюджет — сна
   assert.equal(Object.keys(s.pendingLayer).length, 30);
   assert.ok(s.processed.r59 && !s.processed.r0);
 });
+
+test('Inbox.gs: перечень списков в статусе обновляется и без запросов — раз в 15 минут', () => {
+  const { ctx, lists } = inbox();
+  const props = {};
+  ctx.PropertiesService = { getScriptProperties: () => ({ getProperty: (k) => props[k] ?? null, setProperty: (k, v) => { props[k] = v; } }) };
+  let status = { processed: {}, pendingLayer: {}, pendingLists: {}, lists: ['Мои задачи'], listsAt: new Date().toISOString() };
+  let writes = 0;
+  ctx.readStatus_ = () => JSON.parse(JSON.stringify(status));
+  ctx.writeStatus_ = (s) => { status = s; writes++; };
+  lists.push({ id: 'L1', title: 'Мои задачи' });
+
+  ctx.listsTick_();
+  assert.equal(writes, 0, 'ничего не поменялось — статус не трогаем');
+
+  lists.push({ id: 'L2', title: 'Джем' });
+  ctx.listsTick_();
+  assert.equal(writes, 0, 'через минуту ещё не проверяет');
+
+  props.INBOX_LISTS_AT = String(Date.now() - 16 * 60 * 1000);
+  ctx.listsTick_();
+  assert.equal(writes, 1);
+  assert.deepEqual([...status.lists], ['Мои задачи', 'Джем']);
+
+  // без перемен, но давно не отмечали — отметить проверку
+  assert.equal(ctx.setLists_(status, ['Мои задачи', 'Джем'], Date.now()), false);
+  assert.equal(ctx.setLists_(status, ['Мои задачи', 'Джем'], Date.now() + 7 * 3600 * 1000), true);
+});
