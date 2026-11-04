@@ -16,7 +16,11 @@ export const openPlace = (place) => invoke('open_place', { place });
 export const auth = {
   status: () => invoke('auth_status'),
   saveSecret: (contents) => invoke('save_client_secret', { contents }),
+  /** Убрать свой client_secret.json — снова встроенный ключ. */
+  forgetSecret: () => invoke('forget_client_secret'),
   login: () => invoke('login'),
+  /** Остановить вход, который ждёт браузер. */
+  cancel: () => invoke('login_cancel'),
   logout: () => invoke('logout'),
 };
 

@@ -74,7 +74,7 @@ export async function cloudLogin() {
     layer.cloud = { state: 'idle', at: null, err: '' };
     await sync();
     if (layer.cloud.state === 'ok') say('Готово: слой Спутника теперь общий для всех компьютеров.');
-  } catch (e) { say('Не удалось войти: ' + e); }
+  } catch (e) { if (!/Вход прерван/.test(String(e))) say('Не удалось войти: ' + e); }
 }
 
 /** Выход из Google: облачная копия забывается. */

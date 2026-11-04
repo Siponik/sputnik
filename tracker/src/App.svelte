@@ -66,6 +66,7 @@
 
   let phase = $state('loading'); // loading | setup | ready
   let authInfo = $state({ has_secret: false, signed_in: false });
+  let authWhy = $state(''); // почему снова просим вход (например, Google дал не все доступы)
   let view = $state('today'); // today | calendar | board | archive | habits | templates | listset | sphere
   // Списки и задачи — в сторе tasks; lists и tasks — его текущие значения (tasks[listId] = … менять можно).
   const lists = $derived(taskStore.board.lists);
@@ -218,7 +219,7 @@
   syncStore.configure({
     pull: pullAll,
     ready: () => phase === 'ready',
-    onAuthLost: async () => { phase = 'setup'; authInfo = await api.auth.status(); },
+    onAuthLost: async () => { authWhy = sync.err; phase = 'setup'; authInfo = await api.auth.status(); },
   });
   const refresh = syncStore.refresh;
 
@@ -1446,7 +1447,7 @@
 {#if phase === 'loading'}
   <div class="setup"><span class="spinner" aria-label="Загрузка"></span></div>
 {:else if phase === 'setup'}
-  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} onready={setupDone} />
+  <Setup status={authInfo} firstRun={!lay.settings?.setup?.done} why={authWhy} onready={setupDone} />
 {:else if choosing}
   <Setup status={authInfo} firstRun hidden={hiddenNow} onready={setupDone} oncancel={() => (choosing = false)} />
 {:else}
