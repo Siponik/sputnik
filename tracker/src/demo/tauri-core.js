@@ -150,7 +150,7 @@ export async function invoke(cmd, args = {}) {
     case 'auth_status': return { has_secret: true, signed_in: true };
     case 'layer_read': return structuredClone(layer);
     case 'layer_write': layer = structuredClone(args.data); return null;
-    case 'login': case 'logout': case 'save_client_secret': return null;
+    case 'login': case 'logout': case 'save_client_secret': case 'forget_client_secret': case 'login_cancel': return null;
     case 'backups_last': return new Date().toISOString().slice(0, 10);
     case 'open_place': console.info('[demo] открыть', args.place); return null;
     // Картинки задач (lib/previewDrive.js): файл на «Drive» — base64 в памяти.

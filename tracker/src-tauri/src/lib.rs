@@ -2,6 +2,7 @@ mod backup;
 mod beta;
 mod google;
 mod pin;
+mod scopes;
 
 use serde_json::Value;
 use tauri::Manager;
@@ -101,6 +102,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             google::auth_status,
             google::save_client_secret,
+            google::forget_client_secret,
+            google::login_cancel,
             google::login,
             google::logout,
             google::gapi,
