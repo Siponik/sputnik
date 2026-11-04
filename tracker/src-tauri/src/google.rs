@@ -12,12 +12,17 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager, State};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
-const SCOPES: &str = "https://www.googleapis.com/auth/tasks https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.email";
+use crate::scopes;
+
 const AUTH_URL: &str = "https://accounts.google.com/o/oauth2/v2/auth";
 const TOKEN_URL: &str = "https://oauth2.googleapis.com/token";
 const SIGN_IN_AGAIN: &str = "Войдите в Google заново";
+/// Вход прервали из приложения («Отмена», новый вход, смена ключа) — интерфейс это не показывает.
+const LOGIN_STOPPED: &str = "Вход прерван";
+/// Больше этого client_secret.json не бывает — значит, выбрали не тот файл.
+const SECRET_MAX: usize = 64 * 1024;
 /// Общий ключ приложения (содержимое client_secret.json), встраивается при сборке из секрета GOOGLE_CLIENT_JSON.
 /// Свой client_secret.json в папке настроек главнее. Для приложений на компьютере это не тайна — так задумано Google.
 const BUILT_IN_SECRET: Option<&str> = option_env!("SPUTNIK_GOOGLE_CLIENT");
@@ -26,6 +31,8 @@ const BUILT_IN_SECRET: Option<&str> = option_env!("SPUTNIK_GOOGLE_CLIENT");
 pub struct Google {
     http: reqwest::Client,
     token: Mutex<Option<Token>>,
+    /// Идущий вход: отправить сюда — и он остановится.
+    stop_login: Mutex<Option<oneshot::Sender<()>>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -33,6 +40,9 @@ struct Token {
     access_token: String,
     refresh_token: Option<String>,
     expires_at: u64,
+    /// Какие доступы выдал Google (через пробел). У токенов до 0.8 — нет.
+    #[serde(default)]
+    scope: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -53,6 +63,7 @@ struct TokenResponse {
     access_token: String,
     expires_in: Option<u64>,
     refresh_token: Option<String>,
+    scope: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -61,6 +72,12 @@ pub struct AuthStatus {
     signed_in: bool,
     /// Ключ встроен в сборку и своего файла нет.
     built_in: bool,
+    /// В сборку встроен общий ключ (можно вернуться к нему со своего файла).
+    built_in_ok: bool,
+    /// Лежит свой client_secret.json.
+    own: bool,
+    /// Вход есть, но Google дал не все доступы — названия недостающих.
+    missing: Vec<String>,
 }
 
 fn now() -> u64 {
@@ -74,11 +91,26 @@ fn config_dir(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 fn parse_secret(text: &str) -> Result<Secret, String> {
+    if text.len() > SECRET_MAX {
+        return Err("Файл слишком большой — это не client_secret.json. Нужен маленький файл ключа из Google Cloud".to_string());
+    }
+    let text = text.trim_start_matches('\u{feff}');
     let file: SecretFile = serde_json::from_str(text)
-        .map_err(|_| "Это не похоже на client_secret.json из Google Cloud".to_string())?;
-    file.installed
-        .or(file.web)
-        .ok_or_else(|| "В файле нет раздела «installed» — нужен ключ типа Desktop app".to_string())
+        .map_err(|_| "Это не похоже на client_secret.json из Google Cloud: в файле не тот JSON".to_string())?;
+    let secret = match (file.installed, file.web) {
+        (Some(s), _) => s,
+        (None, Some(_)) => {
+            return Err("Это ключ типа «Веб-приложение», а нужен «Приложение для компьютера» (Desktop app). Создай в Google Cloud клиента Desktop app и скачай его JSON".to_string())
+        }
+        (None, None) => {
+            return Err("В файле нет раздела «installed» — нужен ключ OAuth типа Desktop app из Google Cloud → Clients".to_string())
+        }
+    };
+    let id = secret.client_id.trim();
+    if id.is_empty() || !id.ends_with(".apps.googleusercontent.com") || id.chars().any(char::is_whitespace) {
+        return Err("В файле неправильный client_id — скачай JSON клиента заново".to_string());
+    }
+    Ok(Secret { client_id: id.to_string(), client_secret: secret.client_secret.trim().to_string() })
 }
 
 fn built_in_secret() -> Option<Secret> {
@@ -138,19 +170,61 @@ async fn google_error(resp: reqwest::Response) -> String {
 #[tauri::command]
 pub fn auth_status(app: AppHandle) -> AuthStatus {
     let own = own_secret(&app).is_ok();
-    let built_in = !own && built_in_secret().is_some();
-    let signed_in = load_token(&app).map(|t| t.refresh_token.is_some()).unwrap_or(false);
-    AuthStatus { has_secret: own || built_in, signed_in, built_in }
+    let built_in_ok = built_in_secret().is_some();
+    let built_in = !own && built_in_ok;
+    let token = load_token(&app).filter(|t| t.refresh_token.is_some());
+    let missing: Vec<String> = token
+        .as_ref()
+        .and_then(|t| t.scope.as_deref())
+        .map(|g| scopes::missing(g).into_iter().map(str::to_string).collect())
+        .unwrap_or_default();
+    let signed_in = token.is_some() && missing.is_empty();
+    AuthStatus { has_secret: own || built_in, signed_in, built_in, built_in_ok, own, missing }
+}
+
+/// Остановить идущий вход (если есть). Порт входа освобождается.
+async fn stop_login(google: &Google) {
+    if let Some(tx) = google.stop_login.lock().await.take() {
+        let _ = tx.send(());
+    }
 }
 
 #[tauri::command]
-pub fn save_client_secret(app: AppHandle, contents: String) -> Result<(), String> {
+pub async fn save_client_secret(app: AppHandle, google: State<'_, Google>, contents: String) -> Result<(), String> {
     parse_secret(&contents)?;
-    std::fs::write(config_dir(&app)?.join("client_secret.json"), contents).map_err(|e| e.to_string())
+    stop_login(&google).await;
+    let dir = config_dir(&app)?;
+    std::fs::write(dir.join("client_secret.json"), contents.trim_start_matches('\u{feff}')).map_err(|e| e.to_string())?;
+    // Новый ключ — старый вход от другого клиента не подойдёт.
+    *google.token.lock().await = None;
+    drop_token_file(&app);
+    Ok(())
+}
+
+/// Убрать свой client_secret.json и вернуться к ключу, встроенному в сборку.
+#[tauri::command]
+pub async fn forget_client_secret(app: AppHandle, google: State<'_, Google>) -> Result<(), String> {
+    stop_login(&google).await;
+    let dir = config_dir(&app)?;
+    let had = dir.join("client_secret.json").exists();
+    let _ = std::fs::remove_file(dir.join("client_secret.json"));
+    if had {
+        *google.token.lock().await = None;
+        drop_token_file(&app);
+    }
+    Ok(())
+}
+
+/// Кнопка «Отмена», пока ждём вход в браузере.
+#[tauri::command]
+pub async fn login_cancel(google: State<'_, Google>) -> Result<(), String> {
+    stop_login(&google).await;
+    Ok(())
 }
 
 #[tauri::command]
 pub async fn logout(app: AppHandle, google: State<'_, Google>) -> Result<(), String> {
+    stop_login(&google).await;
     *google.token.lock().await = None;
     drop_token_file(&app);
     Ok(())
@@ -172,17 +246,33 @@ pub async fn login(app: AppHandle, google: State<'_, Google>) -> Result<(), Stri
         .append_pair("client_id", &secret.client_id)
         .append_pair("redirect_uri", &redirect)
         .append_pair("response_type", "code")
-        .append_pair("scope", SCOPES)
+        .append_pair("scope", &scopes::requested())
         .append_pair("code_challenge", &challenge)
         .append_pair("code_challenge_method", "S256")
         .append_pair("access_type", "offline")
         .append_pair("prompt", "consent")
         .append_pair("state", &state);
+    // Прошлый вход (если завис в браузере) останавливаем — ждём только этот.
+    stop_login(&google).await;
+    let (tx, rx) = oneshot::channel::<()>();
+    *google.stop_login.lock().await = Some(tx);
     open::that(url.as_str()).map_err(|e| format!("Не удалось открыть браузер: {e}"))?;
 
-    let code = tokio::time::timeout(Duration::from_secs(300), wait_for_code(&listener, &state))
-        .await
-        .map_err(|_| "Вход не завершён за 5 минут, попробуйте ещё раз".to_string())??;
+    let waited = tokio::select! {
+        r = tokio::time::timeout(Duration::from_secs(300), wait_for_code(&listener, &state)) => {
+            r.map_err(|_| "Вход не завершён за 5 минут, попробуйте ещё раз".to_string())
+        }
+        _ = rx => Err(LOGIN_STOPPED.to_string()),
+    };
+    drop(listener);
+    {
+        // Убираем свою «кнопку стоп» (её приёмник уже закрыт), чужую — от нового входа — не трогаем.
+        let mut slot = google.stop_login.lock().await;
+        if slot.as_ref().map_or(false, |t| t.is_closed()) {
+            slot.take();
+        }
+    }
+    let code = waited??;
 
     let resp = google
         .http
@@ -202,10 +292,20 @@ pub async fn login(app: AppHandle, google: State<'_, Google>) -> Result<(), Stri
         return Err(google_error(resp).await);
     }
     let tr: TokenResponse = resp.json().await.map_err(|e| e.to_string())?;
+    // Google даёт снять галочки с доступов — без них Спутник работать не сможет, вход не засчитываем.
+    if let Some(granted) = tr.scope.as_deref() {
+        let lack = scopes::missing(granted);
+        if !lack.is_empty() {
+            *google.token.lock().await = None;
+            drop_token_file(&app);
+            return Err(scopes::missing_text(&lack));
+        }
+    }
     let token = Token {
         access_token: tr.access_token,
         refresh_token: tr.refresh_token,
         expires_at: now() + tr.expires_in.unwrap_or(3600),
+        scope: tr.scope,
     };
     store_token(&app, &token)?;
     *google.token.lock().await = Some(token);
@@ -297,6 +397,7 @@ async fn access_token(app: &AppHandle, google: &Google) -> Result<String, String
         access_token: tr.access_token,
         refresh_token: tr.refresh_token.or(current.refresh_token),
         expires_at: now() + tr.expires_in.unwrap_or(3600),
+        scope: tr.scope.or(current.scope),
     };
     store_token(app, &token)?;
     let access = token.access_token.clone();
@@ -361,7 +462,15 @@ async fn send(app: &AppHandle, google: &State<'_, Google>, method: &str, url: &s
             }
         }
         if !status.is_success() {
-            return Err(google_error(resp).await);
+            let msg = google_error(resp).await;
+            // Вход без нужной галочки (Google даёт их снять): токен бесполезен — забываем,
+            // приложение по словам «Войдите в Google заново» само откроет вход.
+            if status == reqwest::StatusCode::FORBIDDEN && scopes::is_insufficient(&msg) {
+                *google.token.lock().await = None;
+                drop_token_file(app);
+                return Err(scopes::missing_text(&[]));
+            }
+            return Err(msg);
         }
         return Ok(resp);
     }

@@ -1,5 +1,5 @@
 /* Первый запуск (дизайн v2, design/screens/Setup.dc.html) и полоса «нет связи». */
-.setup2 { min-height: 100%; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(70% 90% at 78% 30%, color-mix(in srgb, var(--clay) 8%, var(--bg)), var(--bg) 70%); }
+.setup2 { height: 100%; box-sizing: border-box; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(70% 90% at 78% 30%, color-mix(in srgb, var(--clay) 8%, var(--bg)), var(--bg) 70%); }
 .setup2 > header { padding: 22px 32px; display: flex; align-items: center; }
 .setup2 > main { flex: 1; width: 100%; max-width: 1080px; margin: 0 auto; box-sizing: border-box; padding: 20px 32px 48px; display: flex; flex-wrap: wrap-reverse; align-items: center; gap: 48px; }
 .setup2 .steps { flex: 1 1 440px; min-width: 0; display: flex; flex-direction: column; gap: 14px; }
@@ -35,3 +35,7 @@
 .stip { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 10px; background: var(--raised); border: 1px solid var(--edge); font-size: 13.5px; line-height: 19px; }
 .kbd { font: 600 11.5px/1 var(--font-mono); padding: 4px 6px; border-radius: 6px; border: 1px solid var(--edge); background: var(--wash); color: var(--ink); }
 
+/* Ошибка прямо в шаге (не тот файл, не все доступы) — можно сразу попробовать снова. */
+.setup2 .sd.err { display: block; padding: 8px 10px; border-radius: 8px; color: var(--ink); background: color-mix(in srgb, var(--signal-overdue) 12%, transparent); border: 1px solid color-mix(in srgb, var(--signal-overdue) 45%, var(--edge)); }
+/* Много списков или календарей (например, по календарю на каждый школьный предмет) — прокрутка внутри группы. */
+.setup2 .picks { max-height: min(40vh, 320px); overflow-y: auto; padding-right: 6px; scrollbar-width: thin; }
