@@ -1,0 +1,32 @@
+# Проверка нового приложения на Flutter (app/): анализ кода и тесты, включая золотые тесты порта логики.
+# Запускается только когда в PR есть изменения в app/ или в tools/golden/. Ничего не публикует.
+name: Проверка Flutter-приложения
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'tools/golden/**'
+      - '.github/workflows/app-check.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      TZ: Europe/Moscow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+      - run: flutter pub get
+      - name: Анализ кода
+        run: flutter analyze
+      - name: Тесты
+        run: flutter test
