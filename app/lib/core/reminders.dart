@@ -108,8 +108,9 @@ DateTime? fireAt(Object? remind, Map task, [Map? slot]) {
 
 DateTime? _parseLocal(String s) {
   final m = RegExp(r'^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)$').firstMatch(s);
-  if (m != null)
+  if (m != null) {
     return DateTime(int.parse(m[1]!), int.parse(m[2]!), int.parse(m[3]!), int.parse(m[4]!), int.parse(m[5]!));
+  }
   return DateTime.tryParse(s);
 }
 
