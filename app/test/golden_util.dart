@@ -10,7 +10,12 @@ Object? canon(Object? x) {
   // pow в JS и Dart может разойтись в последнем знаке
   if (x is double && x.isFinite) return double.parse(x.toStringAsPrecision(12));
   // undefined в JS пропадает из JSON, а null в Dart остаётся: ключ со значением null считаем отсутствующим.
-  if (x is Map) return {for (final e in x.entries) if (e.value != null) e.key.toString(): canon(e.value)};
+  if (x is Map) {
+    return {
+      for (final e in x.entries)
+        if (e.value != null) e.key.toString(): canon(e.value),
+    };
+  }
   if (x is List) return x.map(canon).toList();
   return x;
 }
