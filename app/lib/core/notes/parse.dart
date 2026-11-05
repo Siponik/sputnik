@@ -150,20 +150,23 @@ dynamic plainYaml(dynamic v) {
 final _frontOpen = RegExp(r'^---[ \t]*\r?\n');
 final _frontClose = RegExp(r'^(---|\.\.\.)[ \t]*(\r?\n|$)', multiLine: true);
 
-/// Шапка YAML: `(raw, bodyStart)` или null, если её нет. Шапка — только в самом начале файла.
-(String, int)? splitFront(String text) {
-  var s = text;
-  var off = 0;
-  if (s.startsWith('\uFEFF')) {
-    s = s.substring(1);
-    off = 1;
-  }
+/// Где шапка YAML: начало и конец её текста (между `---`) и начало остального текста. Нет шапки — null.
+/// Шапка — только в самом начале файла (после необязательного BOM).
+({int rawStart, int rawEnd, int bodyStart})? frontSpan(String text) {
+  final off = text.startsWith('\uFEFF') ? 1 : 0;
+  final s = text.substring(off);
   final m = _frontOpen.matchAsPrefix(s);
   if (m == null) return null;
   final c = _frontClose.firstMatch(s.substring(m.end));
   if (c == null) return null;
-  final raw = s.substring(m.end, m.end + c.start);
-  return (raw, off + m.end + c.end);
+  return (rawStart: off + m.end, rawEnd: off + m.end + c.start, bodyStart: off + m.end + c.end);
+}
+
+/// Шапка YAML: `(raw, bodyStart)` или null, если её нет.
+(String, int)? splitFront(String text) {
+  final f = frontSpan(text);
+  if (f == null) return null;
+  return (text.substring(f.rawStart, f.rawEnd), f.bodyStart);
 }
 
 final _tagChar = RegExp(r'[\p{L}\p{N}_\-/]', unicode: true);

@@ -46,7 +46,7 @@ void main() {
     });
 
     test('BOM и переводы строк Windows', () {
-      const text = '﻿---\r\ntype: идея\r\n---\r\nСтрока [[Щит]]\r\n';
+      const text = '\uFEFF---\r\ntype: идея\r\n---\r\nСтрока [[Щит]]\r\n';
       final d = parseNote('a.md', text);
       expect(d.props['type'], 'идея');
       expect(d.links.single.target, 'Щит');

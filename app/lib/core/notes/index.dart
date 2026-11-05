@@ -197,6 +197,16 @@ class NoteIndex {
     ];
   }
 
+  /// Все ссылки на файл [path] по заметкам — для переименования с обновлением ссылок (без ссылок заметки на себя).
+  Map<String, List<NoteLink>> referencing(String path) {
+    _build();
+    final out = <String, List<NoteLink>>{};
+    for (final r in _in[path] ?? const <ResolvedLink>[]) {
+      out.putIfAbsent(r.from, () => []).add(r.link);
+    }
+    return out;
+  }
+
   /// Кто ссылается на заметку: по строке ссылки, порядок — по пути и строке.
   List<Backlink> backlinks(String path) {
     _build();
