@@ -1,5 +1,208 @@
 {
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-05T17:06:00Z"
+ },
+ "title": "Спутник · новый дизайн",
+ "launch": {
+  "view": "canvas",
+  "page": "r4"
+ },
+ "pages": [
+  {
+   "id": "r4",
+   "name": "Система G · все экраны"
+  },
+  {
+   "id": "kb",
+   "name": "Знания"
+  },
+  {
+   "id": "r3",
+   "name": "Заход 3"
+  },
+  {
+   "id": "r2",
+   "name": "Заход 2"
+  },
+  {
+   "id": "r1",
+   "name": "Заход 1"
+  }
+ ],
  "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "1 · Чертёж — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Focus.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "2 · Фокус — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Dial.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "3 · Циферблат — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Bento.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "4 · Бенто — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Hud.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "5 · Пульт (HUD) — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Soft.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "6 · Мягкий свет — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Blue.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "1 · Чертёж 2.0 (синий) — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Windows.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "2 · Ретро-окна — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Poster.dc.html": {
+   "x": 2720,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "3 · Постер — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Pixel.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "4 · Пиксель — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Soft2.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "5 · Мягкий объём, тёмный — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Nodes.dc.html": {
+   "x": 2720,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "6 · Свой: Ноды — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Nodes2.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "A · Ноды 2.0 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Blue2.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "B · Чертёж 2.0, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Windows2.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "C · Ретро-окна, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Poster2.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "D · Постер, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "HybridNB.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "E · Ноды в стиле чертежа — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "HybridBN.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "F · Чертёж с нодами — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "NodesStrict.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "G · Ноды со строгостью чертежа — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
   "G_Today.dc.html": {
    "x": 0,
    "y": 0,
@@ -329,12 +532,12 @@
    "y": 0,
    "w": 1280,
    "h": 820,
-   "title": "Знания · папки, заметка, связи",
+   "title": "Знания · заметка (основной экран)",
    "expand": "fill",
    "page": "kb"
   },
   "G_NotesGraph.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 940,
    "w": 1280,
    "h": 820,
@@ -343,8 +546,8 @@
    "page": "kb"
   },
   "G_NotesGraphNear.dc.html": {
-   "x": 1360,
-   "y": 940,
+   "x": 0,
+   "y": 1880,
    "w": 1280,
    "h": 820,
    "title": "Знания · граф вблизи: ноды и провода",
@@ -352,7 +555,7 @@
    "page": "kb"
   },
   "G_NotesCanvas.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 1880,
    "w": 1280,
    "h": 820,
@@ -361,8 +564,8 @@
    "page": "kb"
   },
   "G_NotesCards.dc.html": {
-   "x": 1360,
-   "y": 1880,
+   "x": 0,
+   "y": 2820,
    "w": 1280,
    "h": 820,
    "title": "Знания · карточки с картинками",
@@ -370,7 +573,7 @@
    "page": "kb"
   },
   "G_NotesTable.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 2820,
    "w": 1280,
    "h": 820,
@@ -379,8 +582,8 @@
    "page": "kb"
   },
   "G_NotesSearch.dc.html": {
-   "x": 1360,
-   "y": 2820,
+   "x": 0,
+   "y": 3760,
    "w": 1280,
    "h": 820,
    "title": "Знания · поиск Ctrl K, заметки в задаче, бот",
@@ -388,7 +591,7 @@
    "page": "kb"
   },
   "G_NotesZoom.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 3760,
    "w": 1280,
    "h": 820,
@@ -397,8 +600,8 @@
    "page": "kb"
   },
   "G_NotesStates.dc.html": {
-   "x": 1360,
-   "y": 3760,
+   "x": 0,
+   "y": 4700,
    "w": 1280,
    "h": 820,
    "title": "Знания · состояния: первый запуск, пусто, конфликты, индексация",
@@ -406,7 +609,7 @@
    "page": "kb"
   },
   "G_NotesWindows.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 4700,
    "w": 1280,
    "h": 820,
@@ -415,8 +618,8 @@
    "page": "kb"
   },
   "G_NotesSync.dc.html": {
-   "x": 1360,
-   "y": 4700,
+   "x": 0,
+   "y": 5640,
    "w": 1280,
    "h": 820,
    "title": "Знания · синхронизация с Drive: состояние, конфликт, Drive полон",
@@ -431,9 +634,37 @@
    "title": "Знания · как это работает (читать первым)",
    "expand": "fill",
    "page": "kb"
+  },
+  "G_NotesLinks.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · заметка с открытой панелью «Связи»",
+   "expand": "fill",
+   "page": "kb"
   }
  },
  "order": [
+  "Main.dc.html",
+  "Focus.dc.html",
+  "Dial.dc.html",
+  "Bento.dc.html",
+  "Hud.dc.html",
+  "Soft.dc.html",
+  "Blue.dc.html",
+  "Windows.dc.html",
+  "Poster.dc.html",
+  "Pixel.dc.html",
+  "Soft2.dc.html",
+  "Nodes.dc.html",
+  "Nodes2.dc.html",
+  "Blue2.dc.html",
+  "Windows2.dc.html",
+  "Poster2.dc.html",
+  "HybridNB.dc.html",
+  "HybridBN.dc.html",
+  "NodesStrict.dc.html",
   "G_Today.dc.html",
   "G_CalWeek.dc.html",
   "G_CalMonth.dc.html",
@@ -481,16 +712,34 @@
   "G_NotesStates.dc.html",
   "G_NotesWindows.dc.html",
   "G_NotesSync.dc.html",
-  "G_NotesHow.dc.html"
+  "G_NotesHow.dc.html",
+  "G_NotesLinks.dc.html"
  ],
- "pages": [
-  {
-   "id": "r4",
-   "name": "Система G · все экраны"
+ "notes": {
+  "head": {
+   "x": 0,
+   "y": -260,
+   "text": "Спутник: шесть разных подходов к экрану «Сегодня»",
+   "kind": "title1",
+   "maxW": 2640,
+   "page": "r1"
   },
-  {
-   "id": "kb",
-   "name": "Знания"
+  "head2": {
+   "x": 0,
+   "y": -260,
+   "text": "Заход 2: тёмная тема, не чёрная — по референсам и свои",
+   "kind": "title1",
+   "maxW": 4000,
+   "page": "r2"
+  },
+  "head3": {
+   "x": 0,
+   "y": -260,
+   "text": "Заход 3: «Сегодня» в четырёх доведённых вариантах — выбрать один",
+   "kind": "title1",
+   "maxW": 2640,
+   "page": "r3"
   }
- ]
+ },
+ "designSystems": []
 }

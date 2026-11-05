@@ -31,7 +31,7 @@ def save3(fname, html, title, i):
     c = json.load(open(P + 'canvas.json'))
     if not any(p['id'] == 'kb' for p in c['pages']):
         c['pages'].append({'id': 'kb', 'name': 'Знания'})
-    i = i + 1
+    i = {-1: 0, 0: 1, 0.5: 2}.get(i, i + 2)
     c["boards"][fname] = {"x": (i % 2) * 1360, "y": (i // 2) * 940, "w": 1280, "h": 820, "title": title, "expand": "fill", "page": 'kb'}
     if fname not in c['order']:
         c['order'].append(fname)
@@ -152,15 +152,100 @@ for dx, dy, c in nb:
 mg += f'<circle cx="{cx}" cy="{cy}" r="9" fill="{OR}" stroke="{ORI}" stroke-width="2"/>'
 mini = f'<svg width="260" height="180" aria-hidden="true">{mg}</svg><div style="padding: 0 12px 10px; display: flex; align-items: center; gap: 8px"><span style="font-size: 12px; color: {MUT}">Глубина 1 · 7 заметок</span><span style="margin-left: auto">{btn("Весь граф G", "ghost", True, "; color: " + OR)}</span></div>'
 
-st = node(0, 0, 220, 700, nhead('01', 'ПАПКИ', '152', GREY, None, 34) + tree)
-st += node(236, 0, 280, 700, nhead('02', 'ТЕХНИКИ', '14', OR, None, 34) + lst)
-st += node(532, 0, 440, 700, editor, hub=True)
-st += node(988, 0, 260, 430, nhead('04', 'СВЯЗИ', '11', OR, None, 34) + links)
-st += node(988, 446, 260, 254, nhead('05', 'ЛОКАЛЬНЫЙ ГРАФ', 'G', OR, None, 34) + mini)
-st += svg(wire(516, 52, 532, 52, OR) + wire(972, 80, 988, 17, OR) + wire(972, 600, 988, 463, OR, dash=True))
-st += sock('l', 46, OR, abs_left=527) + sock('l', 12, OR, abs_left=983) + sock('l', 458, OR, abs_left=983)
+# --- основной экран: одна боковая колонка + широкая заметка, связи по кнопке ---
+def frow(name, c, n='', depth=0, open_=None, on=False, note=False):
+    bg = f'background: {WASH}; box-shadow: inset 2px 0 0 {OR};' if on else ''
+    ar = '' if open_ is None else ('▾' if open_ else '▸')
+    ic = (f'<span style="width: 12px; color: {DIM}; font-size: 11px">¶</span>' if note
+          else (dot(c, 7) if depth == 0 else f'<span style="width: 12px; color: {DIM}; font-size: 11px">▭</span>'))
+    col = INK if on or depth == 0 else '#C9CAD0'
+    return (f'<div style="height: 28px; display: flex; align-items: center; gap: 7px; padding: 0 10px 0 {8 + depth * 14}px; border-radius: 6px; margin: 0 6px; {bg}">'
+            f'<span style="width: 10px; color: {DIM}; font-size: 10px">{ar}</span>{ic}'
+            f'<span style="color: {col}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{name}</span>'
+            f'<span style="margin-left: auto; font: 400 11px {MONO}; color: {DIM}">{n}</span></div>')
+
+
+plus = f'<span style="flex: none; width: 32px; height: 32px; border-radius: 8px; background: {OR}; color: #2A1A0A; display: grid; place-items: center; font-size: 16px; font-weight: 600">＋</span>'
+side = f'<div style="padding: 10px 10px 6px; display: flex; gap: 6px">{search_inp("Найти заметку  Ctrl K")}{plus}</div>'
+side += f'<div style="padding: 8px 16px 4px">{micro("НЕДАВНИЕ", MUT)}</div>'
+for t, on in [('Запекание нормалей', True), ('Пайплайн ассета', False), ('Сессия 12: порт', False)]:
+    side += frow(t, OR, '', 0, None, on, True)
+side += f'<div style="padding: 12px 16px 4px; border-top: 1px solid {LINE}; margin-top: 8px">{micro("ПАПКИ", MUT)}</div>'
+side += frow('00 Входящие', GREY, 4)
+side += frow('3D', OR, 38, 0, True)
+side += frow('Ассеты', OR, 11, 1, False)
+side += frow('Техники', OR, 14, 1, True)
+for t in ['Запекание нормалей', 'Умные маски Substance', 'UV без растяжений', 'Ретопология под анимацию', 'Хард-сёрфейс: фаски']:
+    side += frow(t, OR, '', 2, None, t == 'Запекание нормалей', True)
+side += f'<div style="padding: 2px 0 4px 60px; font-size: 12px; color: {MUT}">ещё 9</div>'
+side += frow('Референсы', OR, 9, 1, False)
+for name, c, n in FOLD[2:6]:
+    side += frow(name, c, n, 0, False)
+side += (f'<div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid {LINE}; padding: 10px 14px; display: flex; align-items: center; gap: 8px">'
+         f'{micro("OBSIDIAN-VAULT · 152", MUT)}<span style="margin-left: auto">{micro("ТЕГИ ▸", MUT)}</span></div>')
+
+
+def tabs(active):
+    out = ''
+    for t in ['Запекание нормалей', 'Пайплайн ассета', 'Сессия 12: порт']:
+        if t == active:
+            out += f'<span style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 7px; background: rgba(255,255,255,.92); color: #5A3412; font: 500 13px {SANS}">{t}<span style="font-size: 11px; opacity: .6">✕</span></span>'
+        else:
+            out += f'<span style="height: 30px; display: flex; align-items: center; padding: 0 12px; color: rgba(255,255,255,.82); font: 400 13px {SANS}">{t}</span>'
+    return (f'<div style="height: 44px; box-sizing: border-box; padding: 0 10px; border-radius: 11px 11px 0 0; background: {HUBFILL}; display: flex; align-items: center; gap: 4px">'
+            f'{out}<span style="padding: 0 10px; color: rgba(255,255,255,.8); font-size: 15px">＋</span></div>')
+
+
+def tool(links_on):
+    lb = (btn('↔ Связи · 11', 'acc', True) if links_on else btn('↔ Связи · 11', 'sec', True))
+    return (f'<div style="height: 44px; box-sizing: border-box; padding: 0 14px 0 20px; border-bottom: 1px solid {LINE}; display: flex; align-items: center; gap: 10px">'
+            f'<span style="font-size: 12.5px; color: {MUT}">3D › Техники</span><span style="flex: 1"></span>'
+            f'{seg(["ПРАВКА", "ЧТЕНИЕ"], "ПРАВКА")}{lb}{btn("Граф", "ghost", True)}<span style="color: {MUT}; font-size: 15px; padding: 0 4px">⋯</span></div>')
+
+
+def chipv(t, c=None):
+    bd = c or LINE
+    return f'<span style="display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {bd}; font-size: 12.5px">{t}</span>'
+
+
+def body(w):
+    pr = (chipv(f'{dot(OR, 7)}Техника') + chipv(f'<span style="font: 400 12px {MONO}; color: {MUT}">#</span>baking') + chipv(f'<span style="font: 400 12px {MONO}; color: {MUT}">#</span>substance')
+          + chipv(f'{check()}Рендер щита') + f'<span style="font-size: 12.5px; color: {DIM}">＋ свойство</span>')
+    bl = ''
+    for t, s in [('Щит паладина', '…нормали пекла по [[Запекание нормалей]], кейдж 2%…'), ('Пайплайн ассета', '4. Запекание → [[Запекание нормалей]]')]:
+        bl += (f'<div style="padding: 8px 12px; border-radius: 8px; background: {HOVER}"><div style="display: flex; align-items: center; gap: 8px">{dot(OR)}<span style="font-weight: 600">{t}</span></div>'
+               f'<div style="margin-top: 2px; font-size: 12.5px; color: {MUT}">{s}</div></div>')
+    return f'''<div style="width: {w}px; margin: 0 auto; padding-top: 30px">
+  <div style="font: 600 28px {SANS}; letter-spacing: -.01em">Запекание нормалей</div>
+  <div style="margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center">{pr}</div>
+  <div style="margin-top: 20px; font-size: 14.5px; line-height: 24px; color: #D4D5DA">
+    <div style="font: 600 17px {SANS}; color: {INK}; margin-bottom: 4px">Порядок</div>
+    <div>1. Низкий полигонаж готов, UV без растяжений — см. {wl("UV без растяжений")}.</div>
+    <div>2. Кейдж чуть больше модели, сглаживание одной группой.</div>
+    <div>3. Пеку в Substance, потом {wl("Умные маски Substance")}.<span style="display: inline-block; width: 1.5px; height: 18px; background: {OR}; vertical-align: -3px; margin-left: 2px"></span></div>
+    <div style="font: 600 17px {SANS}; color: {INK}; margin: 14px 0 4px">Частые ошибки</div>
+    <div>— Волны на фасках: добавить петли или {wl("Хард-сёрфейс: фаски")}.</div>
+    <div>— Тёмные пятна в углах: увеличить кейдж ({wl("Справочник по кейджам", False)}).</div>
+    <div style="display: flex; gap: 10px; margin-top: 14px">{thumb("180px", 96, OR, "БЫЛО.PNG")}{thumb("180px", 96, OR, "СТАЛО.PNG")}</div>
+  </div>
+  <div style="margin-top: 26px; padding-top: 12px; border-top: 1px solid {LINE}">
+    <div style="display: flex; align-items: center">{micro("ССЫЛАЮТСЯ СЮДА · 6", MUT)}<span style="margin-left: auto; font-size: 12.5px; color: {OR}">все связи →</span></div>
+    <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px">{bl}</div>
+  </div>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 34px; box-sizing: border-box; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 12px; color: {DIM}">{dot(GREEN)}<span>Сохранено · Запекание нормалей.md</span><span style="margin-left: auto">312 слов</span></div>'''
+
+
+st = node(0, 0, 264, 700, nhead('', 'ЗАМЕТКИ', '152', GREY, None, 34) + side)
+st += node(280, 0, 968, 700, tabs('Запекание нормалей') + tool(False) + body(640), hub=True)
 NOTES = st
-save3('G_Notes.dc.html', page('Знания', 'ЗНАНИЯ', st, R), 'Знания · папки, заметка, связи', 0)
+save3('G_Notes.dc.html', page('Знания', 'ЗНАНИЯ', st, R), 'Знания · заметка (основной экран)', 0)
+
+st = node(0, 0, 264, 700, nhead('', 'ЗАМЕТКИ', '152', GREY, None, 34) + side)
+st += node(280, 0, 664, 700, tabs('Запекание нормалей') + tool(True) + body(560), hub=True)
+st += node(960, 0, 288, 700, nhead('', 'СВЯЗИ', 'ЗАКРЫТЬ ✕', OR, None, 34) + links
+           + f'<div style="border-top: 1px solid {LINE}; padding: 10px 16px 0">{micro("ЛОКАЛЬНЫЙ ГРАФ · ГЛУБИНА 1", MUT)}</div>' + mini)
+save3('G_NotesLinks.dc.html', page('Знания · связи', 'ЗНАНИЯ', st, R), 'Знания · заметка с открытой панелью «Связи»', 0.5)
 
 
 # =================== 2. ГРАФ ===================
