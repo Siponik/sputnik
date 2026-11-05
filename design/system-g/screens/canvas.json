@@ -323,6 +323,105 @@
    "title": "Сегодня · светлая тема",
    "expand": "fill",
    "page": "r4"
+  },
+  "G_Notes.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · папки, заметка, связи",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesGraph.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф (как в Obsidian)",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesGraphNear.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф вблизи: ноды и провода",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesCanvas.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · холст: свои схемы из заметок",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesCards.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · карточки с картинками",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesTable.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · таблица по свойствам",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesSearch.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · поиск Ctrl K, заметки в задаче, бот",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesZoom.dc.html": {
+   "x": 1360,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф: точки → названия → ноды",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesStates.dc.html": {
+   "x": 0,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · состояния: первый запуск, пусто, конфликты, индексация",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesWindows.dc.html": {
+   "x": 1360,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · окна: папка, переименование, шаблон",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesSync.dc.html": {
+   "x": 0,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · синхронизация с Drive: состояние, конфликт, Drive полон",
+   "expand": "fill",
+   "page": "kb"
   }
  },
  "order": [
@@ -361,12 +460,27 @@
   "G_SetUpdate.dc.html",
   "G_TaskMore.dc.html",
   "G_CalAdd.dc.html",
-  "G_TodayLight.dc.html"
+  "G_TodayLight.dc.html",
+  "G_Notes.dc.html",
+  "G_NotesGraph.dc.html",
+  "G_NotesGraphNear.dc.html",
+  "G_NotesCanvas.dc.html",
+  "G_NotesCards.dc.html",
+  "G_NotesTable.dc.html",
+  "G_NotesSearch.dc.html",
+  "G_NotesZoom.dc.html",
+  "G_NotesStates.dc.html",
+  "G_NotesWindows.dc.html",
+  "G_NotesSync.dc.html"
  ],
  "pages": [
   {
    "id": "r4",
    "name": "Система G · все экраны"
+  },
+  {
+   "id": "kb",
+   "name": "Знания"
   }
  ]
 }
