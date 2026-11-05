@@ -59,29 +59,44 @@ WhenResult parseWhen(String? text, [DateTime? today]) {
   // Время: 15:00 (двоеточие — всегда время), 15.00 / 17.30 (точка — время, только если час 6–23 и минуты кратны 5,
   // иначе это дата: «3.11» — 3 ноября), «в 15».
   take(RegExp(r'\s(?:в\s)?([01]?\d|2[0-3]):([0-5]\d)(?=\s|[,.!?]\s)'), (m) => time = _hhmm(m[1]!, m[2]!)) ||
-      take(RegExp(r'\s(?:в\s)?([6-9]|0[6-9]|1\d|2[0-3])\.([0-5][05])(?=\s|[,!?]\s)'), (m) => time = _hhmm(m[1]!, m[2]!)) ||
       take(
-        RegExp(r'\sв\s([01]?\d|2[0-3])(?=\s)(?!\s*(?:янв|фев|мар|апр|ма|июн|июл|авг|сен|окт|ноя|дек))', caseSensitive: false),
+        RegExp(r'\s(?:в\s)?([6-9]|0[6-9]|1\d|2[0-3])\.([0-5][05])(?=\s|[,!?]\s)'),
+        (m) => time = _hhmm(m[1]!, m[2]!),
+      ) ||
+      take(
+        RegExp(
+          r'\sв\s([01]?\d|2[0-3])(?=\s)(?!\s*(?:янв|фев|мар|апр|ма|июн|июл|авг|сен|окт|ноя|дек))',
+          caseSensitive: false,
+        ),
         (m) => time = _hhmm(m[1]!, '00'),
       );
 
   take(RegExp(r'\s(послезавтра)(?=\s|[,.!?])', caseSensitive: false), (_) => day = _addDays(base, 2)) ||
       take(RegExp(r'\s(завтра)(?=\s|[,.!?])', caseSensitive: false), (_) => day = _addDays(base, 1)) ||
       take(RegExp(r'\s(сегодня)(?=\s|[,.!?])', caseSensitive: false), (_) => day = base) ||
-      take(RegExp(r'\sчерез\s(\d{1,3}|неделю|день)\s?(дн[еяй]+|день|недел[июь]+)?(?=\s|[,.!?])', caseSensitive: false), (m) {
-        final unit = m[2] ?? '';
-        final n = m[1] == 'неделю'
-            ? 7
-            : m[1] == 'день'
-                ? 1
-                : int.parse(m[1]!) * (RegExp('недел', caseSensitive: false).hasMatch(unit) ? 7 : 1);
-        day = _addDays(base, n);
-      }) ||
-      take(RegExp(r'\s(\d{1,2})\s(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-я]*\.?(?=\s|[,!?])', caseSensitive: false), (m) {
-        final k = m[2]!.toLowerCase();
-        final mi = RegExp(r'^ма[йя]').hasMatch(k) ? 4 : _months.indexOf(k.substring(0, 3)); // «марта» — март, не май
-        day = _nearestDate(base, mi, int.parse(m[1]!));
-      }) ||
+      take(
+        RegExp(r'\sчерез\s(\d{1,3}|неделю|день)\s?(дн[еяй]+|день|недел[июь]+)?(?=\s|[,.!?])', caseSensitive: false),
+        (m) {
+          final unit = m[2] ?? '';
+          final n = m[1] == 'неделю'
+              ? 7
+              : m[1] == 'день'
+              ? 1
+              : int.parse(m[1]!) * (RegExp('недел', caseSensitive: false).hasMatch(unit) ? 7 : 1);
+          day = _addDays(base, n);
+        },
+      ) ||
+      take(
+        RegExp(
+          r'\s(\d{1,2})\s(янв|фев|мар|апр|мая|май|июн|июл|авг|сен|окт|ноя|дек)[а-я]*\.?(?=\s|[,!?])',
+          caseSensitive: false,
+        ),
+        (m) {
+          final k = m[2]!.toLowerCase();
+          final mi = RegExp(r'^ма[йя]').hasMatch(k) ? 4 : _months.indexOf(k.substring(0, 3)); // «марта» — март, не май
+          day = _nearestDate(base, mi, int.parse(m[1]!));
+        },
+      ) ||
       take(RegExp(r'\s(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?(?=\s|[,!?])'), (m) {
         final y = m[3];
         if (y != null) {
@@ -107,7 +122,18 @@ WhenResult parseWhen(String? text, [DateTime? today]) {
 }
 
 const _monthsGen = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня', 'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
 ];
 const _wds = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 
@@ -124,12 +150,12 @@ const _wds = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
   final rel = diff == 0
       ? 'Сегодня'
       : diff == 1
-          ? 'Завтра'
-          : diff == 2
-              ? 'Послезавтра'
-              : diff == -1
-                  ? 'Вчера'
-                  : wd[0].toUpperCase() + wd.substring(1);
+      ? 'Завтра'
+      : diff == 2
+      ? 'Послезавтра'
+      : diff == -1
+      ? 'Вчера'
+      : wd[0].toUpperCase() + wd.substring(1);
   final year = y != t0.year ? ' $y' : '';
   return (
     date: '$rel, $d ${_monthsGen[m - 1]}$year',

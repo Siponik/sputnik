@@ -28,7 +28,11 @@ void main() {
       final today = _today(c['today'] as List<dynamic>);
       test('${c['today']} ${c['day']} ${c['slot']}', () {
         final slot = c['slot'] as Map<String, dynamic>?;
-        final got = whenText(c['day'] as String, slot == null ? null : (s: slot['s'] as String, e: slot['e'] as String), today);
+        final got = whenText(
+          c['day'] as String,
+          slot == null ? null : (s: slot['s'] as String, e: slot['e'] as String),
+          today,
+        );
         final want = c['out'] as Map<String, dynamic>;
         expect(got.date, want['date']);
         expect(got.time, want['time']);

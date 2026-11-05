@@ -14,7 +14,11 @@ void main() {
       final want = c['out'] as Map<String, dynamic>;
       expect(got.localChanged, want['localChanged']);
       expect(got.remoteChanged, want['remoteChanged']);
-      expect(sameJson(got.merged, want['merged']), isTrue, reason: 'merged:\n${jsonEncode(got.merged)}\nожидали:\n${jsonEncode(want['merged'])}');
+      expect(
+        sameJson(got.merged, want['merged']),
+        isTrue,
+        reason: 'merged:\n${jsonEncode(got.merged)}\nожидали:\n${jsonEncode(want['merged'])}',
+      );
     });
   }
 }
