@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 
-// Заглушка: настоящий интерфейс (дизайн G) строится по docs/flutter-architecture.md.
-void main() => runApp(const SputnikApp());
+import 'state/app_state.dart';
+import 'ui/today_page.dart';
 
-class SputnikApp extends StatelessWidget {
-  const SputnikApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Спутник',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(useMaterial3: true),
-      home: const Scaffold(body: Center(child: Text('Спутник'))),
-    );
-  }
+void main() {
+  final state = AppState()..load();
+  runApp(MaterialApp(
+    title: 'Спутник',
+    debugShowCheckedModeBanner: false,
+    theme: ThemeData(
+      brightness: Brightness.dark,
+      colorSchemeSeed: const Color(0xFFD9774F),
+      useMaterial3: true,
+    ),
+    home: TodayPage(state: state),
+  ));
 }
