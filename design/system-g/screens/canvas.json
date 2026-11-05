@@ -325,7 +325,7 @@
    "page": "r4"
   },
   "G_Notes.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 0,
    "w": 1280,
    "h": 820,
@@ -334,8 +334,8 @@
    "page": "kb"
   },
   "G_NotesGraph.dc.html": {
-   "x": 1360,
-   "y": 0,
+   "x": 0,
+   "y": 940,
    "w": 1280,
    "h": 820,
    "title": "Знания · граф (как в Obsidian)",
@@ -343,7 +343,7 @@
    "page": "kb"
   },
   "G_NotesGraphNear.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 940,
    "w": 1280,
    "h": 820,
@@ -352,8 +352,8 @@
    "page": "kb"
   },
   "G_NotesCanvas.dc.html": {
-   "x": 1360,
-   "y": 940,
+   "x": 0,
+   "y": 1880,
    "w": 1280,
    "h": 820,
    "title": "Знания · холст: свои схемы из заметок",
@@ -361,7 +361,7 @@
    "page": "kb"
   },
   "G_NotesCards.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 1880,
    "w": 1280,
    "h": 820,
@@ -370,8 +370,8 @@
    "page": "kb"
   },
   "G_NotesTable.dc.html": {
-   "x": 1360,
-   "y": 1880,
+   "x": 0,
+   "y": 2820,
    "w": 1280,
    "h": 820,
    "title": "Знания · таблица по свойствам",
@@ -379,7 +379,7 @@
    "page": "kb"
   },
   "G_NotesSearch.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 2820,
    "w": 1280,
    "h": 820,
@@ -388,8 +388,8 @@
    "page": "kb"
   },
   "G_NotesZoom.dc.html": {
-   "x": 1360,
-   "y": 2820,
+   "x": 0,
+   "y": 3760,
    "w": 1280,
    "h": 820,
    "title": "Знания · граф: точки → названия → ноды",
@@ -397,7 +397,7 @@
    "page": "kb"
   },
   "G_NotesStates.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 3760,
    "w": 1280,
    "h": 820,
@@ -406,8 +406,8 @@
    "page": "kb"
   },
   "G_NotesWindows.dc.html": {
-   "x": 1360,
-   "y": 3760,
+   "x": 0,
+   "y": 4700,
    "w": 1280,
    "h": 820,
    "title": "Знания · окна: папка, переименование, шаблон",
@@ -415,11 +415,20 @@
    "page": "kb"
   },
   "G_NotesSync.dc.html": {
-   "x": 0,
+   "x": 1360,
    "y": 4700,
    "w": 1280,
    "h": 820,
    "title": "Знания · синхронизация с Drive: состояние, конфликт, Drive полон",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesHow.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · как это работает (читать первым)",
    "expand": "fill",
    "page": "kb"
   }
@@ -471,7 +480,8 @@
   "G_NotesZoom.dc.html",
   "G_NotesStates.dc.html",
   "G_NotesWindows.dc.html",
-  "G_NotesSync.dc.html"
+  "G_NotesSync.dc.html",
+  "G_NotesHow.dc.html"
  ],
  "pages": [
   {

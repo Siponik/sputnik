@@ -31,7 +31,8 @@ def save3(fname, html, title, i):
     c = json.load(open(P + 'canvas.json'))
     if not any(p['id'] == 'kb' for p in c['pages']):
         c['pages'].append({'id': 'kb', 'name': 'Знания'})
-    c['boards'][fname] = {"x": (i % 2) * 1360, "y": (i // 2) * 940, "w": 1280, "h": 820, "title": title, "expand": "fill", "page": 'kb'}
+    i = i + 1
+    c["boards"][fname] = {"x": (i % 2) * 1360, "y": (i // 2) * 940, "w": 1280, "h": 820, "title": title, "expand": "fill", "page": 'kb'}
     if fname not in c['order']:
         c['order'].append(fname)
     json.dump(c, open(P + 'canvas.json', 'w'), ensure_ascii=False, indent=1)
