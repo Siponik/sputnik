@@ -1,0 +1,372 @@
+{
+ "boards": {
+  "G_Today.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Сегодня",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalWeek.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · неделя",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalMonth.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · месяц",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Kanban.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · канбан",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Conveyor.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · конвейер",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Stickers.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · стикеры",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Habits.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Привычки · карточки и панель",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TaskPanel.dc.html": {
+   "x": 1360,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно задачи",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Create.dc.html": {
+   "x": 0,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно «Создать»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Settings.dc.html": {
+   "x": 1360,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Setup.dc.html": {
+   "x": 0,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Первый запуск",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_DateTime.dc.html": {
+   "x": 1360,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Выбор даты и времени",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Pickers.dc.html": {
+   "x": 0,
+   "y": 5640,
+   "w": 1280,
+   "h": 820,
+   "title": "Выбор списка, меню задачи, выпадающие списки",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Search.dc.html": {
+   "x": 1360,
+   "y": 5640,
+   "w": 1280,
+   "h": 820,
+   "title": "Поиск",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Status.dc.html": {
+   "x": 0,
+   "y": 6580,
+   "w": 1280,
+   "h": 820,
+   "title": "Состояние, обновление, таймер в шапке",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Feedback.dc.html": {
+   "x": 1360,
+   "y": 6580,
+   "w": 1280,
+   "h": 820,
+   "title": "Удаление, плашки, «нет связи»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Spheres.dc.html": {
+   "x": 0,
+   "y": 7520,
+   "w": 1280,
+   "h": 820,
+   "title": "Сферы",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Templates.dc.html": {
+   "x": 1360,
+   "y": 7520,
+   "w": 1280,
+   "h": 820,
+   "title": "Шаблоны досок и редактор",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ListSettings.dc.html": {
+   "x": 0,
+   "y": 8460,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки списка",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Archive.dc.html": {
+   "x": 1360,
+   "y": 8460,
+   "w": 1280,
+   "h": 820,
+   "title": "Архив",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ListView.dc.html": {
+   "x": 0,
+   "y": 9400,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · вид «Список»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Gallery.dc.html": {
+   "x": 1360,
+   "y": 9400,
+   "w": 1280,
+   "h": 820,
+   "title": "Конвейер · галерея",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SharePeople.dc.html": {
+   "x": 0,
+   "y": 10340,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · участники и профиль",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ShareBoard.dc.html": {
+   "x": 1360,
+   "y": 10340,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · доска, исполнитель, приглашение",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ShareStates.dc.html": {
+   "x": 0,
+   "y": 11280,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · нет доступа, конвейер, стикеры по людям",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_HabitsMonth.dc.html": {
+   "x": 1360,
+   "y": 11280,
+   "w": 1280,
+   "h": 820,
+   "title": "Привычки · месяц (привычка × день)",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_HabitEdit.dc.html": {
+   "x": 0,
+   "y": 12220,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно привычки · окно «с — до», цель, напоминания",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateEvent.dc.html": {
+   "x": 1360,
+   "y": 12220,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · событие",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateHabit.dc.html": {
+   "x": 0,
+   "y": 13160,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · привычка",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateBday.dc.html": {
+   "x": 1360,
+   "y": 13160,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · день рождения",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetRemind.dc.html": {
+   "x": 0,
+   "y": 14100,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · напоминания и бот",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetSync.dc.html": {
+   "x": 1360,
+   "y": 14100,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · синхронизация, копии, дубли",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetUpdate.dc.html": {
+   "x": 0,
+   "y": 15040,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · обновления и клавиши",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TaskMore.dc.html": {
+   "x": 1360,
+   "y": 15040,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно задачи · «Ещё», исполнитель, изменения",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalAdd.dc.html": {
+   "x": 0,
+   "y": 15980,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · клик по часу и форма дня",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TodayLight.dc.html": {
+   "x": 1360,
+   "y": 15980,
+   "w": 1280,
+   "h": 820,
+   "title": "Сегодня · светлая тема",
+   "expand": "fill",
+   "page": "r4"
+  }
+ },
+ "order": [
+  "G_Today.dc.html",
+  "G_CalWeek.dc.html",
+  "G_CalMonth.dc.html",
+  "G_Kanban.dc.html",
+  "G_Conveyor.dc.html",
+  "G_Stickers.dc.html",
+  "G_Habits.dc.html",
+  "G_TaskPanel.dc.html",
+  "G_Create.dc.html",
+  "G_Settings.dc.html",
+  "G_Setup.dc.html",
+  "G_DateTime.dc.html",
+  "G_Pickers.dc.html",
+  "G_Search.dc.html",
+  "G_Status.dc.html",
+  "G_Feedback.dc.html",
+  "G_Spheres.dc.html",
+  "G_Templates.dc.html",
+  "G_ListSettings.dc.html",
+  "G_Archive.dc.html",
+  "G_ListView.dc.html",
+  "G_Gallery.dc.html",
+  "G_SharePeople.dc.html",
+  "G_ShareBoard.dc.html",
+  "G_ShareStates.dc.html",
+  "G_HabitsMonth.dc.html",
+  "G_HabitEdit.dc.html",
+  "G_CreateEvent.dc.html",
+  "G_CreateHabit.dc.html",
+  "G_CreateBday.dc.html",
+  "G_SetRemind.dc.html",
+  "G_SetSync.dc.html",
+  "G_SetUpdate.dc.html",
+  "G_TaskMore.dc.html",
+  "G_CalAdd.dc.html",
+  "G_TodayLight.dc.html"
+ ],
+ "pages": [
+  {
+   "id": "r4",
+   "name": "Система G · все экраны"
+  }
+ ]
+}

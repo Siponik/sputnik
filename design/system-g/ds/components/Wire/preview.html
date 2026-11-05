@@ -1,0 +1,19 @@
+<!-- @dsCard group="Схема" height=150 -->
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Wire</title><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@200;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap"><style>body{margin:0;background:var(--ground)}</style></head>
+<body>
+<div class="sp sp-ground" style="position:relative;height:150px">
+  <svg width="460" height="150" style="position:absolute;left:0;top:0" aria-hidden="true">
+    <path class="sp-wire" style="--c:var(--hue-blue)" d="M120 30 C 180 30, 240 60, 300 60"></path>
+    <path class="sp-wire sp-wire--now" d="M120 75 C 180 75, 240 80, 300 80"></path>
+    <path class="sp-wire sp-wire--wait" style="--c:var(--hue-grey)" d="M120 120 C 180 120, 240 100, 300 100"></path>
+  </svg>
+  <span class="sp-sock" style="left:115px;top:25px;--c:var(--hue-blue)"></span>
+  <span class="sp-sock" style="left:115px;top:70px"></span>
+  <span class="sp-sock sp-sock--ring" style="left:115px;top:115px"></span>
+  <span class="sp-sock" style="left:295px;top:55px;--c:var(--hue-blue)"></span><span class="sp-sock" style="left:295px;top:75px"></span><span class="sp-sock sp-sock--ring" style="left:295px;top:95px"></span>
+  <span class="sp-micro" style="position:absolute;left:330px;top:54px">ОБЫЧНЫЙ</span><span class="sp-micro" style="position:absolute;left:330px;top:74px;color:var(--accent)">СЕЙЧАС</span><span class="sp-micro" style="position:absolute;left:330px;top:94px">ЖДЁТ</span>
+</div>
+</body>
+</html>

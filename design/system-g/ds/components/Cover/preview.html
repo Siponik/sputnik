@@ -1,0 +1,61 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Спутник · Схема</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@200;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap">
+<style>
+  html, body { margin:0; height:100%; }
+  body { background:var(--ground); color:var(--ink); font-family:var(--font-sans); overflow:hidden; }
+  .cover { position:relative; height:288px; overflow:hidden; }
+  .art { position:absolute; top:0; left:480px; width:480px; height:288px; overflow:hidden; }
+  .art svg { display:block; width:480px; height:288px; }
+  .nd { fill:var(--node); stroke:var(--line-strong); stroke-width:1; rx:var(--radius-md); }
+  .hub { fill:var(--accent-wash); stroke:var(--accent); stroke-width:1.5; rx:var(--radius-lg); }
+  .acc { fill:var(--accent-fill); rx:var(--radius-md); }
+  .blue { fill:var(--hue-blue); rx:var(--radius-md); }
+  .gold { fill:var(--hue-gold); rx:var(--radius-md); }
+  .sk { rx:var(--radius-xs); }
+  .sk.a { fill:var(--accent); } .sk.b { fill:var(--hue-blue); } .sk.g { fill:var(--hue-gold); } .sk.v { fill:var(--hue-violet); }
+  .w { fill:none; stroke-width:2; }
+  .w.a { stroke:var(--accent); } .w.b { stroke:var(--hue-blue); } .w.g { stroke:var(--hue-gold); }
+  .words { position:absolute; left:24px; right:24px; bottom:24px; max-width:440px; }
+  .name { margin:0; font-size:96px; line-height:.92; font-weight:500; letter-spacing:-.03em; color:var(--ink); }
+  .tag { margin:8px 0 0 4px; font:400 13px/20px var(--font-mono); letter-spacing:.08em; color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="cover">
+<div class="art" aria-hidden="true">
+<svg viewBox="0 0 480 288" width="480" height="288">
+<!--
+  blocks      accent-fill 120×96 (главный цвет) · accent-wash главная нода 168×208 с рамкой accent · hue-blue 120×48 · hue-gold 120×48 · node 120×64 — около трети обложки
+  arrangement слева колонка источников, справа одна большая нода, которая уходит за правый край, как главная нода экрана
+  pattern     литеральный мотив «ноды и провода»: квадратные сокеты 10px с radius-xs и три провода-кривые, из README «Схема: ноды, сокеты, провода»
+  scales      стороны кратны space-5 (24px) и space-4; зазоры space-5; углы radius-md, главная нода radius-lg, сокеты radius-xs
+-->
+<rect class="acc" x="24" y="24" width="120" height="96" rx="8"/>
+<rect class="blue" x="24" y="144" width="120" height="48" rx="8"/>
+<rect class="gold" x="24" y="216" width="120" height="48" rx="8"/>
+<rect class="hub" x="312" y="40" width="192" height="208" rx="12"/>
+<rect class="nd" x="168" y="-24" width="96" height="64" rx="8"/>
+<path class="w a" d="M149 72 C 230 72, 240 112, 312 112"/>
+<path class="w b" d="M149 168 C 230 168, 240 152, 312 152"/>
+<path class="w g" d="M149 240 C 230 240, 240 192, 312 192"/>
+<rect class="sk a" x="139" y="67" width="10" height="10" rx="3"/>
+<rect class="sk b" x="139" y="163" width="10" height="10" rx="3"/>
+<rect class="sk g" x="139" y="235" width="10" height="10" rx="3"/>
+<rect class="sk a" x="307" y="107" width="10" height="10" rx="3"/>
+<rect class="sk b" x="307" y="147" width="10" height="10" rx="3"/>
+<rect class="sk g" x="307" y="187" width="10" height="10" rx="3"/>
+<rect class="sk v" x="259" y="11" width="10" height="10" rx="3"/>
+</svg>
+</div>
+<div class="words">
+<h1 class="name">Спутник</h1>
+<p class="tag">ДЕНЬ СОБИРАЕТСЯ ИЗ СПИСКОВ, КАК СХЕМА ИЗ НОД</p>
+</div>
+</div>
+</body>
+</html>
