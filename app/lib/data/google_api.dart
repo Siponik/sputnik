@@ -17,7 +17,7 @@ class GoogleApi {
   final GoogleAuth auth;
   final HttpClient _http = HttpClient();
 
-  Future<Map<String, dynamic>> _call(String method, String url, [Object? body]) async {
+  Future<Map<String, dynamic>> _call(String method, String url, [Object? body, bool retry = true]) async {
     final token = await auth.accessToken();
     final req = await _http.openUrl(method, Uri.parse(url));
     req.headers.set('Authorization', 'Bearer $token');
@@ -26,6 +26,11 @@ class GoogleApi {
       req.write(jsonEncode(body));
     }
     final res = await req.close();
+    if (res.statusCode == 401 && retry) {
+      await res.drain<void>();
+      auth.expire();
+      return _call(method, url, body, false);
+    }
     final text = await res.transform(utf8.decoder).join();
     if (res.statusCode >= 300) throw ApiError(res.statusCode, text.length > 200 ? text.substring(0, 200) : text);
     return text.isEmpty ? <String, dynamic>{} : jsonDecode(text) as Map<String, dynamic>;
@@ -51,8 +56,8 @@ class GoogleApi {
   }
 
   Future<void> setDone(String listId, String taskId, bool done) => _call(
-        'PATCH',
-        '$_tasks/lists/$listId/tasks/$taskId',
-        done ? {'status': 'completed'} : {'status': 'needsAction', 'completed': null},
-      );
+    'PATCH',
+    '$_tasks/lists/$listId/tasks/$taskId',
+    done ? {'status': 'completed'} : {'status': 'needsAction', 'completed': null},
+  );
 }

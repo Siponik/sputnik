@@ -20,6 +20,8 @@ class AppState extends ChangeNotifier {
   bool loading = true;
   String? error;
   String? toast;
+  bool needLogin = false;
+  bool loggingIn = false;
   int lastTapMs = 0; // сколько мс от нажатия до обновления экрана (замер для решения «идём ли дальше»)
   int loadMs = 0;
 
@@ -28,30 +30,57 @@ class AppState extends ChangeNotifier {
   Future<void> load() async {
     loading = true;
     error = null;
+    needLogin = false;
     notifyListeners();
     final sw = Stopwatch()..start();
     try {
       final f = dataFile('layer.json');
       layer = await f.exists() ? jsonDecode(await f.readAsString()) as Map<String, dynamic> : {};
-      final lists = await api.lists();
+      final lists = (await api.lists()).where((l) => showList(l, layer)).toList();
       listNames = {for (final l in lists) l['id'] as String: (l['title'] ?? '') as String};
-      final fetched = await Future.wait(lists.map((l) async {
-        final id = l['id'] as String;
-        final items = await api.tasks(id);
-        return items.map((t) => TodayTask(
+      final fetched = await Future.wait(
+        lists.map((l) async {
+          final id = l['id'] as String;
+          final items = await api.tasks(id);
+          return items.map(
+            (t) => TodayTask(
               id: t['id'] as String,
               listId: id,
               title: ((t['title'] ?? '') as String),
               day: dueToYmd(t['due'] as String?),
-            ));
-      }));
+            ),
+          );
+        }),
+      );
       all = fetched.expand((x) => x).where((t) => t.title.trim().isNotEmpty).toList();
+    } on AuthError catch (e) {
+      needLogin = e.needLogin;
+      error = e.message;
     } catch (e) {
       error = e.toString();
     }
     loadMs = sw.elapsedMilliseconds;
     loading = false;
     notifyListeners();
+  }
+
+  Future<void> login() async {
+    loggingIn = true;
+    error = null;
+    notifyListeners();
+    try {
+      await api.auth.login();
+      loggingIn = false;
+      await load();
+    } catch (e) {
+      loggingIn = false;
+      error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> cancelLogin() async {
+    await api.auth.cancel();
   }
 
   Future<void> toggle(TodayTask t) async {

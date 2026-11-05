@@ -9,9 +9,7 @@ import 'dart:convert';
 
 typedef Json = Map<String, dynamic>;
 
-const sections = [
-  'tasks', 'lists', 'habits', 'log', 'cals', 'settings', 'templates', 'templatesEdit', 'spheres',
-];
+const sections = ['tasks', 'lists', 'habits', 'log', 'cals', 'settings', 'templates', 'templatesEdit', 'spheres'];
 
 Json emptyLayer() => {'version': 1, for (final s in sections) s: <String, dynamic>{}};
 
@@ -43,11 +41,7 @@ bool _truthy(Object? v) => v != null && v != false && v != 0 && v != '';
 
 /// Разделы — известные и любые новые от более свежей версии трекера на другом компьютере.
 List<String> _sectionsOf(Object? a, Object? b) {
-  final names = <String>{
-    ...sections,
-    if (a is Map) ...a.keys.cast<String>(),
-    if (b is Map) ...b.keys.cast<String>(),
-  };
+  final names = <String>{...sections, if (a is Map) ...a.keys.cast<String>(), if (b is Map) ...b.keys.cast<String>()};
   return [
     for (final s in names)
       if (_isObj(a is Map ? a[s] : null) || _isObj(b is Map ? b[s] : null)) s,
@@ -72,7 +66,13 @@ MergeResult merge(Object? local, Object? remote) {
     for (final k in {...L.keys, ...R.keys}) {
       final hasL = L.containsKey(k), hasR = R.containsKey(k);
       final l = L[k], r = R[k];
-      final Object? m = !hasR ? l : !hasL ? r : sameJson(l, r) ? l : _combine(l, r);
+      final Object? m = !hasR
+          ? l
+          : !hasL
+          ? r
+          : sameJson(l, r)
+          ? l
+          : _combine(l, r);
       if (!hasL || !sameJson(m, l)) localChanged = true;
       if (!hasR || !sameJson(m, r)) remoteChanged = true;
       out[k] = m;

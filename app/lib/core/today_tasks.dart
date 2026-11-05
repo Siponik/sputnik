@@ -31,3 +31,11 @@ List<TodayTask> todayTasks(List<TodayTask> all, Map<String, dynamic> layer, Date
   });
   return list;
 }
+
+/// Показывать ли список в «Сегодня»: не «Привычки», не скрытый (lists[id].hidden) и не «тихий» (lists[id].quiet).
+bool showList(Map<String, dynamic> list, Map<String, dynamic> layer) {
+  if (((list['title'] ?? '') as String).trim() == 'Привычки') return false;
+  final r = ((layer['lists'] as Map?) ?? const {})[list['id']];
+  if (r is! Map) return true;
+  return r['hidden'] != true && r['quiet'] != true && r['gone'] != true;
+}
