@@ -569,7 +569,7 @@ extension on _TaskDialogState {
               },
               child: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
-                child: Text('＋ Заметка «$title»', style: SpType.text(13, color: SpColors.muted)),
+                child: Text('+ Заметка «$title»', style: SpType.text(13, color: SpColors.muted)),
               ),
             ),
         ],
