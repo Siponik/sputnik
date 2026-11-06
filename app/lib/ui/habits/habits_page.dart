@@ -6,6 +6,7 @@ import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../g/kit.dart';
+import '../keys.dart';
 
 const habitIcons = <String, IconData>{
   'cup': Icons.local_cafe_outlined,
@@ -69,9 +70,19 @@ class _HabitsPageState extends State<HabitsPage> {
   String? open;
 
   @override
+  void dispose() {
+    PageKeys.clear(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final all = s.habits;
+    // Shift+1…9 — отметить привычку по порядку.
+    PageKeys.set(this, {
+      for (final (i, h) in all.take(9).indexed) PKey(digits[i], shift: true): () => s.toggleHabit(h),
+    });
     final list = part == 'all' ? all : all.where((h) => hb.partOf(h) == part).toList();
     final log = s.habitLog;
     final todays = all.where((h) => hb.scheduledOn(h, log, s.todayYmd)).toList();

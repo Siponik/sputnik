@@ -1,5 +1,5 @@
 // Оболочка: шапка с вкладками «Сегодня · Календарь · Доска · Привычки · Знания», состояние связи, обновить.
-// Ctrl+1…5 — вкладки, F5 — обновить.
+// Клавиши — по физической клавише (keys.dart): 1–4 и Q/E — вкладки, N — создать, / и Ctrl+K — поиск, R/F5 — обновить.
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -11,6 +11,8 @@ import '../state/notes_state.dart';
 import 'notes/notes_page.dart';
 import 'notes/notes_search.dart';
 import 'board/board_page.dart';
+import 'board/rows_view.dart' show archiveDialog;
+import 'keys.dart';
 import 'calendar/calendar_page.dart';
 import 'create/create_dialog.dart';
 import 'settings/settings_page.dart';
@@ -53,6 +55,7 @@ class _AppShellState extends State<AppShell> {
   @override
   void initState() {
     super.initState();
+    HardwareKeyboard.instance.addHandler(_onKey);
     final n = widget.notes;
     if (n == null) return;
     widget.state.showNote = (path) {
@@ -64,8 +67,69 @@ class _AppShellState extends State<AppShell> {
     Future.delayed(const Duration(seconds: 3), () => mounted ? n.syncNow() : null);
   }
 
+  void _go(int t) => setState(() => tab = t);
+
+  /// Порядок вкладок для Q/E и 1–4.
+  List<int> get _order => [0, 1, 2, 3, if (widget.notes != null) notesTab];
+
+  /// Глобальные клавиши по физической клавише — работают в русской раскладке и не теряют фокус.
+  bool _onKey(KeyEvent e) {
+    if (!mounted || e is KeyUpEvent) return false;
+    // Открыто окно поверх — общие клавиши не трогаем (кроме самих окон).
+    final route = ModalRoute.of(context);
+    if (route != null && !route.isCurrent) return false;
+    final s = widget.state;
+    final notes = widget.notes != null && tab == notesTab;
+    bool hit(PKey k, VoidCallback f) {
+      if (!k.matches(e)) return false;
+      f();
+      return true;
+    }
+
+    if (hit(const PKey(PhysicalKeyboardKey.keyK, ctrl: true), _search)) return true;
+    if (!notes && hit(const PKey(PhysicalKeyboardKey.keyN, ctrl: true), _create)) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.comma, ctrl: true), () => _go(settingsTab))) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.f5), s.refresh)) return true;
+    for (final (i, t) in _order.indexed) {
+      if (hit(PKey(digits[i], ctrl: true), () => _go(t))) return true;
+    }
+    if (typing() || notes) return false;
+    for (final (i, t) in _order.take(4).indexed) {
+      if (hit(PKey(digits[i]), () => _go(t))) return true;
+    }
+    void step(int d) {
+      final o = _order;
+      final i = o.indexOf(tab);
+      _go(o[((i < 0 ? 0 : i) + d) % o.length]);
+    }
+
+    if (hit(const PKey(PhysicalKeyboardKey.keyQ), () => step(-1))) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.keyE), () => step(1))) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.keyN), _create)) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.slash), _search)) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.keyR), s.refresh)) return true;
+    void list(int d) {
+      final ls = s.boardLists;
+      if (ls.isEmpty) return;
+      final i = ls.indexWhere((l) => l['id'] == s.activeList);
+      s.activeList = ls[((i < 0 ? 0 : i) + d) % ls.length]['id'] as String;
+      _go(2);
+    }
+
+    if (hit(const PKey(PhysicalKeyboardKey.bracketLeft), () => list(-1))) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.bracketRight), () => list(1))) return true;
+    if (hit(const PKey(PhysicalKeyboardKey.keyF), () {
+      final id = s.activeList ?? (s.boardLists.isEmpty ? null : s.boardLists.first['id'] as String);
+      if (id != null && !s.needLogin) archiveDialog(context, s, id);
+    })) {
+      return true;
+    }
+    return PageKeys.handle(e);
+  }
+
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onKey);
     _sync?.cancel();
     widget.notes?.flush();
     super.dispose();
@@ -75,19 +139,7 @@ class _AppShellState extends State<AppShell> {
   Widget build(BuildContext context) {
     final s = widget.state;
     return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => setState(() => tab = 0),
-        const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => setState(() => tab = 1),
-        const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => setState(() => tab = 2),
-        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => tab = 3),
-        if (widget.notes != null)
-          const SingleActivator(LogicalKeyboardKey.digit5, control: true): () => setState(() => tab = notesTab),
-        if (widget.notes != null && tab == notesTab) ...notesKeys(context, widget.notes!),
-        const SingleActivator(LogicalKeyboardKey.f5): s.refresh,
-        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _create,
-        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _search,
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): () => setState(() => tab = settingsTab),
-      },
+      bindings: {if (widget.notes != null && tab == notesTab) ...notesKeys(context, widget.notes!)},
       child: Focus(
         autofocus: true,
         child: ListenableBuilder(
