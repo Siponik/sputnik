@@ -18,21 +18,37 @@ import '../widgets/task_dialog.dart';
 import '../g/kit.dart';
 import '../today/today_page.dart' show listHue;
 
+/// Одно окно «Создать». [kinds] — какие виды можно выбрать (один — вместо переключателя заголовок),
+/// [kind] — вид при открытии, [preset] — заранее выбранные поля (`col`, `topic`), [text] — строка из «Сегодня».
 Future<void> openCreate(
   BuildContext context,
   AppState s, {
   String kind = 'task',
+  List<String> kinds = const ['task', 'event', 'habit', 'birthday'],
   String? listId,
   String text = '',
   String? day,
   String? time,
+  Json preset = const {},
 }) => showDialog<void>(
   context: context,
-  builder: (_) => _Create(s: s, kind: kind, listId: listId, text: text, day: day, time: time),
+  builder: (_) =>
+      _Create(s: s, kind: kind, kinds: kinds, listId: listId, text: text, day: day, time: time, preset: preset),
 );
 
 class _Create extends StatefulWidget {
-  const _Create({required this.s, required this.kind, this.listId, this.text = '', this.day, this.time});
+  const _Create({
+    required this.s,
+    required this.kind,
+    required this.kinds,
+    this.listId,
+    this.text = '',
+    this.day,
+    this.time,
+    this.preset = const {},
+  });
+  final List<String> kinds;
+  final Json preset;
   final String? day;
   final String? time;
   final AppState s;
@@ -63,6 +79,18 @@ class _CreateState extends State<_Create> {
   int giftDays = 0;
   bool busy = false;
   bool extra = false;
+  bool help = false;
+  Set<String> opened = {};
+  final subs = <String>[];
+  final sub = TextEditingController();
+
+  /// Открыть параметр из «Ещё» и запомнить, что его открывают.
+  void _open(String k) {
+    if (opened.contains(k)) return;
+    setState(() => opened.add(k));
+    final used = ((s.layer['settings'] as Map?)?['createMore'] as Map?) ?? const {};
+    s.touch('settings', 'createMore', {k: ((used[k] as num?) ?? 0) + 1});
+  }
 
   AppState get s => widget.s;
 
@@ -70,7 +98,14 @@ class _CreateState extends State<_Create> {
   void initState() {
     super.initState();
     listId = widget.listId;
+    col = widget.preset['col'] as String?;
     due = widget.day;
+    // «Ещё параметры»: что человек открывает чаще, показываем сразу.
+    final used = ((s.layer['settings'] as Map?)?['createMore'] as Map?) ?? const {};
+    opened = {
+      for (final e in used.entries)
+        if (e.value is num && (e.value as num) >= 2) e.key as String,
+    };
     time = widget.time;
     remind = {kind == 'event' ? 15 : (kind == 'birthday' ? 1440 : 60)};
     line.addListener(() => setState(() {}));
@@ -111,6 +146,9 @@ class _CreateState extends State<_Create> {
         }
         final t = s.addTask(dest, title, due: due ?? x['due'] as String?, layerPatch: patch, col: col);
         if (notes.text.trim().isNotEmpty) s.setNotes(dest, t, notes.text.trim());
+        for (final x in subs) {
+          s.addSubtask(dest, t['id'] as String, x);
+        }
         if (listId != null) s.learnRoute(title, listId!);
         s.say('Создано в «${s.listName(dest)}»');
       case 'event':
@@ -146,16 +184,21 @@ class _CreateState extends State<_Create> {
     if (more) {
       line.clear();
       notes.clear();
+      subs.clear();
     } else {
       Navigator.pop(context);
     }
   }
 
-  static const kinds = [
-    ('task', 'Задача', SpColors.accent),
-    ('event', 'Событие', SpColors.blue),
-    ('habit', 'Привычка', SpColors.gold),
-    ('birthday', 'День рождения', SpColors.violet),
+  static const allKinds = [
+    ('task', 'Задача', SpColors.accent, Icons.check),
+    ('event', 'Событие', SpColors.blue, Icons.schedule),
+    ('habit', 'Привычка', SpColors.gold, Icons.autorenew),
+    ('birthday', 'День рождения', SpColors.violet, Icons.auto_awesome),
+  ];
+  List<(String, String, Color, IconData)> get kinds => [
+    for (final k in allKinds)
+      if (widget.kinds.contains(k.$1)) k,
   ];
 
   void _setKind(String k) {
@@ -172,7 +215,7 @@ class _CreateState extends State<_Create> {
 
   @override
   Widget build(BuildContext context) {
-    final kc = kinds.firstWhere((k) => k.$1 == kind).$3;
+    final kc = allKinds.firstWhere((k) => k.$1 == kind).$3;
     final p = parsed;
     final hint = cr.suggestKind(line.text, p);
     return CallbackShortcuts(
@@ -205,44 +248,70 @@ class _CreateState extends State<_Create> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Container(
-                      height: 50,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      height: 46,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                       decoration: BoxDecoration(
                         color: headFill(kc),
                         borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
                       ),
                       child: Row(
                         children: [
-                          for (final (i, k) in kinds.indexed)
-                            Tooltip(
-                              message: 'Alt+${i + 1}',
-                              child: InkWell(
-                                onTap: () => _setKind(k.$1),
-                                borderRadius: BorderRadius.circular(6),
-                                child: Container(
-                                  height: 30,
-                                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                                  alignment: Alignment.center,
-                                  decoration: BoxDecoration(
-                                    color: kind == k.$1 ? SpColors.ink : null,
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    k.$2,
-                                    style: SpType.text(
-                                      13,
-                                      w: FontWeight.w500,
-                                      color: kind == k.$1 ? SpColors.bg : Colors.white,
+                          if (kinds.length > 1)
+                            for (final (i, k) in kinds.indexed)
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () => _setKind(k.$1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    height: 32,
+                                    margin: const EdgeInsets.symmetric(horizontal: 2),
+                                    alignment: Alignment.center,
+                                    decoration: BoxDecoration(
+                                      color: kind == k.$1 ? SpColors.ink : null,
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(k.$4, size: 14, color: kind == k.$1 ? kc : Colors.white),
+                                          const SizedBox(width: 7),
+                                          Text(
+                                            k.$2,
+                                            style: SpType.text(
+                                              13,
+                                              w: FontWeight.w500,
+                                              color: kind == k.$1 ? SpColors.bg : Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 7),
+                                          Text(
+                                            'ALT ${i + 1}',
+                                            style: gMicro(c: kind == k.$1 ? SpColors.muted : Colors.white70),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ),
+                              )
+                          else
+                            Expanded(
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 8),
+                                child: Text(
+                                  '${kinds.first.$2}${line.text.trim().isEmpty ? '' : ' · ${line.text.trim()}'}',
+                                  style: gLbl(c: Colors.white, size: 11),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
-                          const Spacer(),
                           InkWell(
                             onTap: () => Navigator.pop(context),
                             child: const Padding(
-                              padding: EdgeInsets.all(6),
+                              padding: EdgeInsets.all(8),
                               child: Icon(Icons.close, size: 18, color: Colors.white),
                             ),
                           ),
@@ -255,22 +324,33 @@ class _CreateState extends State<_Create> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Text(switch (kind) {
-                              'event' => 'Что за событие?',
-                              'birthday' => 'Чей день рождения?',
-                              _ => 'Что нужно сделать?',
-                            }, style: SpType.text(14, w: FontWeight.w600)),
-                            const SizedBox(height: 10),
                             TextField(
                               controller: line,
                               autofocus: true,
                               style: SpType.text(17),
                               decoration: InputDecoration(
                                 hintText: switch (kind) {
-                                  'event' => 'Встреча с Олей в пятницу 15:00',
-                                  'birthday' => 'Имя',
-                                  _ => 'Отправить макет завтра 17:00 @работа !!',
+                                  'event' => 'Что за событие? Например: встреча с Олей в пятницу 15:00',
+                                  'birthday' => 'Чей день рождения? Имя и дата',
+                                  _ => 'Что сделать? Пиши как в заметке: «завтра 17:00 @работа !!»',
                                 },
+                                suffixIcon: Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: InkWell(
+                                    onTap: () => setState(() => help = !help),
+                                    customBorder: const CircleBorder(),
+                                    child: Container(
+                                      width: 24,
+                                      height: 24,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: help ? kc : SpColors.line),
+                                      ),
+                                      child: Text('?', style: gMono(11, c: help ? kc : SpColors.muted)),
+                                    ),
+                                  ),
+                                ),
                                 hintStyle: SpType.text(17, color: SpColors.dim),
                                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                                 focusedBorder: OutlineInputBorder(
@@ -284,11 +364,14 @@ class _CreateState extends State<_Create> {
                               ),
                               onSubmitted: (_) => _submit(),
                             ),
-                            const SizedBox(height: 8),
-                            Text(
-                              kind == 'birthday' ? 'Имя и дату — остальное подставлю сам.' : 'Пиши как в заметке: «в пятницу», «каждую неделю», «@работа». Остальное подставлю сам.',
-                              style: SpType.text(12, color: SpColors.muted),
-                            ),
+                            if (help)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: Text(
+                                  kind == 'birthday' ? 'Имя и дату — остальное подставлю сам.' : 'Пиши как в заметке: «в пятницу», «каждую неделю», «@работа», «!!!». Остальное подставлю сам.',
+                                  style: SpType.text(12, color: SpColors.muted),
+                                ),
+                              ),
                             if (hint != null && hint['kind'] != kind && kind == 'task')
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),
@@ -325,12 +408,12 @@ class _CreateState extends State<_Create> {
                         children: [
                           Expanded(
                             child: Text(
-                              'Enter — добавить, Esc — закрыть',
+                              'Enter — добавить · Esc — закрыть',
                               style: SpType.text(12, color: SpColors.muted),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          GBtn('Добавить и ещё одну', kind: BtnKind.sec, onTap: () => _submit(more: true)),
+                          GBtn('Добавить и ещё', kind: BtnKind.sec, onTap: () => _submit(more: true)),
                           const SizedBox(width: 10),
                           GBtn(
                             busy
@@ -460,6 +543,24 @@ class _CreateState extends State<_Create> {
     );
   }
 
+  /// Строка поля: подпись слева (104 px), чипы справа.
+  Widget _row(String label, Widget child) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 104,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(label, style: SpType.text(13, color: SpColors.muted)),
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    ),
+  );
+
   Widget _label(String t) => Padding(
     padding: const EdgeInsets.only(top: 14, bottom: 8),
     child: Text(
@@ -469,8 +570,8 @@ class _CreateState extends State<_Create> {
   );
 
   Widget _dayChip() => GPick(
-    humanDay(day) + (slotS != null && !allDay ? ' · $slotS' : ''),
-    on: true,
+    due == '' ? 'Выбрать день' : humanDay(day) + (slotS != null && !allDay ? ' · $slotS' : ''),
+    on: due != '',
     onTap: () => _pick(withTime: kind != 'birthday'),
   );
 
@@ -514,94 +615,217 @@ class _CreateState extends State<_Create> {
   List<Widget> _task(Json p) {
     final dest = guessList;
     final cols = dest == null ? const [] : (s.board(dest)['cols'] as List).cast<Map>();
+    final why = listId == null && dest != null ? _why(dest) : null;
     return [
-      _label('Куда положить'),
-      Row(
-        children: [
-          Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: SpColors.bg.withValues(alpha: .5),
-              borderRadius: BorderRadius.circular(SpRadius.button),
-              border: Border.all(color: SpColors.line),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (dest != null) ...[GDot(listHue(s, dest)), const SizedBox(width: 8)],
-                Text(dest == null ? 'Нет списков' : s.listName(dest), style: SpType.text(13, w: FontWeight.w600)),
-                if (listId == null && dest != null) ...[
-                  const SizedBox(width: 8),
-                  Text('угадал', style: SpType.text(12, color: SpColors.gold)),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          InkWell(
-            onTap: () async {
-              final to = await pickList(context, s);
-              if (to != null) setState(() => listId = to);
-            },
-            child: Text(
-              'Другой список',
-              style: SpType.text(13, color: SpColors.accent, w: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-      if (cols.isNotEmpty) ...[
-        _label(s.board(dest!)['view'] == 'pipe' ? 'Этап' : 'Колонка'),
+      _row(
+        'Куда',
         Wrap(
-          spacing: 6,
+          spacing: 10,
+          runSpacing: 6,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            for (final c in cols.where((c) => c['id'] != 'done'))
-              GPick(
-                c['name'] as String,
-                on: (col ?? cols.first['id']) == c['id'],
-                onTap: () => setState(() => col = c['id'] as String),
+            InkWell(
+              onTap: _otherList,
+              borderRadius: BorderRadius.circular(SpRadius.button),
+              child: Container(
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: SpColors.bg.withValues(alpha: .5),
+                  borderRadius: BorderRadius.circular(SpRadius.button),
+                  border: Border.all(color: SpColors.line),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (dest != null) ...[GDot(listHue(s, dest)), const SizedBox(width: 8)],
+                    Text(dest == null ? 'Нет списков' : s.listName(dest), style: SpType.text(13, w: FontWeight.w600)),
+                    if (why != null) ...[
+                      const SizedBox(width: 8),
+                      Text(why, style: SpType.text(12, color: SpColors.gold)),
+                    ],
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_drop_down, size: 16, color: SpColors.muted),
+                  ],
+                ),
               ),
+            ),
+            Text('Alt L', style: SpType.text(12, color: SpColors.accent)),
           ],
         ),
-      ],
-      _label('Когда и насколько важно'),
-      Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          _dayChip(),
-          _timeChip(),
-          for (final (n, l) in [(1, '!!!'), (2, '!!'), (3, '!')])
-            GPick(
-              l,
-              on: (prio ?? p['priority']) == n,
-              onTap: () => setState(() => prio = (prio ?? p['priority']) == n ? 0 : n),
-            ),
-        ],
       ),
-      _label('Напомнить'),
-      _remindChips('task'),
-      ..._extra(),
+      _row(
+        'Когда',
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _dayChip(),
+            GPick('Без срока', on: due == '', onTap: () => setState(() => due = '')),
+          ],
+        ),
+      ),
+      if (cols.isNotEmpty)
+        _row(
+          s.board(dest!)['view'] == 'pipe' ? 'Этап' : 'Колонка',
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              for (final c in cols.where((c) => c['id'] != 'done'))
+                GPick(
+                  c['name'] as String,
+                  on: (col ?? cols.first['id']) == c['id'],
+                  onTap: () => setState(() => col = c['id'] as String),
+                ),
+            ],
+          ),
+        ),
+      _row('Напомнить', _remindChips('task')),
+      _more([
+        ('prio', 'Приоритет', _row('Приоритет', _prioChips(p))),
+        ('subs', 'Подзадачи', _row('Подзадачи', _subs())),
+        ('repeat', 'Повтор', _row('Повтор', _repeatChips())),
+        ('notes', 'Заметка', _row('Заметка', _notes())),
+      ]),
     ];
   }
 
-  List<Widget> _extra() => [
-    const SizedBox(height: 14),
-    InkWell(
-      onTap: () => setState(() => extra = !extra),
-      child: Text(
-        '${extra ? '▾' : '▸'} Ещё: повтор и заметка',
-        style: SpType.text(12.5, color: SpColors.muted, w: FontWeight.w500),
-      ),
-    ),
-    if (extra || repeat != null || notes.text.isNotEmpty) ...[
-      _label('Повтор'),
-      _repeatChips(),
-      _label('Заметка'),
-      _notes(),
+  String? _why(String dest) {
+    final r = route.route(line.text, lists: s.boardLists.cast<Map>(), layer: s.layer, tasks: s.tasks);
+    final w = r.isEmpty ? null : r.first['why'];
+    return w is String && w.isNotEmpty ? w : null;
+  }
+
+  Future<void> _otherList() async {
+    final to = await pickList(context, s);
+    if (to != null) setState(() => listId = to);
+  }
+
+  Widget _prioChips(Json p) => Wrap(
+    spacing: 6,
+    runSpacing: 6,
+    children: [
+      for (final (n, l) in [(1, '!!! Высокий'), (2, '!! Средний'), (3, '! Низкий'), (0, 'Нет')])
+        GPick(l, on: (prio ?? p['priority'] ?? 0) == n, onTap: () => setState(() => prio = n)),
     ],
-  ];
+  );
+
+  Widget _subs() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final (i, x) in subs.indexed)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              const GCheck(done: false),
+              const SizedBox(width: 8),
+              Expanded(child: Text(x, style: SpType.text(13))),
+              InkWell(
+                onTap: () => setState(() => subs.removeAt(i)),
+                child: Text('×', style: gMono(12, c: SpColors.muted)),
+              ),
+            ],
+          ),
+        ),
+      TextField(
+        controller: sub,
+        style: SpType.text(13),
+        decoration: InputDecoration(
+          isDense: true,
+          border: InputBorder.none,
+          hintText: '+ подзадача',
+          hintStyle: SpType.text(13, color: SpColors.dim),
+        ),
+        onSubmitted: (v) {
+          if (v.trim().isEmpty) return;
+          setState(() => subs.add(v.trim()));
+          sub.clear();
+        },
+      ),
+    ],
+  );
+
+  /// «▾ Ещё параметры»: открытые параметры строками, остальные — кнопками «+ …».
+  Widget _more(List<(String, String, Widget)> items) {
+    final shown = items.where((x) => opened.contains(x.$1) || _filled(x.$1)).toList();
+    final rest = items.where((x) => !shown.contains(x)).toList();
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: SpColors.line),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          InkWell(
+            onTap: () => setState(() => extra = !extra),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Row(
+                children: [
+                  Text('${extra ? '▾' : '▸'} Ещё параметры', style: SpType.text(13, w: FontWeight.w600)),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Text(
+                      'открыто ${shown.length} из ${items.length} · запомню, какие ты открываешь',
+                      style: SpType.text(12, color: SpColors.muted),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (extra || shown.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (final x in shown) x.$3,
+                  if (extra && rest.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1, color: SpColors.line),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        for (final x in rest)
+                          InkWell(
+                            onTap: () => _open(x.$1),
+                            borderRadius: BorderRadius.circular(SpRadius.button),
+                            child: Dashed(
+                              r: SpRadius.button,
+                              color: SpColors.line,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                                child: Text('+ ${x.$2}', style: SpType.text(12.5, color: SpColors.ink2)),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  bool _filled(String k) => switch (k) {
+    'prio' => prio != null && prio != 0,
+    'subs' => subs.isNotEmpty,
+    'repeat' => repeat != null,
+    'notes' => notes.text.isNotEmpty,
+    _ => false,
+  };
 
   Widget _repeatChips() => Wrap(
     spacing: 6,
@@ -654,24 +878,26 @@ class _CreateState extends State<_Create> {
     final st = slotS;
     final free = st == null || allDay ? null : cr.freeCheck(s.eventsOn(day), day, {'s': st, 'e': cr.addMin(st, dur)});
     return [
-      _label('Когда'),
-      Wrap(
-        spacing: 6,
-        runSpacing: 6,
-        children: [
-          _dayChip(),
-          if (!allDay) _timeChip(),
-          for (final (m, l) in [(15, '15 мин'), (30, '30 мин'), (60, '1 час'), (120, '2 часа')])
-            GPick(
-              l,
-              on: !allDay && dur == m,
-              onTap: () => setState(() {
-                allDay = false;
-                dur = m;
-              }),
-            ),
-          GPick('Весь день', on: allDay, onTap: () => setState(() => allDay = !allDay)),
-        ],
+      _row(
+        'Когда',
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            _dayChip(),
+            if (!allDay) _timeChip(),
+            for (final (m, l) in [(15, '15 мин'), (30, '30 мин'), (60, '1 час'), (120, '2 часа')])
+              GPick(
+                l,
+                on: !allDay && dur == m,
+                onTap: () => setState(() {
+                  allDay = false;
+                  dur = m;
+                }),
+              ),
+            GPick('Весь день', on: allDay, onTap: () => setState(() => allDay = !allDay)),
+          ],
+        ),
       ),
       if (free != null)
         Padding(
@@ -683,74 +909,77 @@ class _CreateState extends State<_Create> {
             style: SpType.text(12.5, color: free['clash'] != null ? SpColors.red : SpColors.green),
           ),
         ),
-      _label('Календарь'),
-      _calPick(),
-      _label('Место'),
-      TextField(
-        controller: place,
-        style: SpType.text(13.5),
-        decoration: InputDecoration(
-          isDense: true,
-          hintText: 'Адрес или ссылка',
-          hintStyle: SpType.text(13.5, color: SpColors.dim),
-          contentPadding: const EdgeInsets.all(11),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: SpColors.line),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: SpColors.accent),
+      if (s.writableCals.length > 1) _row('Календарь', _calPick()),
+      _row(
+        'Место',
+        TextField(
+          controller: place,
+          style: SpType.text(13.5),
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Адрес или ссылка',
+            hintStyle: SpType.text(13.5, color: SpColors.dim),
+            contentPadding: const EdgeInsets.all(11),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: SpColors.line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: SpColors.accent),
+            ),
           ),
         ),
       ),
-      _label('Напомнить'),
-      _remindChips('event'),
-      ..._extra(),
+      _row('Напомнить', _remindChips('event')),
+      _more([('repeat', 'Повтор', _row('Повтор', _repeatChips())), ('notes', 'Заметка', _row('Заметка', _notes()))]),
     ];
   }
 
   List<Widget> _bday() => [
-    _label('Дата'),
-    Wrap(
-      spacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: [
-        _dayChip(),
-        SizedBox(
-          width: 140,
-          child: TextField(
-            controller: year,
-            style: SpType.text(13.5),
-            decoration: InputDecoration(
-              isDense: true,
-              hintText: 'Год, если знаешь',
-              hintStyle: SpType.text(13.5, color: SpColors.dim),
-              contentPadding: const EdgeInsets.all(11),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: SpColors.line),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: SpColors.accent),
+    _row(
+      'Дата',
+      Wrap(
+        spacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          _dayChip(),
+          SizedBox(
+            width: 140,
+            child: TextField(
+              controller: year,
+              style: SpType.text(13.5),
+              decoration: InputDecoration(
+                isDense: true,
+                hintText: 'Год, если знаешь',
+                hintStyle: SpType.text(13.5, color: SpColors.dim),
+                contentPadding: const EdgeInsets.all(11),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: SpColors.line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: SpColors.accent),
+                ),
               ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     ),
-    _label('Напомнить'),
-    _remindChips('birthday'),
-    _label('Задача «Подарок» заранее'),
-    Wrap(
-      spacing: 6,
-      children: [
-        for (final d in [0, 3, 7, 14, 30])
-          GPick(d == 0 ? 'Не нужна' : 'за $d дн.', on: giftDays == d, onTap: () => setState(() => giftDays = d)),
-      ],
+    _row('Напомнить', _remindChips('birthday')),
+    _row(
+      'Подарок',
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final d in [0, 3, 7, 14, 30])
+            GPick(d == 0 ? 'Не нужен' : 'за $d дн.', on: giftDays == d, onTap: () => setState(() => giftDays = d)),
+        ],
+      ),
     ),
-    _label('Календарь'),
-    _calPick(),
+    if (s.writableCals.length > 1) _row('Календарь', _calPick()),
   ];
 }
