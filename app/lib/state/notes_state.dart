@@ -21,9 +21,13 @@ class NotesConfig {
   List<String> tabs;
   String? active;
   bool sync;
-  NotesConfig({this.folder, List<String>? recent, List<String>? tabs, this.active, this.sync = true})
+
+  /// Вид папки: `list` | `cards` | `table` (папка → вид).
+  Map<String, String> modes;
+  NotesConfig({this.folder, List<String>? recent, List<String>? tabs, this.active, this.sync = true, Map<String, String>? modes})
       : recent = recent ?? [],
-        tabs = tabs ?? [];
+        tabs = tabs ?? [],
+        modes = modes ?? {};
 
   Map<String, dynamic> toJson() => {
         'folder': folder,
@@ -31,6 +35,7 @@ class NotesConfig {
         'tabs': tabs,
         'active': active,
         'sync': sync,
+        'modes': modes,
       };
 
   factory NotesConfig.fromJson(Map<String, dynamic> j) => NotesConfig(
@@ -39,6 +44,7 @@ class NotesConfig {
         tabs: (j['tabs'] as List?)?.cast<String>(),
         active: j['active'] as String?,
         sync: j['sync'] as bool? ?? true,
+        modes: (j['modes'] as Map?)?.cast<String, String>(),
       );
 }
 
@@ -149,6 +155,8 @@ class NotesState extends ChangeNotifier {
     error = null;
     index = NoteIndex();
     config = NotesConfig(sync: config.sync);
+    view = 'note';
+    folder = null;
     _base = {};
     await files.write(_baseFile, baseToJson(_base));
     await _saveConfig();
@@ -221,6 +229,24 @@ class NotesState extends ChangeNotifier {
     view = v;
     notifyListeners();
   }
+
+  /// Папка, открытая как список / карточки / таблица.
+  String? folder;
+  void openFolder(String path) {
+    folder = path;
+    view = 'folder';
+    notifyListeners();
+  }
+
+  String folderMode(String path) => config.modes[path] ?? 'list';
+  void setFolderMode(String path, String mode) {
+    config.modes[path] = mode;
+    _saveConfig();
+    notifyListeners();
+  }
+
+  /// Когда файл последний раз менялся (мс), для колонки «Изменено».
+  int? mtimeOf(String path) => vault?.stamps[path]?.mtime;
 
   void openNote(String path) {
     view = 'note';
@@ -303,10 +329,10 @@ class NotesState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Новая заметка в папке [folder] (по шаблону [template] — путь заметки-шаблона). Вернёт путь.
-  Future<String?> create(String folder, String title, {String? template}) async {
+  /// Новая заметка в папке [folder] (по шаблону [template] — путь заметки-шаблона, или с текстом [text0]). Вернёт путь.
+  Future<String?> create(String folder, String title, {String? template, String? text0}) async {
     if (vault == null) return null;
-    var text = '';
+    var text = text0 ?? '';
     if (template != null) text = index.text(template) ?? '';
     final today = DateTime.now();
     final ymd = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';

@@ -13,6 +13,7 @@ import '../../core/notes/sync.dart' show parentFolders;
 import '../../core/notes/view.dart';
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
+import 'folder_view.dart';
 import 'graph_view.dart';
 import 'hue.dart';
 import 'links_panel.dart';
@@ -90,7 +91,7 @@ class _NotesPageState extends State<NotesPage> {
               children: [
                 SizedBox(width: 264, child: _Side(st: st)),
                 const SizedBox(width: 16),
-                Expanded(child: _Main(st: st)),
+                Expanded(child: st.view == 'folder' && st.folder != null ? FolderView(st: st, folder: st.folder!) : _Main(st: st)),
               ],
             ),
           );
@@ -269,10 +270,15 @@ class _SideState extends State<_Side> {
             icon: r.depth == 0 ? null : '▭',
             name: r.name,
             count: '${r.count}',
-            onTap: () => setState(() => r.open ? _open.remove(r.path) : _open.add(r.path)),
+            active: st.view == 'folder' && st.folder == r.path,
+            onCaret: () => setState(() => r.open ? _open.remove(r.path) : _open.add(r.path)),
+            onTap: () {
+              setState(() => _open.add(r.path));
+              st.openFolder(r.path);
+            },
           ));
         } else {
-          rows.add(_Row(depth: r.depth, icon: '¶', name: r.name, active: r.path == st.active, onTap: () => st.openNote(r.path)));
+          rows.add(_Row(depth: r.depth, icon: '¶', name: r.name, active: st.view == 'note' && r.path == st.active, onTap: () => st.openNote(r.path)));
         }
       }
     }
@@ -370,7 +376,8 @@ class _Section extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.name, required this.onTap, this.depth = 0, this.caret, this.icon, this.dot, this.count, this.hint, this.active = false});
+  const _Row({required this.name, required this.onTap, this.onCaret, this.depth = 0, this.caret, this.icon, this.dot, this.count, this.hint, this.active = false});
+  final VoidCallback? onCaret;
   final String name;
   final int depth;
   final String? caret;
@@ -396,7 +403,12 @@ class _Row extends StatelessWidget {
             padding: EdgeInsets.only(left: 8.0 + 14 * depth, right: 10, top: hint == null ? 0 : 4, bottom: hint == null ? 0 : 4),
             decoration: active ? const BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
             child: Row(children: [
-              SizedBox(width: 10, child: Text(caret ?? '', style: SpType.text(10, color: SpColors.dim))),
+              onCaret == null
+                  ? SizedBox(width: 10, child: Text(caret ?? '', style: SpType.text(10, color: SpColors.dim)))
+                  : InkWell(
+                      onTap: onCaret,
+                      child: SizedBox(width: 14, height: 24, child: Center(child: Text(caret ?? '', style: SpType.text(10, color: SpColors.dim)))),
+                    ),
               const SizedBox(width: 7),
               if (dot != null)
                 Container(width: 7, height: 7, margin: const EdgeInsets.only(right: 5), decoration: BoxDecoration(color: dot, borderRadius: BorderRadius.circular(2)))

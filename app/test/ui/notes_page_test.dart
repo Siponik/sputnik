@@ -58,7 +58,7 @@ void main() {
     await t.pump();
     await t.tap(find.text('Техники'));
     await t.pump();
-    await t.tap(find.text('Запекание нормалей'));
+    await t.tap(find.text('Запекание нормалей').first); // строка в дереве (справа — та же заметка в списке папки)
     await t.pump();
     // Заголовок заметки, свойство и тег в строку, «Ссылаются сюда».
     expect(find.text('Запекание нормалей'), findsWidgets);
@@ -192,6 +192,41 @@ void main() {
     await t.testTextInput.receiveAction(TextInputAction.done);
     await t.pumpAndSettle();
     expect((got as PickNew).title, 'Кейджи');
+  });
+
+  testWidgets('папка: список, таблица по свойствам с условием, карточки', (t) async {
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    await pump(t);
+    await t.tap(find.text('3D'));
+    await t.pump();
+    expect(find.text('3 ЗАМЕТКИ'), findsOneWidget);
+    expect(find.text('СПИСОК'), findsOneWidget);
+
+    await t.tap(find.text('ТАБЛИЦА'));
+    await t.pump();
+    expect(find.text('ТАБЛИЦА ПО СВОЙСТВАМ'), findsOneWidget);
+    expect(find.text('TYPE'), findsOneWidget);
+    expect(find.text('Техника'), findsOneWidget);
+    expect(st.folderMode('3D'), 'table');
+
+    await t.tap(find.text('＋ УСЛОВИЕ'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Техника').last);
+    await t.pumpAndSettle();
+    expect(find.text('TYPE: ТЕХНИКА'), findsOneWidget);
+    expect(find.text('1 ЗАМЕТКА'), findsOneWidget);
+    expect(find.textContaining('с этими свойствами'), findsOneWidget);
+
+    await t.tap(find.text('КАРТОЧКИ'));
+    await t.pump();
+    expect(find.text('#baking'), findsOneWidget);
+    await t.tap(find.text('×'));
+    await t.pump();
+    expect(find.text('3 ЗАМЕТКИ'), findsOneWidget);
+
+    await t.tap(find.text('← К заметке'));
+    await t.pump();
+    expect(st.view, 'note');
   });
 
   testWidgets('папка пропала — понятное состояние', (t) async {
