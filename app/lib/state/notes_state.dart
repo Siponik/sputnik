@@ -80,6 +80,9 @@ class NotesState extends ChangeNotifier {
   int scanned = 0;
   String? error;
 
+  /// Какую папку не нашли (для «Не вижу папку …»).
+  String? missingFolder;
+
   /// Файлы, которые изменили снаружи, пока в них были несохранённые правки: путь → наш текст.
   final Map<String, String> conflicts = {};
 
@@ -88,8 +91,14 @@ class NotesState extends ChangeNotifier {
   final Map<String, Timer> _timers = {};
   Duration saveDelay = const Duration(milliseconds: 600);
 
+  /// Следить за папкой (в тестах экрана выключено).
+  bool watchFiles = true;
+
   SyncReport? lastSync;
   bool syncing = false;
+
+  /// Сверка упала не из-за связи (нет входа в Google и т. п.) — текст для «Состояния».
+  String? syncError;
   Map<String, BaseEntry> _base = {};
   StreamSubscription<VaultChange>? _watch;
 
@@ -100,7 +109,9 @@ class NotesState extends ChangeNotifier {
   bool get hasFolder => vault != null;
 
   /// Строка для «Состояния».
-  String get syncStatus => lastSync?.status(pending: _dirty.length) ?? (config.sync ? 'Знания: ещё не сверялись' : 'Знания: синхронизация выключена');
+  String get syncStatus => syncError != null
+      ? 'Знания: не сверилось — $syncError'
+      : lastSync?.status(pending: _dirty.length) ?? (config.sync ? 'Знания: ещё не сверялись' : 'Знания: синхронизация выключена');
 
   Future<void> load() async {
     final t = await files.read(_cfg);
@@ -131,6 +142,19 @@ class NotesState extends ChangeNotifier {
     await _cfgWrite.catchError((_) {});
   }
 
+  /// Забыть папку (она пропала или больше не нужна). Файлы не трогаем.
+  Future<void> forget() async {
+    await _watch?.cancel();
+    vault = null;
+    error = null;
+    index = NoteIndex();
+    config = NotesConfig(sync: config.sync);
+    _base = {};
+    await files.write(_baseFile, baseToJson(_base));
+    await _saveConfig();
+    notifyListeners();
+  }
+
   /// Подключить папку заметок. Пустая папка на новом компьютере заполнится при первой синхронизации.
   Future<void> open(String folder, {bool remember = true, bool watch = true}) async {
     loading = true;
@@ -141,9 +165,11 @@ class NotesState extends ChangeNotifier {
     try {
       if (!await v.root.exists()) {
         error = 'Папка «$folder» недоступна';
+        missingFolder = folder;
         vault = null;
         return;
       }
+      missingFolder = null;
       final s = await v.scan();
       scanned = s.notes.length;
       index = NoteIndex.of(s.notes, files: s.files);
@@ -161,7 +187,7 @@ class NotesState extends ChangeNotifier {
       config.recent.removeWhere((p) => index.doc(p) == null);
       if (config.active != null && !config.tabs.contains(config.active)) config.active = config.tabs.isEmpty ? null : config.tabs.first;
       if (remember) await _saveConfig();
-      if (watch) _watch = v.watch().listen(_onChange);
+      if (watch && watchFiles) _watch = v.watch().listen(_onChange);
     } finally {
       loading = false;
       notifyListeners();
@@ -207,6 +233,9 @@ class NotesState extends ChangeNotifier {
     _saveConfig();
     notifyListeners();
   }
+
+  /// Есть несохранённые правки.
+  bool isDirty(String path) => _dirty.containsKey(path);
 
   /// Текст заметки, как его видит редактор (с несохранёнными правками).
   String textOf(String path) => _dirty[path] ?? index.text(path) ?? '';
@@ -345,7 +374,14 @@ class NotesState extends ChangeNotifier {
     notifyListeners();
     try {
       await saveAll();
-      final rep = await NotesSync(vault!, store).run(_base);
+      final SyncReport rep;
+      try {
+        rep = await NotesSync(vault!, store).run(_base);
+      } catch (e) {
+        syncError = '$e';
+        return lastSync;
+      }
+      syncError = null;
       await files.write(_baseFile, baseToJson(_base));
       lastSync = rep;
       if (rep.got > 0 || rep.trashed > 0 || rep.conflicts.isNotEmpty) {

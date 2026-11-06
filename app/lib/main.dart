@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 
+import 'data/notes/drive_store.dart';
+import 'data/paths.dart';
 import 'state/app_state.dart';
-import 'ui/today_page.dart';
+import 'state/notes_state.dart';
+import 'ui/shell.dart';
+import 'ui/theme/tokens.dart';
 
 void main() {
   final state = AppState()..load();
+  // «Знания»: настройки и база синхронизации — в своей подпапке flutter/, общая копия — «Спутник / Знания» на Drive.
+  final drive = DriveStore(state.api.auth);
+  final notes = NotesState(DirNotesFiles(ownFile('notes.json').parent), remote: () => drive)..load();
   runApp(
     MaterialApp(
       title: 'Спутник',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(brightness: Brightness.dark, colorSchemeSeed: const Color(0xFFD9774F), useMaterial3: true),
-      home: TodayPage(state: state),
+      theme: spTheme(),
+      home: Shell(app: state, notes: notes),
     ),
   );
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sputnik_app/data/notes/notes_sync.dart';
 import 'package:sputnik_app/state/notes_state.dart';
 
 import '../data/notes/notes_sync_test.dart' show MemStore;
@@ -113,4 +114,29 @@ void main() {
     expect(drive.text('DND/Мира Тёрн.md'), 'несохранённое');
     expect(st.syncStatus, 'Знания: всё отправлено');
   });
+
+  test('сверка упала не из-за связи — строка с причиной, следующая удачная её убирает', () async {
+    var broken = true;
+    final s2 = NotesState(DirNotesFiles(Directory('${tmp.path}/cfg2')), remote: () => broken ? _Broken() : drive);
+    await s2.open(vault.path, watch: false);
+    await s2.syncNow();
+    expect(s2.syncStatus, startsWith('Знания: не сверилось — '));
+    broken = false;
+    await s2.syncNow();
+    expect(s2.syncStatus, 'Знания: всё отправлено');
+    await s2.flush();
+    s2.dispose();
+  });
+
+  test('забыть папку: файлы на месте, раздел снова «первый запуск»', () async {
+    await st.forget();
+    expect(st.hasFolder, isFalse);
+    expect(st.config.folder, isNull);
+    expect(File('${vault.path}/DND/Мира Тёрн.md').existsSync(), isTrue);
+  });
+}
+
+class _Broken extends MemStore {
+  @override
+  Future<Map<String, RemoteFile>> list() async => throw StateError('нет входа в Google');
 }
