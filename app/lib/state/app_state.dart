@@ -1,67 +1,170 @@
-// Состояние пилота. Действие сначала меняет память (экран обновляется сразу), Google догоняет в фоне.
-// Ошибка Google — откат и сообщение. В целевой версии здесь будет Riverpod и очередь исходящих (docs/flutter-architecture.md).
+// Состояние приложения «сначала локально» (docs/flutter-architecture.md, п. 5).
+// Экран читает память; действие меняет память, пишет файл и кладёт операцию в очередь исходящих (data/outbox.dart).
+// Опрос Google — раз в 2 минуты и по кнопке; слой сливается с копией на Drive (core/layer.dart merge).
+// Пока без Riverpod: один ChangeNotifier, чтобы быстрее дойти до рабочей сборки.
+import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/dates.dart';
-import '../core/today_tasks.dart';
+import '../core/layer.dart' as lay;
+import '../core/route.dart' as route;
+import '../core/templates.dart' as tpl;
+import '../core/today.dart' as today;
 import '../data/google_api.dart';
 import '../data/google_auth.dart';
-import '../data/paths.dart';
+import '../data/outbox.dart';
+import '../data/store.dart';
+
+typedef Json = Map<String, dynamic>;
 
 class AppState extends ChangeNotifier {
-  AppState() : api = GoogleApi(GoogleAuth());
-  final GoogleApi api;
+  AppState() : api = GoogleApi(GoogleAuth()), store = Store() {
+    outbox = Outbox(api, store)
+      ..onCreated = _created
+      ..onSaved = _saved
+      ..onRejected = _rejected
+      ..onChange = notifyListeners;
+  }
 
-  List<TodayTask> all = [];
-  Map<String, dynamic> layer = {};
-  Map<String, String> listNames = {};
-  bool loading = true;
-  String? error;
-  String? toast;
+  final GoogleApi api;
+  final Store store;
+  late final Outbox outbox;
+
+  List<Json> lists = []; // списки Google Tasks
+  Map<String, List<Json>> tasks = {}; // listId → задачи (как в Google)
+  List<Json> calendars = [];
+  List<Json> events = []; // события текущей и следующей недели, у каждого 'calId'
+  Json layer = lay.emptyLayer();
+
+  bool started = false;
+  bool syncing = false;
+  bool offline = false;
   bool needLogin = false;
   bool loggingIn = false;
-  int lastTapMs = 0; // сколько мс от нажатия до обновления экрана (замер для решения «идём ли дальше»)
+  String? error;
+  String? toast;
+  DateTime? syncedAt;
   int loadMs = 0;
 
-  List<TodayTask> get today => todayTasks(all, layer, DateTime.now());
+  Timer? _poll;
+  Timer? _layerTimer;
+  Timer? _toastTimer;
+  bool _layerDirty = false;
 
-  Future<void> load() async {
-    loading = true;
-    error = null;
-    needLogin = false;
-    notifyListeners();
+  // ---------- запуск и синхронизация ----------
+
+  Future<void> start() async {
     final sw = Stopwatch()..start();
     try {
-      final f = dataFile('layer.json');
-      layer = await f.exists() ? jsonDecode(await f.readAsString()) as Map<String, dynamic> : {};
-      final lists = (await api.lists()).where((l) => showList(l, layer)).toList();
-      listNames = {for (final l in lists) l['id'] as String: (l['title'] ?? '') as String};
-      final fetched = await Future.wait(
-        lists.map((l) async {
-          final id = l['id'] as String;
-          final items = await api.tasks(id);
-          return items.map(
-            (t) => TodayTask(
-              id: t['id'] as String,
-              listId: id,
-              title: ((t['title'] ?? '') as String),
-              day: dueToYmd(t['due'] as String?),
-            ),
-          );
-        }),
-      );
-      all = fetched.expand((x) => x).where((t) => t.title.trim().isNotEmpty).toList();
-    } on AuthError catch (e) {
-      needLogin = e.needLogin;
-      error = e.message;
+      layer = {...lay.emptyLayer(), ...await store.readLayer()};
+      await outbox.load();
+      final c = await store.readCache();
+      if (c != null) {
+        lists = ((c['lists'] ?? []) as List).cast<Json>();
+        tasks = {for (final e in ((c['tasks'] ?? {}) as Map).entries) e.key as String: (e.value as List).cast<Json>()};
+        calendars = ((c['calendars'] ?? []) as List).cast<Json>();
+        events = ((c['events'] ?? []) as List).cast<Json>();
+      }
     } catch (e) {
-      error = e.toString();
+      error = 'Не прочитал свои файлы: $e';
     }
     loadMs = sw.elapsedMilliseconds;
-    loading = false;
+    started = true;
+    needLogin = !await api.auth.hasLogin();
     notifyListeners();
+    if (!needLogin) unawaited(refresh());
+    _poll = Timer.periodic(const Duration(minutes: 2), (_) => refresh());
+    Timer.periodic(const Duration(seconds: 30), (_) => outbox.flush());
+  }
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
+
+  Future<void> refresh() async {
+    if (syncing || needLogin) return;
+    syncing = true;
+    notifyListeners();
+    try {
+      await outbox.flush(force: true);
+      await _syncLayer();
+      final ls = await api.lists();
+      final got = await Future.wait(ls.map((l) => api.tasks(l['id'] as String)));
+      final fresh = <String, List<Json>>{};
+      for (var i = 0; i < ls.length; i++) {
+        final id = ls[i]['id'] as String;
+        final old = {for (final t in tasks[id] ?? const <Json>[]) t['id']: t};
+        // Задачи с неотправленными правками и ещё не созданные — оставляем свои.
+        final list = <Json>[
+          for (final t in got[i])
+            if (outbox.pendingFor(t['id'] as String) && old[t['id']] != null) old[t['id']]! else t,
+          for (final t in tasks[id] ?? const <Json>[])
+            if ((t['id'] as String).startsWith('tmp-') && outbox.pendingFor(t['id'] as String)) t,
+        ];
+        fresh[id] = list;
+      }
+      lists = ls;
+      tasks = fresh;
+      await _loadEvents();
+      offline = false;
+      error = null;
+      syncedAt = DateTime.now();
+      unawaited(store.writeCache({'lists': lists, 'tasks': tasks, 'calendars': calendars, 'events': events}));
+    } on AuthError catch (e) {
+      needLogin = e.needLogin;
+      if (!e.needLogin) offline = true;
+      error = e.message;
+    } on ApiError catch (e) {
+      error = e.toString();
+    } catch (e) {
+      offline = true;
+      error = 'Нет связи с Google';
+    }
+    syncing = false;
+    notifyListeners();
+  }
+
+  Future<void> _loadEvents() async {
+    final cals = await api.calendars();
+    calendars = cals;
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day - (now.weekday - 1) - 7);
+    final to = from.add(const Duration(days: 42));
+    final show = cals.where((c) => calShown(c)).toList();
+    final got = await Future.wait(
+      show.map((c) async {
+        try {
+          return (await api.events(c['id'] as String, from, to)).map((e) => {...e, 'calId': c['id']}).toList();
+        } catch (_) {
+          return <Json>[];
+        }
+      }),
+    );
+    events = got.expand((x) => x).where((e) => e['status'] != 'cancelled').toList();
+  }
+
+  /// Показывать ли календарь: выбран в Google, не скрыт в слое, не служебный.
+  bool calShown(Json c) {
+    final name = (c['summary'] ?? '') as String;
+    if (name.startsWith('Спутник · ')) return false;
+    if (((c['description'] ?? '') as String).contains('sputnik-sphere')) return false;
+    final r = (layer['cals'] as Map?)?[c['id']];
+    if (r is Map && r['hidden'] != null) return r['hidden'] != true;
+    return c['selected'] == true || c['primary'] == true;
+  }
+
+  Future<void> _syncLayer() async {
+    final remote = await api.pullLayer();
+    final r = lay.merge(layer, remote);
+    if (r.localChanged) {
+      layer = r.merged;
+      await store.writeLayer(layer);
+    }
+    if (r.remoteChanged) await api.pushLayer(r.merged);
   }
 
   Future<void> login() async {
@@ -70,8 +173,10 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     try {
       await api.auth.login();
+      needLogin = false;
       loggingIn = false;
-      await load();
+      notifyListeners();
+      await refresh();
     } catch (e) {
       loggingIn = false;
       error = e.toString();
@@ -79,24 +184,271 @@ class AppState extends ChangeNotifier {
     }
   }
 
-  Future<void> cancelLogin() async {
-    await api.auth.cancel();
+  Future<void> cancelLogin() => api.auth.cancel();
+
+  // ---------- слой ----------
+
+  Json layTask(String id) => (((layer['tasks'] as Map?)?[id] as Map?) ?? const {}).cast<String, dynamic>();
+  Json layList(String id) => (((layer['lists'] as Map?)?[id] as Map?) ?? const {}).cast<String, dynamic>();
+
+  void touch(String section, String key, Json patch) {
+    final s = (layer[section] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+    layer[section] = s;
+    s[key] = {...((s[key] as Map?) ?? const {}), ...patch, 't': DateTime.now().millisecondsSinceEpoch};
+    _saveLayer();
   }
 
-  Future<void> toggle(TodayTask t) async {
-    final sw = Stopwatch()..start();
-    t.done = !t.done;
-    notifyListeners();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      lastTapMs = sw.elapsedMilliseconds;
+  void _saveLayer() {
+    _layerDirty = true;
+    unawaited(store.writeLayer(layer));
+    _layerTimer?.cancel();
+    _layerTimer = Timer(const Duration(seconds: 4), () async {
+      if (!_layerDirty || needLogin) return;
+      _layerDirty = false;
+      try {
+        await _syncLayer();
+        notifyListeners();
+      } catch (_) {
+        _layerDirty = true;
+      }
+    });
+  }
+
+  // ---------- что показывать ----------
+
+  /// Списки для доски и «Сегодня»: не скрытые, не удалённые, не «Привычки».
+  List<Json> get boardLists => lists.where((l) {
+    final L = layList(l['id'] as String);
+    if (L['hidden'] == true || L['gone'] == true) return false;
+    return !tpl.isHabitList(l, layer);
+  }).toList();
+
+  String listName(String id) =>
+      (lists.firstWhere((l) => l['id'] == id, orElse: () => const {})['title'] ?? '') as String;
+
+  Json? task(String listId, String id) {
+    for (final t in tasks[listId] ?? const <Json>[]) {
+      if (t['id'] == id) return t;
+    }
+    return null;
+  }
+
+  bool isDone(Json t) => t['status'] == 'completed';
+  bool _top(Json t) => t['parent'] == null && ((t['title'] ?? '') as String).trim().isNotEmpty && t['deleted'] != true;
+
+  String colOf(Json t, List cols) {
+    if (isDone(t)) return 'done';
+    final s = layTask(t['id'] as String)['status'];
+    return s != null && s != 'done' && cols.any((c) => (c as Map)['id'] == s)
+        ? s as String
+        : (cols.first as Map)['id'] as String;
+  }
+
+  Json board(String listId) => tpl.boardOf(listId, layer);
+
+  /// Задачи доски по колонкам; выполненные раньше срока архива — не на доске.
+  Map<String, List<Json>> columns(String listId) {
+    final b = board(listId);
+    final cols = b['cols'] as List;
+    final days = tpl.archiveDays(layList(listId));
+    final out = {for (final c in cols) (c as Map)['id'] as String: <Json>[]};
+    final items = (tasks[listId] ?? const <Json>[]).where(_top).where((t) => !tpl.isArchived(t, days)).toList();
+    for (final t in tpl.orderTasks(items, layer['tasks'] as Map?, tpl.sortOf(layList(listId)))) {
+      out[colOf(t, cols)]?.add(t);
+    }
+    return out;
+  }
+
+  String get todayYmd => ymd(DateTime.now());
+
+  /// «Сегодня»: открытые со сроком сегодня и раньше + сделанные сегодня.
+  List<(String, Json)> get todayItems {
+    final t = todayYmd;
+    final out = <(String, Json)>[];
+    for (final l in boardLists) {
+      final id = l['id'] as String;
+      if (layList(id)['quiet'] == true) continue;
+      for (final x in tasks[id] ?? const <Json>[]) {
+        if (!_top(x)) continue;
+        final due = dueToYmd(x['due'] as String?);
+        if (isDone(x)) {
+          if (dueToYmd(x['completed'] as String?) == t || (due.isNotEmpty && due == t)) out.add((id, x));
+        } else if (due.isNotEmpty && due.compareTo(t) <= 0) {
+          out.add((id, x));
+        }
+      }
+    }
+    int prio(Json x) => (layTask(x['id'] as String)['priority'] as num?)?.toInt() ?? 2;
+    String slot(Json x) => ((layTask(x['id'] as String)['slot'] as Map?)?['s'] ?? '99') as String;
+    final idx = {for (var i = 0; i < out.length; i++) out[i].$2['id']: i};
+    out.sort((a, b) {
+      final d = (isDone(a.$2) ? 1 : 0) - (isDone(b.$2) ? 1 : 0);
+      if (d != 0) return d;
+      final s = slot(a.$2).compareTo(slot(b.$2));
+      if (s != 0) return s;
+      final p = prio(a.$2) - prio(b.$2);
+      if (p != 0) return p;
+      final due = dueToYmd(a.$2['due'] as String?).compareTo(dueToYmd(b.$2['due'] as String?));
+      return due != 0 ? due : idx[a.$2['id']]!.compareTo(idx[b.$2['id']]!);
+    });
+    return out;
+  }
+
+  /// События дня (местное время), весь день — первыми.
+  List<Json> eventsOn(String day) {
+    final out = events.where((e) {
+      final s = e['start'] as Map? ?? const {};
+      if (s['date'] != null) {
+        final end = ((e['end'] as Map?)?['date'] ?? s['date']) as String;
+        return (s['date'] as String).compareTo(day) <= 0 && day.compareTo(end) < 0;
+      }
+      final dt = DateTime.tryParse((s['dateTime'] ?? '') as String)?.toLocal();
+      return dt != null && ymd(dt) == day;
+    }).toList();
+    String key(Json e) => ((e['start'] as Map?)?['dateTime'] ?? '') as String;
+    out.sort((a, b) => key(a).compareTo(key(b)));
+    return out;
+  }
+
+  /// Задачи со сроком в этот день (все списки).
+  List<(String, Json)> tasksOn(String day) => [
+    for (final l in boardLists)
+      for (final x in tasks[l['id']] ?? const <Json>[])
+        if (_top(x) && dueToYmd(x['due'] as String?) == day) (l['id'] as String, x),
+  ];
+
+  // ---------- действия ----------
+
+  void say(String msg) {
+    toast = msg;
+    _toastTimer?.cancel();
+    _toastTimer = Timer(const Duration(seconds: 5), () {
+      toast = null;
       notifyListeners();
     });
-    try {
-      await api.setDone(t.listId, t.id, t.done);
-    } catch (e) {
-      t.done = !t.done;
-      toast = 'Не получилось отметить: $e';
-      notifyListeners();
-    }
+    notifyListeners();
   }
+
+  void _patchLocal(String listId, String id, Json body) {
+    final t = task(listId, id);
+    if (t == null) return;
+    body.forEach((k, v) => v == null ? t.remove(k) : t[k] = v);
+    notifyListeners();
+  }
+
+  void _send(String listId, String id, Json body) {
+    _patchLocal(listId, id, Json.from(body));
+    unawaited(outbox.add({'op': 'patch', 'list': listId, 'id': id, 'body': body, 'prev': null}));
+  }
+
+  void toggleDone(String listId, Json t) {
+    final done = !isDone(t);
+    _send(
+      listId,
+      t['id'] as String,
+      done
+          ? {'status': 'completed', 'completed': DateTime.now().toUtc().toIso8601String()}
+          : {'status': 'needsAction', 'completed': null},
+    );
+  }
+
+  /// Перенос по колонкам: «готово» — выполнить, из «готово» — вернуть.
+  void setStage(String listId, Json t, String col) {
+    final id = t['id'] as String;
+    if (col == 'done') {
+      if (!isDone(t)) toggleDone(listId, t);
+      return;
+    }
+    if (isDone(t)) toggleDone(listId, t);
+    touch('tasks', id, {'status': col, 'stageAt': DateTime.now().millisecondsSinceEpoch});
+    notifyListeners();
+  }
+
+  void setDue(String listId, Json t, String? day) =>
+      _send(listId, t['id'] as String, {'due': day == null || day.isEmpty ? null : ymdToDue(day)});
+
+  void rename(String listId, Json t, String title) => _send(listId, t['id'] as String, {'title': title});
+  void setNotes(String listId, Json t, String notes) => _send(listId, t['id'] as String, {'notes': notes});
+
+  void setPriority(Json t, int? n) {
+    touch('tasks', t['id'] as String, {'priority': n});
+    notifyListeners();
+  }
+
+  void remove(String listId, Json t) {
+    final id = t['id'] as String;
+    tasks[listId]?.removeWhere((x) => x['id'] == id);
+    touch('tasks', id, {'gone': true});
+    if (id.startsWith('tmp-')) {
+      outbox.ops.removeWhere((o) => o['tmp'] == id || o['id'] == id);
+    } else {
+      unawaited(outbox.add({'op': 'delete', 'list': listId, 'id': id}));
+    }
+    say('Задача удалена');
+  }
+
+  int _seq = 0;
+
+  /// Новая задача: сразу в памяти с временным id, в Google — из очереди.
+  Json addTask(String listId, String title, {String? due, Json layerPatch = const {}, String? col}) {
+    final tmp = 'tmp-${DateTime.now().millisecondsSinceEpoch}-${_seq++}';
+    final body = <String, dynamic>{'title': title, if (due != null && due.isNotEmpty) 'due': ymdToDue(due)};
+    final t = <String, dynamic>{'id': tmp, ...body, 'status': 'needsAction'};
+    (tasks[listId] ??= []).insert(0, t);
+    final patch = {...layerPatch, if (col != null && col != 'done') 'status': col};
+    if (patch.isNotEmpty) touch('tasks', tmp, patch);
+    unawaited(outbox.add({'op': 'create', 'list': listId, 'tmp': tmp, 'body': body}));
+    notifyListeners();
+    return t;
+  }
+
+  /// Умная строка: «купить молоко завтра 17:00 @дом !!» → задача в угаданный список.
+  ({String listId, String title})? addLine(String text, {String? listId}) {
+    final p = route.parseLine(text);
+    final title = (p['title'] ?? '') as String;
+    if (title.trim().isEmpty) return null;
+    final ls = boardLists.cast<Map>();
+    var dest = listId;
+    if (dest == null) {
+      final r = route.route(text, lists: ls, layer: layer, tasks: tasks, current: null);
+      dest = r.isNotEmpty ? r.first['listId'] as String? : null;
+      dest ??= ls.isNotEmpty ? ls.first['id'] as String : null;
+    }
+    if (dest == null) return null;
+    final x = today.taskFrom(p, todayYmd, dest);
+    final patch = Json.from((x['layer'] as Map?) ?? const {});
+    if (x['slot'] != null) patch['slot'] = x['slot'];
+    addTask(dest, title, due: x['due'] as String?, layerPatch: patch);
+    return (listId: dest, title: title);
+  }
+
+  void _created(String tmp, Json real) {
+    for (final e in tasks.entries) {
+      final i = e.value.indexWhere((x) => x['id'] == tmp);
+      if (i < 0) continue;
+      final local = e.value[i];
+      e.value[i] = {...real, if (local['status'] != real['status']) 'status': local['status']};
+      final L = (layer['tasks'] as Map?)?[tmp];
+      if (L != null) {
+        (layer['tasks'] as Map)[real['id']] = L;
+        (layer['tasks'] as Map)[tmp] = {'gone': true, 't': DateTime.now().millisecondsSinceEpoch};
+        _saveLayer();
+      }
+    }
+    notifyListeners();
+  }
+
+  void _saved(String listId, Json t) {
+    if (outbox.pendingFor(t['id'] as String)) return;
+    final list = tasks[listId];
+    final i = list?.indexWhere((x) => x['id'] == t['id']) ?? -1;
+    if (i >= 0) list![i] = t;
+  }
+
+  void _rejected(Op op, Object e) {
+    say('Не сохранилось в Google: $e');
+    unawaited(refresh());
+  }
+
+  String debugLayer() => const JsonEncoder.withIndent(' ').convert(layer);
 }

@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import 'state/app_state.dart';
-import 'ui/today_page.dart';
+import 'ui/app_shell.dart';
+import 'ui/theme/tokens.dart';
 
 void main() {
-  final state = AppState()..load();
+  final state = AppState()..start();
   runApp(
     MaterialApp(
       title: 'Спутник',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(brightness: Brightness.dark, colorSchemeSeed: const Color(0xFFD9774F), useMaterial3: true),
-      home: TodayPage(state: state),
+      theme: spTheme(),
+      locale: const Locale('ru'),
+      supportedLocales: const [Locale('ru'), Locale('en')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
+      home: AppShell(state: state),
     ),
   );
 }
