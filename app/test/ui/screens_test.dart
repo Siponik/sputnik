@@ -8,7 +8,10 @@ import 'package:sputnik_app/ui/calendar/calendar_page.dart';
 import 'package:sputnik_app/ui/create/create_dialog.dart';
 import 'package:sputnik_app/ui/habits/habits_page.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
+import 'package:sputnik_app/ui/settings/settings_page.dart';
 import 'package:sputnik_app/ui/today/today_page.dart';
+import 'package:sputnik_app/ui/widgets/search_dialog.dart';
+import 'package:sputnik_app/ui/board/list_dialogs.dart';
 import 'package:sputnik_app/ui/widgets/task_dialog.dart';
 
 AppState demo() {
@@ -130,6 +133,39 @@ void main() {
       await t.tap(find.text('За час'));
       await t.pump(const Duration(seconds: 6));
       expect(s.layTask('t0')['remind'], isNotNull);
+    });
+    testWidgets('Настройки $size', (t) async {
+      final s = demo();
+      await pump(t, SettingsPage(state: s), size);
+      for (final n in ['Что показывать', 'Напоминания', 'Синхронизация', 'Обновления', 'Клавиши']) {
+        await t.tap(find.text(n).first);
+        await t.pump();
+      }
+    });
+    testWidgets('Поиск и настройки списка $size', (t) async {
+      final s = demo();
+      await pump(
+        t,
+        Builder(
+          builder: (c) => Column(
+            children: [
+              TextButton(onPressed: () => openSearch(c, s, (a, b) {}), child: const Text('find')),
+              TextButton(onPressed: () => listSettings(c, s, 'L1'), child: const Text('set')),
+            ],
+          ),
+        ),
+        size,
+      );
+      await t.tap(find.text('find'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), 'задача 1');
+      await t.pump();
+      expect(find.text('Задача 1'), findsOneWidget);
+      await t.tapAt(const Offset(5, 5));
+      await t.pumpAndSettle();
+      await t.tap(find.text('set'));
+      await t.pumpAndSettle();
+      expect(find.text('Настройки списка'), findsOneWidget);
     });
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);

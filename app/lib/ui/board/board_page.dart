@@ -8,6 +8,8 @@ import '../theme/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/task_dialog.dart';
 import 'card_menu.dart';
+import 'list_dialogs.dart';
+import '../../core/spheres.dart' as sph;
 import 'rows_view.dart';
 import 'stickers_view.dart';
 
@@ -20,36 +22,98 @@ class BoardPage extends StatefulWidget {
 }
 
 class _BoardPageState extends State<BoardPage> {
-  String? active;
+  String? get active => widget.state.activeList;
+  set active(String? v) => widget.state.activeList = v;
 
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final ls = s.boardLists;
-    if (ls.isEmpty) {
-      return Center(
-        child: Text('Списков пока нет', style: SpType.text(14, color: SpColors.muted)),
-      );
+    final id = ls.any((l) => l['id'] == active) ? active! : (ls.isEmpty ? null : ls.first['id'] as String);
+    final groups = <String?, List<Json>>{};
+    for (final l in ls) {
+      (groups[s.sphereOf(l['id'] as String)] ??= []).add(l);
     }
-    final id = ls.any((l) => l['id'] == active) ? active! : ls.first['id'] as String;
+    final folded = (((s.layer['settings'] as Map?)?['sphereFold'] as Map?) ?? const {});
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          width: 230,
+          width: 240,
           color: SpColors.bg,
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 10),
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Text('СПИСКИ', style: SpType.label(11)),
+                padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('СПИСКИ', style: SpType.label(11))),
+                    IconButton(
+                      tooltip: 'Новая сфера',
+                      onPressed: () => sphereDialog(context, s),
+                      icon: const Icon(Icons.workspaces_outline, size: 16, color: SpColors.muted),
+                    ),
+                    IconButton(
+                      tooltip: 'Новый список',
+                      onPressed: () async {
+                        final nid = await newListDialog(context, s);
+                        if (nid != null) setState(() => active = nid);
+                      },
+                      icon: const Icon(Icons.add, size: 18, color: SpColors.muted),
+                    ),
+                  ],
+                ),
               ),
-              for (final l in ls) _listRow(s, l, l['id'] == id),
+              for (final sp in [...s.spheres, null])
+                if (groups[sp?['id']] != null) ...[
+                  if (sp != null)
+                    GestureDetector(
+                      onSecondaryTap: () => sphereDialog(context, s, sp),
+                      child: InkWell(
+                        onTap: () => s.touch('settings', 'sphereFold', {sp['id'] as String: folded[sp['id']] != true}),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 12, 4),
+                          child: Row(
+                            children: [
+                              CircleAvatar(radius: 4, backgroundColor: cssColor(sph.sphereColor(sp))),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  ((sp['name'] ?? '') as String).toUpperCase(),
+                                  style: SpType.label(10.5, color: SpColors.ink2),
+                                ),
+                              ),
+                              Icon(
+                                folded[sp['id']] == true ? Icons.chevron_right : Icons.expand_more,
+                                size: 14,
+                                color: SpColors.dim,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (s.spheres.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 12, 4),
+                      child: Text('БЕЗ СФЕРЫ', style: SpType.label(10.5, color: SpColors.dim)),
+                    ),
+                  if (sp == null || folded[sp['id']] != true)
+                    for (final l in groups[sp?['id']]!) _listRow(s, l, l['id'] == id),
+                ],
             ],
           ),
         ),
-        Expanded(child: DotGround(child: _board(context, s, id))),
+        Expanded(
+          child: DotGround(
+            child: id == null
+                ? Center(
+                    child: Text('Списков пока нет — создай первый «＋»', style: SpType.text(14, color: SpColors.muted)),
+                  )
+                : _board(context, s, id),
+          ),
+        ),
       ],
     );
   }
@@ -57,26 +121,29 @@ class _BoardPageState extends State<BoardPage> {
   Widget _listRow(AppState s, Json l, bool on) {
     final lid = l['id'] as String;
     final open = (s.tasks[lid] ?? const <Json>[]).where((t) => !s.isDone(t) && t['parent'] == null).length;
-    return InkWell(
-      onTap: () => setState(() => active = lid),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: on ? SpColors.nodeHover : Colors.transparent,
-          borderRadius: BorderRadius.circular(SpRadius.button),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                (l['title'] ?? '') as String,
-                style: SpType.text(13.5, color: on ? SpColors.ink : SpColors.ink2),
-                overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onSecondaryTap: () => listSettings(context, s, lid),
+      child: InkWell(
+        onTap: () => setState(() => active = lid),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: on ? SpColors.nodeHover : Colors.transparent,
+            borderRadius: BorderRadius.circular(SpRadius.button),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  (l['title'] ?? '') as String,
+                  style: SpType.text(13.5, color: on ? SpColors.ink : SpColors.ink2),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            Text('$open', style: SpType.label(11)),
-          ],
+              Text('$open', style: SpType.label(11)),
+            ],
+          ),
         ),
       ),
     );
@@ -117,6 +184,11 @@ class _BoardPageState extends State<BoardPage> {
                 onSelectionChanged: (v) => s.setView(listId, v.first),
               ),
               const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Настройки списка',
+                onPressed: () => listSettings(context, s, listId),
+                icon: const Icon(Icons.more_horiz, size: 18, color: SpColors.muted),
+              ),
               IconButton(
                 tooltip: 'Архив',
                 onPressed: () => archiveDialog(context, s, listId),

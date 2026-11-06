@@ -6,6 +6,9 @@ import '../state/app_state.dart';
 import 'board/board_page.dart';
 import 'calendar/calendar_page.dart';
 import 'create/create_dialog.dart';
+import 'settings/settings_page.dart';
+import '../state/updater.dart';
+import 'widgets/search_dialog.dart';
 import 'habits/habits_page.dart';
 import 'theme/tokens.dart';
 import 'today/today_page.dart';
@@ -33,6 +36,8 @@ class _AppShellState extends State<AppShell> {
         const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => tab = 3),
         const SingleActivator(LogicalKeyboardKey.f5): s.refresh,
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): _create,
+        const SingleActivator(LogicalKeyboardKey.keyK, control: true): _search,
+        const SingleActivator(LogicalKeyboardKey.comma, control: true): () => setState(() => tab = 4),
       },
       child: Focus(
         autofocus: true,
@@ -75,6 +80,16 @@ class _AppShellState extends State<AppShell> {
         ),
       ),
     );
+  }
+
+  void _search() {
+    if (widget.state.needLogin) return;
+    openSearch(context, widget.state, (t, list) {
+      setState(() {
+        tab = t;
+        if (list != null) widget.state.activeList = list;
+      });
+    });
   }
 
   void _create() {
@@ -121,6 +136,29 @@ class _AppShellState extends State<AppShell> {
               ),
             ),
           const Spacer(),
+          ListenableBuilder(
+            listenable: updater,
+            builder: (context, _) => updater.found == null
+                ? const SizedBox()
+                : Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ActionChip(
+                      avatar: const Icon(Icons.auto_awesome, size: 14, color: SpColors.gold),
+                      label: Text('Версия ${updater.found!['version']}'),
+                      onPressed: () => showDialog<void>(
+                        context: context,
+                        builder: (c) => AlertDialog(
+                          title: Text('Вышла версия ${updater.found!['version']}'),
+                          content: Text((updater.found!['notes'] ?? '') as String),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(c), child: const Text('Позже')),
+                            FilledButton(onPressed: updater.install, child: const Text('Обновить сейчас')),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+          ),
           if (pending > 0)
             Padding(
               padding: const EdgeInsets.only(right: 10),
@@ -131,6 +169,16 @@ class _AppShellState extends State<AppShell> {
               'обновлено ${s.syncedAt!.hour.toString().padLeft(2, '0')}:${s.syncedAt!.minute.toString().padLeft(2, '0')}',
               style: SpType.label(11),
             ),
+          IconButton(
+            tooltip: 'Найти (Ctrl+K)',
+            onPressed: _search,
+            icon: const Icon(Icons.search, size: 18, color: SpColors.muted),
+          ),
+          IconButton(
+            tooltip: 'Настройки (Ctrl+,)',
+            onPressed: () => setState(() => tab = 4),
+            icon: Icon(Icons.settings_outlined, size: 18, color: tab == 4 ? SpColors.accent : SpColors.muted),
+          ),
           const SizedBox(width: 6),
           FilledButton.icon(
             onPressed: s.needLogin ? null : _create,
@@ -192,7 +240,8 @@ class _AppShellState extends State<AppShell> {
       0 => TodayPage(state: s),
       1 => CalendarPage(state: s),
       2 => BoardPage(state: s),
-      _ => HabitsPage(state: s),
+      3 => HabitsPage(state: s),
+      _ => SettingsPage(state: s),
     };
   }
 }

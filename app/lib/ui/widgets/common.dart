@@ -12,11 +12,11 @@ class Node extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: SpColors.node,
+  Widget build(BuildContext context) => Material(
+    color: SpColors.node,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(SpRadius.node),
-      border: Border.all(color: SpColors.line),
+      side: const BorderSide(color: SpColors.line),
     ),
     clipBehavior: Clip.antiAlias,
     child: Column(

@@ -66,6 +66,11 @@ class GoogleApi {
 
   Future<Map<String, dynamic>> createList(String title) => _call('POST', '$_tasks/users/@me/lists', {'title': title});
 
+  Future<Map<String, dynamic>> renameList(String id, String title) =>
+      _call('PATCH', '$_tasks/users/@me/lists/$id', {'title': title});
+
+  Future<void> deleteList(String id) => _call('DELETE', '$_tasks/users/@me/lists/$id');
+
   Future<Map<String, dynamic>> createTask(String listId, Map<String, dynamic> body, {String? parent}) =>
       _call('POST', '$_tasks/lists/$listId/tasks${parent == null ? '' : '?parent=$parent'}', body);
 

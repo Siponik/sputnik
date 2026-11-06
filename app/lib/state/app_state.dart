@@ -13,6 +13,7 @@ import '../core/inbox.dart' as inbox;
 import '../core/layer.dart' as lay;
 import '../core/repeat.dart' as rep;
 import '../core/route.dart' as route;
+import '../core/spheres.dart' as sph;
 import '../core/templates.dart' as tpl;
 import '../core/today.dart' as today;
 import '../data/google_api.dart';
@@ -42,6 +43,7 @@ class AppState extends ChangeNotifier {
   Json layer = lay.emptyLayer();
   Json? inboxSt; // статус «Входящих от Claude» (событие «Спутник · статус»)
 
+  String? activeList; // список, открытый на доске
   bool started = false;
   bool syncing = false;
   bool offline = false;
@@ -727,6 +729,77 @@ class AppState extends ChangeNotifier {
     touch('tasks', t['id'] as String, {'inbox': 'rejected'});
     remove(x['listId'] as String, t);
     say('«${t['title']}» — отклонено и удалено');
+  }
+
+  // ---------- списки и сферы ----------
+
+  List<Json> get spheres => sph.spheresFrom(layer);
+  String? sphereOf(String listId) => sph.sphereOf(listId, layer);
+
+  Future<String?> createList(String title, {String template = 'work', String? sphere, String? view}) async {
+    try {
+      final l = await api.createList(title);
+      lists = [...lists, l];
+      touch('lists', l['id'] as String, {'template': template, 'sphere': ?sphere, 'view': ?view});
+      notifyListeners();
+      return l['id'] as String;
+    } catch (e) {
+      say('Список не создался: $e');
+      return null;
+    }
+  }
+
+  Future<void> renameList(String id, String title) async {
+    final l = lists.firstWhere((x) => x['id'] == id);
+    final was = l['title'];
+    l['title'] = title;
+    notifyListeners();
+    try {
+      await api.renameList(id, title);
+    } catch (e) {
+      l['title'] = was;
+      say('Не переименовался: $e');
+    }
+  }
+
+  Future<void> deleteList(String id) async {
+    try {
+      await api.deleteList(id);
+      final ids = [for (final t in tasks[id] ?? const <Json>[]) t['id'] as String];
+      layer = lay.forgetList(layer, id, ids);
+      lists = lists.where((l) => l['id'] != id).toList();
+      tasks.remove(id);
+      _saveLayer();
+      notifyListeners();
+      say('Список удалён');
+    } catch (e) {
+      say('Не удалось удалить список: $e');
+    }
+  }
+
+  /// Другой шаблон колонок: задачи переезжают по switchPlan.
+  void switchTemplate(String listId, String tplId) {
+    final plan = tpl.switchPlan(layer, listId, tplId, tasks[listId]);
+    touch('lists', listId, Json.from(plan['patch'] as Map));
+    for (final m in (plan['moves'] as List)) {
+      touch('tasks', m['id'] as String, {'status': m['status']});
+    }
+    notifyListeners();
+  }
+
+  void saveSphere(String? id, Json fields) {
+    final sid = id ?? 'sp-${DateTime.now().millisecondsSinceEpoch}';
+    final order = spheres.fold<num>(0, (m, x) => ((x['order'] ?? 0) as num) > m ? (x['order'] as num) : m) + 1;
+    touch('spheres', sid, {if (id == null) 'order': order, ...fields});
+    notifyListeners();
+  }
+
+  void deleteSphere(String id) {
+    touch('spheres', id, {'removed': true});
+    for (final l in lists) {
+      if (layList(l['id'] as String)['sphere'] == id) touch('lists', l['id'] as String, {'sphere': null});
+    }
+    notifyListeners();
   }
 
   // ---------- действия ----------
