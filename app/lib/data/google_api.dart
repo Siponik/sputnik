@@ -64,6 +64,8 @@ class GoogleApi {
     done ? {'status': 'completed'} : {'status': 'needsAction', 'completed': null},
   );
 
+  Future<Map<String, dynamic>> createList(String title) => _call('POST', '$_tasks/users/@me/lists', {'title': title});
+
   Future<Map<String, dynamic>> createTask(String listId, Map<String, dynamic> body) =>
       _call('POST', '$_tasks/lists/$listId/tasks', body);
 

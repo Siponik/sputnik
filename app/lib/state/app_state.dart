@@ -8,6 +8,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 
 import '../core/dates.dart';
+import '../core/habits.dart' as hb;
 import '../core/layer.dart' as lay;
 import '../core/route.dart' as route;
 import '../core/templates.dart' as tpl;
@@ -316,6 +317,101 @@ class AppState extends ChangeNotifier {
       for (final x in tasks[l['id']] ?? const <Json>[])
         if (_top(x) && dueToYmd(x['due'] as String?) == day) (l['id'] as String, x),
   ];
+
+  // ---------- привычки (задачи списка «Привычки», настройки — layer.habits, отметки — layer.log) ----------
+
+  Json? get habitList {
+    for (final l in lists) {
+      if (tpl.isHabitList(l, layer)) return l;
+    }
+    return null;
+  }
+
+  /// Привычки как в App.svelte habitsRaw, по порядку sortHabits.
+  List<Json> get habits {
+    final hl = habitList;
+    if (hl == null) return [];
+    final items = (tasks[hl['id']] ?? const <Json>[]).where((t) => t['parent'] == null && !isDone(t)).toList();
+    final idx = {for (var i = 0; i < items.length; i++) items[i]['id']: i};
+    items.sort((a, b) {
+      final c = ((a['position'] ?? '') as String).compareTo((b['position'] ?? '') as String);
+      return c != 0 ? c : idx[a['id']]!.compareTo(idx[b['id']]!);
+    });
+    return hb.sortHabits([
+      for (final t in items)
+        () {
+          final m = ((layer['habits'] as Map?)?[t['id']] as Map?) ?? const {};
+          return <String, dynamic>{
+            'id': t['id'],
+            'name': ((t['title'] ?? '') as String).isEmpty ? 'Без названия' : t['title'],
+            'days': m['days'] ?? [],
+            'win': m['win'],
+            'time': m['time'],
+            'end': m['end'],
+            'createdAt': m['createdAt'],
+            'part': m['part'],
+            'perWeek': m['perWeek'],
+            'goal': m['goal'],
+            'icon': m['icon'],
+            'color': m['color'],
+            'remind': m['remind'],
+            'tipHide': m['tipHide'],
+          };
+        }(),
+    ]);
+  }
+
+  Map get habitLog => (layer['log'] as Map?) ?? const {};
+
+  int get habitsLeft => habits.where((h) => !hb.isDone(habitLog, h['id'], todayYmd)).length;
+
+  /// Отметка сегодня (у количества — «+1»).
+  void toggleHabit(Json h) {
+    final day = todayYmd;
+    touch('log', hb.logKey(h['id'], day), hb.nextMark(habitLog, h, day));
+    final n = hb.stats(h, habitLog)['streak'] as int;
+    if (hb.isDone(habitLog, h['id'], day) && hb.milestones.contains(n)) say('Серия $n! ${h['name']}');
+    notifyListeners();
+  }
+
+  /// Задним числом: state = done | skip | none.
+  void setHabitDay(Json h, String day, String state) {
+    touch('log', hb.logKey(h['id'], day), hb.dayMark(h, state));
+    notifyListeners();
+  }
+
+  void saveHabit(String id, Json patch) {
+    touch('habits', id, patch);
+    notifyListeners();
+  }
+
+  Future<void> addHabit(String name, Json fields) async {
+    var hl = habitList;
+    if (hl == null) {
+      try {
+        hl = await api.createList('Привычки');
+        lists = [...lists, hl];
+      } catch (e) {
+        say('Не получилось создать список «Привычки»: $e');
+        return;
+      }
+    }
+    final t = addTask(hl['id'] as String, name);
+    touch('habits', t['id'] as String, {...fields, 'createdAt': todayYmd});
+    notifyListeners();
+  }
+
+  void renameHabit(String id, String name) {
+    final hl = habitList;
+    final t = hl == null ? null : task(hl['id'] as String, id);
+    if (t != null) rename(hl!['id'] as String, t, name);
+  }
+
+  void removeHabit(String id) {
+    final hl = habitList;
+    final t = hl == null ? null : task(hl['id'] as String, id);
+    if (t != null) remove(hl!['id'] as String, t);
+  }
 
   // ---------- действия ----------
 

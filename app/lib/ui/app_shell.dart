@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../state/app_state.dart';
 import 'board/board_page.dart';
 import 'calendar/calendar_page.dart';
+import 'habits/habits_page.dart';
 import 'theme/tokens.dart';
 import 'today/today_page.dart';
 
@@ -18,7 +19,7 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int tab = 0;
-  static const tabs = ['Сегодня', 'Доска', 'Календарь'];
+  static const tabs = ['Сегодня', 'Календарь', 'Доска', 'Привычки'];
 
   @override
   Widget build(BuildContext context) {
@@ -28,6 +29,7 @@ class _AppShellState extends State<AppShell> {
         const SingleActivator(LogicalKeyboardKey.digit1, control: true): () => setState(() => tab = 0),
         const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => setState(() => tab = 1),
         const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => setState(() => tab = 2),
+        const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => tab = 3),
         const SingleActivator(LogicalKeyboardKey.f5): s.refresh,
       },
       child: Focus(
@@ -156,8 +158,9 @@ class _AppShellState extends State<AppShell> {
     }
     return switch (tab) {
       0 => TodayPage(state: s),
-      1 => BoardPage(state: s),
-      _ => CalendarPage(state: s),
+      1 => CalendarPage(state: s),
+      2 => BoardPage(state: s),
+      _ => HabitsPage(state: s),
     };
   }
 }

@@ -2,12 +2,8 @@
 # Пререлиз никогда не «последний» — старый трекер обновляется по releases/latest, его не трогаем.
 name: Сборка Flutter-приложения
 
+# Только вручную (решение 06.11): пользователь ждёт одну сборку со всем, без промежуточных.
 on:
-  push:
-    branches: [beta]
-    paths:
-      - 'app/**'
-      - '.github/workflows/app-build.yml'
   workflow_dispatch:
 
 permissions:

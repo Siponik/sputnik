@@ -5,6 +5,7 @@ import 'package:sputnik_app/core/dates.dart';
 import 'package:sputnik_app/state/app_state.dart';
 import 'package:sputnik_app/ui/board/board_page.dart';
 import 'package:sputnik_app/ui/calendar/calendar_page.dart';
+import 'package:sputnik_app/ui/habits/habits_page.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
 import 'package:sputnik_app/ui/today/today_page.dart';
 
@@ -22,6 +23,17 @@ AppState demo() {
       {'id': 'd1', 'title': 'Сделано', 'status': 'completed', 'completed': DateTime.now().toUtc().toIso8601String()},
     ],
     'L2': [],
+    'H': [
+      {'id': 'h1', 'title': 'Вода', 'status': 'needsAction'},
+      {'id': 'h2', 'title': 'Зарядка', 'status': 'needsAction'},
+    ],
+  };
+  s.lists.add({'id': 'H', 'title': 'Привычки'});
+  s.layer['habits'] = {
+    'h1': {
+      'goal': {'n': 8, 'unit': 'стаканов'},
+      'createdAt': '2026-01-01',
+    },
   };
   s.events = [
     {
@@ -53,10 +65,18 @@ void main() {
       await pump(t, TodayPage(state: s), size);
       expect(find.text('Задача 0'), findsOneWidget);
       s.toggleDone('L1', s.tasks['L1']!.first);
+      await t.pump(const Duration(seconds: 6));
     });
     testWidgets('Доска $size', (t) async {
       await pump(t, BoardPage(state: demo()), size);
       expect(find.text('Работа'), findsWidgets);
+    });
+    testWidgets('Привычки $size', (t) async {
+      final s = demo();
+      await pump(t, HabitsPage(state: s), size);
+      expect(find.text('Вода'), findsOneWidget);
+      s.toggleHabit(s.habits.first);
+      await t.pump(const Duration(seconds: 6));
     });
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
