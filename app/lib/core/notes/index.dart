@@ -98,6 +98,9 @@ class NoteIndex {
 
   Iterable<String> get paths => _docs.keys;
   Iterable<String> get files => _files;
+
+  /// Растёт при каждой правке индекса — экранам, чтобы понять, что пора пересчитать.
+  int version = 0;
   int get length => _docs.length;
   NoteDoc? doc(String path) => _docs[path];
   String? text(String path) => _texts[path];
@@ -108,6 +111,7 @@ class NoteIndex {
     _texts[path] = text;
     _w[path] = _Words.of(d, text);
     _dirty = true;
+    version++;
   }
 
   /// Заметка добавлена или изменилась.
@@ -115,6 +119,7 @@ class NoteIndex {
     if (!isNote(path)) {
       _files.add(path);
       _dirty = true;
+    version++;
       return;
     }
     _put(path, text);
@@ -127,6 +132,7 @@ class NoteIndex {
     _w.remove(path);
     _files.remove(path);
     _dirty = true;
+    version++;
   }
 
   /// Файл переименован (содержимое то же).
@@ -138,6 +144,7 @@ class NoteIndex {
     } else if (_files.remove(from)) {
       _files.add(to);
       _dirty = true;
+    version++;
     }
   }
 

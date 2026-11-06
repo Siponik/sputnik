@@ -214,7 +214,16 @@ class NotesState extends ChangeNotifier {
 
   String? get active => config.active;
 
+  /// Что показано справа: заметка или граф знаний.
+  String view = 'note';
+  void show(String v) {
+    if (view == v) return;
+    view = v;
+    notifyListeners();
+  }
+
   void openNote(String path) {
+    view = 'note';
     if (!config.tabs.contains(path)) config.tabs.add(path);
     config.active = path;
     config.recent

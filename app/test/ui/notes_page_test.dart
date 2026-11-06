@@ -116,6 +116,42 @@ void main() {
     await t.pump(const Duration(milliseconds: 20)); // таймер автосохранения (сама запись проверена в тесте состояния)
   });
 
+  testWidgets('граф знаний: фильтры, счётчики, «Ещё не созданные», выбор и перелёт к ×3', (t) async {
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    st.openNote('3D/Техники/Запекание нормалей.md');
+    await pump(t);
+    await t.tap(find.text('Граф'));
+    await t.pumpAndSettle();
+    expect(find.text('02 · ГРАФ ЗНАНИЙ'), findsOneWidget);
+    expect(find.text('ФИЛЬТРЫ'), findsOneWidget);
+    expect(find.text('3 ЗАМЕТКИ · 2 СВЯЗИ · ВЫБРАНО: 2 СОСЕДА'), findsOneWidget);
+    expect(find.text('ЗАПЕКАНИЕ НОРМАЛЕЙ'), findsOneWidget); // карточка выбранной
+
+    await t.tap(find.text('Ещё не созданные'));
+    await t.pumpAndSettle();
+    expect(find.textContaining('· 3 СВЯЗИ'), findsOneWidget);
+
+    // Скрыть группу «3D» — в графе ничего не остаётся.
+    await t.tap(find.text('3D'));
+    await t.pumpAndSettle();
+    expect(find.textContaining('0 ЗАМЕТОК'), findsOneWidget);
+    await t.tap(find.text('3D'));
+    await t.pumpAndSettle();
+
+    for (var i = 0; i < 4; i++) {
+      await t.tap(find.byTooltip('Ближе'));
+      await t.pumpAndSettle();
+    }
+    expect(find.text('МАСШТАБ ×3'), findsOneWidget); // точки раскрылись в ноды с проводами
+    await t.tap(find.byTooltip('Весь граф'));
+    await t.pumpAndSettle();
+    expect(find.text('МАСШТАБ ×1'), findsOneWidget);
+    await t.tap(find.text('Открыть'));
+    await t.pumpAndSettle();
+    expect(st.view, 'note');
+    expect(find.text('02 · ГРАФ ЗНАНИЙ'), findsNothing);
+  });
+
   testWidgets('папка пропала — понятное состояние', (t) async {
     await t.runAsync(() => st.open('${tmp.path}/нет-такой', watch: false));
     await pump(t);

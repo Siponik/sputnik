@@ -13,6 +13,7 @@ import '../../core/notes/sync.dart' show parentFolders;
 import '../../core/notes/view.dart';
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
+import 'graph_view.dart';
 import 'hue.dart';
 import 'links_panel.dart';
 import 'note_editor.dart';
@@ -79,6 +80,8 @@ class _NotesPageState extends State<NotesPage> {
               ],
             ),
           );
+        } else if (st.view == 'graph') {
+          body = GraphView(st: st);
         } else {
           body = Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -618,6 +621,17 @@ class _Toolbar extends StatelessWidget {
           ),
           child: Text('↔ Связи · ${st.index.degree(path)}'),
         ),
+        const SizedBox(width: 4),
+        TextButton(
+          onPressed: () => st.show('graph'),
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 28),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            foregroundColor: SpColors.muted,
+            textStyle: SpType.text(12.5, w: FontWeight.w500),
+          ),
+          child: const Text('Граф'),
+        ),
         const SizedBox(width: 6),
         PopupMenuButton<String>(
           tooltip: 'Ещё',
@@ -962,9 +976,10 @@ Future<void> renameDialog(BuildContext context, NotesState st, String path) asyn
   }
 }
 
-/// Клавиши раздела (Ctrl+N — новая заметка, Ctrl+W — закрыть вкладку).
+/// Клавиши раздела (Ctrl+N — новая заметка, Ctrl+W — закрыть вкладку, Ctrl+G — граф).
 Map<ShortcutActivator, VoidCallback> notesKeys(BuildContext context, NotesState st) => {
       const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => newNoteDialog(context, st),
+      const SingleActivator(LogicalKeyboardKey.keyG, control: true): () => st.show(st.view == 'graph' ? 'note' : 'graph'),
       const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
         if (st.active != null) st.closeTab(st.active!);
       },

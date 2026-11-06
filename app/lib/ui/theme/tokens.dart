@@ -42,6 +42,9 @@ abstract final class SpColors {
   /// Цвета папок «Знаний» по порядку (как сферы).
   static const hues = [grey, accent, violet, blue, green, gold, red];
 
+  /// Тёмные шапки тех же цветов, по тому же порядку, что [hues].
+  static const heads = [headGrey, headOrange, headViolet, headBlue, headGreen, headGold, headRed];
+
   /// Точки холста: 1 px через 24 px, белый 7 %.
   static const dot = Color(0x12FFFFFF);
 }
