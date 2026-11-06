@@ -37,7 +37,6 @@ class StickersView extends StatelessWidget {
         .toList();
     final done = s.topTasks(listId, withDone: true).where(s.isDone).toList();
     final week = stk.jarCount(done);
-    final open = s.topTasks(listId).length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -89,35 +88,12 @@ class StickersView extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      height: 120,
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(flex: 5, child: _jar(context, done, week)),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 5,
-                            child: CoonTip(
-                              pose: open == 0 ? 'cheer' : 'think',
-                              text: open == 0
-                                  ? 'Все стикеры сделаны. Красота.'
-                                  : 'Сделанное уходит в баночку сразу. Осталось $open.',
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Align(
-                            alignment: Alignment.bottomRight,
-                            child: Stamp(
-                              width: 220,
-                              sheet: 'ДОСКА · СТИКЕРЫ',
-                              date: _date(),
-                              a: 'ТЕМ ${topics.length.toString().padLeft(2, '0')}',
-                              b: 'ДЕЛ ${open.toString().padLeft(2, '0')}',
-                            ),
-                          ),
-                        ],
+                    const SizedBox(height: 28),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: SizedBox(
+                        width: (w * 2 + gap).clamp(320.0, 520.0),
+                        child: _jar(context, done, week, topics),
                       ),
                     ),
                   ],
@@ -128,12 +104,6 @@ class StickersView extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  String _date() {
-    final d = DateTime.now();
-    String two(int x) => x.toString().padLeft(2, '0');
-    return '${two(d.day)}.${two(d.month)}.${two(d.year % 100)}';
   }
 
   Future<void> _newTopic(BuildContext context) async {
@@ -163,85 +133,56 @@ class StickersView extends StatelessWidget {
     s.setListField(listId, {'topics': ts});
   }
 
-  Widget _jar(BuildContext context, List<Json> done, int week) {
-    final now = DateTime.now();
-    final mon = DateTime(now.year, now.month, now.day - (now.weekday - 1));
-    final per = List<int>.filled(7, 0);
-    Json? last;
-    for (final t in done) {
-      final c = DateTime.tryParse((t['completed'] ?? '') as String)?.toLocal();
-      if (c == null) continue;
-      if (last == null || ((last['completed'] ?? '') as String).compareTo(t['completed'] as String) < 0) last = t;
-      final k = DateTime(c.year, c.month, c.day).difference(mon).inDays;
-      if (k >= 0 && k < 7) per[k]++;
+  /// Баночка: банка, в которую падают цветные квадратики сделанного (цвет темы).
+  Widget _jar(BuildContext context, List<Json> done, int week, List topics) {
+    final sorted = [...done]
+      ..sort((a, b) => ((b['completed'] ?? '') as String).compareTo((a['completed'] ?? '') as String));
+    final last = sorted.firstOrNull;
+    Color hue(Json t) {
+      final tp = s.layTask(t['id'] as String)['topic'];
+      final m = topics.cast<Map>().where((x) => x['id'] == tp).firstOrNull;
+      return m == null ? SpColors.grey : cssColor(m['c']);
     }
-    final mx = per.fold(1, (a, b) => b > a ? b : a);
-    return GNode(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+
+    final sq = [for (final t in sorted.take(9)) hue(t)];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: SpColors.node,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: SpColors.line),
+      ),
+      child: Row(
         children: [
-          GHead(name: 'Баночка · сделано', kind: '$week за неделю', color: SpColors.green),
+          _Jar(colors: sq),
+          const SizedBox(width: 16),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 8),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              for (final (k, v) in per.indexed) ...[
-                                if (k > 0) const SizedBox(width: 5),
-                                Container(
-                                  width: 12,
-                                  height: v == 0 ? 8 : 8 + 30 * v / mx,
-                                  decoration: BoxDecoration(
-                                    color: v == 0 ? kBar : SpColors.green,
-                                    borderRadius: BorderRadius.circular(2),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 6),
-                          Text('ПН ВТ СР ЧТ ПТ СБ ВС', style: SpType.label(8, color: SpColors.dim, spacing: .1)),
-                        ],
-                      ),
-                    ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Баночка · $week за неделю', style: SpType.text(13.5, w: FontWeight.w600)),
+                const SizedBox(height: 4),
+                Text(
+                  last == null
+                      ? 'Пока пусто. Сделанный стикер падает сюда.'
+                      : 'Последнее: «${last['title']}». Сделанный стикер падает сюда.',
+                  style: SpType.text(12.5, color: SpColors.ink2),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 6),
+                InkWell(
+                  onTap: () => archiveDialog(context, s, listId),
+                  child: Text(
+                    'Открыть баночку',
+                    style: SpType.text(
+                      12.5,
+                      color: SpColors.accent,
+                    ).copyWith(decoration: TextDecoration.underline, decorationColor: SpColors.accent),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        text: last == null ? 'Пока пусто. ' : 'Последнее: «${last['title']}». ',
-                        children: [
-                          WidgetSpan(
-                            child: InkWell(
-                              onTap: () => archiveDialog(context, s, listId),
-                              child: Text(
-                                'Открыть баночку',
-                                style: SpType.text(
-                                  12.5,
-                                  color: SpColors.accent,
-                                ).copyWith(decoration: TextDecoration.underline, decorationColor: SpColors.accent),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      style: SpType.text(12.5, color: SpColors.ink2),
-                      maxLines: 3,
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -270,11 +211,16 @@ class StickersView extends StatelessWidget {
             children: [
               GDot(c),
               const SizedBox(width: 8),
-              Text((lane['name'] as String).toUpperCase(), style: gLbl(c: SpColors.ink, size: 10)),
+              Flexible(
+                child: Text(
+                  lane['name'] as String,
+                  style: SpType.text(13.5, w: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const SizedBox(width: 8),
-              Text('${items.length}', style: gMicro()),
-              const SizedBox(width: 10),
-              const Expanded(child: Divider(height: 1, color: SpColors.line)),
+              Text('${items.length}', style: SpType.text(12.5, color: SpColors.muted)),
             ],
           ),
           const SizedBox(height: 12),
@@ -314,8 +260,11 @@ class StickersView extends StatelessWidget {
     );
   }
 
+  /// Стикер — бумажка цвета темы: тёмный оттенок, светлый текст, наклон −2…2°, скотч или красная кнопка,
+  /// мягкая тень, загнутый угол. Кружок «сделано» и срок — внизу.
   Widget _sticker(BuildContext context, Json t, Color c, String today) {
-    final L = s.layTask(t['id'] as String);
+    final id = t['id'] as String;
+    final L = s.layTask(id);
     final pin = L['pin'] == true;
     final due = stk.dueLabel(
       (t['due'] as String?)?.substring(0, 10),
@@ -325,63 +274,93 @@ class StickersView extends StatelessWidget {
     );
     final isToday = dueToYmd(t['due'] as String?) == today;
     final late = due['cls'] == 'late';
+    final paper = Color.lerp(c, const Color(0xFF15161A), .74)!;
+    final ink = Color.lerp(c, Colors.white, .45)!;
+    final h = id.codeUnits.fold(7, (a, b) => (a * 31 + b) & 0xFFFF);
+    final turn = ((h % 41) - 20) / 10 * 3.14159 / 180; // −2…2°
+    final done = s.isDone(t);
     Widget body = Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      constraints: const BoxConstraints(minHeight: 112),
+      padding: const EdgeInsets.fromLTRB(14, 18, 14, 12),
       decoration: BoxDecoration(
-        color: isToday ? SpColors.accentWash : SpColors.node,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isToday ? SpColors.accent : SpColors.line),
+        color: paper,
+        borderRadius: BorderRadius.circular(4),
+        border: isToday ? Border.all(color: SpColors.accent, width: 1.5) : null,
+        boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 10, offset: Offset(0, 5))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          InkWell(
+            onTap: () => openTask(context, s, listId, t),
+            child: Text(
+              (t['title'] ?? '') as String,
+              style: SpType.text(14, w: FontWeight.w500, color: ink),
+            ),
+          ),
+          const SizedBox(height: 26),
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               InkResponse(
                 onTap: () => s.toggleDone(listId, t),
                 radius: 14,
                 child: Container(
-                  width: 16,
-                  height: 16,
-                  margin: const EdgeInsets.only(top: 1),
+                  width: 17,
+                  height: 17,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: s.isDone(t) ? SpColors.green : null,
-                    border: Border.all(color: SpColors.green, width: 1.3),
+                    color: done ? ink : null,
+                    border: Border.all(color: ink.withValues(alpha: .8), width: 1.3),
                   ),
+                  child: done ? Icon(Icons.check, size: 11, color: paper) : null,
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: InkWell(
-                  onTap: () => openTask(context, s, listId, t),
-                  child: Text((t['title'] ?? '') as String, style: SpType.text(13.5)),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  ((due['text'] ?? '') as String).isEmpty ? 'без срока' : due['text'] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: SpType.text(12, color: late ? SpColors.red : ink.withValues(alpha: .75)),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Text(
-                ((due['text'] ?? '') as String).toUpperCase(),
-                style: gMicro(c: isToday ? SpColors.accent : (late ? SpColors.red : SpColors.dim)),
-              ),
-              if (pin) ...[
-                const SizedBox(width: 10),
-                InkWell(
-                  onTap: () => s.setTask(t['id'] as String, {'pin': false}),
-                  child: Text('◉ ЗАКРЕП', style: gMicro(c: SpColors.accent)),
-                ),
-              ],
             ],
           ),
         ],
       ),
     );
-    if (isToday) body = CustomPaint(foregroundPainter: _Hatch(), child: body);
+    body = CustomPaint(foregroundPainter: _Fold(paper), child: body);
+    body = Stack(
+      clipBehavior: Clip.none,
+      children: [
+        body,
+        Positioned(
+          top: -6,
+          left: 0,
+          right: 0,
+          child: Center(
+            child: pin
+                ? InkWell(
+                    onTap: () => s.setTask(id, {'pin': false}),
+                    child: Container(
+                      width: 12,
+                      height: 12,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFE8604C),
+                        shape: BoxShape.circle,
+                        boxShadow: [BoxShadow(color: Color(0x88000000), blurRadius: 3, offset: Offset(0, 2))],
+                      ),
+                    ),
+                  )
+                : Container(width: 54, height: 12, color: const Color(0x55A3A5AE)),
+          ),
+        ),
+      ],
+    );
+    body = Padding(
+      padding: const EdgeInsets.only(bottom: 16, top: 4),
+      child: Transform.rotate(angle: turn, child: body),
+    );
     return GestureDetector(
       onSecondaryTapUp: (d) => cardMenu(context, s, listId, t, d.globalPosition),
       child: Draggable<(String, Json)>(
@@ -397,20 +376,80 @@ class StickersView extends StatelessWidget {
   }
 }
 
-class _Hatch extends CustomPainter {
+/// Загнутый правый нижний угол.
+class _Fold extends CustomPainter {
+  _Fold(this.paper);
+  final Color paper;
   @override
-  void paint(Canvas canvas, Size size) {
-    final p = Paint()
-      ..color = const Color(0x10F0A04B)
-      ..strokeWidth = 1;
-    canvas.save();
-    canvas.clipRRect(
-      RRect.fromRectAndRadius(Rect.fromLTWH(0, 0, size.width, size.height - 10), const Radius.circular(8)),
+  void paint(Canvas canvas, Size s) {
+    const k = 14.0;
+    canvas.drawPath(
+      Path()
+        ..moveTo(s.width - k, s.height)
+        ..lineTo(s.width, s.height - k)
+        ..lineTo(s.width, s.height)
+        ..close(),
+      Paint()..color = SpColors.ground,
     );
-    for (var x = -size.height; x < size.width; x += 7) {
-      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), p);
-    }
-    canvas.restore();
+    canvas.drawPath(
+      Path()
+        ..moveTo(s.width - k, s.height)
+        ..lineTo(s.width, s.height - k)
+        ..lineTo(s.width - k, s.height - k)
+        ..close(),
+      Paint()..color = Color.lerp(paper, Colors.white, .12)!,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_Fold o) => o.paper != paper;
+}
+
+/// Банка с падающими квадратиками.
+class _Jar extends StatelessWidget {
+  const _Jar({required this.colors});
+  final List<Color> colors;
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 70,
+    height: 90,
+    child: Stack(
+      children: [
+        Positioned.fill(child: CustomPaint(painter: _JarGlass())),
+        for (final (i, c) in colors.indexed)
+          TweenAnimationBuilder<double>(
+            key: ValueKey('$i$c'),
+            tween: Tween(begin: 0, end: 1),
+            duration: Duration(milliseconds: 420 + i * 60),
+            curve: Curves.bounceOut,
+            builder: (_, v, w) =>
+                Positioned(left: 9.0 + (i % 3) * 18, top: -12 + (80 - 18.0 * (i ~/ 3 + 1) - (-12)) * v, child: w!),
+            child: Container(
+              width: 15,
+              height: 15,
+              decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(3)),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
+class _JarGlass extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size s) {
+    final p = Paint()
+      ..color = SpColors.lineStrong
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(1, 10, s.width - 2, s.height - 11), const Radius.circular(10)),
+      p,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(8, 0, s.width - 16, 10), const Radius.circular(3)),
+      Paint()..color = SpColors.line,
+    );
   }
 
   @override

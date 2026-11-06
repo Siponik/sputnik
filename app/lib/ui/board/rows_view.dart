@@ -1,6 +1,7 @@
 // Вид «Конвейер» (строка = задача, дорожка этапов, группы по проектам) и вид «Список» (строки с меткой этапа).
 // Плюс окно «Архив» списка.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/dates.dart';
 import '../../state/app_state.dart';
@@ -8,6 +9,9 @@ import '../theme/tokens.dart';
 import '../g/kit.dart';
 import '../widgets/task_dialog.dart';
 import 'card_menu.dart';
+import '../keys.dart';
+import '../widgets/date_time_picker.dart';
+import '../../core/reminders.dart' as rem;
 import '../today/today_page.dart' show listHue;
 
 class ConveyorView extends StatefulWidget {
@@ -20,10 +24,17 @@ class ConveyorView extends StatefulWidget {
 
 class _ConveyorState extends State<ConveyorView> {
   String? open;
+  bool shut = false; // Esc — свернуть раскрытую строку
   AppState get s => widget.s;
   String get listId => widget.listId;
 
-  static const _tile = 54.0, _info = 230.0, _right = 110.0;
+  static const _tile = 48.0;
+
+  @override
+  void dispose() {
+    PageKeys.clear(this);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,71 +46,103 @@ class _ConveyorState extends State<ConveyorView> {
       (groups[p] ??= []).add(t);
     }
     final keys = groups.keys.toList()..sort((a, b) => a.isEmpty ? 1 : (b.isEmpty ? -1 : a.compareTo(b)));
-    final cur = open ?? (items.where((t) => !s.isDone(t)).firstOrNull?['id'] as String?);
-    final tplName = (s.board(listId)['name'] ?? '') as String;
+    final order = [for (final k in keys) ...groups[k]!];
+    final cur = shut ? null : (open ?? (items.where((t) => !s.isDone(t)).firstOrNull?['id'] as String?));
+    PageKeys.set(this, {
+      const PKey(PhysicalKeyboardKey.escape): () => setState(() => shut = true),
+      const PKey(PhysicalKeyboardKey.space): () {
+        if (order.isEmpty) return;
+        final i = order.indexWhere((t) => t['id'] == cur);
+        setState(() {
+          shut = false;
+          open = order[(i + 1) % order.length]['id'] as String;
+        });
+      },
+      const PKey(PhysicalKeyboardKey.enter): () {
+        final t = order.where((t) => t['id'] == cur).firstOrNull;
+        if (t != null) openTask(context, s, listId, t);
+      },
+    });
     return ListView(
       padding: const EdgeInsets.only(bottom: 16),
       children: [
         for (final (gi, k) in keys.indexed) ...[
           Padding(
-            padding: EdgeInsets.only(top: gi == 0 ? 0 : 14, bottom: 10),
+            padding: EdgeInsets.only(top: gi == 0 ? 0 : 8, bottom: 8, left: 2, right: 2),
             child: Row(
               children: [
-                Text(k.isEmpty ? 'БЕЗ ПРОЕКТА' : 'ПРОЕКТ · ${k.toUpperCase()}', style: gLbl(c: SpColors.dim, size: 10)),
-                const SizedBox(width: 10),
-                if (gi == 0)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(left: 0),
-                      child: Row(
-                        children: [
-                          const SizedBox(width: _tile + _info - 120),
-                          Expanded(
-                            child: Row(
-                              children: [
-                                for (final c in cols)
-                                  Expanded(
-                                    child: Text(
-                                      ((c['name'] ?? '') as String).toUpperCase(),
-                                      textAlign: TextAlign.left,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.clip,
-                                      style: gMicro(
-                                        c:
-                                            cur != null &&
-                                                _stage(
-                                                      items.firstWhere((t) => t['id'] == cur, orElse: () => {}),
-                                                      cols,
-                                                    ) ==
-                                                    cols.indexOf(c)
-                                            ? SpColors.accent
-                                            : SpColors.dim,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: _right),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  const Expanded(child: Divider(height: 1, color: SpColors.line)),
+                GDot(k.isEmpty ? SpColors.grey : SpColors.accent),
+                const SizedBox(width: 8),
+                Text(k.isEmpty ? 'Без проекта' : k, style: SpType.text(13, w: FontWeight.w600)),
+                const SizedBox(width: 8),
+                Text(_assets(groups[k]!.length), style: SpType.text(12, color: SpColors.muted)),
+                const Spacer(),
+                InkWell(
+                  onTap: () => _addAsset(context, cols, k),
+                  child: Text(k.isEmpty ? '+ Ассет' : '+ Ассет в «$k»', style: SpType.text(12, color: SpColors.accent)),
+                ),
               ],
             ),
           ),
-          for (final t in groups[k]!) ...[_row(context, t, cols, t['id'] == cur), const SizedBox(height: 10)],
+          for (final t in groups[k]!) ...[_row(context, t, cols, t['id'] == cur), const SizedBox(height: 8)],
         ],
-        Padding(
-          padding: const EdgeInsets.only(top: 4, bottom: 10),
-          child: _NewAsset(onAdd: (v) => s.addTask(listId, v, col: cols.first['id'] as String)),
-        ),
-        DimLine(
-          '${(cols.first['name'] as String).toUpperCase()} → ${(cols.last['name'] as String).toUpperCase()} · ${cols.length} ЭТАПОВ${tplName.isEmpty ? '' : ' ИЗ ШАБЛОНА «${tplName.toUpperCase()}»'}',
-        ),
+        if (items.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 4, bottom: 10),
+            child: _NewAsset(onAdd: (v) => s.addTask(listId, v, col: cols.first['id'] as String)),
+          ),
       ],
+    );
+  }
+
+  static String _assets(int n) {
+    final m10 = n % 10, m100 = n % 100;
+    final w = m10 == 1 && m100 != 11
+        ? 'ассет'
+        : (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14) ? 'ассета' : 'ассетов');
+    return '$n $w';
+  }
+
+  Future<void> _addAsset(BuildContext context, List<Map> cols, String project) async {
+    final c = TextEditingController();
+    final v = await showDialog<String>(
+      context: context,
+      builder: (dc) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: SizedBox(
+          width: 420,
+          child: GNode(
+            hub: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GHead(hub: true, name: project.isEmpty ? 'Новый ассет' : 'Новый ассет · $project'),
+                Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: TextField(
+                    controller: c,
+                    autofocus: true,
+                    style: SpType.text(14),
+                    decoration: InputDecoration(
+                      hintText: 'Название и Enter',
+                      hintStyle: SpType.text(14, color: SpColors.dim),
+                    ),
+                    onSubmitted: (v) => Navigator.pop(dc, v),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    if (v == null || v.trim().isEmpty) return;
+    s.addTask(
+      listId,
+      v.trim(),
+      col: cols.first['id'] as String,
+      layerPatch: project.isEmpty ? const {} : {'project': project},
     );
   }
 
@@ -108,24 +151,29 @@ class _ConveyorState extends State<ConveyorView> {
   Widget _row(BuildContext context, Json t, List<Map> cols, bool on) {
     final i = _stage(t, cols);
     final done = s.isDone(t);
-    final L = s.layTask(t['id'] as String);
+    final id = t['id'] as String;
+    final L = s.layTask(id);
     final due = dueToYmd(t['due'] as String?);
     final title = (t['title'] ?? '') as String;
     final proj = (L['project'] ?? '') as String;
     final at = L['stageAt'] is num ? DateTime.fromMillisecondsSinceEpoch((L['stageAt'] as num).toInt()) : null;
     final days = at == null ? null : DateTime.now().difference(at).inDays;
+    final prio = (L['priority'] as num?)?.toInt();
     final meta = [
       if (proj.isNotEmpty) proj,
-      if (i >= 0) cols[i]['name'] as String,
-      if (on && days != null && days > 0) '$days ДН В ЭТАПЕ',
-    ].join(' · ').toUpperCase();
-    final soon = due.isNotEmpty && due.compareTo(ymd(DateTime.now().add(const Duration(days: 2)))) <= 0 && !done;
+      if (i >= 0) '${(cols[i]['name'] as String).toLowerCase()}${days != null && days > 0 ? ' $days дн' : ''}',
+      if (prio != null && prio > 0 && prio < 4) '!' * (4 - prio),
+    ].join(' · ');
+    final late = due.isNotEmpty && !done && due.compareTo(s.todayYmd) < 0;
+    final next = !done && i >= 0 && i < cols.length - 1 ? cols[i + 1] : null;
     final head = Row(
       children: [
-        _letter(title),
-        const SizedBox(width: 12),
+        Text(on ? '▾' : '▸', style: SpType.text(11, color: SpColors.dim)),
+        const SizedBox(width: 10),
+        _thumb(t, _tile),
+        const SizedBox(width: 14),
         SizedBox(
-          width: _info - 12,
+          width: 170,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -135,120 +183,63 @@ class _ConveyorState extends State<ConveyorView> {
                 overflow: TextOverflow.ellipsis,
                 style: SpType.text(14, w: FontWeight.w600, color: done ? SpColors.dim : SpColors.ink),
               ),
-              const SizedBox(height: 8),
-              Text(meta, style: gMicro(), maxLines: 1, overflow: TextOverflow.ellipsis),
+              const SizedBox(height: 3),
+              Text(
+                meta,
+                style: SpType.text(12, color: SpColors.muted),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ],
           ),
         ),
+        const SizedBox(width: 10),
         Expanded(child: _track(t, cols, i, done)),
+        const SizedBox(width: 14),
         SizedBox(
-          width: _right,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                done
-                    ? 'СДАНО'
-                    : (i == cols.length - 1 ? 'ГОТОВ К СДАЧЕ' : (due.isEmpty ? '—' : humanDay(due).toUpperCase())),
-                style: gLbl(c: soon ? SpColors.accent : SpColors.ink, size: 10.5),
-              ),
-              const SizedBox(height: 8),
-              if (!done && i < cols.length - 1)
-                InkWell(
-                  onTap: () => s.setStage(listId, t, cols[i + 1]['id'] as String),
-                  child: Text('ЭТАП →', style: gMicro()),
-                ),
-            ],
+          width: 64,
+          child: Text(
+            done ? 'сдано' : (due.isEmpty ? '' : humanDay(due)),
+            textAlign: TextAlign.right,
+            style: SpType.text(13, color: late ? SpColors.red : (done ? SpColors.green : SpColors.ink2)),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
+        ),
+        const SizedBox(width: 14),
+        SizedBox(
+          width: 104,
+          child: next == null
+              ? const SizedBox.shrink()
+              : GBtn(
+                  '${next['name']} →',
+                  kind: on ? BtnKind.acc : BtnKind.sec,
+                  onTap: () => s.setStage(listId, t, next['id'] as String),
+                ),
         ),
       ],
     );
-    Widget inner = Padding(padding: const EdgeInsets.all(12), child: head);
+    final Widget base = Padding(padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10), child: head);
+    Widget inner = base;
     if (on) {
-      final subs = s.subtasks(listId, t['id'] as String);
-      final sd = subs.where(s.isDone).length;
-      inner = Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            head,
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.only(left: _tile + 12),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${i >= 0 ? (cols[i]['name'] as String).toUpperCase() : ''} · ЧЕК-ЛИСТ $sd / ${subs.length}',
-                          style: gLbl(c: SpColors.accent, size: 10),
-                        ),
-                        const SizedBox(height: 8),
-                        for (final st in subs)
-                          InkWell(
-                            onTap: () => s.toggleDone(listId, st),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 5),
-                              child: Row(
-                                children: [
-                                  GCheck(done: s.isDone(st), onTap: () => s.toggleDone(listId, st)),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      (st['title'] ?? '') as String,
-                                      style: SpType.text(13, color: s.isDone(st) ? SpColors.dim : SpColors.ink)
-                                          .copyWith(
-                                            decoration: s.isDone(st) ? TextDecoration.lineThrough : null,
-                                            decorationColor: SpColors.dim,
-                                          ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        _SubAdd(onAdd: (v) => s.addSubtask(listId, t['id'] as String, v)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(flex: 4, child: _preview(t)),
-                  const SizedBox(width: 16),
-                  SizedBox(
-                    width: 250,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        if (!done && i >= 0 && i < cols.length - 1)
-                          GBtn(
-                            'Этап → ${cols[i + 1]['name']}',
-                            kind: BtnKind.acc,
-                            onTap: () => s.setStage(listId, t, cols[i + 1]['id'] as String),
-                          ),
-                        const SizedBox(height: 8),
-                        GBtn('Открыть задачу', onTap: () => openTask(context, s, listId, t)),
-                        if ((t['notes'] ?? '') != '') ...[
-                          const SizedBox(height: 10),
-                          Text(
-                            (t['notes'] as String),
-                            maxLines: 4,
-                            overflow: TextOverflow.ellipsis,
-                            style: SpType.text(12.5, color: SpColors.muted),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
+      final x = _expanded(context, t, cols, i, head);
+      // Узкое окно: раскрытая строка прокручивается вбок, а не ломает раскладку.
+      inner = LayoutBuilder(
+        builder: (_, b) => b.maxWidth >= 1000
+            ? x
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(width: 1000, child: x),
               ),
-            ),
-          ],
-        ),
+      );
+    } else {
+      inner = LayoutBuilder(
+        builder: (_, b) => b.maxWidth >= 640
+            ? base
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(width: 640, child: base),
+              ),
       );
     }
     return GestureDetector(
@@ -257,36 +248,278 @@ class _ConveyorState extends State<ConveyorView> {
         hub: on,
         child: InkWell(
           borderRadius: BorderRadius.circular(on ? 12 : 8),
-          onTap: () => on ? openTask(context, s, listId, t) : setState(() => open = t['id'] as String),
+          onTap: () => on
+              ? setState(() => shut = true)
+              : setState(() {
+                  shut = false;
+                  open = id;
+                }),
           child: inner,
         ),
       ),
     );
   }
 
-  Widget _letter(String title) => Container(
-    width: _tile,
-    height: _tile,
-    alignment: Alignment.center,
-    decoration: BoxDecoration(
-      color: const Color(0xFF2B2520),
-      borderRadius: BorderRadius.circular(6),
-      border: Border.all(color: const Color(0xFF3F352B)),
-    ),
-    child: CustomPaint(
-      painter: _Grid(),
-      child: SizedBox.expand(
-        child: Center(
-          child: Text(
-            title.isEmpty ? '?' : title.characters.first.toUpperCase(),
-            style: gMono(12, c: SpColors.accentInk, w: FontWeight.w500),
+  Widget _expanded(BuildContext context, Json t, List<Map> cols, int i, Widget head) {
+    final id = t['id'] as String;
+    final L = s.layTask(id);
+    final colId = i >= 0 ? cols[i]['id'] : null;
+    final subs = s.subtasks(listId, id).where((x) {
+      final st = s.layTask(x['id'] as String)['stage'];
+      return st == null || st == colId;
+    }).toList();
+    final sd = subs.where(s.isDone).length;
+    final stage = i >= 0 ? cols[i]['name'] as String : '';
+    final prev = i > 0 ? cols[i - 1] : null;
+    final due = dueToYmd(t['due'] as String?);
+    final prio = (L['priority'] as num?)?.toInt();
+    final client = (L['client'] ?? '') as String;
+    final rm = L['remind'];
+    final remMin = rm is Map && rm['kind'] == 'lead'
+        ? (rm['min'] as num?)?.toInt()
+        : (rm is List && rm.isNotEmpty && rm.first is Map ? ((rm.first as Map)['min'] as num?)?.toInt() : null);
+    final leadName = {for (final l in rem.leads) l['min'] as int: l['name'] as String};
+    final notes = (t['notes'] ?? '') as String;
+    final pv = L['preview'] as Map?;
+    Widget lbl(String a, [String b = '']) => Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Text(a, style: SpType.text(13, w: FontWeight.w600)),
+          if (b.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(b, style: SpType.text(12, color: SpColors.muted), maxLines: 1),
+            ),
+          ],
+        ],
+      ),
+    );
+    Widget detail(String k, Widget v) => Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 92,
+            child: Text(k, style: SpType.text(12.5, color: SpColors.muted)),
+          ),
+          Flexible(child: v),
+        ],
+      ),
+    );
+    Widget key(String k) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SpColors.line),
+      ),
+      child: Text(k, style: gMicro()),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(padding: const EdgeInsets.fromLTRB(14, 12, 14, 8), child: head),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(110, 8, 18, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            'Этап «$stage»',
+                            style: SpType.text(13, w: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text('$sd из ${subs.length}', style: SpType.text(12, color: SpColors.muted)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(2),
+                            child: LinearProgressIndicator(
+                              value: subs.isEmpty ? 0 : sd / subs.length,
+                              minHeight: 3,
+                              color: SpColors.accent,
+                              backgroundColor: SpColors.line,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    for (final st in subs)
+                      InkWell(
+                        onTap: () => s.toggleDone(listId, st),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Row(
+                            children: [
+                              GCheck(done: s.isDone(st), onTap: () => s.toggleDone(listId, st)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  (st['title'] ?? '') as String,
+                                  style: SpType.text(13, color: s.isDone(st) ? SpColors.dim : SpColors.ink).copyWith(
+                                    decoration: s.isDone(st) ? TextDecoration.lineThrough : null,
+                                    decorationColor: SpColors.dim,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 6),
+                    _SubAdd(onAdd: (v) => s.addSubtask(listId, id, v)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 22),
+              SizedBox(
+                width: 300,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    lbl('Превью', pv == null ? '' : [if (pv['w'] != null) '${pv['w']} × ${pv['h']}'].join(' · ')),
+                    SizedBox(
+                      width: 300,
+                      height: 150,
+                      child: Stack(
+                        children: [
+                          Positioned.fill(child: _thumb(t, 150, big: true)),
+                          Positioned(
+                            right: 8,
+                            bottom: 8,
+                            child: Row(
+                              children: [
+                                if (pv != null) ...[
+                                  GBtn('⤢ Крупно', sm: true, onTap: () => openTask(context, s, listId, t)),
+                                  const SizedBox(width: 6),
+                                ],
+                                GBtn(
+                                  pv == null ? 'Добавить' : 'Заменить',
+                                  sm: true,
+                                  onTap: () => openTask(context, s, listId, t),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text('Перетащи картинку сюда или Ctrl+V', style: SpType.text(12, color: SpColors.muted)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 22),
+              SizedBox(
+                width: 256,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    lbl('Детали'),
+                    detail(
+                      'Срок',
+                      Builder(
+                        builder: (bc) => GPick(
+                          due.isEmpty ? 'Без срока' : humanDay(due),
+                          on: due.isNotEmpty,
+                          onTap: () async {
+                            final r = await pickDateTime(bc, day: due, withTime: false, busy: (d) => busyHours(s, d));
+                            if (r == null) return;
+                            s.setDue(listId, t, r.cleared ? null : r.day);
+                          },
+                        ),
+                      ),
+                    ),
+                    if (client.isNotEmpty) detail('Клиент', GPick(client, on: true)),
+                    detail(
+                      'Приоритет',
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (final (n, l) in [(1, '!!!'), (2, '!!'), (3, '!')])
+                            GPick(l, on: prio == n, onTap: () => s.setTask(id, {'priority': prio == n ? null : n})),
+                        ],
+                      ),
+                    ),
+                    detail(
+                      'Напомнить',
+                      GPick(remMin == null ? 'Нет' : 'За ${leadName[remMin] ?? '$remMin мин'}', on: remMin != null),
+                    ),
+                    if (notes.isNotEmpty)
+                      Container(
+                        margin: const EdgeInsets.only(top: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(color: SpColors.nodeHover, borderRadius: BorderRadius.circular(6)),
+                        child: Text(
+                          notes,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: SpType.text(12.5, color: SpColors.ink2),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ),
-    ),
-  );
+        Container(
+          padding: const EdgeInsets.fromLTRB(110, 10, 18, 12),
+          decoration: const BoxDecoration(
+            border: Border(top: BorderSide(color: SpColors.line)),
+          ),
+          child: Row(
+            children: [
+              if (prev != null)
+                InkWell(
+                  onTap: () => s.setStage(listId, t, prev['id'] as String),
+                  child: Text('← $stage назад к ${prev['name']}', style: SpType.text(12, color: SpColors.muted)),
+                ),
+              const Spacer(),
+              key('ESC'),
+              const SizedBox(width: 6),
+              Text('свернуть', style: SpType.text(12, color: SpColors.muted)),
+              const SizedBox(width: 14),
+              key('SPACE'),
+              const SizedBox(width: 6),
+              Text('следующий', style: SpType.text(12, color: SpColors.muted)),
+              const SizedBox(width: 14),
+              key('ENTER'),
+              const SizedBox(width: 6),
+              Text('окно задачи', style: SpType.text(12, color: SpColors.muted)),
+              const SizedBox(width: 14),
+              InkWell(
+                onTap: () => openTask(context, s, listId, t),
+                child: Text(
+                  'Открыть полностью ↗',
+                  style: SpType.text(
+                    12,
+                    color: SpColors.accent,
+                  ).copyWith(decoration: TextDecoration.underline, decorationColor: SpColors.accent),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
 
-  Widget _preview(Json t) {
+  /// Превью ассета: картинка из слоя, без неё — сетка с первой буквой.
+  Widget _thumb(Json t, double size, {bool big = false}) {
+    final title = (t['title'] ?? '') as String;
     final th = (s.layTask(t['id'] as String)['preview'] as Map?)?['thumb'];
     Widget? img;
     if (th is String && th.startsWith('data:image')) {
@@ -295,11 +528,12 @@ class _ConveyorState extends State<ConveyorView> {
       } catch (_) {}
     }
     return Container(
-      height: 100,
+      width: big ? null : size,
+      height: size,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: const Color(0xFF2B2520),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(big ? 8 : 6),
         border: Border.all(color: const Color(0xFF3F352B)),
       ),
       child:
@@ -307,62 +541,78 @@ class _ConveyorState extends State<ConveyorView> {
           CustomPaint(
             painter: _Grid(),
             child: Center(
-              child: Text('ПРЕВЬЮ', style: gMicro(c: SpColors.muted)),
+              child: Text(
+                big ? 'ПРЕВЬЮ' : (title.isEmpty ? '?' : title.characters.first.toUpperCase()),
+                style: big ? gMicro(c: SpColors.muted) : gMono(14, c: SpColors.accentInk, w: FontWeight.w500),
+              ),
             ),
           ),
     );
   }
 
-  Widget _track(Json t, List<Map> cols, int i, bool done) => LayoutBuilder(
-    builder: (context, box) {
-      final n = cols.length;
-      final w = box.maxWidth;
-      double x(int k) => n == 1 ? 6 : k * (w - 12) / n + 6;
-      final cur = done ? n : i;
-      return SizedBox(
-        height: 24,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned(
-              left: x(0),
-              width: x(n - 1) - x(0),
-              top: 11.5,
-              child: Container(height: 1, color: SpColors.lineStrong),
-            ),
-            if (cur > 0)
-              Positioned(
-                left: x(0),
-                width: x(cur.clamp(0, n - 1)) - x(0),
-                top: 11,
-                child: Container(height: 2, color: SpColors.green),
-              ),
-            for (var k = 0; k < n; k++)
-              Positioned(
-                left: x(k) - 6,
-                top: 6,
-                child: Tooltip(
-                  message: cols[k]['name'] as String,
-                  child: InkWell(
-                    onTap: () => s.setStage(listId, t, cols[k]['id'] as String),
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: k < cur ? SpColors.green : (k == cur ? SpColors.accent : SpColors.node),
-                        borderRadius: BorderRadius.circular(3),
-                        border: k <= cur ? null : Border.all(color: SpColors.lineStrong),
-                      ),
-                      child: k < cur ? const Icon(Icons.check, size: 9, color: kDark) : null,
-                    ),
-                  ),
+  /// Дорожка этапов: подписанные плашки на всю ширину. Сделанные — зелёные с ✓, текущий — оранжевый и шире,
+  /// будущие — пунктир.
+  Widget _track(Json t, List<Map> cols, int i, bool done) {
+    final cur = done ? cols.length : i;
+    return SizedBox(
+      height: 28,
+      child: Row(
+        children: [
+          for (var k = 0; k < cols.length; k++) ...[
+            if (k > 0) const SizedBox(width: 3),
+            Expanded(
+              flex: k == cur ? 18 : 10,
+              child: Tooltip(
+                message: cols[k]['name'] as String,
+                child: InkWell(
+                  onTap: () => s.setStage(listId, t, cols[k]['id'] as String),
+                  borderRadius: BorderRadius.circular(5),
+                  child: _plate(cols[k]['name'] as String, k < cur ? 0 : (k == cur ? 1 : 2)),
                 ),
               ),
+            ),
           ],
+        ],
+      ),
+    );
+  }
+
+  Widget _plate(String name, int st) {
+    final text = Text(
+      st == 0 ? '✓ $name' : name,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      textAlign: TextAlign.center,
+      style: SpType.text(
+        12,
+        w: st == 1 ? FontWeight.w600 : FontWeight.w400,
+        color: switch (st) {
+          0 => SpColors.green,
+          1 => SpColors.onAccent,
+          _ => SpColors.dim,
+        },
+      ),
+    );
+    if (st == 2) {
+      return Dashed(
+        r: 5,
+        color: SpColors.line,
+        child: Center(
+          child: Padding(padding: const EdgeInsets.symmetric(horizontal: 4), child: text),
         ),
       );
-    },
-  );
+    }
+    return Container(
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: st == 1 ? SpColors.accent : SpColors.headGreen.withValues(alpha: .35),
+        borderRadius: BorderRadius.circular(5),
+        border: st == 1 ? null : Border.all(color: SpColors.headGreen),
+      ),
+      child: text,
+    );
+  }
 }
 
 class _Grid extends CustomPainter {
@@ -427,7 +677,7 @@ class _SubAdd extends StatelessWidget {
       decoration: InputDecoration(
         isDense: true,
         border: InputBorder.none,
-        hintText: '+ пункт чек-листа',
+        hintText: '+ Подзадача этапа… Enter — добавить',
         hintStyle: SpType.text(13, color: SpColors.dim),
       ),
       onSubmitted: (v) {
