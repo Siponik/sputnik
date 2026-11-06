@@ -89,4 +89,41 @@ void main() {
       }
     }
   });
+
+  test('правка: выделение рамкой, копировать-вставить с проводами, дубль, группа вокруг', () {
+    final d = CanvasDoc.parse(file);
+    expect(d.inRect(-10, -10, 320, 50), {'a', 'b'}); // группа не целиком в рамке — не выделена
+    expect(d.inRect(-100, -100, 800, 400), {'g1', 'a', 'b'});
+    expect(d.movable({'g1'}).map((n) => n.id).toSet(), {'g1', 'a', 'b'});
+    final clip = d.copyOf({'a', 'b'});
+    final made = d.paste(clip, 1000, 1000)!;
+    expect(made.length, 2);
+    expect(made.every((id) => !['a', 'b'].contains(id)), isTrue);
+    final e = d.edges.last;
+    expect({e.from, e.to}, made.toSet()); // провод a→b переподключён к копиям
+    expect(e.label, 'тайна');
+    final (x0, y0, x1, y1) = d.boundsOf(made)!;
+    expect(((x0 + x1) / 2 - 1000).abs() <= 10, isTrue);
+    expect(((y0 + y1) / 2 - 1000).abs() <= 10, isTrue);
+    expect(d.paste('просто текст', 0, 0), isNull);
+    expect(d.duplicate({'a'}).length, 1);
+    final g = d.groupAround({'a', 'b'})!;
+    expect(d.inside(g).map((n) => n.id), containsAll(['a', 'b']));
+    expect(d.nodes.first, g);
+  });
+
+  test('провод под курсором и история Ctrl+Z', () {
+    final d = CanvasDoc.parse(file);
+    // e1: от правого края a (250, 60) к левому краю b (300, 30).
+    expect(d.edgeAt(275, 45, 8), 'e1');
+    expect(d.edgeAt(275, 300, 8), isNull);
+    final h = CanvasHistory();
+    final s0 = d.encode();
+    h.push(s0);
+    d.remove('a');
+    final s1 = d.encode();
+    expect(h.undo(s1), s0);
+    expect(h.redo(s0), s1);
+    expect(h.canRedo, isFalse);
+  });
 }
