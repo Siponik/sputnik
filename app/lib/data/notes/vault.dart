@@ -75,6 +75,10 @@ class NoteVault {
   File file(String rel) => File('${root.path}${Platform.pathSeparator}${rel.replaceAll('/', Platform.pathSeparator)}');
 
   static bool isNote(String rel) => rel.toLowerCase().endsWith('.md');
+  static bool isCanvas(String rel) => rel.toLowerCase().endsWith('.canvas');
+
+  /// Текстовые файлы, которые мы сами правим: заметки и холсты (у них отпечаток с хешем — для защиты от затирания).
+  static bool isText(String rel) => isNote(rel) || isCanvas(rel);
 
   /// Прочитать всю папку: заметки с текстом и пути прочих файлов.
   Future<({Map<String, String> notes, List<String> files})> scan() async {
@@ -89,6 +93,9 @@ class NoteVault {
       if (isNote(r)) {
         final t = await _read(r);
         if (t != null) notes[r] = t;
+      } else if (isCanvas(r)) {
+        await _read(r);
+        files.add(r);
       } else {
         final st = await e.stat();
         _stamps[r] = FileStamp(st.size, st.modified.millisecondsSinceEpoch, '');
@@ -125,7 +132,7 @@ class NoteVault {
       _stamps.remove(r);
       return VaultChange(VaultChangeKind.removed, r);
     }
-    if (!isNote(r)) {
+    if (!isText(r)) {
       final st = await f.stat();
       _stamps[r] = FileStamp(st.size, st.modified.millisecondsSinceEpoch, '');
       return was == null ? VaultChange(VaultChangeKind.added, r) : null;
@@ -185,6 +192,9 @@ class NoteVault {
 
   Future<List<int>> readBytes(String r) => file(r).readAsBytes();
 
+  /// Прочитать текстовый файл (холст) и запомнить отпечаток — потом [write] не затрёт чужую правку.
+  Future<String?> readText(String r) => _read(r);
+
   /// Записать содержимое, пришедшее с другого компьютера (через временный файл).
   Future<void> writeBytes(String r, List<int> bytes) => _atomicWrite(r, bytes);
 
@@ -216,7 +226,7 @@ class NoteVault {
     await tmp.writeAsBytes(bytes, flush: true);
     await tmp.rename(f.path);
     final st = await f.stat();
-    _stamps[r] = FileStamp(bytes.length, st.modified.millisecondsSinceEpoch, isNote(r) ? hashBytes(bytes) : '');
+    _stamps[r] = FileStamp(bytes.length, st.modified.millisecondsSinceEpoch, isText(r) ? hashBytes(bytes) : '');
   }
 
   /// Новая заметка (или файл): имя занято — берётся «Имя 2.md». Возвращает путь, куда записано.

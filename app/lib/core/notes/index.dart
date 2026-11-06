@@ -119,7 +119,7 @@ class NoteIndex {
     if (!isNote(path)) {
       _files.add(path);
       _dirty = true;
-    version++;
+      version++;
       return;
     }
     _put(path, text);

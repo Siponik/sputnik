@@ -13,6 +13,7 @@ import '../../core/notes/sync.dart' show parentFolders;
 import '../../core/notes/view.dart';
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
+import 'canvas_view.dart';
 import 'folder_view.dart';
 import 'graph_view.dart';
 import 'hue.dart';
@@ -232,6 +233,7 @@ class _SideState extends State<_Side> {
   Widget build(BuildContext context) {
     _reveal();
     final notes = st.index.paths.toList();
+    final canv = st.index.files.where(isCanvasPath).toList();
     final q = _q.text.trim();
     final rows = <Widget>[];
     if (q.isNotEmpty) {
@@ -252,11 +254,11 @@ class _SideState extends State<_Side> {
       if (recent.isNotEmpty) {
         rows.add(_Section('НЕДАВНИЕ'));
         for (final p in recent) {
-          rows.add(_Row(icon: '¶', name: baseName(p), active: p == st.active, onTap: () => st.openNote(p)));
+          rows.add(_Row(icon: isCanvasPath(p) ? '▦' : '¶', name: shownName(p), active: p == st.active, onTap: () => st.openNote(p)));
         }
       }
       rows.add(_Section('ПАПКИ', line: recent.isNotEmpty));
-      for (final r in folderTree(notes, _open, cap: 5)) {
+      for (final r in folderTree([...notes, ...canv], _open, cap: 5)) {
         if (r.path.startsWith('…more:')) {
           rows.add(InkWell(
             onTap: () => setState(() => _open.add('…all:${r.path.substring(6)}')),
@@ -278,7 +280,17 @@ class _SideState extends State<_Side> {
             },
           ));
         } else {
-          rows.add(_Row(depth: r.depth, icon: '¶', name: r.name, active: st.view == 'note' && r.path == st.active, onTap: () => st.openNote(r.path)));
+          final row = _Row(depth: r.depth, icon: isCanvasPath(r.path) ? '▦' : '¶', name: shownName(r.path), active: st.view == 'note' && r.path == st.active, onTap: () => st.openNote(r.path));
+          // Заметку можно перетащить на открытый холст.
+          rows.add(Draggable<String>(
+            data: r.path,
+            feedback: Material(color: Colors.transparent, child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.circular(8), border: Border.all(color: SpColors.accentLine)),
+              child: Text(shownName(r.path), style: SpType.text(13)),
+            )),
+            child: row,
+          ));
         }
       }
     }
@@ -315,6 +327,8 @@ class _SideState extends State<_Side> {
               ),
               const SizedBox(width: 6),
               _Square(label: '＋', tip: 'Новая заметка', onTap: () => newNoteDialog(context, st)),
+              const SizedBox(width: 6),
+              _Square(label: '▦', tip: 'Новый холст', onTap: () => newCanvasDialog(context, st)),
             ]),
           ),
           Expanded(child: ListView(padding: const EdgeInsets.only(bottom: 8), children: rows)),
@@ -453,7 +467,7 @@ class _MainState extends State<_Main> {
   Widget build(BuildContext context) {
     final path = st.active;
     final hub = _hub(context, path);
-    if (!_links || path == null) return hub;
+    if (!_links || path == null || isCanvasPath(path)) return hub;
     return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Expanded(child: hub),
       const SizedBox(width: 16),
@@ -479,6 +493,8 @@ class _MainState extends State<_Main> {
                 _Tabs(st: st),
                 if (path == null)
                   Expanded(child: _Empty(st: st))
+                else if (isCanvasPath(path))
+                  Expanded(child: CanvasView(key: ValueKey(path), st: st, path: path))
                 else ...[
                   _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => _read = r), links: _links, onLinks: () => setState(() => _links = !_links)),
                   if (st.conflicts.containsKey(path)) _ConflictBar(st: st, path: path),
@@ -549,7 +565,7 @@ class _Tabs extends StatelessWidget {
                             padding: const EdgeInsets.only(left: 12, right: 6),
                             decoration: BoxDecoration(color: const Color(0xEBFFFFFF), borderRadius: BorderRadius.circular(7)),
                             child: Row(mainAxisSize: MainAxisSize.min, children: [
-                              Text(baseName(t), style: SpType.text(13, w: FontWeight.w500, color: const Color(0xFF5A3412))),
+                              Text(shownName(t), style: SpType.text(13, w: FontWeight.w500, color: const Color(0xFF5A3412))),
                               const SizedBox(width: 4),
                               InkWell(
                                 onTap: () => st.closeTab(t),
@@ -565,7 +581,7 @@ class _Tabs extends StatelessWidget {
                               height: 30,
                               alignment: Alignment.center,
                               padding: const EdgeInsets.symmetric(horizontal: 12),
-                              child: Text(baseName(t), style: SpType.text(13, color: const Color(0xD1FFFFFF))),
+                              child: Text(shownName(t), style: SpType.text(13, color: const Color(0xD1FFFFFF))),
                             ),
                           ),
                   ),
@@ -943,6 +959,15 @@ Future<void> newNoteDialog(BuildContext context, NotesState st) async {
   final name = c.text.trim();
   if (ok != true || name.isEmpty) return;
   await st.create(dir, name, template: tpl);
+}
+
+/// Новый холст `.canvas` в папке открытой заметки (или в корне).
+Future<void> newCanvasDialog(BuildContext context, NotesState st) async {
+  final a = st.active;
+  final dir = a == null ? '' : folderOf(a);
+  final name = await _ask(context, title: 'Новый холст', label: dir.isEmpty ? 'Название — ляжет в корень папки' : 'Название — ляжет в «${dir.replaceAll('/', ' › ')}»', ok: 'Создать');
+  if (name == null || name.isEmpty) return;
+  await st.createCanvas(dir, name);
 }
 
 InputDecoration _field() => InputDecoration(

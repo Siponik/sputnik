@@ -7,6 +7,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../core/notes/canvas.dart';
 import '../core/notes/edit.dart';
 import '../core/notes/index.dart';
 import '../core/notes/parse.dart';
@@ -191,8 +192,10 @@ class NotesState extends ChangeNotifier {
         _base = {};
         await files.write(_baseFile, baseToJson(_base));
       }
-      config.tabs.removeWhere((p) => index.doc(p) == null);
-      config.recent.removeWhere((p) => index.doc(p) == null);
+      bool gone(String p) => index.doc(p) == null && !index.files.contains(p);
+      config.tabs.removeWhere(gone);
+      config.recent.removeWhere(gone);
+      canvases.clear();
       if (config.active != null && !config.tabs.contains(config.active)) config.active = config.tabs.isEmpty ? null : config.tabs.first;
       if (remember) await _saveConfig();
       if (watch && watchFiles) _watch = v.watch().listen(_onChange);
@@ -203,6 +206,8 @@ class NotesState extends ChangeNotifier {
   }
 
   void _onChange(VaultChange c) {
+    // Холст поменяли снаружи: своих правок нет — перечитаем при показе; есть — разберёмся при записи.
+    if (NoteVault.isCanvas(c.path) && !_canvasDirty.contains(c.path)) canvases.remove(c.path);
     switch (c.kind) {
       case VaultChangeKind.removed:
         index.remove(c.path);
@@ -307,6 +312,74 @@ class NotesState extends ChangeNotifier {
     for (final p in _dirty.keys.toList()) {
       await save(p);
     }
+    for (final p in _canvasDirty.toList()) {
+      await saveCanvas(p);
+    }
+  }
+
+  // ---- холсты ----
+
+  /// Открытые холсты (разобранный файл); правки идут прямо в них, файл пишется через [saveDelay].
+  final Map<String, CanvasDoc> canvases = {};
+  final Set<String> _canvasDirty = {};
+
+  /// Холст не прочитался (битый JSON) — текст ошибки; такой файл не перезаписываем.
+  final Map<String, String> canvasErrors = {};
+
+  bool canvasDirty(String path) => _canvasDirty.contains(path);
+
+  /// Сообщение над холстом (например, о сохранённой рядом копии).
+  final Map<String, String> canvasNotice = {};
+
+  Future<CanvasDoc?> canvas(String path) async {
+    final have = canvases[path];
+    if (have != null) return have;
+    final v = vault;
+    if (v == null) return null;
+    final t = await v.readText(path);
+    if (t == null) return null;
+    try {
+      canvasErrors.remove(path);
+      return canvases[path] = CanvasDoc.parse(t);
+    } on FormatException catch (e) {
+      canvasErrors[path] = e.message;
+      return null;
+    }
+  }
+
+  /// Холст поменялся на экране — записать чуть позже.
+  void canvasChanged(String path) {
+    _canvasDirty.add(path);
+    _timers.remove(path)?.cancel();
+    _timers[path] = Timer(saveDelay, () => saveCanvas(path));
+    notifyListeners();
+  }
+
+  /// Записать холст. Файл изменили снаружи — своя версия ляжет рядом «… (с другого компьютера)», файл не затираем.
+  Future<void> saveCanvas(String path) async {
+    _timers.remove(path)?.cancel();
+    final doc = canvases[path];
+    if (doc == null || vault == null || !_canvasDirty.contains(path)) return;
+    final text = doc.encode();
+    try {
+      await vault!.write(path, text);
+    } on VaultConflict {
+      final made = await vault!.create(conflictName(path, [...index.paths, ...index.files]), text);
+      index.update(made, '');
+      canvases.remove(path);
+      canvasNotice[path] = 'Холст изменили в другой программе. Ничего не затёрто: твоя версия лежит рядом — «${baseName(made)}».';
+    }
+    _canvasDirty.remove(path);
+    notifyListeners();
+  }
+
+  /// Новый пустой холст в папке. Вернёт путь.
+  Future<String?> createCanvas(String folder, String title) async {
+    if (vault == null) return null;
+    final p = await vault!.create('${folder.isEmpty ? '' : '$folder/'}${safeFileName(title)}.canvas', '{\n\t"nodes":[],\n\t"edges":[]\n}\n');
+    index.update(p, '');
+    openNote(p);
+    return p;
   }
 
   /// Конфликт: оставить свою правку (затереть файл) или ту, что на диске, или обе (своя — рядом).

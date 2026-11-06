@@ -229,6 +229,33 @@ void main() {
     expect(st.view, 'note');
   });
 
+  testWidgets('холст: в дереве, открывается, нода выделяется и удаляется Delete', (t) async {
+    put('3D/Доска идей.canvas', '{"nodes":[{"id":"n1","type":"text","text":"Идея щита","x":0,"y":0,"width":250,"height":90},'
+        '{"id":"n2","type":"file","file":"3D/Щит.md","x":400,"y":0,"width":260,"height":140}],'
+        '"edges":[{"id":"e1","fromNode":"n1","toNode":"n2","label":"ведёт"}]}');
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    await pump(t);
+    await t.tap(find.text('▸').first); // раскрыть «3D»
+    await t.pump();
+    expect(find.text('Доска идей'), findsOneWidget);
+    await t.runAsync(() => st.canvas('3D/Доска идей.canvas')); // чтение файла — вне поддельного времени
+    await t.tap(find.text('Доска идей'));
+    await t.pump();
+    await t.pump();
+    expect(find.text('ХОЛСТ'), findsOneWidget);
+    expect(find.text('Идея щита'), findsOneWidget);
+    expect(find.text('ВЕДЁТ'), findsOneWidget);
+
+    await t.tap(find.text('Идея щита'));
+    await t.pump(const Duration(milliseconds: 400));
+    await t.sendKeyEvent(LogicalKeyboardKey.delete);
+    await t.pump();
+    expect(find.text('Идея щита'), findsNothing);
+    expect(find.text('ВЕДЁТ'), findsNothing); // провод ушёл вместе с нодой
+    expect(st.canvases['3D/Доска идей.canvas']!.nodes.map((n) => n.id), ['n2']);
+    await t.pump(const Duration(milliseconds: 20)); // таймер сохранения холста (запись проверена в тесте состояния)
+  });
+
   testWidgets('папка пропала — понятное состояние', (t) async {
     await t.runAsync(() => st.open('${tmp.path}/нет-такой', watch: false));
     await pump(t);

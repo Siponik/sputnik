@@ -61,6 +61,14 @@ String dirName(String abs) {
   return parts.isEmpty ? abs : parts.last;
 }
 
+/// Имя для экрана: без `.md` и `.canvas`.
+String shownName(String path) {
+  final n = baseName(path);
+  return n.toLowerCase().endsWith('.canvas') ? n.substring(0, n.length - 7) : n;
+}
+
+bool isCanvasPath(String path) => path.toLowerCase().endsWith('.canvas');
+
 /// Сколько слов в тексте заметки (без шапки свойств; у ссылки с подписью считается подпись).
 int wordCount(String text) {
   final fs = frontSpan(text);

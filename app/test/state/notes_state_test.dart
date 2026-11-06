@@ -145,6 +145,35 @@ void main() {
     expect(st.index.mentions('DND/Мира Тёрн.md'), isEmpty);
     expect(st.index.backlinks('DND/Мира Тёрн.md').length, 2);
   });
+
+  test('холст: создать, поправить, записать; чужая правка не затирается', () async {
+    final p = (await st.createCanvas('DND', 'Пепельный берег'))!;
+    expect(p, 'DND/Пепельный берег.canvas');
+    expect(st.config.tabs, contains(p));
+    final c = (await st.canvas(p))!;
+    c.add('file', 0, 0, file: 'DND/Мира Тёрн.md');
+    st.canvasChanged(p);
+    await st.flush();
+    final f = File('${vault.path}/DND/Пепельный берег.canvas');
+    expect(f.readAsStringSync(), contains('Мира Тёрн'));
+
+    // Снаружи поменяли, а у нас своя правка — наша ложится рядом.
+    f.writeAsStringSync('{"nodes":[],"edges":[]}');
+    c.add('text', 300, 0, text: 'моё');
+    st.canvasChanged(p);
+    await st.flush();
+    expect(f.readAsStringSync(), '{"nodes":[],"edges":[]}');
+    expect(File('${vault.path}/DND/Пепельный берег (с другого компьютера).canvas').readAsStringSync(), contains('моё'));
+    expect(st.canvasNotice[p], contains('Ничего не затёрто'));
+    expect((await st.canvas(p))!.nodes, isEmpty); // перечитан с диска
+  });
+
+  test('битый холст не перезаписывается', () async {
+    File('${vault.path}/сломан.canvas').writeAsStringSync('{не json');
+    await st.open(vault.path, watch: false);
+    expect(await st.canvas('сломан.canvas'), isNull);
+    expect(st.canvasErrors['сломан.canvas'], isNotNull);
+  });
 }
 
 class _Broken extends MemStore {
