@@ -85,7 +85,8 @@ tp = f'''<div style="height: 44px; box-sizing: border-box; padding: 0 12px; bord
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 8px; padding: 0 14px">{dot(GREEN)}{micro("СОХРАНЕНО В GOOGLE TASKS", MUT)}<span style="flex: 1"></span>{micro("ИЗМЕНЕНО 14:40", DIM)}</div>'''
 st = DIMK
 st += f'<span style="position: absolute; left: 496px; top: 107px; width: 236px; height: 80px; border-radius: 10px; border: 1.5px solid {OR}"></span>'
-st += node(784, 0, 464, 700, tp, hub=True)
+st += svg(wire(729, 136, 784, 141, OR, 2, k=24))
+st += node(784, 0, 464, 700, tp, hub=True, extra=sock('l', 136, OR))
 save('G_TaskPanel.dc.html', page('Окно задачи', 'ДОСКА', st), 'Окно задачи', 1360, 2820, 'r4')
 
 # ---------------- CREATE ----------------
@@ -143,7 +144,7 @@ vid = nhead('01', 'ВИД', '', OR, None, 34, OR, OR) + f'''<div style="padding:
   {prow("ПРИ ЗАПУСКЕ", seg(["СЕГОДНЯ", "ПОСЛЕДНИЙ РАЗДЕЛ"], "СЕГОДНЯ"))}
   <div>{lbl("ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ", MUT, 10)}<div style="position: relative; height: 40px; margin-top: 12px"><svg width="700" height="40" style="position: absolute; left: 0; top: 0" aria-hidden="true" fill="none">{ow}</svg>{oh}</div><div style="margin-top: 8px">{micro("ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1—4 И Q / E")}</div></div>
 </div>'''
-st += node(264, 0, 700, 470, vid, hub=True)
+st += node(264, 0, 700, 470, vid, hub=True, extra=sock('r', 60, OR))
 pv = f'''<div style="padding: 14px"><div style="border-radius: 8px; border: 1px solid {LINE}; overflow: hidden">
   <div style="height: 34px; background: {BG}; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-bottom: 1px solid {LINE}">{LOGO}<span style="font: 500 9px {MONO}; letter-spacing: .12em; padding-bottom: 2px; border-bottom: 1px solid {OR}">СЕГОДНЯ</span><span style="font: 500 9px {MONO}; letter-spacing: .12em; color: {MUT}">КАЛЕНДАРЬ</span></div>
   <div style="height: 120px; {GRID}; position: relative">
@@ -151,7 +152,8 @@ pv = f'''<div style="padding: 14px"><div style="border-radius: 8px; border: 1px 
     <span style="position: absolute; left: 130px; top: 14px; width: 90px; height: 90px; border-radius: 8px; background: {NODE}; border: 1px solid {OR}"></span>
     <svg width="240" height="120" style="position: absolute; left: 0; top: 0" aria-hidden="true" fill="none">{wire(84, 37, 130, 50, OR, 1.5, k=20)}</svg>
   </div></div><div style="margin-top: 10px; font-size: 12px; color: {MUT}">Так будет выглядеть шапка и ноды с выбранным акцентом.</div></div>'''
-st += node(988, 0, 260, 250, nhead('', 'ПРЕДПРОСМОТР', '', OR) + pv)
+st += svg(wire(964, 65, 990, 65, OR, 1.5, k=10))
+st += node(988, 0, 260, 250, nhead('', 'ПРЕДПРОСМОТР', '', OR) + pv, extra=sock('l', 60, OR))
 st += node(264, 494, 700, 150, nhead('02', 'ЧТО ПОКАЗЫВАТЬ', '4 СПИСКА · 1 КАЛЕНДАРЬ', GREY) + f'<div style="padding: 12px 16px; display: flex; gap: 8px; flex-wrap: wrap">{chip(dot(OR) + "3D-АССЕТЫ", True)}{chip(dot(BLUE) + "РАБОТА · КЛИЕНТЫ", True)}{chip(dot(GREEN) + "ДЕЛА ПО ДОМУ", True)}{chip(dot(VIO) + "УЧЁБА", True)}{chip("ПРАЗДНИКИ РОССИИ", True, GREY)}{chip("ДНИ РОЖДЕНИЯ")}{chip("РАБОЧИЙ КАЛЕНДАРЬ")}</div><div style="padding: 0 16px">{micro("СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ")}</div>')
 st += stamp(988, 640, 'НАСТРОЙКИ', 'РАЗДЕЛОВ 06', 'ВИД', w=260)
 save('G_Settings.dc.html', page('Настройки', '', st), 'Настройки', 1360, 3760, 'r4')
