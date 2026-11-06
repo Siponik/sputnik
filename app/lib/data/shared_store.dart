@@ -466,6 +466,6 @@ class SharedStore {
   String inviteText(String cal, String sphereName) {
     final link = 'https://calendar.google.com/calendar/r?cid=${Uri.encodeComponent(cal)}';
     return 'Зову тебя в общую сферу «$sphereName» в Спутнике.\n1) Открой ссылку и добавь календарь: $link\n'
-        '2) Или в Спутнике: Доска → ＋ сфера → «Войти в общую сферу…» и код: $cal';
+        '2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: $cal';
   }
 }

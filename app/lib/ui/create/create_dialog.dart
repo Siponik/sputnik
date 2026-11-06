@@ -14,6 +14,8 @@ import '../board/card_menu.dart';
 import '../habits/habits_page.dart';
 import '../theme/tokens.dart';
 import '../widgets/task_dialog.dart';
+import '../g/kit.dart';
+import '../today/today_page.dart' show listHue;
 
 Future<void> openCreate(
   BuildContext context,
@@ -59,6 +61,7 @@ class _CreateState extends State<_Create> {
   String calId = 'primary';
   int giftDays = 0;
   bool busy = false;
+  bool extra = false;
 
   AppState get s => widget.s;
 
@@ -98,7 +101,7 @@ class _CreateState extends State<_Create> {
         final patch = Json.from((x['layer'] as Map?) ?? const {});
         final st = slotS;
         if (st != null) patch['slot'] = {'s': st, 'e': cr.addMin(st, 60)};
-        if (prio != null) patch['priority'] = prio;
+        if (prio != null && prio != 0) patch['priority'] = prio;
         if (repeat != null) patch['repeat'] = {'every': repeat};
         if (remind.isNotEmpty) {
           patch['remind'] = [
@@ -178,94 +181,297 @@ class _CreateState extends State<_Create> {
         const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _submit(more: true),
       },
       child: Dialog(
-        backgroundColor: SpColors.node,
-        alignment: const Alignment(0, -.5),
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        alignment: const Alignment(0, -.6),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Wrap(
-                  spacing: 6,
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final wide = box.maxWidth > 700;
+              final fields = Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (kind == 'task') ..._task(p),
+                  if (kind == 'event') ..._event(),
+                  if (kind == 'birthday') ..._bday(),
+                ],
+              );
+              return GNode(
+                hub: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    for (final (i, k) in kinds.indexed)
-                      ChoiceChip(
-                        label: Text('${k.$2}  Alt+${i + 1}'),
-                        selected: kind == k.$1,
-                        selectedColor: k.$3.withValues(alpha: .25),
-                        onSelected: (_) => _setKind(k.$1),
+                    Container(
+                      height: 50,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: headFill(kc),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: line,
-                  autofocus: true,
-                  style: SpType.text(18),
-                  decoration: InputDecoration(
-                    hintText: switch (kind) {
-                      'event' => 'Встреча с Олей в пятницу 15:00',
-                      'birthday' => 'Имя',
-                      _ => 'Что сделать: «отправить макет завтра 17:00 @работа !!»',
-                    },
-                    filled: true,
-                    fillColor: SpColors.bg,
-                    focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: kc, width: 1.5)),
-                    enabledBorder: OutlineInputBorder(borderSide: BorderSide(color: kc.withValues(alpha: .5))),
-                  ),
-                  onSubmitted: (_) => _submit(),
-                ),
-                if (hint != null && hint['kind'] != kind && kind == 'task')
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: InkWell(
-                      onTap: () => _setKind(hint['kind'] as String),
-                      child: Text(
-                        'Похоже на ${hint['what']} (${hint['why']}) — сделать так?',
-                        style: SpType.text(12.5, color: SpColors.accentInk),
+                      child: Row(
+                        children: [
+                          for (final (i, k) in kinds.indexed)
+                            Tooltip(
+                              message: 'Alt+${i + 1}',
+                              child: InkWell(
+                                onTap: () => _setKind(k.$1),
+                                borderRadius: BorderRadius.circular(6),
+                                child: Container(
+                                  height: 30,
+                                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: kind == k.$1 ? SpColors.ink : null,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    k.$2,
+                                    style: SpType.text(
+                                      13,
+                                      w: FontWeight.w500,
+                                      color: kind == k.$1 ? SpColors.bg : Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            child: const Padding(
+                              padding: EdgeInsets.all(6),
+                              child: Icon(Icons.close, size: 18, color: Colors.white),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ),
-                const SizedBox(height: 10),
-                if (kind == 'task') ..._task(p),
-                if (kind == 'event') ..._event(),
-                if (kind == 'birthday') ..._bday(),
-                const SizedBox(height: 16),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  alignment: WrapAlignment.end,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Text('Enter — добавить · Ctrl+Enter — и ещё', style: SpType.label(10.5)),
-                    TextButton(onPressed: () => _submit(more: true), child: const Text('Создать и ещё')),
-                    FilledButton(
-                      style: FilledButton.styleFrom(backgroundColor: kc),
-                      onPressed: busy ? null : _submit,
-                      child: Text(busy ? 'Сохраняю…' : 'Добавить'),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(switch (kind) {
+                              'event' => 'Что за событие?',
+                              'birthday' => 'Чей день рождения?',
+                              _ => 'Что нужно сделать?',
+                            }, style: SpType.text(14, w: FontWeight.w600)),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: line,
+                              autofocus: true,
+                              style: SpType.text(17),
+                              decoration: InputDecoration(
+                                hintText: switch (kind) {
+                                  'event' => 'Встреча с Олей в пятницу 15:00',
+                                  'birthday' => 'Имя',
+                                  _ => 'Отправить макет завтра 17:00 @работа !!',
+                                },
+                                hintStyle: SpType.text(17, color: SpColors.dim),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: kc, width: 1.3),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide(color: kc.withValues(alpha: .6)),
+                                ),
+                              ),
+                              onSubmitted: (_) => _submit(),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              kind == 'birthday' ? 'Имя и дату — остальное подставлю сам.' : 'Пиши как в заметке: «в пятницу», «каждую неделю», «@работа». Остальное подставлю сам.',
+                              style: SpType.text(12, color: SpColors.muted),
+                            ),
+                            if (hint != null && hint['kind'] != kind && kind == 'task')
+                              Padding(
+                                padding: const EdgeInsets.only(top: 8),
+                                child: InkWell(
+                                  onTap: () => _setKind(hint['kind'] as String),
+                                  child: Text(
+                                    'Похоже на ${hint['what']} (${hint['why']}) — сделать так?',
+                                    style: SpType.text(12.5, color: SpColors.accent),
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 6),
+                            if (wide)
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(child: fields),
+                                  const SizedBox(width: 24),
+                                  SizedBox(width: 280, child: _preview(p, kc)),
+                                ],
+                              )
+                            else
+                              fields,
+                          ],
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: SpColors.line)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Enter — добавить, Esc — закрыть',
+                              style: SpType.text(12, color: SpColors.muted),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          GBtn('Добавить и ещё одну', kind: BtnKind.sec, onTap: () => _submit(more: true)),
+                          const SizedBox(width: 10),
+                          GBtn(
+                            busy
+                                ? 'Сохраняю…'
+                                : switch (kind) {
+                                    'event' => 'Добавить событие',
+                                    'birthday' => 'Сохранить',
+                                    _ => 'Добавить задачу',
+                                  },
+                            kind: BtnKind.acc,
+                            onTap: busy ? null : _submit,
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
+  Widget _preview(Json p, Color kc) {
+    final title = ((p['title'] ?? '') as String).trim();
+    final dest = kind == 'task' ? guessList : null;
+    final cols = dest == null ? const <Map>[] : (s.board(dest)['cols'] as List).cast<Map>();
+    final c = col ?? (cols.isEmpty ? null : cols.first['id']);
+    final colName = cols.where((x) => x['id'] == c).firstOrNull?['name'] as String?;
+    final idx = cols.indexWhere((x) => x['id'] == c);
+    final when = '${humanDay(day)}${slotS != null && !allDay ? ' в $slotS' : ''}';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _label(kind == 'task' ? 'Так появится на доске' : 'Так появится в календаре'),
+        GNode(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GHead(
+                name: kind == 'task'
+                    ? (dest == null ? '—' : s.listName(dest))
+                    : (kind == 'event' ? 'Событие' : 'День рождения'),
+                color: kind == 'task' ? listHue(s, dest ?? '') : kc,
+                kind: kind == 'task' ? colName : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: SpColors.bg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: SpColors.line),
+                      ),
+                      child: Text(
+                        title.isEmpty ? '·' : title.characters.first.toUpperCase(),
+                        style: gMono(13, c: SpColors.ink, w: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title.isEmpty ? 'Название' : title,
+                            style: SpType.text(
+                              13.5,
+                              w: FontWeight.w600,
+                              color: title.isEmpty ? SpColors.dim : SpColors.ink,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(when, style: SpType.text(12, color: SpColors.muted)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (kind == 'task' && cols.length > 1)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Row(
+                    children: [
+                      for (var i = 0; i < cols.length; i++) ...[
+                        if (i > 0) const SizedBox(width: 4),
+                        Expanded(
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: i < idx ? SpColors.green : (i == idx ? SpColors.accent : SpColors.line),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        CoonTip(
+          pose: 'think',
+          color: kc,
+          text: switch (kind) {
+            'event' => 'Напомню заранее, а пересечения покажу сразу.',
+            'birthday' => 'Могу завести задачу «Подарок» за неделю до дня.',
+            _ =>
+              dest == null
+                  ? 'Сначала заведи список.'
+                  : 'Положу в «${s.listName(dest)}». Не туда — выбери другой список.',
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _label(String t) => Padding(
-    padding: const EdgeInsets.only(top: 10, bottom: 6),
-    child: Text(t.toUpperCase(), style: SpType.label(10.5)),
+    padding: const EdgeInsets.only(top: 14, bottom: 8),
+    child: Text(
+      t,
+      style: SpType.text(12.5, color: SpColors.muted, w: FontWeight.w500),
+    ),
   );
 
-  Widget _dayChip() => ActionChip(
-    avatar: const Icon(Icons.event, size: 16),
-    label: Text(humanDay(day) + (slotS != null && !allDay ? ', $slotS' : '')),
-    onPressed: () async {
+  Widget _dayChip() => GPick(
+    humanDay(day) + (slotS != null && !allDay ? ' · $slotS' : ''),
+    on: true,
+    onTap: () async {
       final d = await showDatePicker(
         context: context,
         initialDate: DateTime.parse(day),
@@ -276,10 +482,9 @@ class _CreateState extends State<_Create> {
     },
   );
 
-  Widget _timeChip() => ActionChip(
-    avatar: const Icon(Icons.schedule, size: 16),
-    label: Text(slotS ?? 'Время'),
-    onPressed: () async {
+  Widget _timeChip() => GPick(
+    slotS == null ? '+ время' : 'Другое время',
+    onTap: () async {
       final t = await showTimePicker(
         context: context,
         initialTime: TimeOfDay(hour: DateTime.now().hour + 1, minute: 0),
@@ -295,11 +500,15 @@ class _CreateState extends State<_Create> {
     spacing: 6,
     runSpacing: 6,
     children: [
-      for (final l in rem.leadsFor(k))
-        FilterChip(
-          label: Text(l['name'] as String),
-          selected: remind.contains(l['min']),
-          onSelected: (on) => setState(() => on ? remind.add(l['min'] as int) : remind.remove(l['min'])),
+      for (final l
+          in rem
+              .leadsFor(k)
+              .where((l) => extra || remind.contains(l['min']) || const [60, 1440, 15, 0].contains(l['min'])))
+        GPick(
+          l['name'] as String,
+          on: remind.contains(l['min']),
+          onTap: () =>
+              setState(() => remind.contains(l['min']) ? remind.remove(l['min']) : remind.add(l['min'] as int)),
         ),
     ],
   );
@@ -308,40 +517,57 @@ class _CreateState extends State<_Create> {
     final dest = guessList;
     final cols = dest == null ? const [] : (s.board(dest)['cols'] as List).cast<Map>();
     return [
+      _label('Куда положить'),
       Row(
         children: [
-          Text('Куда:', style: SpType.text(13, color: SpColors.muted)),
-          const SizedBox(width: 8),
-          ActionChip(
-            avatar: Icon(listId == null ? Icons.auto_awesome : Icons.list, size: 15, color: SpColors.gold),
-            label: Text(dest == null ? 'Нет списков' : s.listName(dest)),
-            onPressed: () async {
+          Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: SpColors.bg.withValues(alpha: .5),
+              borderRadius: BorderRadius.circular(SpRadius.button),
+              border: Border.all(color: SpColors.line),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (dest != null) ...[GDot(listHue(s, dest)), const SizedBox(width: 8)],
+                Text(dest == null ? 'Нет списков' : s.listName(dest), style: SpType.text(13, w: FontWeight.w600)),
+                if (listId == null && dest != null) ...[
+                  const SizedBox(width: 8),
+                  Text('угадал', style: SpType.text(12, color: SpColors.gold)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          InkWell(
+            onTap: () async {
               final to = await pickList(context, s);
               if (to != null) setState(() => listId = to);
             },
-          ),
-          if (listId == null && dest != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 8),
-              child: Text('угадал', style: SpType.label(10.5, color: SpColors.gold)),
+            child: Text(
+              'Другой список',
+              style: SpType.text(13, color: SpColors.accent, w: FontWeight.w500),
             ),
+          ),
         ],
       ),
       if (cols.isNotEmpty) ...[
-        _label('Колонка'),
+        _label(s.board(dest!)['view'] == 'pipe' ? 'Этап' : 'Колонка'),
         Wrap(
           spacing: 6,
           children: [
             for (final c in cols.where((c) => c['id'] != 'done'))
-              ChoiceChip(
-                label: Text(c['name'] as String),
-                selected: (col ?? cols.first['id']) == c['id'],
-                onSelected: (_) => setState(() => col = c['id'] as String),
+              GPick(
+                c['name'] as String,
+                on: (col ?? cols.first['id']) == c['id'],
+                onTap: () => setState(() => col = c['id'] as String),
               ),
           ],
         ),
       ],
-      _label('Срок и приоритет'),
+      _label('Когда и насколько важно'),
       Wrap(
         spacing: 6,
         runSpacing: 6,
@@ -349,29 +575,42 @@ class _CreateState extends State<_Create> {
           _dayChip(),
           _timeChip(),
           for (final (n, l) in [(1, '!!!'), (2, '!!'), (3, '!')])
-            ChoiceChip(
-              label: Text(l),
-              selected: (prio ?? p['priority']) == n,
-              onSelected: (on) => setState(() => prio = on ? n : null),
+            GPick(
+              l,
+              on: (prio ?? p['priority']) == n,
+              onTap: () => setState(() => prio = (prio ?? p['priority']) == n ? 0 : n),
             ),
         ],
       ),
       _label('Напомнить'),
       _remindChips('task'),
+      ..._extra(),
+    ];
+  }
+
+  List<Widget> _extra() => [
+    const SizedBox(height: 14),
+    InkWell(
+      onTap: () => setState(() => extra = !extra),
+      child: Text(
+        '${extra ? '▾' : '▸'} Ещё: повтор и заметка',
+        style: SpType.text(12.5, color: SpColors.muted, w: FontWeight.w500),
+      ),
+    ),
+    if (extra || repeat != null || notes.text.isNotEmpty) ...[
       _label('Повтор'),
       _repeatChips(),
       _label('Заметка'),
       _notes(),
-    ];
-  }
+    ],
+  ];
 
   Widget _repeatChips() => Wrap(
     spacing: 6,
     runSpacing: 6,
     children: [
-      ChoiceChip(label: const Text('Нет'), selected: repeat == null, onSelected: (_) => setState(() => repeat = null)),
-      for (final r in rep.repeats)
-        ChoiceChip(label: Text(r.label), selected: repeat == r.id, onSelected: (_) => setState(() => repeat = r.id)),
+      GPick('Нет', on: repeat == null, onTap: () => setState(() => repeat = null)),
+      for (final r in rep.repeats) GPick(r.label, on: repeat == r.id, onTap: () => setState(() => repeat = r.id)),
     ],
   );
 
@@ -379,7 +618,20 @@ class _CreateState extends State<_Create> {
     controller: notes,
     minLines: 2,
     maxLines: 6,
-    decoration: const InputDecoration(filled: true, fillColor: SpColors.bg, hintText: 'Необязательно'),
+    style: SpType.text(13.5),
+    decoration: InputDecoration(
+      hintText: 'Необязательно',
+      hintStyle: SpType.text(13.5, color: SpColors.dim),
+      contentPadding: const EdgeInsets.all(12),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: SpColors.line),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(8),
+        borderSide: const BorderSide(color: SpColors.accent),
+      ),
+    ),
   );
 
   Widget _calPick() {
@@ -390,10 +642,11 @@ class _CreateState extends State<_Create> {
       runSpacing: 6,
       children: [
         for (final c in cals)
-          ChoiceChip(
-            label: Text((c['summaryOverride'] ?? c['summary'] ?? '') as String),
-            selected: calId == c['id'] || (calId == 'primary' && c['primary'] == true),
-            onSelected: (_) => setState(() => calId = c['id'] as String),
+          GPick(
+            (c['summaryOverride'] ?? c['summary'] ?? '') as String,
+            on: calId == c['id'] || (calId == 'primary' && c['primary'] == true),
+            color: SpColors.blue,
+            onTap: () => setState(() => calId = c['id'] as String),
           ),
       ],
     );
@@ -411,15 +664,15 @@ class _CreateState extends State<_Create> {
           _dayChip(),
           if (!allDay) _timeChip(),
           for (final (m, l) in [(15, '15 мин'), (30, '30 мин'), (60, '1 час'), (120, '2 часа')])
-            ChoiceChip(
-              label: Text(l),
-              selected: !allDay && dur == m,
-              onSelected: (_) => setState(() {
+            GPick(
+              l,
+              on: !allDay && dur == m,
+              onTap: () => setState(() {
                 allDay = false;
                 dur = m;
               }),
             ),
-          ChoiceChip(label: const Text('Весь день'), selected: allDay, onSelected: (v) => setState(() => allDay = v)),
+          GPick('Весь день', on: allDay, onTap: () => setState(() => allDay = !allDay)),
         ],
       ),
       if (free != null)
@@ -437,14 +690,25 @@ class _CreateState extends State<_Create> {
       _label('Место'),
       TextField(
         controller: place,
-        decoration: const InputDecoration(filled: true, fillColor: SpColors.bg, hintText: 'Адрес или ссылка'),
+        style: SpType.text(13.5),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'Адрес или ссылка',
+          hintStyle: SpType.text(13.5, color: SpColors.dim),
+          contentPadding: const EdgeInsets.all(11),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: SpColors.line),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: const BorderSide(color: SpColors.accent),
+          ),
+        ),
       ),
       _label('Напомнить'),
       _remindChips('event'),
-      _label('Повтор'),
-      _repeatChips(),
-      _label('Заметка'),
-      _notes(),
+      ..._extra(),
     ];
   }
 
@@ -459,7 +723,21 @@ class _CreateState extends State<_Create> {
           width: 140,
           child: TextField(
             controller: year,
-            decoration: const InputDecoration(isDense: true, hintText: 'Год (необяз.)'),
+            style: SpType.text(13.5),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: 'Год, если знаешь',
+              hintStyle: SpType.text(13.5, color: SpColors.dim),
+              contentPadding: const EdgeInsets.all(11),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: SpColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: SpColors.accent),
+              ),
+            ),
           ),
         ),
       ],
@@ -471,11 +749,7 @@ class _CreateState extends State<_Create> {
       spacing: 6,
       children: [
         for (final d in [0, 3, 7, 14, 30])
-          ChoiceChip(
-            label: Text(d == 0 ? 'Не нужна' : 'за $d дн.'),
-            selected: giftDays == d,
-            onSelected: (_) => setState(() => giftDays = d),
-          ),
+          GPick(d == 0 ? 'Не нужна' : 'за $d дн.', on: giftDays == d, onTap: () => setState(() => giftDays = d)),
       ],
     ),
     _label('Календарь'),

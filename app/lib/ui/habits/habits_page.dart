@@ -5,8 +5,7 @@ import 'package:flutter/material.dart';
 import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
-import '../widgets/common.dart';
-import '../widgets/coon.dart';
+import '../g/kit.dart';
 
 const habitIcons = <String, IconData>{
   'cup': Icons.local_cafe_outlined,
@@ -28,6 +27,9 @@ const habitColors = <String, Color>{
   'study': SpColors.violet,
   'done': Color(0xFF6FB6CF),
 };
+
+/// С какого вида открываются привычки (для снимков).
+bool habitsStartMonth = false;
 
 IconData iconOf(Json h, int i) => habitIcons[h['icon']] ?? habitIcons.values.elementAt(i % 6);
 Color colorOf(Json h, int i) => habitColors[h['color']] ?? habitColors.values.elementAt(i % habitColors.length);
@@ -62,8 +64,9 @@ class HabitsPage extends StatefulWidget {
 
 class _HabitsPageState extends State<HabitsPage> {
   String part = 'all';
-  bool month = false;
+  bool month = habitsStartMonth;
   DateTime shown = DateTime.now();
+  String? open;
 
   @override
   Widget build(BuildContext context) {
@@ -71,259 +74,597 @@ class _HabitsPageState extends State<HabitsPage> {
     final all = s.habits;
     final list = part == 'all' ? all : all.where((h) => hb.partOf(h) == part).toList();
     final log = s.habitLog;
+    final todays = all.where((h) => hb.scheduledOn(h, log, s.todayYmd)).toList();
+    final doneN = todays.where((h) => hb.isDone(log, h['id'], s.todayYmd)).length;
     return DotGround(
-      child: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          Wrap(
-            spacing: 10,
-            runSpacing: 8,
-            crossAxisAlignment: WrapCrossAlignment.center,
+      child: LayoutBuilder(
+        builder: (context, box) {
+          final wide = box.maxWidth >= 1180;
+          final sel = wide
+              ? (list.where((h) => h['id'] == open).firstOrNull ?? (list.isEmpty ? null : list.first))
+              : null;
+          final main = ListView(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
             children: [
-              const Coon('flag', size: 44),
-              Text('Привычки', style: SpType.text(24, w: FontWeight.w600)),
-              const SizedBox(width: 12),
-              Text(
-                all.isEmpty ? '' : (s.habitsLeft == 0 ? 'всё отмечено сегодня' : 'осталось ${s.habitsLeft}'),
-                style: SpType.text(13, color: SpColors.muted),
-              ),
-              SegmentedButton<bool>(
-                segments: const [
-                  ButtonSegment(value: false, label: Text('Сегодня')),
-                  ButtonSegment(value: true, label: Text('Месяц')),
-                ],
-                selected: {month},
-                onSelectionChanged: (v) => setState(() => month = v.first),
-              ),
-              const SizedBox(width: 10),
-              FilledButton.icon(
-                onPressed: () => editHabit(context, s, null),
-                icon: const Icon(Icons.add, size: 18),
-                label: const Text('Привычка'),
-              ),
+              _top(context, s, all, todays.length, doneN),
+              const SizedBox(height: 18),
+              if (todays.isNotEmpty && !month) ...[
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Text('СЕГОДНЯ', style: gLbl(c: SpColors.gold)),
+                    ),
+                    for (final h in todays)
+                      HabitPill(
+                        _pillText(s, h),
+                        done: hb.isDone(log, h['id'], s.todayYmd),
+                        color: colorOf(h, all.indexOf(h)),
+                        onTap: () => s.toggleHabit(h),
+                      ),
+                    const SizedBox(width: 12),
+                    if (doneN < todays.length)
+                      GBtn(
+                        'Отметить все',
+                        sm: true,
+                        onTap: () {
+                          for (final h in todays) {
+                            while (!hb.isDone(s.habitLog, h['id'], s.todayYmd)) {
+                              s.toggleHabit(h);
+                            }
+                          }
+                        },
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+              ],
+              if (all.isEmpty)
+                _empty(context, s)
+              else if (month)
+                _month(s, list, log)
+              else
+                _cards(context, s, list, log, sel?['id'] as String?, wide),
+              if (all.isNotEmpty && !month) ...[
+                const SizedBox(height: 26),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(flex: 7, child: _tip(s, all, log)),
+                    const SizedBox(width: 28),
+                    Expanded(
+                      flex: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Stamp(
+                          sheet: 'ПРИВЫЧКИ',
+                          date: _date(),
+                          a: 'ВСЕГО ${all.length.toString().padLeft(2, '0')}',
+                          b: 'СЕГОДНЯ $doneN/${todays.length}',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ],
-          ),
-          const SizedBox(height: 14),
-          Wrap(
-            spacing: 6,
-            children: [
-              for (final (id, name) in [
-                ('all', 'Все'),
-                ('morning', 'Утро'),
-                ('day', 'День'),
-                ('evening', 'Вечер'),
-                ('any', 'Когда угодно'),
-              ])
-                ChoiceChip(label: Text(name), selected: part == id, onSelected: (_) => setState(() => part = id)),
-            ],
-          ),
-          const SizedBox(height: 16),
-          if (all.isEmpty) _empty(context, s) else if (month) _month(s, list, log) else _cards(context, s, list, log),
-        ],
+          );
+          if (sel == null || month) return main;
+          return WireBoard(
+            wires: [Wire('hb:card:${sel['id']}', 'hb:panel', colorOf(sel, all.indexOf(sel)), vertical: false)],
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(child: main),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 18 + 52 + 18 + 50, 16, 16),
+                  child: SizedBox(
+                    width: 380,
+                    child: HabitPanel(s: s, id: sel['id'] as String, i: all.indexOf(sel), sock: 'hb:panel'),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _empty(BuildContext context, AppState s) => Node(
-    title: 'Начни с одной',
-    head: SpColors.headGold,
+  String _date() {
+    final d = DateTime.now();
+    String two(int x) => x.toString().padLeft(2, '0');
+    return '${two(d.day)}.${two(d.month)}.${two(d.year % 100)}';
+  }
+
+  String _pillText(AppState s, Json h) {
+    final g = hb.goalN(h);
+    final done = hb.isDone(s.habitLog, h['id'], s.todayYmd);
+    if (g > 0 && !done) return '${h['name']} ${hb.countOn(s.habitLog, h, s.todayYmd)}/$g';
+    return h['name'] as String;
+  }
+
+  Widget _top(BuildContext context, AppState s, List<Json> all, int today, int done) => GNode(
     child: Padding(
-      padding: const EdgeInsets.all(14),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: Row(
         children: [
-          for (final (i, p) in presets.indexed)
-            ActionChip(
-              avatar: Icon(iconOf(p, i), size: 16, color: colorOf(p, i)),
-              label: Text(p['name'] as String),
-              onPressed: () => editHabit(context, s, null, preset: p),
+          const GCoon('flag', size: 32),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text('ПРИВЫЧКИ', style: gLbl(c: SpColors.ink)),
+                Text(
+                  '${all.length} ${hb.plural(all.length, ['привычка', 'привычки', 'привычек'])} · сегодня $done / $today'
+                      .toUpperCase(),
+                  style: gMicro(),
+                ),
+                const SizedBox(width: 8),
+                for (final (id, name) in [('all', 'Все'), ('morning', 'Утро'), ('day', 'День'), ('evening', 'Вечер')])
+                  GChip(name, on: part == id, onTap: () => setState(() => part = id)),
+              ],
             ),
+          ),
+          GSeg(items: const ['Сегодня', 'Месяц'], active: month ? 1 : 0, onTap: (i) => setState(() => month = i == 1)),
+          const SizedBox(width: 12),
+          GBtn('+ Привычка', kind: BtnKind.acc, onTap: () => editHabit(context, s, null)),
         ],
       ),
     ),
   );
 
-  Widget _cards(BuildContext context, AppState s, List<Json> list, Map log) => LayoutBuilder(
+  Widget _tip(AppState s, List<Json> all, Map log) {
+    Json? best;
+    var n = 0;
+    for (final h in all) {
+      final k = hb.stats(h, log)['streak'] as int;
+      if (k > n) {
+        n = k;
+        best = h;
+      }
+    }
+    final broken = all.where((h) => hb.broken(h, log) != null).toList();
+    final parts = <String>[
+      if (best != null)
+        '$n ${hb.plural(n, ['день', 'дня', 'дней'])} «${best['name']}» подряд. Следующая веха — ${hb.nextMilestone(n)}.',
+      if (broken.isNotEmpty) '«${broken.first['name']}» вчера сорвалось — начнём заново сегодня?',
+    ];
+    return CoonTip(
+      pose: n >= 7 ? 'cheer' : 'flag',
+      color: const Color(0xFF8A7424),
+      text: parts.isEmpty ? 'Отмечай привычки каждый день — серия растёт, вехи на 7, 21, 50 и 100.' : parts.join(' '),
+    );
+  }
+
+  Widget _empty(BuildContext context, AppState s) => GNode(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const GHead(name: 'Начни с одной', color: SpColors.gold),
+        Padding(
+          padding: const EdgeInsets.all(14),
+          child: Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (i, p) in presets.indexed)
+                GPick(
+                  p['name'] as String,
+                  dot: colorOf(p, i),
+                  onTap: () => editHabit(context, s, null, preset: p),
+                ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+
+  Widget _cards(BuildContext context, AppState s, List<Json> list, Map log, String? sel, bool wide) => LayoutBuilder(
     builder: (context, box) {
-      final n = box.maxWidth > 1000 ? 3 : (box.maxWidth > 620 ? 2 : 1);
-      final w = (box.maxWidth - (n - 1) * 12) / n;
+      final n = box.maxWidth > 820 ? 3 : (box.maxWidth > 540 ? 2 : 1);
+      final w = (box.maxWidth - (n - 1) * 18) / n;
       return Wrap(
-        spacing: 12,
-        runSpacing: 12,
-        children: [for (final (i, h) in list.indexed) SizedBox(width: w, child: _card(context, s, h, i, log))],
+        spacing: 18,
+        runSpacing: 18,
+        children: [
+          for (final (i, h) in list.indexed)
+            SizedBox(
+              width: w,
+              child: _card(context, s, h, !s.habits.contains(h) ? i : s.habits.indexOf(h), log, sel == h['id'], wide),
+            ),
+        ],
       );
     },
   );
 
-  Widget _card(BuildContext context, AppState s, Json h, int i, Map log) {
+  Widget _card(BuildContext context, AppState s, Json h, int i, Map log, bool on, bool wide) {
     final st = hb.stats(h, log);
     final done = hb.isDone(log, h['id'], s.todayYmd);
     final g = hb.goalN(h);
     final c = colorOf(h, i);
-    return InkWell(
-      borderRadius: BorderRadius.circular(SpRadius.node),
-      onTap: () => habitPanel(context, s, h['id'] as String, i),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: SpColors.node,
-          borderRadius: BorderRadius.circular(SpRadius.node),
-          border: Border.all(color: done ? SpColors.accentLine : SpColors.line),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(iconOf(h, i), color: c, size: 22),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(h['name'] as String, style: SpType.text(15, w: FontWeight.w600)),
-                      Text(hb.cardLine(h, log), style: SpType.text(12, color: SpColors.muted)),
-                    ],
+    final week = (h['perWeek'] ?? 0) as num > 0;
+    final streak = st['streak'] as int;
+    final kind = [
+      week
+          ? '${h['perWeek']} в нед'
+          : (g > 0 ? '$g ${(h['goal'] as Map)['unit'] ?? ''}' : hb.scheduleLabel(h['days'] as List?)),
+      if (hb.partOf(h) != 'any') hb.partName(h),
+    ].join(' · ').toUpperCase();
+    final foot = switch ((g > 0, week, done)) {
+      (true, _, false) => '${hb.countOn(log, h, s.todayYmd)} / $g СЕГОДНЯ',
+      (_, true, _) => '${hb.stats(h, log)['week'] ?? 0} / ${h['perWeek']} НА НЕДЕЛЕ',
+      _ =>
+        hb.broken(h, log) != null
+            ? 'ВЧЕРА ПРОПУСК'
+            : '→ ${hb.nextMilestone(streak)} · ЧЕРЕЗ ${hb.nextMilestone(streak) - streak} ДН',
+    };
+    final card = GNode(
+      hub: on,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(on ? 12 : 8),
+        onTap: () => wide
+            ? setState(() => open = h['id'] as String)
+            : showDialog<void>(
+                context: context,
+                builder: (_) => Dialog(
+                  backgroundColor: Colors.transparent,
+                  child: SizedBox(
+                    width: 400,
+                    child: HabitPanel(s: s, id: h['id'] as String, i: i, close: true),
                   ),
                 ),
-                _mark(done, g > 0 && !done ? '${hb.countOn(log, h, s.todayYmd)}/$g' : null, () => s.toggleHabit(h)),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '${st['streak']}',
-                  style: SpType.text(30, w: FontWeight.w700, color: SpColors.gold),
+              ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SockRow(
+              right: on ? Sock('hb:card:${h['id']}', c) : null,
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: SpColors.line)),
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 18,
+                      height: 18,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
+                      child: Text(
+                        ((h['name'] ?? '?') as String).characters.first.toUpperCase(),
+                        style: SpType.text(10.5, w: FontWeight.w600, color: kDark),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        (h['name'] ?? '') as String,
+                        style: SpType.text(13.5, w: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(kind, style: gMicro(), maxLines: 1),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('$streak', style: SpType.text(48, w: FontWeight.w200, height: 54)),
+                  const SizedBox(width: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
-                      '${(h['perWeek'] ?? 0) as num > 0 ? 'нед.' : 'дн.'} подряд · лучшая ${st['best']}',
-                      style: SpType.label(11),
+                      streak == 0 ? 'СЕРИЯ НА ПАУЗЕ' : (week ? 'НЕД ПОДРЯД' : 'ДН ПОДРЯД'),
+                      style: gMicro(c: SpColors.muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
+              child: Row(
+                children: [
+                  for (final (k, d) in hb.last7(h, log).indexed) ...[
+                    if (k > 0) const SizedBox(width: 10),
+                    Expanded(child: _sq(d['st'] as String, d['today'] == true, d['wd'] as String, c)),
+                  ],
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      foot,
+                      style: gMicro(c: foot.startsWith('→') ? SpColors.gold : SpColors.muted),
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                ),
-                for (final d in hb.last7(h, log)) _dot(d['st'] as String, d['today'] == true, d['wd'] as String),
-              ],
+                  _markBtn(done, g > 0 && !done, c, () => s.toggleHabit(h)),
+                ],
+              ),
             ),
           ],
         ),
       ),
     );
+    return card;
   }
 
-  Widget _mark(bool done, String? count, VoidCallback onTap) => InkResponse(
-    onTap: onTap,
-    radius: 22,
-    child: AnimatedContainer(
-      duration: SpMotion.fast,
-      width: 34,
-      height: 34,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: done ? SpColors.gold : Colors.transparent,
-        border: Border.all(color: done ? SpColors.gold : SpColors.lineStrong, width: 1.5),
+  Widget _sq(String st, bool today, String wd, Color c) => Column(
+    children: [
+      AspectRatio(
+        aspectRatio: 1,
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
+          decoration: BoxDecoration(
+            color: switch (st) {
+              'd' => c,
+              'p' => c.withValues(alpha: .35),
+              'm' => null,
+              _ => null,
+            },
+            borderRadius: BorderRadius.circular(4),
+            border: st == 'd'
+                ? null
+                : Border.all(
+                    color: today
+                        ? c
+                        : st == 'm'
+                        ? SpColors.red.withValues(alpha: .7)
+                        : (st == 'k' ? const Color(0xFF6FB6CF) : SpColors.line),
+                  ),
+          ),
+        ),
       ),
-      child: done
-          ? const Icon(Icons.check, size: 18, color: SpColors.ground)
-          : count != null
-          ? Text(count, style: SpType.label(10, color: SpColors.ink))
-          : null,
+      const SizedBox(height: 4),
+      Text(wd.toUpperCase(), style: SpType.label(9, color: today ? SpColors.accent : SpColors.dim)),
+    ],
+  );
+
+  Widget _markBtn(bool done, bool plus, Color c, VoidCallback on) => Material(
+    color: done ? c : Colors.transparent,
+    shape: StadiumBorder(side: done ? BorderSide.none : BorderSide(color: c)),
+    child: InkWell(
+      customBorder: const StadiumBorder(),
+      onTap: on,
+      child: Container(
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 13),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (done) ...[const Icon(Icons.check, size: 14, color: kDark), const SizedBox(width: 4)],
+            Text(
+              done ? 'Сделано' : (plus ? '+1' : 'Отметить'),
+              style: SpType.text(12.5, w: FontWeight.w600, color: done ? kDark : SpColors.ink),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 
   Widget _month(AppState s, List<Json> list, Map log) {
     final y = shown.year, m = shown.month - 1;
     final days = DateTime(y, m + 2, 0).day;
-    return Node(
-      title: '${_monthName[m]} $y',
-      head: SpColors.headGold,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          InkWell(
-            onTap: () => setState(() => shown = DateTime(y, shown.month - 1)),
-            child: const Icon(Icons.chevron_left, size: 18),
-          ),
-          InkWell(
-            onTap: () => setState(() => shown = DateTime(y, shown.month + 1)),
-            child: const Icon(Icons.chevron_right, size: 18),
-          ),
-        ],
+    const wd = ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС'];
+    const name = 200.0, cell = 30.0, pct = 60.0;
+    final today = DateTime.now();
+    Widget sq(String st, bool isToday, Color c) => Container(
+      width: 20,
+      height: 20,
+      decoration: BoxDecoration(
+        color: switch (st) {
+          'd' => c,
+          'p' => c.withValues(alpha: .4),
+          _ => null,
+        },
+        borderRadius: BorderRadius.circular(4),
+        border: st == 'd'
+            ? null
+            : Border.all(
+                color: isToday
+                    ? SpColors.accent
+                    : switch (st) {
+                        'm' => SpColors.red.withValues(alpha: .8),
+                        'k' => const Color(0xFF6FB6CF),
+                        'f' || 'o' => SpColors.lineSoft,
+                        _ => SpColors.line,
+                      },
+              ),
       ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.all(10),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    );
+    return GNode(
+      hub: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          GHead(
+            name: 'Привычка × день',
+            color: SpColors.gold,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                const SizedBox(width: 160),
-                for (var n = 1; n <= days; n++)
-                  SizedBox(
-                    width: 24,
-                    child: Center(child: Text('$n', style: SpType.label(10))),
-                  ),
-                const SizedBox(width: 50),
+                InkWell(
+                  onTap: () => setState(() => shown = DateTime(y, shown.month - 1)),
+                  child: Text('‹', style: gMono(13, c: Colors.white)),
+                ),
+                const SizedBox(width: 10),
+                Text(_monthName[m].toUpperCase(), style: gLbl(c: Colors.white)),
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: () => setState(() => shown = DateTime(y, shown.month + 1)),
+                  child: Text('›', style: gMono(13, c: Colors.white)),
+                ),
               ],
             ),
-            for (final (i, h) in list.indexed)
-              () {
-                final r = hb.monthRow(h, log, y, m);
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: 160,
+          ),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: const BoxDecoration(
+                    border: Border(bottom: BorderSide(color: SpColors.line)),
+                  ),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: name,
+                        child: Text('ПРИВЫЧКА', style: gMicro()),
+                      ),
+                      for (var n = 1; n <= days; n++)
+                        () {
+                          final d = DateTime(y, m + 1, n);
+                          final isT = d.year == today.year && d.month == today.month && d.day == today.day;
+                          final c = isT ? SpColors.accent : (d.weekday >= 6 ? SpColors.gold : SpColors.dim);
+                          return SizedBox(
+                            width: cell,
+                            child: Column(
+                              children: [
+                                Text(wd[d.weekday - 1], style: gMicro(c: c)),
+                                const SizedBox(height: 2),
+                                Text('$n', style: gMono(10.5, c: isT ? SpColors.accent : SpColors.ink2)),
+                              ],
+                            ),
+                          );
+                        }(),
+                      SizedBox(
+                        width: pct,
+                        child: Text('%', textAlign: TextAlign.right, style: gMicro()),
+                      ),
+                    ],
+                  ),
+                ),
+                for (final (i, h) in list.indexed)
+                  () {
+                    final r = hb.monthRow(h, log, y, m);
+                    final c = colorOf(h, i);
+                    final p = r['pct'];
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: const BoxDecoration(
+                        border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
+                      ),
                       child: Row(
                         children: [
-                          Icon(iconOf(h, i), size: 16, color: colorOf(h, i)),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: Text(h['name'] as String, style: SpType.text(13), overflow: TextOverflow.ellipsis),
+                          SizedBox(
+                            width: name,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 20,
+                                  height: 20,
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(color: c, borderRadius: BorderRadius.circular(4)),
+                                  child: Text(
+                                    (h['name'] as String).characters.first.toUpperCase(),
+                                    style: gMono(10.5, c: kDark, w: FontWeight.w600),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    h['name'] as String,
+                                    style: SpType.text(13, w: FontWeight.w500),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          for (final cc in r['cells'] as List)
+                            SizedBox(
+                              width: cell,
+                              child: Center(
+                                child: PopupMenuButton<String>(
+                                  tooltip: cc['day'] as String,
+                                  enabled: cc['st'] != 'f',
+                                  padding: EdgeInsets.zero,
+                                  color: SpColors.node,
+                                  onSelected: (v) => s.setHabitDay(h, cc['day'] as String, v),
+                                  itemBuilder: (_) => [
+                                    PopupMenuItem(
+                                      value: 'done',
+                                      child: Text('Сделано', style: SpType.text(13)),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'none',
+                                      child: Text('Пропуск', style: SpType.text(13)),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'skip',
+                                      child: Text('Не считать этот день', style: SpType.text(13)),
+                                    ),
+                                  ],
+                                  child: sq(cc['st'] as String, cc['today'] == true, c),
+                                ),
+                              ),
+                            ),
+                          SizedBox(
+                            width: pct,
+                            child: Text(
+                              p == null ? '' : '$p',
+                              textAlign: TextAlign.right,
+                              style: gMono(11, c: p == 100 ? SpColors.gold : SpColors.muted),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                    for (final c in r['cells'] as List)
-                      SizedBox(
-                        width: 24,
-                        height: 28,
-                        child: Center(
-                          child: PopupMenuButton<String>(
-                            tooltip: c['day'] as String,
-                            enabled: c['st'] != 'f',
-                            padding: EdgeInsets.zero,
-                            onSelected: (v) => s.setHabitDay(h, c['day'] as String, v),
-                            itemBuilder: (_) => const [
-                              PopupMenuItem(value: 'done', child: Text('Сделано')),
-                              PopupMenuItem(value: 'skip', child: Text('Не считать')),
-                              PopupMenuItem(value: 'none', child: Text('Не сделано')),
-                            ],
-                            child: _dot(c['st'] as String, c['today'] == true, null),
-                          ),
-                        ),
-                      ),
-                    SizedBox(
-                      width: 50,
-                      child: Text(
-                        r['pct'] == null ? '' : '${r['pct']}%',
-                        style: SpType.label(11),
-                        textAlign: TextAlign.right,
-                      ),
-                    ),
+                    );
+                  }(),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+            child: Wrap(
+              spacing: 18,
+              runSpacing: 6,
+              children: [
+                for (final (st, t) in [('d', 'сделано'), ('p', 'не всё'), ('m', 'пропуск'), ('k', 'не считать')])
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      sq(st, false, SpColors.gold),
+                      const SizedBox(width: 6),
+                      Text(t, style: SpType.text(12, color: SpColors.muted)),
+                    ],
+                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    sq('f', true, SpColors.gold),
+                    const SizedBox(width: 6),
+                    Text('сегодня', style: SpType.text(12, color: SpColors.muted)),
                   ],
-                );
-              }(),
-          ],
-        ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -344,49 +685,18 @@ const _monthName = [
   'Декабрь',
 ];
 
-/// Точка дня: d — сделано (золото), p — часть, k — не считать, m — пропуск, w — ждёт, o — не по расписанию, f — будущее.
-Widget _dot(String st, bool today, String? label) {
-  final dot = Container(
-    width: 12,
-    height: 12,
-    margin: const EdgeInsets.symmetric(horizontal: 2),
-    decoration: BoxDecoration(
-      shape: BoxShape.circle,
-      color: switch (st) {
-        'd' => SpColors.gold,
-        'p' => SpColors.accentWash,
-        'm' => SpColors.lineSoft,
-        _ => Colors.transparent,
-      },
-      border: Border.all(
-        color: today
-            ? SpColors.accent
-            : switch (st) {
-                'd' => SpColors.gold,
-                'p' => SpColors.gold,
-                'k' => const Color(0xFF6FB6CF),
-                'o' || 'f' => SpColors.lineSoft,
-                _ => SpColors.line,
-              },
-        width: today ? 1.5 : 1,
-      ),
-    ),
-  );
-  if (label == null) return dot;
-  return Column(
-    mainAxisSize: MainAxisSize.min,
-    children: [
-      Text(label, style: SpType.label(9, color: SpColors.dim)),
-      const SizedBox(height: 3),
-      dot,
-    ],
-  );
-}
+/// Панель привычки (G_Habits справа): серия, дорожка вех 7·21·50·100, календарь месяца с отметками задним числом,
+/// цифры (лучшая, всего, за месяц), окно, напоминание, правка и удаление.
+class HabitPanel extends StatelessWidget {
+  const HabitPanel({super.key, required this.s, required this.id, required this.i, this.close = false, this.sock});
+  final AppState s;
+  final String id;
+  final int i;
+  final bool close;
+  final String? sock;
 
-/// Панель привычки: серия, вехи, календарь месяца с отметками задним числом, правка и удаление.
-Future<void> habitPanel(BuildContext context, AppState s, String id, int i) => showDialog<void>(
-  context: context,
-  builder: (_) => ListenableBuilder(
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
     listenable: s,
     builder: (context, _) {
       final h = s.habits.where((x) => x['id'] == id).firstOrNull;
@@ -395,120 +705,268 @@ Future<void> habitPanel(BuildContext context, AppState s, String id, int i) => s
       final st = hb.stats(h, log);
       final now = DateTime.now();
       final r = hb.monthRow(h, log, now.year, now.month - 1);
-      final next = hb.nextMilestone(st['streak'] as num);
+      final streak = st['streak'] as int;
       final first = DateTime(now.year, now.month, 1).weekday - 1;
-      return Dialog(
-        backgroundColor: SpColors.node,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+      final c = colorOf(h, i);
+      final passed = hb.milestones.contains(streak);
+      return GNode(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SockRow(
+              left: sock == null ? null : Sock(sock, c),
+              child: GHead(
+                name: '${h['name']} · панель',
+                kind: hb.scheduleLine(h),
+                color: c,
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(iconOf(h, i), color: colorOf(h, i)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(h['name'] as String, style: SpType.text(20, w: FontWeight.w600)),
-                    ),
-                    IconButton(
-                      tooltip: 'Изменить',
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      onPressed: () => editHabit(context, s, h),
-                    ),
-                    IconButton(icon: const Icon(Icons.close, size: 18), onPressed: () => Navigator.pop(context)),
-                  ],
-                ),
-                Text(hb.scheduleLine(h), style: SpType.text(13, color: SpColors.muted)),
-                const SizedBox(height: 14),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '${st['streak']}',
-                      style: SpType.text(40, w: FontWeight.w700, color: SpColors.gold),
-                    ),
                     const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text('подряд · лучшая ${st['best']} · до вехи $next', style: SpType.label(11.5)),
+                    InkWell(
+                      onTap: () => editHabit(context, s, h),
+                      child: const Icon(Icons.edit_outlined, size: 14, color: Colors.white),
                     ),
+                    if (close) ...[
+                      const SizedBox(width: 8),
+                      InkWell(
+                        onTap: () => Navigator.pop(context),
+                        child: const Icon(Icons.close, size: 14, color: Colors.white),
+                      ),
+                    ],
                   ],
                 ),
-                LinearProgressIndicator(
-                  value: hb.milestonePos(st['streak'] as num).clamp(0, 100) / 100,
-                  color: SpColors.gold,
-                  backgroundColor: SpColors.lineSoft,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  '${_monthName[now.month - 1]} · сделано ${r['done']}${r['pct'] == null ? '' : ' · ${r['pct']}%'}',
-                  style: SpType.label(11),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 4,
-                  runSpacing: 4,
-                  children: [
-                    for (final w in hb.weekdays)
-                      SizedBox(
-                        width: 56,
-                        child: Center(child: Text(w, style: SpType.label(10))),
-                      ),
-                    for (var k = 0; k < first; k++) const SizedBox(width: 56, height: 34),
-                    for (final c in r['cells'] as List)
-                      SizedBox(
-                        width: 56,
-                        height: 34,
-                        child: PopupMenuButton<String>(
-                          enabled: c['st'] != 'f',
-                          tooltip: '',
-                          onSelected: (v) => s.setHabitDay(h, c['day'] as String, v),
-                          itemBuilder: (_) => const [
-                            PopupMenuItem(value: 'done', child: Text('Сделано')),
-                            PopupMenuItem(value: 'skip', child: Text('Не считать')),
-                            PopupMenuItem(value: 'none', child: Text('Не сделано')),
-                          ],
-                          child: Container(
-                            alignment: Alignment.center,
-                            decoration: BoxDecoration(
-                              color: c['st'] == 'd' ? SpColors.gold : SpColors.bg,
-                              borderRadius: BorderRadius.circular(SpRadius.socket),
-                              border: Border.all(color: c['today'] == true ? SpColors.accent : SpColors.lineSoft),
-                            ),
-                            child: Text(
-                              '${c['n']}',
-                              style: SpType.label(11, color: c['st'] == 'd' ? SpColors.ground : SpColors.ink2),
-                            ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('$streak', style: SpType.text(56, w: FontWeight.w200, height: 62)),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Text(
+                            '${(h['perWeek'] ?? 0) as num > 0 ? 'НЕД' : hb.plural(streak, ['ДЕНЬ', 'ДНЯ', 'ДНЕЙ'])} ПОДРЯД${passed ? ' · ВЕХА ПРОЙДЕНА' : ''}',
+                            style: gMicro(c: c),
                           ),
                         ),
                       ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Text('Всего отмечено: ${hb.totalDone(h, log)}', style: SpType.label(11)),
-                    const Spacer(),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.pop(context);
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text('ВЕХИ', style: gMicro(c: SpColors.muted)),
+                  const SizedBox(height: 10),
+                  _Milestones(streak: streak, color: c),
+                  const SizedBox(height: 18),
+                  Text(_monthName[now.month - 1].toUpperCase(), style: gMicro(c: SpColors.muted)),
+                  const SizedBox(height: 10),
+                  LayoutBuilder(
+                    builder: (context, box) {
+                      final w = (box.maxWidth - 6 * 6) / 7;
+                      return Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: [
+                          for (var k = 0; k < first; k++) SizedBox(width: w, height: 24),
+                          for (final cc in r['cells'] as List)
+                            SizedBox(
+                              width: w,
+                              height: 24,
+                              child: PopupMenuButton<String>(
+                                enabled: cc['st'] != 'f',
+                                tooltip: '',
+                                onSelected: (v) => s.setHabitDay(h, cc['day'] as String, v),
+                                itemBuilder: (_) => const [
+                                  PopupMenuItem(value: 'done', child: Text('Сделано')),
+                                  PopupMenuItem(value: 'skip', child: Text('Не считать')),
+                                  PopupMenuItem(value: 'none', child: Text('Не сделано')),
+                                ],
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    color: cc['st'] == 'd' ? c : null,
+                                    borderRadius: BorderRadius.circular(4),
+                                    border: cc['st'] == 'd'
+                                        ? null
+                                        : Border.all(color: cc['today'] == true ? c : SpColors.line),
+                                  ),
+                                  child: Text(
+                                    '${cc['n']}',
+                                    style: gMono(9.5, c: cc['st'] == 'd' ? kDark : SpColors.muted),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: SpColors.line),
+                    ),
+                    child: Row(
+                      children: [
+                        for (final (k, (v, l)) in [
+                          ('${st['best']}', 'ЛУЧШАЯ'),
+                          ('${hb.totalDone(h, log)}', 'ВСЕГО'),
+                          (r['pct'] == null ? '—' : '${r['pct']}%', 'ЗА МЕСЯЦ'),
+                        ].indexed)
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+                              decoration: BoxDecoration(
+                                border: k == 0 ? null : const Border(left: BorderSide(color: SpColors.line)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(v, style: SpType.text(20, w: FontWeight.w400)),
+                                  Text(l, style: gMicro()),
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: Text('ОКНО', style: gMicro(c: SpColors.muted)),
+                      ),
+                      Expanded(
+                        child: Text(
+                          hb.winLabel(h).isEmpty ? 'когда угодно' : hb.winLabel(h),
+                          style: gMono(12, c: SpColors.ink),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      SizedBox(
+                        width: 100,
+                        child: Text('НАПОМНИТЬ', style: gMicro(c: SpColors.muted)),
+                      ),
+                      GChip(
+                        'Telegram',
+                        on: ((h['remind'] as Map?)?['tg']) != false,
+                        color: c,
+                        onTap: () => s.saveHabit(id, {
+                          'remind': {...?(h['remind'] as Map?), 'tg': ((h['remind'] as Map?)?['tg']) == false},
+                        }),
+                      ),
+                      const SizedBox(width: 6),
+                      GChip(
+                        'Windows',
+                        on: ((h['remind'] as Map?)?['win']) == true,
+                        color: c,
+                        onTap: () => s.saveHabit(id, {
+                          'remind': {...?(h['remind'] as Map?), 'win': ((h['remind'] as Map?)?['win']) != true},
+                        }),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: GBtn(
+                      'Удалить привычку',
+                      kind: BtnKind.ghost,
+                      sm: true,
+                      onTap: () {
+                        if (close) Navigator.pop(context);
                         s.removeHabit(id);
                       },
-                      icon: const Icon(Icons.delete_outline, size: 16),
-                      label: const Text('Удалить привычку'),
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ),
       );
     },
+  );
+}
+
+class _Milestones extends StatelessWidget {
+  const _Milestones({required this.streak, required this.color});
+  final int streak;
+  final Color color;
+  @override
+  Widget build(BuildContext context) {
+    const ms = [7, 21, 50, 100];
+    return Column(
+      children: [
+        LayoutBuilder(
+          builder: (context, box) {
+            final w = box.maxWidth;
+            double x(int k) => k / (ms.length - 1) * (w - 12) + 6;
+            final pos = hb.milestonePos(streak).clamp(0, 100) / 100 * (w - 12) + 6;
+            return SizedBox(
+              height: 14,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(left: 6, right: 6, top: 6.5, child: Container(height: 1, color: SpColors.lineStrong)),
+                  Positioned(
+                    left: 6,
+                    width: (pos - 6).clamp(0, w),
+                    top: 6,
+                    child: Container(height: 2, color: color),
+                  ),
+                  for (final (k, m) in ms.indexed)
+                    Positioned(
+                      left: x(k) - 6,
+                      top: 1,
+                      child: Container(
+                        width: 12,
+                        height: 12,
+                        decoration: BoxDecoration(
+                          color: streak >= m ? color : SpColors.node,
+                          borderRadius: BorderRadius.circular(3),
+                          border: Border.all(color: streak >= m ? color : SpColors.lineStrong),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [for (final m in ms) Text('$m', style: gMicro(c: streak >= m ? color : SpColors.dim))],
+        ),
+      ],
+    );
+  }
+}
+
+/// Панель привычки в окне (узкий экран и вызов из других мест).
+Future<void> habitPanel(BuildContext context, AppState s, String id, int i) => showDialog<void>(
+  context: context,
+  builder: (_) => Dialog(
+    backgroundColor: Colors.transparent,
+    child: SizedBox(
+      width: 400,
+      child: HabitPanel(s: s, id: id, i: i, close: true),
+    ),
   ),
 );
 

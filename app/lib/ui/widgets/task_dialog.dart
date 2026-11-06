@@ -7,7 +7,8 @@ import '../theme/tokens.dart';
 import '../../core/reminders.dart' as rem;
 import '../../core/repeat.dart' as repeats;
 import '../board/card_menu.dart';
-import 'common.dart';
+import '../g/kit.dart';
+import '../today/today_page.dart' show listHue;
 
 Future<void> openTask(BuildContext context, AppState s, String listId, Json t) => showDialog<void>(
   context: context,
@@ -53,6 +54,8 @@ class _TaskDialogState extends State<_TaskDialog> {
     super.dispose();
   }
 
+  bool more = false;
+
   @override
   Widget build(BuildContext context) {
     final s = widget.s;
@@ -61,165 +64,455 @@ class _TaskDialogState extends State<_TaskDialog> {
       builder: (context, _) {
         final x = t;
         if (x == null) return const SizedBox();
-        final cols = s.board(widget.listId)['cols'] as List;
+        final id = widget.id;
+        final L = s.layTask(id);
+        final cols = (s.board(widget.listId)['cols'] as List).cast<Map>();
         final cur = s.colOf(x, cols);
-        final prio = (s.layTask(widget.id)['priority'] as num?)?.toInt();
+        final prio = (L['priority'] as num?)?.toInt();
         final due = dueToYmd(x['due'] as String?);
-        return Dialog(
-          backgroundColor: SpColors.node,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub)),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 560),
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      ActionChip(
-                        avatar: const Icon(Icons.list, size: 15),
-                        label: Text(s.listName(widget.listId)),
-                        tooltip: 'Перенести в другой список',
-                        onPressed: () async {
+        final slot = L['slot'] as Map?;
+        final fields = (s.board(widget.listId)['fields'] as List?) ?? const [];
+        final view = s.board(widget.listId)['view'];
+        final subs = s.subtasks(widget.listId, id);
+        final rules = L['remind'] is List ? (L['remind'] as List) : (L['remind'] is Map ? [L['remind']] : const []);
+        final mins = <int>{
+          for (final r in rules)
+            if (r is Map && r['kind'] == 'lead') (r['min'] as num).toInt(),
+        };
+        void setMins(Set<int> next) => s.setTask(id, {
+          'remind': next.isEmpty
+              ? null
+              : [
+                  for (final m in next) {'kind': 'lead', 'min': m},
+                ],
+        });
+        final narrow = MediaQuery.sizeOf(context).width < 700;
+        Widget row(String label, Widget child) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 106,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(label.toUpperCase(), style: gLbl(c: SpColors.muted)),
+                ),
+              ),
+              Expanded(child: child),
+            ],
+          ),
+        );
+        Widget chip(String text, bool on, VoidCallback tap, {VoidCallback? x}) => InkWell(
+          onTap: tap,
+          borderRadius: BorderRadius.circular(SpRadius.button),
+          child: Container(
+            height: 28,
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: on ? SpColors.accentWash : Colors.transparent,
+              borderRadius: BorderRadius.circular(SpRadius.button),
+              border: Border.all(color: on ? SpColors.accent : SpColors.line),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(text.toUpperCase(), style: gLbl(c: on ? SpColors.ink : SpColors.muted)),
+                if (x != null) ...[
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: x,
+                    child: Text('×', style: gMono(12, c: SpColors.ink)),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+        final open = cols.where((c) => c['id'] == cur).firstOrNull;
+        final inCol = open == null
+            ? 0
+            : s.topTasks(widget.listId).where((t2) => s.colOf(t2, cols) == open['id']).length;
+        final leadName = {for (final l in rem.leads) l['min'] as int: l['name'] as String};
+        final panel = GNode(
+          hub: true,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Куда · ⋯ · ✕
+              Container(
+                height: 46,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: SpColors.line)),
+                ),
+                child: Row(
+                  children: [
+                    Text('КУДА', style: gMicro()),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: GPick(
+                        '${s.listName(widget.listId)}  ▾',
+                        dot: listHue(s, widget.listId),
+                        onTap: () async {
                           final to = await pickList(context, s, exclude: widget.listId);
                           if (to == null || !context.mounted) return;
                           Navigator.pop(context);
                           s.moveToList(widget.listId, x, to);
                         },
                       ),
-                      const Spacer(),
-                      IconButton(
-                        tooltip: 'Удалить',
-                        icon: const Icon(Icons.delete_outline, size: 18, color: SpColors.muted),
-                        onPressed: () {
+                    ),
+                    const Spacer(),
+                    PopupMenuButton<String>(
+                      tooltip: 'Ещё',
+                      color: SpColors.node,
+                      onSelected: (v) {
+                        if (v == 'del') {
                           Navigator.pop(context);
                           s.remove(widget.listId, x);
-                        },
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close, size: 18, color: SpColors.muted),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  TextField(
-                    controller: title,
-                    maxLines: null,
-                    style: SpType.text(20, w: FontWeight.w600),
-                    decoration: const InputDecoration(border: InputBorder.none, hintText: 'Название'),
-                    onSubmitted: (_) => _commit(),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    children: [
-                      for (final c in cols)
-                        ChoiceChip(
-                          label: Text((c as Map)['name'] as String),
-                          selected: cur == c['id'],
-                          onSelected: (_) => s.setStage(widget.listId, x, c['id'] as String),
+                        } else if (v == 'done') {
+                          s.toggleDone(widget.listId, x);
+                        } else if (v == 'dup') {
+                          s.addTask(widget.listId, '${x['title']} (копия)', due: x['due'] as String?);
+                        }
+                      },
+                      itemBuilder: (_) => [
+                        PopupMenuItem(
+                          value: 'done',
+                          child: Text(s.isDone(x) ? 'Вернуть в работу' : 'Отметить сделанной', style: SpType.text(13)),
                         ),
-                    ],
-                  ),
-                  if (s.sphereOf(widget.listId) case final String sid when sid.startsWith('sh:')) ...[
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 6,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        Text('ДЕЛАЕТ', style: SpType.label(10.5)),
-                        ChoiceChip(
-                          label: const Text('Никто'),
-                          selected: s.layTask(widget.id)['who'] == null,
-                          onSelected: (_) => s.setTask(widget.id, {'who': null}),
+                        PopupMenuItem(
+                          value: 'dup',
+                          child: Text('Дублировать', style: SpType.text(13)),
                         ),
-                        for (final p in s.people(sid))
-                          ChoiceChip(
-                            label: Text('${p['name'] ?? p['email']}${p['email'] == s.myEmail ? ' (я)' : ''}'),
-                            selected: s.layTask(widget.id)['who'] == p['email'],
-                            onSelected: (_) => s.setTask(widget.id, {'who': p['email']}),
-                          ),
+                        PopupMenuItem(
+                          value: 'del',
+                          child: Text('Удалить', style: SpType.text(13, color: SpColors.red)),
+                        ),
                       ],
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Text('···', style: gMono(13, c: SpColors.muted)),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Text('✕', style: gMono(13, c: SpColors.muted)),
+                      ),
                     ),
                   ],
-                  const SizedBox(height: 10),
-                  Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    crossAxisAlignment: WrapCrossAlignment.center,
+                ),
+              ),
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final (n, label) in [(1, '!!! высокий'), (2, '!! обычный'), (3, '! низкий')])
-                        ChoiceChip(
-                          label: Text(label),
-                          selected: prio == n,
-                          onSelected: (on) => s.setPriority(x, on ? n : null),
+                      TextField(
+                        controller: title,
+                        maxLines: null,
+                        style: SpType.text(20, w: FontWeight.w600),
+                        decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Название',
+                          hintStyle: SpType.text(20, color: SpColors.dim),
                         ),
-                      const SizedBox(width: 8),
-                      ActionChip(
-                        avatar: const Icon(Icons.event, size: 16),
-                        label: Text(due.isEmpty ? 'Без срока' : _human(due)),
-                        onPressed: () async {
-                          final now = DateTime.now();
-                          final d = await showDatePicker(
-                            context: context,
-                            locale: const Locale('ru'),
-                            initialDate: due.isEmpty ? now : DateTime.parse(due),
-                            firstDate: DateTime(now.year - 2),
-                            lastDate: DateTime(now.year + 5),
-                          );
-                          if (d != null) s.setDue(widget.listId, x, ymd(d));
+                        onSubmitted: (_) => _commit(),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(12, 6, 12, 6),
+                        decoration: BoxDecoration(
+                          color: SpColors.bg.withValues(alpha: .45),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            row(
+                              view == 'pipe' ? 'Этап' : 'Колонка',
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  for (final c in cols)
+                                    chip(
+                                      c['id'] == cur && c['limit'] != null
+                                          ? '${c['name']} · $inCol/${c['limit']}'
+                                          : c['name'] as String,
+                                      c['id'] == cur,
+                                      () => s.setStage(widget.listId, x, c['id'] as String),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (s.sphereOf(widget.listId) case final String sid when sid.startsWith('sh:'))
+                              row(
+                                'Делает',
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [
+                                    chip('Никто', L['who'] == null, () => s.setTask(id, {'who': null})),
+                                    for (final p in s.people(sid))
+                                      chip(
+                                        '${p['name'] ?? p['email']}${p['email'] == s.myEmail ? ' (я)' : ''}',
+                                        L['who'] == p['email'],
+                                        () => s.setTask(id, {'who': p['email']}),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            row(
+                              'Приоритет',
+                              Wrap(
+                                spacing: 6,
+                                children: [
+                                  for (final (n, label) in [(1, '!!!'), (2, '!!'), (3, '!'), (null, '—')])
+                                    chip(label, prio == n, () => s.setPriority(x, n)),
+                                ],
+                              ),
+                            ),
+                            if (view == 'pipe')
+                              row(
+                                'Проект',
+                                _field(
+                                  L['project'],
+                                  'Название проекта',
+                                  (v) => s.setTask(id, {'project': v.isEmpty ? null : v}),
+                                ),
+                              ),
+                            if (fields.contains('client'))
+                              row(
+                                'Клиент',
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _field(
+                                        L['client'],
+                                        'Клиент',
+                                        (v) => s.setTask(id, {'client': v.isEmpty ? null : v}),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text('СУММА', style: gMicro()),
+                                    const SizedBox(width: 6),
+                                    SizedBox(
+                                      width: 100,
+                                      child: _field(
+                                        L['money'],
+                                        '0 ₽',
+                                        (v) => s.setTask(id, {'money': num.tryParse(v.replaceAll(' ', ''))}),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            row(
+                              'Срок',
+                              Wrap(
+                                spacing: 6,
+                                runSpacing: 6,
+                                children: [
+                                  chip(
+                                    due.isEmpty
+                                        ? 'Без срока'
+                                        : '${_human(due)}${slot?['s'] == null ? '' : ' · ${slot!['s']}${slot['e'] == null ? '' : '–${slot['e']}'}'}',
+                                    due.isNotEmpty,
+                                    () => _pickDue(context, x, due),
+                                    x: due.isEmpty ? null : () => s.setDue(widget.listId, x, null),
+                                  ),
+                                  chip(
+                                    slot?['s'] == null ? '+ время' : 'время',
+                                    false,
+                                    () => _pickTime(context),
+                                    x: slot?['s'] == null ? null : () => s.setTask(id, {'slot': null}),
+                                  ),
+                                  for (final m in mins.toList()..sort())
+                                    chip(
+                                      'за ${leadName[m] ?? '$m мин'}',
+                                      true,
+                                      () {},
+                                      x: () => setMins({...mins}..remove(m)),
+                                    ),
+                                  PopupMenuButton<int>(
+                                    tooltip: 'Напомнить',
+                                    color: SpColors.node,
+                                    onSelected: (m) => setMins({...mins, m}),
+                                    itemBuilder: (_) => [
+                                      for (final l in rem.leads)
+                                        if (!mins.contains(l['min']))
+                                          PopupMenuItem(
+                                            value: l['min'] as int,
+                                            child: Text(l['name'] as String, style: SpType.text(13)),
+                                          ),
+                                    ],
+                                    child: Container(
+                                      height: 28,
+                                      width: 28,
+                                      alignment: Alignment.center,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(SpRadius.button),
+                                        border: Border.all(color: SpColors.line),
+                                      ),
+                                      child: Text('+', style: gMono(12, c: SpColors.muted)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Text(
+                        'ПОДЗАДАЧИ · ${subs.where(s.isDone).length} / ${subs.length}',
+                        style: gLbl(c: SpColors.muted),
+                      ),
+                      const SizedBox(height: 6),
+                      for (final st in subs)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 7),
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
+                          ),
+                          child: Row(
+                            children: [
+                              GCheck(done: s.isDone(st), onTap: () => s.toggleDone(widget.listId, st)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  (st['title'] ?? '') as String,
+                                  style: SpType.text(
+                                    13.5,
+                                    color: s.isDone(st) ? SpColors.dim : SpColors.ink,
+                                  ).copyWith(decoration: s.isDone(st) ? TextDecoration.lineThrough : null),
+                                ),
+                              ),
+                              InkWell(
+                                onTap: () => s.remove(widget.listId, st),
+                                child: Text('×', style: gMono(12, c: SpColors.dim)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      TextField(
+                        style: SpType.text(13),
+                        decoration: InputDecoration(
+                          isDense: true,
+                          border: InputBorder.none,
+                          hintText: '+ Подзадача',
+                          hintStyle: SpType.text(13, color: SpColors.muted),
+                        ),
+                        onSubmitted: (v) {
+                          if (v.trim().isNotEmpty) s.addSubtask(widget.listId, id, v.trim());
                         },
                       ),
-                      if (due.isNotEmpty)
-                        ActionChip(label: const Text('Убрать срок'), onPressed: () => s.setDue(widget.listId, x, null)),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  _more(context, x),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: notes,
-                    minLines: 3,
-                    maxLines: 12,
-                    style: SpType.text(14, color: SpColors.body),
-                    decoration: InputDecoration(
-                      hintText: 'Заметка',
-                      filled: true,
-                      fillColor: SpColors.bg,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(SpRadius.button)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Check(done: s.isDone(x), onTap: () => s.toggleDone(widget.listId, x)),
-                      const SizedBox(width: 8),
-                      Text(
-                        s.isDone(x) ? 'Сделано' : 'Отметить сделанным',
-                        style: SpType.text(13, color: SpColors.muted),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          s.outbox.pendingFor(widget.id) ? 'Сохраняю…' : 'Сохранено в Google Tasks',
-                          style: SpType.label(11),
-                          textAlign: TextAlign.right,
-                          overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 16),
+                      Text('ЗАМЕТКА', style: gLbl(c: SpColors.muted)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: notes,
+                        minLines: 2,
+                        maxLines: 12,
+                        style: SpType.text(13.5, color: SpColors.body),
+                        decoration: InputDecoration(
+                          hintText: 'Пара слов о задаче',
+                          hintStyle: SpType.text(13.5, color: SpColors.dim),
+                          contentPadding: const EdgeInsets.all(12),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: SpColors.line),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(color: SpColors.accent),
+                          ),
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      InkWell(
+                        onTap: () => setState(() => more = !more),
+                        child: Row(
+                          children: [
+                            Text('${more ? '▾' : '▸'} ЕЩЁ', style: gLbl(c: SpColors.ink)),
+                            const SizedBox(width: 10),
+                            Text('ПОВТОР · НАПОМНИТЬ', style: gMicro()),
+                          ],
+                        ),
+                      ),
+                      if (more) _more(context, x),
                     ],
                   ),
-                ],
+                ),
               ),
+              Container(
+                height: 40,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: SpColors.line)),
+                ),
+                child: Row(
+                  children: [
+                    GDot(s.outbox.pendingFor(id) ? SpColors.gold : SpColors.green),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        s.outbox.pendingFor(id) ? 'СОХРАНЯЮ…' : 'СОХРАНЕНО В GOOGLE TASKS',
+                        style: gMicro(c: SpColors.ink2),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (s.isDone(x)) Text('СДЕЛАНО', style: gMicro(c: SpColors.green)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+        return Align(
+          alignment: narrow ? Alignment.center : Alignment.centerRight,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 80, narrow ? 16 : 96, 16),
+            child: Material(
+              color: Colors.transparent,
+              child: SizedBox(width: narrow ? double.infinity : 464, child: panel),
             ),
           ),
         );
       },
     );
+  }
+
+  Future<void> _pickDue(BuildContext context, Json x, String due) async {
+    final now = DateTime.now();
+    final d = await showDatePicker(
+      context: context,
+      locale: const Locale('ru'),
+      initialDate: due.isEmpty ? now : DateTime.parse(due),
+      firstDate: DateTime(now.year - 2),
+      lastDate: DateTime(now.year + 5),
+    );
+    if (d != null) widget.s.setDue(widget.listId, x, ymd(d));
+  }
+
+  Future<void> _pickTime(BuildContext context) async {
+    final t = await showTimePicker(
+      context: context,
+      initialTime: const TimeOfDay(hour: 10, minute: 0),
+      builder: (c, w) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: w!),
+    );
+    if (t == null) return;
+    final st = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    final e = t.hour >= 23
+        ? '23:59'
+        : '${(t.hour + 1).toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+    widget.s.setTask(widget.id, {
+      'slot': {'s': st, 'e': e},
+    });
   }
 }
 
@@ -228,16 +521,12 @@ extension on _TaskDialogState {
     final s = widget.s;
     final id = widget.id;
     final L = s.layTask(id);
-    final slot = L['slot'] as Map?;
     final rules = L['remind'] is List ? (L['remind'] as List) : (L['remind'] is Map ? [L['remind']] : const []);
     final mins = {
       for (final r in rules)
         if (r is Map && r['kind'] == 'lead') (r['min'] as num).toInt(),
     };
     final rep = (L['repeat'] as Map?)?['every'];
-    final subs = s.subtasks(widget.listId, id);
-    final view = s.board(widget.listId)['view'];
-    final fields = (s.board(widget.listId)['fields'] as List?) ?? const [];
     Widget label(String t) => Padding(
       padding: const EdgeInsets.only(top: 10, bottom: 6),
       child: Text(t.toUpperCase(), style: SpType.label(10.5)),
@@ -245,49 +534,34 @@ extension on _TaskDialogState {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        label('Время'),
+        label('Повтор'),
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
-            ActionChip(
-              avatar: const Icon(Icons.schedule, size: 16),
-              label: Text(
-                slot?['s'] == null ? 'Без времени' : '${slot!['s']}${slot['e'] == null ? '' : '–${slot['e']}'}',
+            GPick('Нет', on: rep == null, onTap: () => s.setTask(id, {'repeat': null})),
+            for (final r in repeats.repeats)
+              GPick(
+                r.label,
+                on: rep == r.id,
+                onTap: () => s.setTask(id, {
+                  'repeat': {'every': r.id},
+                }),
               ),
-              onPressed: () async {
-                final t = await showTimePicker(
-                  context: context,
-                  initialTime: const TimeOfDay(hour: 10, minute: 0),
-                  builder: (c, w) =>
-                      MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: w!),
-                );
-                if (t == null) return;
-                final st = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-                final e = t.hour >= 23
-                    ? '23:59'
-                    : '${(t.hour + 1).toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-                s.setTask(id, {
-                  'slot': {'s': st, 'e': e},
-                });
-              },
-            ),
-            if (slot?['s'] != null)
-              ActionChip(label: const Text('Убрать время'), onPressed: () => s.setTask(id, {'slot': null})),
           ],
         ),
-        label('Напомнить'),
+        label('Напомнить ещё'),
         Wrap(
           spacing: 6,
           runSpacing: 6,
           children: [
             for (final l in rem.leads)
-              FilterChip(
-                label: Text(l['name'] as String),
-                selected: mins.contains(l['min']),
-                onSelected: (on) {
+              GPick(
+                l['name'] as String,
+                on: mins.contains(l['min']),
+                onTap: () {
                   final next = {...mins};
-                  on ? next.add(l['min'] as int) : next.remove(l['min']);
+                  mins.contains(l['min']) ? next.remove(l['min']) : next.add(l['min'] as int);
                   s.setTask(id, {
                     'remind': next.isEmpty
                         ? null
@@ -299,76 +573,19 @@ extension on _TaskDialogState {
               ),
           ],
         ),
-        label('Повтор'),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: [
-            ChoiceChip(
-              label: const Text('Нет'),
-              selected: rep == null,
-              onSelected: (_) => s.setTask(id, {'repeat': null}),
-            ),
-            for (final r in repeats.repeats)
-              ChoiceChip(
-                label: Text(r.label),
-                selected: rep == r.id,
-                onSelected: (_) => s.setTask(id, {
-                  'repeat': {'every': r.id},
-                }),
-              ),
-          ],
-        ),
-        if (view == 'pipe') ...[
-          label('Проект'),
-          _field(L['project'], 'Название проекта', (v) => s.setTask(id, {'project': v.isEmpty ? null : v})),
-        ],
-        if (fields.contains('client')) ...[
-          label('Клиент и сумма'),
-          Row(
-            children: [
-              Expanded(child: _field(L['client'], 'Клиент', (v) => s.setTask(id, {'client': v.isEmpty ? null : v}))),
-              const SizedBox(width: 8),
-              SizedBox(
-                width: 140,
-                child: _field(
-                  L['money'],
-                  'Сумма',
-                  (v) => s.setTask(id, {'money': num.tryParse(v.replaceAll(' ', ''))}),
-                ),
-              ),
-            ],
-          ),
-        ],
-        label('Подзадачи · ${subs.where(s.isDone).length}/${subs.length}'),
-        for (final st in subs)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 3),
-            child: Row(
-              children: [
-                Check(done: s.isDone(st), onTap: () => s.toggleDone(widget.listId, st)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    (st['title'] ?? '') as String,
-                    style: SpType.text(13.5, color: s.isDone(st) ? SpColors.dim : SpColors.ink),
-                  ),
-                ),
-                InkWell(
-                  onTap: () => s.remove(widget.listId, st),
-                  child: const Icon(Icons.close, size: 14, color: SpColors.dim),
-                ),
-              ],
-            ),
-          ),
-        AddLine(hint: 'Подзадача', onSubmit: (v) => s.addSubtask(widget.listId, id, v)),
       ],
     );
   }
 
   Widget _field(Object? v, String hint, void Function(String) save) => TextFormField(
     initialValue: v == null ? '' : '$v',
-    decoration: InputDecoration(isDense: true, hintText: hint, filled: true, fillColor: SpColors.bg),
+    style: SpType.text(13.5),
+    decoration: InputDecoration(
+      isDense: true,
+      hintText: hint,
+      border: InputBorder.none,
+      contentPadding: const EdgeInsets.symmetric(vertical: 8),
+    ),
     onFieldSubmitted: save,
     onTapOutside: (_) {},
     onChanged: save,
