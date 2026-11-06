@@ -61,7 +61,10 @@ void main() {
     st.edit('DND/Мира Тёрн.md', 'Информатор #лор');
     expect(st.index.withTag('лор'), ['DND/Мира Тёрн.md']);
     expect(read('DND/Мира Тёрн.md'), 'НПС');
-    await Future<void>.delayed(const Duration(milliseconds: 60));
+    // Запись идёт через таймер и диск — на медленной машине дольше 60 мс; ждём до 2 с.
+    for (var i = 0; i < 40 && read('DND/Мира Тёрн.md') != 'Информатор #лор'; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
     expect(read('DND/Мира Тёрн.md'), 'Информатор #лор');
   });
 

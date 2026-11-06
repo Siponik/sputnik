@@ -253,6 +253,23 @@ void main() {
     expect(find.text('Идея щита'), findsNothing);
     expect(find.text('ВЕДЁТ'), findsNothing); // провод ушёл вместе с нодой
     expect(st.canvases['3D/Доска идей.canvas']!.nodes.map((n) => n.id), ['n2']);
+
+    // Ctrl+Z возвращает ноду вместе с проводом.
+    await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyZ);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await t.pump();
+    expect(find.text('Идея щита'), findsOneWidget);
+    expect(find.text('ВЕДЁТ'), findsOneWidget);
+    expect(st.canvases['3D/Доска идей.canvas']!.nodes.map((n) => n.id), ['n1', 'n2']);
+
+    // Ctrl+A и Delete — всё выделенное уходит.
+    await t.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.keyA);
+    await t.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await t.sendKeyEvent(LogicalKeyboardKey.delete);
+    await t.pump();
+    expect(st.canvases['3D/Доска идей.canvas']!.nodes, isEmpty);
     await t.pump(const Duration(milliseconds: 20)); // таймер сохранения холста (запись проверена в тесте состояния)
   });
 
