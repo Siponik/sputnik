@@ -48,12 +48,22 @@ class GoogleApi {
 
   /// Задачи списка: открытые и выполненные за последние [doneDays] дней (для «Готово» и архива).
   Future<List<Map<String, dynamic>>> tasks(String listId, {int doneDays = 14}) async {
+    // completedMin отсекает все открытые задачи, поэтому два запроса: открытые и недавно выполненные.
+    final since = Uri.encodeComponent(DateTime.now().toUtc().subtract(Duration(days: doneDays)).toIso8601String());
+    final open = await _pages(listId, 'showCompleted=false');
+    final done = await _pages(listId, 'showCompleted=true&showHidden=true&completedMin=$since');
+    final seen = <Object?>{};
+    return [
+      for (final t in [...open, ...done])
+        if (seen.add(t['id'])) t,
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> _pages(String listId, String filter) async {
     final out = <Map<String, dynamic>>[];
     String? page;
-    final since = Uri.encodeComponent(DateTime.now().toUtc().subtract(Duration(days: doneDays)).toIso8601String());
     do {
-      final q =
-          'maxResults=100&showCompleted=true&showHidden=true&completedMin=$since${page == null ? '' : '&pageToken=$page'}';
+      final q = 'maxResults=100&$filter${page == null ? '' : '&pageToken=$page'}';
       final j = await _call('GET', '$_tasks/lists/$listId/tasks?$q');
       out.addAll(((j['items'] ?? []) as List).cast<Map<String, dynamic>>());
       page = j['nextPageToken'] as String?;
