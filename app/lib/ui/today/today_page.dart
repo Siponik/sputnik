@@ -6,6 +6,9 @@ import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/task_dialog.dart';
+import '../../core/habits.dart' as hb;
+import '../../core/meta.dart' as meta;
+import '../board/card_menu.dart';
 
 class TodayPage extends StatelessWidget {
   const TodayPage({super.key, required this.state});
@@ -39,6 +42,10 @@ class TodayPage extends StatelessWidget {
                   if (r != null) s.say('Добавлено в «${s.listName(r.listId)}»: ${r.title}');
                 },
               ),
+              const SizedBox(height: 12),
+              ..._next(context, s, items),
+              ..._habits(s),
+              ..._inbox(context, s),
               const SizedBox(height: 16),
               Node(
                 title: 'Задачи · ${items.length}',
@@ -67,6 +74,126 @@ class TodayPage extends StatelessWidget {
         },
       ),
     );
+  }
+
+  List<Widget> _next(BuildContext context, AppState s, List<(String, Json)> items) {
+    final open = [
+      for (final x in items)
+        if (!s.isDone(x.$2)) {'task': x.$2, 'listId': x.$1},
+    ];
+    final pick = meta.pickNext(open, (s.layer['tasks'] as Map?)?.cast<String, dynamic>(), s.todayYmd);
+    if (pick == null) return [];
+    final n = pick['task'] as Json;
+    final listId = pick['listId'] as String;
+    final why = meta.nextReason(n, (s.layer['tasks'] as Map?)?.cast<String, dynamic>(), s.todayYmd, humanDay);
+    return [
+      InkWell(
+        onTap: () => openTask(context, s, listId, n),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: SpColors.accentWash,
+            borderRadius: BorderRadius.circular(SpRadius.node),
+            border: Border.all(color: SpColors.accentLine),
+          ),
+          child: Row(
+            children: [
+              Text('ДАЛЬШЕ', style: SpType.label(10.5, color: SpColors.accentInk)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text((n['title'] ?? '') as String, style: SpType.text(15, w: FontWeight.w600)),
+              ),
+              Text(why, style: SpType.label(11, color: SpColors.accentInk)),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: 12),
+    ];
+  }
+
+  List<Widget> _habits(AppState s) {
+    final hs = s.habits.where((h) => hb.scheduledOn(h, s.habitLog, s.todayYmd)).toList();
+    if (hs.isEmpty) return [];
+    return [
+      Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final h in hs)
+            () {
+              final done = hb.isDone(s.habitLog, h['id'], s.todayYmd);
+              final g = hb.goalN(h);
+              return FilterChip(
+                selected: done,
+                selectedColor: SpColors.gold.withValues(alpha: .3),
+                checkmarkColor: SpColors.gold,
+                label: Text('${h['name']}${g > 0 && !done ? ' ${hb.countOn(s.habitLog, h, s.todayYmd)}/$g' : ''}'),
+                onSelected: (_) => s.toggleHabit(h),
+              );
+            }(),
+        ],
+      ),
+      const SizedBox(height: 12),
+    ];
+  }
+
+  List<Widget> _inbox(BuildContext context, AppState s) {
+    final items = s.inboxItems;
+    if (items.isEmpty) return [];
+    return [
+      Node(
+        title: 'Входящие от Claude · ${items.length}',
+        head: SpColors.headViolet,
+        trailing: InkWell(
+          onTap: () => s.acceptInbox(items),
+          child: Text('ПРИНЯТЬ ВСЕ', style: SpType.label(10.5, color: SpColors.ink)),
+        ),
+        child: Column(
+          children: [
+            for (final x in items)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: const BoxDecoration(
+                  border: Border(top: BorderSide(color: SpColors.lineSoft)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: () => openTask(context, s, x['listId'] as String, x['task'] as Json),
+                        child: Text(((x['task'] as Json)['title'] ?? '') as String, style: SpType.text(14)),
+                      ),
+                    ),
+                    ActionChip(
+                      label: Text('→ ${x['list']}'),
+                      onPressed: () async {
+                        final to = await pickList(context, s);
+                        if (to != null) {
+                          s.acceptInbox([
+                            {...x, 'dest': to},
+                          ]);
+                        }
+                      },
+                    ),
+                    IconButton(
+                      tooltip: 'Принять',
+                      onPressed: () => s.acceptInbox([x]),
+                      icon: const Icon(Icons.check, size: 18, color: SpColors.green),
+                    ),
+                    IconButton(
+                      tooltip: 'Отклонить',
+                      onPressed: () => s.rejectInbox(x),
+                      icon: const Icon(Icons.close, size: 18, color: SpColors.muted),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 12),
+    ];
   }
 
   Widget _events(List<Json> ev) => Node(
@@ -111,7 +238,13 @@ class TodayPage extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Check(done: done, onTap: () => s.toggleDone(listId, t)),
+            Check(
+              done: done,
+              onTap: () {
+                s.toggleDone(listId, t);
+                if (!done) s.say('Готово · ${t['title']}', () => s.toggleDone(listId, t));
+              },
+            ),
             const SizedBox(width: 12),
             if (slot?['s'] != null)
               Padding(

@@ -65,7 +65,8 @@ void main() {
     testWidgets('Сегодня $size', (t) async {
       final s = demo();
       await pump(t, TodayPage(state: s), size);
-      expect(find.text('Задача 0'), findsOneWidget);
+      expect(find.text('ДАЛЬШЕ'), findsOneWidget);
+      expect(find.text('Задача 5'), findsOneWidget);
       s.toggleDone('L1', s.tasks['L1']!.first);
       await t.pump(const Duration(seconds: 6));
     });

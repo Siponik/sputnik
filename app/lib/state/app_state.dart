@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/dates.dart';
 import '../core/habits.dart' as hb;
+import '../core/inbox.dart' as inbox;
 import '../core/layer.dart' as lay;
 import '../core/repeat.dart' as rep;
 import '../core/route.dart' as route;
@@ -39,6 +40,7 @@ class AppState extends ChangeNotifier {
   List<Json> calendars = [];
   List<Json> events = []; // события текущей и следующей недели, у каждого 'calId'
   Json layer = lay.emptyLayer();
+  Json? inboxSt; // статус «Входящих от Claude» (событие «Спутник · статус»)
 
   bool started = false;
   bool syncing = false;
@@ -112,6 +114,7 @@ class AppState extends ChangeNotifier {
       lists = ls;
       tasks = fresh;
       await _loadEvents();
+      await _loadInbox();
       offline = false;
       error = null;
       syncedAt = DateTime.now();
@@ -669,13 +672,76 @@ class AppState extends ChangeNotifier {
     if (n != null && !isDone(n)) remove(listId, n);
   }
 
+  // ---------- входящие от Claude ----------
+
+  Future<void> _loadInbox() async {
+    final q = calendars.where((c) => ((c['summary'] ?? '') as String).startsWith('Спутник · входящие')).firstOrNull;
+    if (q == null) return;
+    try {
+      final evs = await api.events(q['id'] as String, DateTime.utc(2029, 12, 31), DateTime.utc(2030, 1, 3));
+      final ev = evs.where((e) => e['summary'] == 'Спутник · статус').firstOrNull;
+      final text = ((ev?['description'] ?? '') as String)
+          .replaceAll(RegExp(r'<[^>]+>'), '')
+          .replaceAll('&quot;', '"')
+          .replaceAll('&amp;', '&');
+      final a = text.indexOf('{'), b = text.lastIndexOf('}');
+      if (a < 0 || b < a) return;
+      inboxSt = jsonDecode(text.substring(a, b + 1)) as Json;
+      _pullInboxLayer();
+    } catch (_) {}
+  }
+
+  /// Поля Спутника из чатов и бота — в свой слой один раз (как App.pullInboxLayer).
+  void _pullInboxLayer() {
+    final r = inbox.pullPatches(inboxSt, layer);
+    final def = (((layer['settings'] as Map?)?['remind'] as Map?)?['task'] as num?)?.toInt() ?? 60;
+    for (final x in (r['spheres'] as List)) {
+      touch('spheres', x[0] as String, Json.from(x[1] as Map));
+    }
+    for (final x in (r['lists'] as List)) {
+      touch('lists', x[0] as String, Json.from(x[1] as Map));
+    }
+    for (final x in (r['tasks'] as List)) {
+      final patch = Json.from(x[1] as Map);
+      if (layTask(x[0] as String)['remind'] == null && patch['remind'] == null) {
+        patch['remind'] = {'kind': 'lead', 'min': def};
+      }
+      touch('tasks', x[0] as String, patch);
+    }
+  }
+
+  List<Json> get inboxItems => inbox.pending(inboxSt, boardLists.cast<Map>(), tasks, layer['tasks'] as Map?);
+
+  void acceptInbox(List<Json> items) {
+    for (final x in items) {
+      final t = x['task'] as Json;
+      touch('tasks', t['id'] as String, {'inbox': 'accepted'});
+      final dest = x['dest'] as String?;
+      if (dest != null && dest != x['listId']) moveToList(x['listId'] as String, t, dest);
+    }
+    say(items.length > 1 ? 'Принято задач: ${items.length}' : '«${(items.first['task'] as Json)['title']}» — принято');
+  }
+
+  void rejectInbox(Json x) {
+    final t = x['task'] as Json;
+    touch('tasks', t['id'] as String, {'inbox': 'rejected'});
+    remove(x['listId'] as String, t);
+    say('«${t['title']}» — отклонено и удалено');
+  }
+
   // ---------- действия ----------
 
-  void say(String msg) {
+  VoidCallback? toastAction;
+  String toastLabel = 'Отменить';
+
+  void say(String msg, [VoidCallback? action, String label = 'Отменить']) {
     toast = msg;
+    toastAction = action;
+    toastLabel = label;
     _toastTimer?.cancel();
-    _toastTimer = Timer(const Duration(seconds: 5), () {
+    _toastTimer = Timer(const Duration(seconds: 6), () {
       toast = null;
+      toastAction = null;
       notifyListeners();
     });
     notifyListeners();

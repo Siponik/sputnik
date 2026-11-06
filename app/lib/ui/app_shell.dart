@@ -55,7 +55,21 @@ class _AppShellState extends State<AppShell> {
                     width: double.infinity,
                     color: SpColors.node,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Text(s.toast!, style: SpType.text(13)),
+                    child: Row(
+                      children: [
+                        Expanded(child: Text(s.toast!, style: SpType.text(13))),
+                        if (s.toastAction != null)
+                          TextButton(
+                            onPressed: () {
+                              final a = s.toastAction!;
+                              s.toastAction = null;
+                              s.toast = null;
+                              a();
+                            },
+                            child: Text(s.toastLabel),
+                          ),
+                      ],
+                    ),
                   ),
           ),
         ),
