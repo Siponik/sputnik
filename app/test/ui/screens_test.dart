@@ -5,8 +5,14 @@ import 'package:sputnik_app/core/dates.dart';
 import 'package:sputnik_app/state/app_state.dart';
 import 'package:sputnik_app/ui/board/board_page.dart';
 import 'package:sputnik_app/ui/calendar/calendar_page.dart';
+import 'package:sputnik_app/ui/create/create_dialog.dart';
+import 'package:sputnik_app/ui/habits/habits_page.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
+import 'package:sputnik_app/ui/settings/settings_page.dart';
 import 'package:sputnik_app/ui/today/today_page.dart';
+import 'package:sputnik_app/ui/widgets/search_dialog.dart';
+import 'package:sputnik_app/ui/board/list_dialogs.dart';
+import 'package:sputnik_app/ui/widgets/task_dialog.dart';
 
 AppState demo() {
   final s = AppState();
@@ -22,6 +28,17 @@ AppState demo() {
       {'id': 'd1', 'title': 'Сделано', 'status': 'completed', 'completed': DateTime.now().toUtc().toIso8601String()},
     ],
     'L2': [],
+    'H': [
+      {'id': 'h1', 'title': 'Вода', 'status': 'needsAction'},
+      {'id': 'h2', 'title': 'Зарядка', 'status': 'needsAction'},
+    ],
+  };
+  s.lists.add({'id': 'H', 'title': 'Привычки'});
+  s.layer['habits'] = {
+    'h1': {
+      'goal': {'n': 8, 'unit': 'стаканов'},
+      'createdAt': '2026-01-01',
+    },
   };
   s.events = [
     {
@@ -51,16 +68,111 @@ void main() {
     testWidgets('Сегодня $size', (t) async {
       final s = demo();
       await pump(t, TodayPage(state: s), size);
-      expect(find.text('Задача 0'), findsOneWidget);
+      expect(find.text('ДАЛЬШЕ'), findsOneWidget);
+      expect(find.text('Задача 5'), findsOneWidget);
       s.toggleDone('L1', s.tasks['L1']!.first);
+      await t.pump(const Duration(seconds: 6));
     });
     testWidgets('Доска $size', (t) async {
       await pump(t, BoardPage(state: demo()), size);
       expect(find.text('Работа'), findsWidgets);
     });
+    testWidgets('Привычки $size', (t) async {
+      final s = demo();
+      await pump(t, HabitsPage(state: s), size);
+      expect(find.text('Вода'), findsOneWidget);
+      s.toggleHabit(s.habits.first);
+      await t.pump(const Duration(seconds: 6));
+    });
+    for (final v in ['pipe', 'stickers', 'list']) {
+      testWidgets('Доска $v $size', (t) async {
+        final s = demo();
+        s.layer['lists'] = {
+          'L1': {'view': v},
+        };
+        await pump(t, BoardPage(state: s), size);
+        expect(find.text('Задача 1'), findsWidgets);
+      });
+    }
+    for (final k in ['task', 'event', 'birthday']) {
+      testWidgets('Создать $k $size', (t) async {
+        final s = demo();
+        await pump(
+          t,
+          Builder(
+            builder: (c) => TextButton(
+              onPressed: () => openCreate(c, s, kind: k, text: 'встреча завтра 15:00'),
+              child: const Text('go'),
+            ),
+          ),
+          size,
+        );
+        await t.tap(find.text('go'));
+        await t.pumpAndSettle();
+        expect(find.text('Добавить'), findsOneWidget);
+        if (k == 'task') {
+          await t.testTextInput.receiveAction(TextInputAction.done);
+          await t.pump(const Duration(seconds: 6));
+          expect(s.tasks.values.expand((x) => x).map((x) => x['title']), contains('Встреча'));
+        }
+      });
+    }
+    testWidgets('Окно задачи $size', (t) async {
+      final s = demo();
+      await pump(
+        t,
+        Builder(
+          builder: (c) =>
+              TextButton(onPressed: () => openTask(c, s, 'L1', s.tasks['L1']!.first), child: const Text('go')),
+        ),
+        size,
+      );
+      await t.tap(find.text('go'));
+      await t.pumpAndSettle();
+      expect(find.text('ПОДЗАДАЧИ · 0/0'), findsOneWidget);
+      await t.tap(find.text('За час'));
+      await t.pump(const Duration(seconds: 6));
+      expect(s.layTask('t0')['remind'], isNotNull);
+    });
+    testWidgets('Настройки $size', (t) async {
+      final s = demo();
+      await pump(t, SettingsPage(state: s), size);
+      for (final n in ['Что показывать', 'Напоминания', 'Синхронизация', 'Обновления', 'Клавиши']) {
+        await t.tap(find.text(n).first);
+        await t.pump();
+      }
+    });
+    testWidgets('Поиск и настройки списка $size', (t) async {
+      final s = demo();
+      await pump(
+        t,
+        Builder(
+          builder: (c) => Column(
+            children: [
+              TextButton(onPressed: () => openSearch(c, s, (a, b) {}), child: const Text('find')),
+              TextButton(onPressed: () => listSettings(c, s, 'L1'), child: const Text('set')),
+            ],
+          ),
+        ),
+        size,
+      );
+      await t.tap(find.text('find'));
+      await t.pumpAndSettle();
+      await t.enterText(find.byType(TextField), 'задача 1');
+      await t.pump();
+      expect(find.text('Задача 1'), findsOneWidget);
+      await t.tapAt(const Offset(5, 5));
+      await t.pumpAndSettle();
+      await t.tap(find.text('set'));
+      await t.pumpAndSettle();
+      expect(find.text('Настройки списка'), findsOneWidget);
+    });
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
-      expect(find.text('Встреча'), findsOneWidget);
+      expect(find.textContaining('Встреча'), findsWidgets);
+      await t.tap(find.text('Месяц'));
+      await t.pump();
+      expect(find.text('Задача 0'), findsWidgets);
     });
   }
 }

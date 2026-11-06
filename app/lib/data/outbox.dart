@@ -5,6 +5,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'google_api.dart';
+import 'shared_store.dart';
 import 'google_auth.dart';
 import 'store.dart';
 
@@ -14,6 +15,7 @@ class Outbox {
   Outbox(this.api, this.store);
   final GoogleApi api;
   final Store store;
+  SharedStore? shared; // списки sh:… — в календарь общей сферы
   List<Op> ops = [];
   bool _busy = false;
   int _fails = 0;
@@ -102,21 +104,31 @@ class Outbox {
 
   Future<void> _send(Op op) async {
     final list = op['list'] as String;
+    final sh = list.startsWith('sh:') ? shared : null;
     switch (op['op']) {
       case 'create':
-        final r = await api.createTask(list, Map<String, dynamic>.from(op['body'] as Map));
+        final parent = op['parent'] as String?;
+        if (parent != null && parent.startsWith('tmp-')) throw const SocketException('родитель ещё не создан');
+        final body = Map<String, dynamic>.from(op['body'] as Map);
+        final r = sh != null
+            ? await sh.createTask(list, body, parent: parent)
+            : await api.createTask(list, body, parent: parent);
         final tmp = op['tmp'] as String;
         final real = r['id'] as String;
         for (final o in ops) {
           if (o['id'] == tmp) o['id'] = real;
+          if (o['parent'] == tmp) o['parent'] = real;
         }
         onCreated?.call(tmp, r);
       case 'patch':
-        final r = await api.patchTask(list, op['id'] as String, Map<String, dynamic>.from(op['body'] as Map));
+        final body = Map<String, dynamic>.from(op['body'] as Map);
+        final r = sh != null
+            ? await sh.patchTask(list, op['id'] as String, body)
+            : await api.patchTask(list, op['id'] as String, body);
         onSaved?.call(list, r);
       case 'delete':
         try {
-          await api.deleteTask(list, op['id'] as String);
+          await (sh != null ? sh.deleteTask(list, op['id'] as String) : api.deleteTask(list, op['id'] as String));
         } on ApiError catch (e) {
           if (e.status != 404) rethrow;
         }

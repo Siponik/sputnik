@@ -2,12 +2,8 @@
 # Пререлиз никогда не «последний» — старый трекер обновляется по releases/latest, его не трогаем.
 name: Сборка Flutter-приложения
 
+# Только вручную (решение 06.11): пользователь ждёт одну сборку со всем, без промежуточных.
 on:
-  push:
-    branches: [beta]
-    paths:
-      - 'app/**'
-      - '.github/workflows/app-build.yml'
   workflow_dispatch:
 
 permissions:
@@ -35,7 +31,9 @@ jobs:
           if [ -n "$CLIENT" ]; then
             printf '%s' "$CLIENT" > ../client.json
           fi
-          node -e "const fs=require('fs');let c='';try{c=fs.readFileSync('../client.json','utf8')}catch{};fs.writeFileSync('../defines.json',JSON.stringify({SPUTNIK_GOOGLE_CLIENT:c}))"
+          VER="1.0.${{ github.run_number }}"
+          echo "VER=$VER" >> "$GITHUB_ENV"
+          VER=$VER node -e "const fs=require('fs');let c='';try{c=fs.readFileSync('../client.json','utf8')}catch{};fs.writeFileSync('../defines.json',JSON.stringify({SPUTNIK_GOOGLE_CLIENT:c,APP_VERSION:process.env.VER}))"
           flutter build windows --release --dart-define-from-file=../defines.json
           rm -f ../client.json ../defines.json
       - name: Архив
@@ -53,4 +51,6 @@ jobs:
           else
             gh release create app-beta --target "$GITHUB_SHA" --prerelease --latest=false --title "Новый Спутник · пробная сборка" --notes "$NOTE"
           fi
-          gh release upload app-beta Sputnik-flutter-win.zip --clobber
+          URL="https://github.com/$GITHUB_REPOSITORY/releases/download/app-beta/Sputnik-flutter-win.zip"
+          VER=$VER URL=$URL node -e "require('fs').writeFileSync('app-latest.json',JSON.stringify({version:process.env.VER,url:process.env.URL,notes:'Новая сборка нового Спутника.'}))"
+          gh release upload app-beta Sputnik-flutter-win.zip app-latest.json --clobber

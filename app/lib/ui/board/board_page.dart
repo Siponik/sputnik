@@ -7,6 +7,12 @@ import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/task_dialog.dart';
+import 'card_menu.dart';
+import 'list_dialogs.dart';
+import 'share_dialog.dart';
+import '../../core/spheres.dart' as sph;
+import 'rows_view.dart';
+import 'stickers_view.dart';
 
 class BoardPage extends StatefulWidget {
   const BoardPage({super.key, required this.state});
@@ -17,36 +23,117 @@ class BoardPage extends StatefulWidget {
 }
 
 class _BoardPageState extends State<BoardPage> {
-  String? active;
+  String? get active => widget.state.activeList;
+  set active(String? v) => widget.state.activeList = v;
 
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final ls = s.boardLists;
-    if (ls.isEmpty) {
-      return Center(
-        child: Text('Списков пока нет', style: SpType.text(14, color: SpColors.muted)),
-      );
+    final id = ls.any((l) => l['id'] == active) ? active! : (ls.isEmpty ? null : ls.first['id'] as String);
+    final groups = <String?, List<Json>>{};
+    for (final l in ls) {
+      (groups[s.sphereOf(l['id'] as String)] ??= []).add(l);
     }
-    final id = ls.any((l) => l['id'] == active) ? active! : ls.first['id'] as String;
+    final folded = (((s.layer['settings'] as Map?)?['sphereFold'] as Map?) ?? const {});
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-          width: 230,
+          width: 240,
           color: SpColors.bg,
           child: ListView(
             padding: const EdgeInsets.symmetric(vertical: 10),
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Text('СПИСКИ', style: SpType.label(11)),
+                padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
+                child: Row(
+                  children: [
+                    Expanded(child: Text('СПИСКИ', style: SpType.label(11))),
+                    IconButton(
+                      tooltip: 'Войти в общую сферу',
+                      onPressed: () => joinDialog(context, s),
+                      icon: const Icon(Icons.group_add_outlined, size: 16, color: SpColors.muted),
+                    ),
+                    IconButton(
+                      tooltip: 'Новая сфера',
+                      onPressed: () => sphereDialog(context, s),
+                      icon: const Icon(Icons.workspaces_outline, size: 16, color: SpColors.muted),
+                    ),
+                    IconButton(
+                      tooltip: 'Новый список',
+                      onPressed: () async {
+                        final nid = await newListDialog(context, s);
+                        if (nid != null) setState(() => active = nid);
+                      },
+                      icon: const Icon(Icons.add, size: 18, color: SpColors.muted),
+                    ),
+                  ],
+                ),
               ),
-              for (final l in ls) _listRow(s, l, l['id'] == id),
+              for (final sp in [...s.spheres, null])
+                if (groups[sp?['id']] != null || sp?['shared'] == true) ...[
+                  if (sp != null)
+                    GestureDetector(
+                      onSecondaryTap: () => sp['shared'] == true
+                          ? shareDialog(context, s, sp['id'] as String)
+                          : sphereDialog(context, s, sp),
+                      child: InkWell(
+                        onTap: () => s.touch('settings', 'sphereFold', {sp['id'] as String: folded[sp['id']] != true}),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 10, 12, 4),
+                          child: Row(
+                            children: [
+                              CircleAvatar(radius: 4, backgroundColor: cssColor(sph.sphereColor(sp))),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  ((sp['name'] ?? '') as String).toUpperCase(),
+                                  style: SpType.label(10.5, color: SpColors.ink2),
+                                ),
+                              ),
+                              if (sp['shared'] == true)
+                                InkWell(
+                                  onTap: () => shareDialog(context, s, sp['id'] as String),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: Icon(
+                                      sp['lost'] == true ? Icons.link_off : Icons.group_outlined,
+                                      size: 14,
+                                      color: sp['lost'] == true ? SpColors.red : SpColors.muted,
+                                    ),
+                                  ),
+                                ),
+                              Icon(
+                                folded[sp['id']] == true ? Icons.chevron_right : Icons.expand_more,
+                                size: 14,
+                                color: SpColors.dim,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    )
+                  else if (s.spheres.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 10, 12, 4),
+                      child: Text('БЕЗ СФЕРЫ', style: SpType.label(10.5, color: SpColors.dim)),
+                    ),
+                  if (sp == null || folded[sp['id']] != true)
+                    for (final l in groups[sp?['id']] ?? const <Json>[]) _listRow(s, l, l['id'] == id),
+                ],
             ],
           ),
         ),
-        Expanded(child: DotGround(child: _board(context, s, id))),
+        Expanded(
+          child: DotGround(
+            child: id == null
+                ? Center(
+                    child: Text('Списков пока нет — создай первый «＋»', style: SpType.text(14, color: SpColors.muted)),
+                  )
+                : _board(context, s, id),
+          ),
+        ),
       ],
     );
   }
@@ -54,29 +141,37 @@ class _BoardPageState extends State<BoardPage> {
   Widget _listRow(AppState s, Json l, bool on) {
     final lid = l['id'] as String;
     final open = (s.tasks[lid] ?? const <Json>[]).where((t) => !s.isDone(t) && t['parent'] == null).length;
-    return InkWell(
-      onTap: () => setState(() => active = lid),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: on ? SpColors.nodeHover : Colors.transparent,
-          borderRadius: BorderRadius.circular(SpRadius.button),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                (l['title'] ?? '') as String,
-                style: SpType.text(13.5, color: on ? SpColors.ink : SpColors.ink2),
-                overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onSecondaryTap: () => listSettings(context, s, lid),
+      child: InkWell(
+        onTap: () => setState(() => active = lid),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 1),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: on ? SpColors.nodeHover : Colors.transparent,
+            borderRadius: BorderRadius.circular(SpRadius.button),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  (l['title'] ?? '') as String,
+                  style: SpType.text(13.5, color: on ? SpColors.ink : SpColors.ink2),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            Text('$open', style: SpType.label(11)),
-          ],
+              Text('$open', style: SpType.label(11)),
+            ],
+          ),
         ),
       ),
     );
+  }
+
+  String _view(Json b) {
+    final v = (b['view'] ?? 'kanban') as String;
+    return v == 'gallery' ? 'pipe' : (['kanban', 'pipe', 'stickers', 'list'].contains(v) ? v : 'kanban');
   }
 
   Widget _board(BuildContext context, AppState s, String listId) {
@@ -88,27 +183,66 @@ class _BoardPageState extends State<BoardPage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Row(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(s.listName(listId), style: SpType.text(20, w: FontWeight.w600)),
               const SizedBox(width: 12),
               Text((b['name'] ?? '') as String, style: SpType.label(11)),
+
+              SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'kanban', label: Text('Канбан')),
+                  ButtonSegment(value: 'pipe', label: Text('Конвейер')),
+                  ButtonSegment(value: 'stickers', label: Text('Стикеры')),
+                  ButtonSegment(value: 'list', label: Text('Список')),
+                ],
+                selected: {_view(b)},
+                onSelectionChanged: (v) => s.setView(listId, v.first),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Настройки списка',
+                onPressed: () => listSettings(context, s, listId),
+                icon: const Icon(Icons.more_horiz, size: 18, color: SpColors.muted),
+              ),
+              IconButton(
+                tooltip: 'Архив',
+                onPressed: () => archiveDialog(context, s, listId),
+                icon: const Icon(Icons.inventory_2_outlined, size: 18, color: SpColors.muted),
+              ),
             ],
           ),
         ),
-        Expanded(
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-            children: [
-              for (final c in cols)
-                Padding(
-                  padding: const EdgeInsets.only(right: 14),
-                  child: SizedBox(width: 280, child: _column(context, s, listId, c, byCol[c['id']] ?? const [])),
-                ),
-            ],
+        if (_view(b) == 'stickers')
+          Expanded(
+            child: StickersView(s: s, listId: listId),
+          )
+        else if (_view(b) == 'pipe')
+          Expanded(
+            child: ConveyorView(s: s, listId: listId),
+          )
+        else if (_view(b) == 'list')
+          Expanded(
+            child: ListRowsView(s: s, listId: listId),
+          )
+        else
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              children: [
+                for (final c in cols)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 14),
+                    child: SizedBox(width: 280, child: _column(context, s, listId, c, byCol[c['id']] ?? const [])),
+                  ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -163,7 +297,10 @@ class _BoardPageState extends State<BoardPage> {
           child: SizedBox(width: 264, child: card),
         ),
         childWhenDragging: Opacity(opacity: .3, child: card),
-        child: InkWell(onTap: () => openTask(context, s, listId, t), child: card),
+        child: GestureDetector(
+          onSecondaryTapUp: (d) => cardMenu(context, s, listId, t, d.globalPosition),
+          child: InkWell(onTap: () => openTask(context, s, listId, t), child: card),
+        ),
       ),
     );
   }

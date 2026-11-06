@@ -12,11 +12,11 @@ class Node extends StatelessWidget {
   final Widget? trailing;
 
   @override
-  Widget build(BuildContext context) => Container(
-    decoration: BoxDecoration(
-      color: SpColors.node,
+  Widget build(BuildContext context) => Material(
+    color: SpColors.node,
+    shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(SpRadius.node),
-      border: Border.all(color: SpColors.line),
+      side: const BorderSide(color: SpColors.line),
     ),
     clipBehavior: Clip.antiAlias,
     child: Column(
@@ -139,3 +139,14 @@ Color headFor(Object? c) {
   final i = c is num ? c.toInt() : 0;
   return i >= 0 && i < byPalette.length ? byPalette[i] : SpColors.headGrey;
 }
+
+/// Цвет из имени CSS-переменной старого трекера ('var(--clay)' …) — для тем стикеров, сфер, палитры колонок.
+Color cssColor(Object? v) => switch ('$v') {
+  'var(--clay)' => SpColors.accent,
+  'var(--gold)' => SpColors.gold,
+  'var(--type-work)' => SpColors.blue,
+  'var(--type-study)' => SpColors.violet,
+  'var(--type-personal)' => SpColors.green,
+  'var(--signal-done)' => const Color(0xFF6FB6CF),
+  _ => SpColors.grey,
+};
