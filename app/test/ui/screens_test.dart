@@ -9,6 +9,7 @@ import 'package:sputnik_app/ui/create/create_dialog.dart';
 import 'package:sputnik_app/ui/habits/habits_page.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
 import 'package:sputnik_app/ui/today/today_page.dart';
+import 'package:sputnik_app/ui/widgets/task_dialog.dart';
 
 AppState demo() {
   final s = AppState();
@@ -112,6 +113,23 @@ void main() {
         }
       });
     }
+    testWidgets('Окно задачи $size', (t) async {
+      final s = demo();
+      await pump(
+        t,
+        Builder(
+          builder: (c) =>
+              TextButton(onPressed: () => openTask(c, s, 'L1', s.tasks['L1']!.first), child: const Text('go')),
+        ),
+        size,
+      );
+      await t.tap(find.text('go'));
+      await t.pumpAndSettle();
+      expect(find.text('ПОДЗАДАЧИ · 0/0'), findsOneWidget);
+      await t.tap(find.text('За час'));
+      await t.pump(const Duration(seconds: 6));
+      expect(s.layTask('t0')['remind'], isNotNull);
+    });
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
       expect(find.text('Встреча'), findsOneWidget);
