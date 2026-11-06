@@ -25,4 +25,13 @@ void main() {
     expect(notesAbout(ix, 'ке'), isEmpty);
     expect(notesAbout(ix, 'к'), isEmpty);
   });
+
+  test('окно задачи: заметка-источник первой, потом найденные', () {
+    final ix = NoteIndex.of({'DND/Сессия 3.md': '- [ ] Карта', 'Карта.md': 'карта мира', 'А.md': 'рисую карта'});
+    final n = taskNotesFrom('DND/Сессия 3.md');
+    expect(noteFromTaskNotes('что-то\n$n'), 'DND/Сессия 3.md');
+    expect(noteFromTaskNotes('просто текст'), isNull);
+    expect(notesForTask(ix, 'Карта', n), ['DND/Сессия 3.md', 'Карта.md', 'А.md']);
+    expect(notesForTask(ix, 'Карта', ''), ['Карта.md', 'DND/Сессия 3.md', 'А.md']); // пункт чек-листа «Карта» — тоже про неё
+  });
 }

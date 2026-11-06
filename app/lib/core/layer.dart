@@ -11,6 +11,20 @@ typedef Json = Map<String, dynamic>;
 
 const sections = ['tasks', 'lists', 'habits', 'log', 'cals', 'settings', 'templates', 'templatesEdit', 'spheres'];
 
+/// Список удалён: надгробия списка и его задач (как forgetList в layer.js).
+Json forgetList(Json lay, String listId, [List<String> taskIds = const [], int? t]) {
+  final now = t ?? DateTime.now().millisecondsSinceEpoch;
+  final lists = (lay['lists'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+  final tasks = (lay['tasks'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+  lay['lists'] = lists;
+  lay['tasks'] = tasks;
+  lists[listId] = {'gone': true, 't': now};
+  for (final id in taskIds) {
+    if (tasks[id] != null) tasks[id] = {'gone': true, 't': now};
+  }
+  return lay;
+}
+
 Json emptyLayer() => {'version': 1, for (final s in sections) s: <String, dynamic>{}};
 
 class MergeResult {

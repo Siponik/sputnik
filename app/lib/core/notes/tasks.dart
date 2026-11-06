@@ -50,3 +50,18 @@ List<String> notesAbout(NoteIndex ix, String title, {int limit = 5}) {
   int cmp(String a, String b) => a.toLowerCase().compareTo(b.toLowerCase());
   return [...byName..sort(cmp), ...byText..sort(cmp)].take(limit).toList();
 }
+
+/// Путь заметки из описания задачи, отправленной из чек-листа (`taskNotesFrom`), или null.
+String? noteFromTaskNotes(String notes) {
+  final m = RegExp(r'Из заметки «[^»]*» · (\S[^\n]*?\.md)\s*$', multiLine: true).firstMatch(notes);
+  return m?[1];
+}
+
+/// Заметки для блока «Заметки» в окне задачи: сначала та, из которой задача пришла, потом найденные про неё.
+List<String> notesForTask(NoteIndex ix, String title, String notes, {int limit = 5}) {
+  final from = noteFromTaskNotes(notes);
+  return [
+    if (from != null && ix.doc(from) != null) from,
+    ...notesAbout(ix, title, limit: limit).where((p) => p != from),
+  ].take(limit).toList();
+}

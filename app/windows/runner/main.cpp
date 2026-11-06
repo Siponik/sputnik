@@ -27,7 +27,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"sputnik_app", origin, size)) {
+  if (!window.Create(L"\x0421\x043F\x0443\x0442\x043D\x0438\x043A", origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);

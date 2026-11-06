@@ -51,16 +51,34 @@ abstract final class SpColors {
 
 abstract final class SpType {
   static const sans = 'Onest';
-  static const sansFallback = ['Segoe UI', 'Roboto', 'sans-serif'];
+  static const sansFallback = ['JetBrains Mono', 'Segoe UI', 'Segoe UI Symbol', 'Roboto', 'sans-serif'];
   static const mono = 'JetBrains Mono';
   static const monoFallback = ['Cascadia Mono', 'Consolas', 'monospace'];
 
   static TextStyle text(double size, {FontWeight w = FontWeight.w400, Color color = SpColors.ink, double? height}) =>
-      TextStyle(fontFamily: sans, fontFamilyFallback: sansFallback, fontSize: size, fontWeight: w, color: color, height: height == null ? null : height / size);
+      TextStyle(
+        fontFamily: sans,
+        fontFamilyFallback: sansFallback,
+        fontSize: size,
+        fontWeight: w,
+        color: color,
+        height: height == null ? null : height / size,
+      );
 
   /// Служебное: шапки нод ЗАГЛАВНЫМИ с разрядкой, счётчики, время.
-  static TextStyle label(double size, {FontWeight w = FontWeight.w400, Color color = SpColors.muted, double spacing = .12}) =>
-      TextStyle(fontFamily: mono, fontFamilyFallback: monoFallback, fontSize: size, fontWeight: w, color: color, letterSpacing: size * spacing);
+  static TextStyle label(
+    double size, {
+    FontWeight w = FontWeight.w400,
+    Color color = SpColors.muted,
+    double spacing = .12,
+  }) => TextStyle(
+    fontFamily: mono,
+    fontFamilyFallback: monoFallback,
+    fontSize: size,
+    fontWeight: w,
+    color: color,
+    letterSpacing: size * spacing,
+  );
 }
 
 abstract final class SpRadius {
@@ -78,25 +96,25 @@ abstract final class SpMotion {
 }
 
 ThemeData spTheme() => ThemeData(
-      brightness: Brightness.dark,
-      useMaterial3: true,
-      scaffoldBackgroundColor: SpColors.bg,
-      fontFamily: SpType.sans,
-      fontFamilyFallback: SpType.sansFallback,
-      colorScheme: const ColorScheme.dark(
-        primary: SpColors.accent,
-        onPrimary: SpColors.onAccent,
-        surface: SpColors.node,
-        onSurface: SpColors.ink,
-        outline: SpColors.line,
-        error: SpColors.red,
-      ),
-      textSelectionTheme: const TextSelectionThemeData(cursorColor: SpColors.accent, selectionColor: Color(0x556A5238)),
-      tooltipTheme: const TooltipThemeData(
-        decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.all(Radius.circular(SpRadius.button))),
-        textStyle: TextStyle(color: SpColors.ink, fontSize: 12),
-      ),
-    );
+  brightness: Brightness.dark,
+  useMaterial3: true,
+  scaffoldBackgroundColor: SpColors.bg,
+  fontFamily: SpType.sans,
+  fontFamilyFallback: SpType.sansFallback,
+  colorScheme: const ColorScheme.dark(
+    primary: SpColors.accent,
+    onPrimary: SpColors.onAccent,
+    surface: SpColors.node,
+    onSurface: SpColors.ink,
+    outline: SpColors.line,
+    error: SpColors.red,
+  ),
+  textSelectionTheme: const TextSelectionThemeData(cursorColor: SpColors.accent, selectionColor: Color(0x556A5238)),
+  tooltipTheme: const TooltipThemeData(
+    decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.all(Radius.circular(SpRadius.button))),
+    textStyle: TextStyle(color: SpColors.ink, fontSize: 12),
+  ),
+);
 
 /// Холст с точками (фон под нодами).
 class DotGround extends StatelessWidget {

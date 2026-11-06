@@ -23,7 +23,7 @@ class GoogleApi {
     req.headers.set('Authorization', 'Bearer $token');
     if (body != null) {
       req.headers.contentType = ContentType.json;
-      req.write(jsonEncode(body));
+      req.add(utf8.encode(jsonEncode(body)));
     }
     final res = await req.close();
     if (res.statusCode == 401 && retry) {
@@ -36,6 +36,9 @@ class GoogleApi {
     return text.isEmpty ? <String, dynamic>{} : jsonDecode(text) as Map<String, dynamic>;
   }
 
+  /// Любой запрос к *.googleapis.com (общие сферы ходят в Календарь напрямую).
+  Future<Map<String, dynamic>> call(String method, String url, [Object? body]) => _call(method, url, body);
+
   static const _tasks = 'https://tasks.googleapis.com/tasks/v1';
 
   Future<List<Map<String, dynamic>>> lists() async {
@@ -43,11 +46,24 @@ class GoogleApi {
     return ((j['items'] ?? []) as List).cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> tasks(String listId) async {
+  /// Задачи списка: открытые и выполненные за последние [doneDays] дней (для «Готово» и архива).
+  Future<List<Map<String, dynamic>>> tasks(String listId, {int doneDays = 14}) async {
+    // completedMin отсекает все открытые задачи, поэтому два запроса: открытые и недавно выполненные.
+    final since = Uri.encodeComponent(DateTime.now().toUtc().subtract(Duration(days: doneDays)).toIso8601String());
+    final open = await _pages(listId, 'showCompleted=false');
+    final done = await _pages(listId, 'showCompleted=true&showHidden=true&completedMin=$since');
+    final seen = <Object?>{};
+    return [
+      for (final t in [...open, ...done])
+        if (seen.add(t['id'])) t,
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> _pages(String listId, String filter) async {
     final out = <Map<String, dynamic>>[];
     String? page;
     do {
-      final q = 'maxResults=100&showCompleted=false&showHidden=false${page == null ? '' : '&pageToken=$page'}';
+      final q = 'maxResults=100&$filter${page == null ? '' : '&pageToken=$page'}';
       final j = await _call('GET', '$_tasks/lists/$listId/tasks?$q');
       out.addAll(((j['items'] ?? []) as List).cast<Map<String, dynamic>>());
       page = j['nextPageToken'] as String?;
@@ -55,15 +71,96 @@ class GoogleApi {
     return out;
   }
 
-  /// Новая задача в списке, вернёт её id.
-  Future<String> createTask(String listId, String title, {String notes = ''}) async {
-    final j = await _call('POST', '$_tasks/lists/$listId/tasks', {'title': title, if (notes.isNotEmpty) 'notes': notes});
-    return j['id'] as String;
-  }
-
   Future<void> setDone(String listId, String taskId, bool done) => _call(
     'PATCH',
     '$_tasks/lists/$listId/tasks/$taskId',
     done ? {'status': 'completed'} : {'status': 'needsAction', 'completed': null},
   );
+
+  Future<Map<String, dynamic>> createList(String title) => _call('POST', '$_tasks/users/@me/lists', {'title': title});
+
+  Future<Map<String, dynamic>> renameList(String id, String title) =>
+      _call('PATCH', '$_tasks/users/@me/lists/$id', {'title': title});
+
+  Future<void> deleteList(String id) => _call('DELETE', '$_tasks/users/@me/lists/$id');
+
+  Future<Map<String, dynamic>> createTask(String listId, Map<String, dynamic> body, {String? parent}) =>
+      _call('POST', '$_tasks/lists/$listId/tasks${parent == null ? '' : '?parent=$parent'}', body);
+
+  Future<Map<String, dynamic>> patchTask(String listId, String taskId, Map<String, dynamic> body) =>
+      _call('PATCH', '$_tasks/lists/$listId/tasks/$taskId', body);
+
+  Future<void> deleteTask(String listId, String taskId) => _call('DELETE', '$_tasks/lists/$listId/tasks/$taskId');
+
+  // ---------- Календарь ----------
+  static const _cal = 'https://www.googleapis.com/calendar/v3';
+
+  Future<List<Map<String, dynamic>>> calendars() async {
+    final j = await _call('GET', '$_cal/users/me/calendarList?maxResults=250');
+    return ((j['items'] ?? []) as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> events(String calId, DateTime from, DateTime to) async {
+    final out = <Map<String, dynamic>>[];
+    String? page;
+    final a = Uri.encodeComponent(from.toUtc().toIso8601String());
+    final b = Uri.encodeComponent(to.toUtc().toIso8601String());
+    do {
+      final q =
+          'singleEvents=true&orderBy=startTime&maxResults=250&timeMin=$a&timeMax=$b'
+          '${page == null ? '' : '&pageToken=$page'}';
+      final j = await _call('GET', '$_cal/calendars/${Uri.encodeComponent(calId)}/events?$q');
+      out.addAll(((j['items'] ?? []) as List).cast<Map<String, dynamic>>());
+      page = j['nextPageToken'] as String?;
+    } while (page != null);
+    return out;
+  }
+
+  Future<Map<String, dynamic>> createEvent(String calId, Map<String, dynamic> body) =>
+      _call('POST', '$_cal/calendars/${Uri.encodeComponent(calId)}/events', body);
+
+  // ---------- Слой на Drive (appDataFolder, как tracker/src/lib/layer.js) ----------
+  static const _drive = 'https://www.googleapis.com/drive/v3';
+  static const _upload = 'https://www.googleapis.com/upload/drive/v3';
+  static const layerFile = 'sputnik-layer.json';
+  String? _layerId;
+
+  Future<String?> _findLayer() async {
+    if (_layerId != null) return _layerId;
+    final q = Uri.encodeComponent("name='$layerFile' and trashed=false");
+    final j = await _call(
+      'GET',
+      '$_drive/files?spaces=appDataFolder&q=$q&fields=files(id,modifiedTime)&orderBy=modifiedTime%20desc&pageSize=10',
+    );
+    final files = (j['files'] ?? []) as List;
+    return _layerId = files.isEmpty ? null : (files.first as Map)['id'] as String?;
+  }
+
+  /// Копия слоя из облака или null.
+  Future<Map<String, dynamic>?> pullLayer() async {
+    final id = await _findLayer();
+    if (id == null) return null;
+    try {
+      return await _call('GET', '$_drive/files/$id?alt=media');
+    } on ApiError catch (e) {
+      if (e.status == 404) {
+        _layerId = null;
+        return null;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> pushLayer(Map<String, dynamic> data) async {
+    var id = await _findLayer();
+    if (id == null) {
+      final f = await _call('POST', '$_drive/files?fields=id', {
+        'name': layerFile,
+        'parents': ['appDataFolder'],
+        'mimeType': 'application/json',
+      });
+      id = _layerId = f['id'] as String;
+    }
+    await _call('PATCH', '$_upload/files/$id?uploadType=media', data);
+  }
 }
