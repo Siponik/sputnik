@@ -7,7 +7,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:sputnik_app/ui/widgets/date_time_picker.dart';
 import 'package:sputnik_app/ui/app_shell.dart';
 import 'package:sputnik_app/ui/create/create_dialog.dart' show openCreate;
-import 'package:sputnik_app/ui/widgets/search_dialog.dart';
 import 'package:sputnik_app/ui/widgets/task_dialog.dart' show openTask;
 import 'package:sputnik_app/ui/calendar/calendar_page.dart' show calStartMode;
 import 'package:sputnik_app/ui/habits/habits_page.dart' show habitsStartMonth;
@@ -93,7 +92,7 @@ void main() {
         await t.pump(const Duration(milliseconds: 400));
       }
       if (list == 'S') {
-        openSearch(t.element(find.byType(AppShell)), s, (_, _) {});
+        await t.tap(find.text('НАЙТИ'));
         await t.pump();
         await t.enterText(find.byType(TextField).last, 'щит');
         await t.pump();
