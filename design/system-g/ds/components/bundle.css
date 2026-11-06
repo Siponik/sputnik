@@ -1,0 +1,109 @@
+/* Спутник · Схема — компоненты. Значения — только из токенов. */
+.sp { font-family: var(--font-sans); font-size: 13px; line-height: 20px; color: var(--ink); }
+.sp *, .sp *::before, .sp *::after { box-sizing: border-box; }
+.sp-mono { font-family: var(--font-mono); }
+.sp-label { font: 500 10.5px/14px var(--font-mono); letter-spacing: .14em; text-transform: uppercase; }
+.sp-micro { font: 400 9.5px/12px var(--font-mono); letter-spacing: .12em; color: var(--dim); }
+
+/* холст */
+.sp-ground { background-color: var(--ground);
+  background-image: radial-gradient(color-mix(in srgb, var(--ink) 7%, transparent) 1px, transparent 1.3px);
+  background-size: var(--grid-minor) var(--grid-minor); }
+.sp-colhead { display: flex; align-items: center; gap: var(--space-2); color: var(--dim); }
+.sp-colhead::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* шапка */
+.sp-hd { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding: 14px 20px; background: var(--bg); border-bottom: 1px solid var(--line); }
+.sp-brand { display: flex; align-items: center; gap: 10px; color: var(--ink); }
+.sp-nav { display: flex; gap: 20px; flex-wrap: wrap; }
+.sp-nav a { color: var(--muted); text-decoration: none; padding-bottom: 3px; border-bottom: 1px solid transparent; }
+.sp-nav a:hover { color: var(--ink); }
+.sp-nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.sp-search { display: flex; align-items: center; gap: var(--space-2); height: 32px; padding: 0 10px; min-width: 150px; border: 1px solid var(--line); border-radius: var(--radius-md); color: var(--muted); }
+
+/* кнопки */
+.sp-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); background: transparent; color: var(--ink); font: 500 13px var(--font-sans); cursor: pointer; }
+.sp-btn:hover { background: var(--node-hover); }
+.sp-btn--accent { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--on-accent); font-weight: 600; }
+.sp-btn--accent:hover { background: var(--accent-fill); filter: brightness(1.06); }
+.sp-btn--ink { background: var(--ink-fill); border-color: var(--ink-fill); color: var(--on-ink); font-weight: 600; border-radius: var(--radius-md); }
+.sp-btn--ink:hover { background: var(--ink-fill); filter: brightness(.94); }
+.sp-btn--sm { height: 28px; padding: 0 12px; font-size: 12.5px; }
+.sp-btn:focus-visible, .sp-nav a:focus-visible, .sp-pill:focus-visible, .sp-field input:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* нода */
+.sp-node { position: relative; background: var(--node); border: 1px solid var(--line); border-radius: var(--radius-md); }
+.sp-node--wait { border-style: dashed; border-color: var(--line-strong); }
+.sp-node--hub { border-color: var(--accent-line); border-radius: var(--radius-lg); box-shadow: var(--lift); }
+.sp-node__hd { height: var(--node-head); padding: 0 10px 0 12px; display: flex; align-items: center; gap: var(--space-2); background: var(--f, var(--fill-grey)); color: var(--on-fill); border-radius: calc(var(--radius-md) - 1px) calc(var(--radius-md) - 1px) 0 0; }
+.sp-node--hub > .sp-node__hd { height: 34px; background: var(--fill-hub); border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0; }
+.sp-node__hd .n { color: color-mix(in srgb, var(--on-fill) 65%, transparent); }
+.sp-node__hd .kind { margin-left: auto; color: color-mix(in srgb, var(--on-fill) 72%, transparent); }
+.sp-dot { width: 6px; height: 6px; border-radius: 2px; background: var(--c, var(--accent)); flex: none; }
+.sp-node__row { height: var(--row); padding: 0 16px 0 12px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.sp-node__row .v { font: 400 11px var(--font-mono); color: var(--muted); }
+.sp-tick { position: absolute; width: 14px; height: 14px; border: 0 solid var(--accent); }
+.sp-tick.tl { left: -5px; top: -5px; border-left-width: 1.5px; border-top-width: 1.5px; border-top-left-radius: 14px; }
+.sp-tick.tr { right: -5px; top: -5px; border-right-width: 1.5px; border-top-width: 1.5px; border-top-right-radius: 14px; }
+.sp-tick.bl { left: -5px; bottom: -5px; border-left-width: 1.5px; border-bottom-width: 1.5px; border-bottom-left-radius: 14px; }
+.sp-tick.br { right: -5px; bottom: -5px; border-right-width: 1.5px; border-bottom-width: 1.5px; border-bottom-right-radius: 14px; }
+
+/* сокет и провод */
+.sp-sock { position: absolute; width: 10px; height: 10px; border-radius: var(--radius-xs); background: var(--c, var(--accent)); border: 1.5px solid var(--ground); }
+.sp-sock--ring { background: var(--ground); border-color: var(--c, var(--hue-grey)); }
+.sp-sock.r { right: -6px; } .sp-sock.l { left: -6px; }
+.sp-wire { fill: none; stroke: var(--c, var(--line-strong)); stroke-width: var(--wire); }
+.sp-wire--now { stroke: var(--accent); stroke-width: var(--wire-now); }
+.sp-wire--wait { stroke-dasharray: 4 4; }
+
+/* строка задачи */
+.sp-row { height: var(--row-task); display: flex; align-items: center; gap: var(--space-3); padding: 0 10px; border-bottom: 1px solid var(--line-soft); }
+.sp-row:hover { background: var(--node-hover); }
+.sp-row .n { width: 16px; font: 400 10.5px var(--font-mono); color: var(--dim); }
+.sp-row .t { width: 42px; font: 400 11.5px var(--font-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.sp-row .x { flex: 1; min-width: 0; }
+.sp-check { width: 14px; height: 14px; flex: none; border-radius: 4px; border: 1px solid var(--line-strong); display: grid; place-items: center; font-size: 9px; color: var(--ink); }
+.sp-row--done { color: var(--dim); }
+.sp-row--done .x { text-decoration: line-through; }
+.sp-row--done .sp-check { background: var(--line-strong); border-color: var(--line-strong); }
+.sp-now { padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--accent); background-color: var(--accent-wash);
+  background-image: repeating-linear-gradient(-45deg, color-mix(in srgb, var(--accent) 8%, transparent) 0 1px, transparent 1px 7px); display: flex; flex-direction: column; gap: 9px; }
+.sp-now__top { display: flex; align-items: center; gap: var(--space-3); }
+.sp-now__top .n { width: 16px; font: 400 10.5px var(--font-mono); color: var(--accent); }
+.sp-now__top .t { width: 42px; font: 400 11.5px var(--font-mono); color: var(--accent-ink); }
+.sp-now__top .x { flex: 1; font-weight: 600; font-size: 14px; }
+.sp-now__top .sp-check { border-color: var(--accent); }
+.sp-now__more { padding-left: 92px; display: flex; flex-direction: column; gap: 9px; }
+
+/* дорожка этапов */
+.sp-stages { display: flex; gap: 3px; }
+.sp-stages > span { flex: 1; height: 4px; border-radius: 2px; background: var(--line-strong); }
+.sp-stages > .ok { background: var(--hue-green); }
+.sp-stages > .now { background: var(--accent); }
+.sp-stage-names { display: flex; justify-content: space-between; font: 400 10px var(--font-mono); letter-spacing: .1em; color: var(--dim); }
+.sp-stage-names .now { color: var(--accent); }
+
+/* умная строка */
+.sp-field { height: 36px; display: flex; align-items: center; gap: var(--space-2); padding: 0 8px 0 10px; border-radius: var(--radius-md); background: var(--bg); border: 1px solid var(--line-strong); }
+.sp-field label { color: var(--accent); font-weight: 600; }
+.sp-field input { flex: 1; min-width: 0; border: 0; background: transparent; color: var(--ink); font: 400 13px var(--font-sans); outline: none; }
+.sp-field input::placeholder { color: var(--muted); }
+.sp-field .kbd { font: 400 10px var(--font-mono); letter-spacing: .1em; color: var(--dim); }
+
+/* привычки */
+.sp-pill { height: 32px; padding: 0 12px; border-radius: var(--radius-pill); border: 1px solid var(--hue-gold); background: transparent; color: var(--ink); font: 500 12.5px var(--font-sans); cursor: pointer; }
+.sp-pill--done { background: var(--hue-gold); color: var(--on-gold); font-weight: 600; }
+
+/* метка «→ список» */
+.sp-to { font: 400 11px var(--font-mono); letter-spacing: .06em; color: var(--c, var(--muted)); }
+
+/* размерная линия */
+.sp-dim { display: flex; align-items: center; gap: var(--space-2); }
+.sp-dim::before, .sp-dim::after { content: ""; flex: 1; height: 1px; background: var(--line-strong); }
+.sp-dim > .e { order: -1; } .sp-dim > .e:last-child { order: 9; }
+
+/* штамп */
+.sp-stamp { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: var(--radius-md); font: 400 9.5px var(--font-mono); letter-spacing: .12em; color: var(--dim); }
+.sp-stamp > * { padding: 6px 8px; }
+.sp-stamp > .h { grid-column: 1 / 4; border-bottom: 1px solid var(--line); color: var(--ink); }
+.sp-stamp > :not(.h):not(:last-child) { border-right: 1px solid var(--line); }

@@ -1,0 +1,765 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-05T17:06:00Z"
+ },
+ "title": "Спутник · новый дизайн",
+ "launch": {
+  "view": "canvas",
+  "page": "r4"
+ },
+ "pages": [
+  {
+   "id": "r4",
+   "name": "Система G · все экраны"
+  },
+  {
+   "id": "kb",
+   "name": "Знания"
+  },
+  {
+   "id": "r3",
+   "name": "Заход 3"
+  },
+  {
+   "id": "r2",
+   "name": "Заход 2"
+  },
+  {
+   "id": "r1",
+   "name": "Заход 1"
+  }
+ ],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "1 · Чертёж — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Focus.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "2 · Фокус — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Dial.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "3 · Циферблат — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Bento.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "4 · Бенто — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Hud.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "5 · Пульт (HUD) — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Soft.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "6 · Мягкий свет — экран «Сегодня»",
+   "expand": "fill",
+   "page": "r1"
+  },
+  "Blue.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "1 · Чертёж 2.0 (синий) — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Windows.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "2 · Ретро-окна — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Poster.dc.html": {
+   "x": 2720,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "3 · Постер — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Pixel.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "4 · Пиксель — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Soft2.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "5 · Мягкий объём, тёмный — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Nodes.dc.html": {
+   "x": 2720,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "6 · Свой: Ноды — «Сегодня»",
+   "expand": "fill",
+   "page": "r2"
+  },
+  "Nodes2.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "A · Ноды 2.0 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Blue2.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "B · Чертёж 2.0, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Windows2.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "C · Ретро-окна, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "Poster2.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "D · Постер, версия 2 — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "HybridNB.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "E · Ноды в стиле чертежа — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "HybridBN.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "F · Чертёж с нодами — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "NodesStrict.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "G · Ноды со строгостью чертежа — «Сегодня»",
+   "expand": "fill",
+   "page": "r3"
+  },
+  "G_Today.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Сегодня",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalWeek.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · неделя",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalMonth.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · месяц",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Kanban.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · канбан",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Conveyor.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · конвейер",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Stickers.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · стикеры",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Habits.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Привычки · карточки и панель",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TaskPanel.dc.html": {
+   "x": 1360,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно задачи",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Create.dc.html": {
+   "x": 0,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно «Создать» · задача и «Ещё параметры»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Settings.dc.html": {
+   "x": 1360,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Setup.dc.html": {
+   "x": 0,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Первый запуск",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_DateTime.dc.html": {
+   "x": 1360,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Выбор даты и времени",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Pickers.dc.html": {
+   "x": 0,
+   "y": 5640,
+   "w": 1280,
+   "h": 820,
+   "title": "Выбор списка, меню задачи, выпадающие списки",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Search.dc.html": {
+   "x": 1360,
+   "y": 5640,
+   "w": 1280,
+   "h": 820,
+   "title": "Поиск · раскрывается из поля в шапке",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Status.dc.html": {
+   "x": 0,
+   "y": 6580,
+   "w": 1280,
+   "h": 820,
+   "title": "Состояние, обновление, таймер в шапке",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Feedback.dc.html": {
+   "x": 1360,
+   "y": 6580,
+   "w": 1280,
+   "h": 820,
+   "title": "Удаление, плашки, «нет связи»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Spheres.dc.html": {
+   "x": 0,
+   "y": 7520,
+   "w": 1280,
+   "h": 820,
+   "title": "Сферы",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Templates.dc.html": {
+   "x": 1360,
+   "y": 7520,
+   "w": 1280,
+   "h": 820,
+   "title": "Шаблоны досок и редактор",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ListSettings.dc.html": {
+   "x": 0,
+   "y": 8460,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки списка",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Archive.dc.html": {
+   "x": 1360,
+   "y": 8460,
+   "w": 1280,
+   "h": 820,
+   "title": "Архив",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ListView.dc.html": {
+   "x": 0,
+   "y": 9400,
+   "w": 1280,
+   "h": 820,
+   "title": "Доска · вид «Список»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Gallery.dc.html": {
+   "x": 1360,
+   "y": 9400,
+   "w": 1280,
+   "h": 820,
+   "title": "Конвейер · галерея",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SharePeople.dc.html": {
+   "x": 0,
+   "y": 10340,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · участники и профиль",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ShareBoard.dc.html": {
+   "x": 1360,
+   "y": 10340,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · доска, исполнитель, приглашение",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ShareStates.dc.html": {
+   "x": 0,
+   "y": 11280,
+   "w": 1280,
+   "h": 820,
+   "title": "Общая сфера · нет доступа, конвейер, стикеры по людям",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_HabitsMonth.dc.html": {
+   "x": 1360,
+   "y": 11280,
+   "w": 1280,
+   "h": 820,
+   "title": "Привычки · месяц (привычка × день)",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_HabitEdit.dc.html": {
+   "x": 0,
+   "y": 12220,
+   "w": 1280,
+   "h": 820,
+   "title": "Привычка · правка в том же окне «Создать»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateEvent.dc.html": {
+   "x": 1360,
+   "y": 12220,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · событие",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateHabit.dc.html": {
+   "x": 0,
+   "y": 13160,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · привычка",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CreateBday.dc.html": {
+   "x": 1360,
+   "y": 13160,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · день рождения",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetRemind.dc.html": {
+   "x": 0,
+   "y": 14100,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · напоминания и бот",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetSync.dc.html": {
+   "x": 1360,
+   "y": 14100,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · синхронизация, копии, дубли",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_SetUpdate.dc.html": {
+   "x": 0,
+   "y": 15040,
+   "w": 1280,
+   "h": 820,
+   "title": "Настройки · обновления и клавиши",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TaskMore.dc.html": {
+   "x": 1360,
+   "y": 15040,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно задачи · «Ещё», исполнитель, изменения",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_CalAdd.dc.html": {
+   "x": 0,
+   "y": 15980,
+   "w": 1280,
+   "h": 820,
+   "title": "Календарь · клик по часу и форма дня",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_TodayLight.dc.html": {
+   "x": 1360,
+   "y": 15980,
+   "w": 1280,
+   "h": 820,
+   "title": "Сегодня · светлая тема",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Notes.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · заметка (основной экран)",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesGraph.dc.html": {
+   "x": 1360,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф (как в Obsidian)",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesGraphNear.dc.html": {
+   "x": 0,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф вблизи: ноды и провода",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesCanvas.dc.html": {
+   "x": 1360,
+   "y": 1880,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · холст: свои схемы из заметок",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesCards.dc.html": {
+   "x": 0,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · карточки с картинками",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesTable.dc.html": {
+   "x": 1360,
+   "y": 2820,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · таблица по свойствам",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesSearch.dc.html": {
+   "x": 0,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · поиск Ctrl K, заметки в задаче, бот",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesZoom.dc.html": {
+   "x": 1360,
+   "y": 3760,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · граф: точки → названия → ноды",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesStates.dc.html": {
+   "x": 0,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · состояния: первый запуск, пусто, конфликты, индексация",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesWindows.dc.html": {
+   "x": 1360,
+   "y": 4700,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · окна: папка, переименование, шаблон",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesSync.dc.html": {
+   "x": 0,
+   "y": 5640,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · синхронизация с Drive: состояние, конфликт, Drive полон",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesHow.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · как это работает (читать первым)",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_NotesLinks.dc.html": {
+   "x": 0,
+   "y": 940,
+   "w": 1280,
+   "h": 820,
+   "title": "Знания · заметка с открытой панелью «Связи»",
+   "expand": "fill",
+   "page": "kb"
+  },
+  "G_CreateFrom.dc.html": {
+   "x": 0,
+   "y": 16920,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · одно окно для всех мест",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Motion.dc.html": {
+   "x": 1360,
+   "y": 16920,
+   "w": 1280,
+   "h": 820,
+   "title": "Анимации · каталог",
+   "expand": "fill",
+   "page": "r4"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Focus.dc.html",
+  "Dial.dc.html",
+  "Bento.dc.html",
+  "Hud.dc.html",
+  "Soft.dc.html",
+  "Blue.dc.html",
+  "Windows.dc.html",
+  "Poster.dc.html",
+  "Pixel.dc.html",
+  "Soft2.dc.html",
+  "Nodes.dc.html",
+  "Nodes2.dc.html",
+  "Blue2.dc.html",
+  "Windows2.dc.html",
+  "Poster2.dc.html",
+  "HybridNB.dc.html",
+  "HybridBN.dc.html",
+  "NodesStrict.dc.html",
+  "G_Today.dc.html",
+  "G_CalWeek.dc.html",
+  "G_CalMonth.dc.html",
+  "G_Kanban.dc.html",
+  "G_Conveyor.dc.html",
+  "G_Stickers.dc.html",
+  "G_Habits.dc.html",
+  "G_TaskPanel.dc.html",
+  "G_Create.dc.html",
+  "G_Settings.dc.html",
+  "G_Setup.dc.html",
+  "G_DateTime.dc.html",
+  "G_Pickers.dc.html",
+  "G_Search.dc.html",
+  "G_Status.dc.html",
+  "G_Feedback.dc.html",
+  "G_Spheres.dc.html",
+  "G_Templates.dc.html",
+  "G_ListSettings.dc.html",
+  "G_Archive.dc.html",
+  "G_ListView.dc.html",
+  "G_Gallery.dc.html",
+  "G_SharePeople.dc.html",
+  "G_ShareBoard.dc.html",
+  "G_ShareStates.dc.html",
+  "G_HabitsMonth.dc.html",
+  "G_HabitEdit.dc.html",
+  "G_CreateEvent.dc.html",
+  "G_CreateHabit.dc.html",
+  "G_CreateBday.dc.html",
+  "G_SetRemind.dc.html",
+  "G_SetSync.dc.html",
+  "G_SetUpdate.dc.html",
+  "G_TaskMore.dc.html",
+  "G_CalAdd.dc.html",
+  "G_TodayLight.dc.html",
+  "G_Notes.dc.html",
+  "G_NotesGraph.dc.html",
+  "G_NotesGraphNear.dc.html",
+  "G_NotesCanvas.dc.html",
+  "G_NotesCards.dc.html",
+  "G_NotesTable.dc.html",
+  "G_NotesSearch.dc.html",
+  "G_NotesZoom.dc.html",
+  "G_NotesStates.dc.html",
+  "G_NotesWindows.dc.html",
+  "G_NotesSync.dc.html",
+  "G_NotesHow.dc.html",
+  "G_NotesLinks.dc.html",
+  "G_CreateFrom.dc.html",
+  "G_Motion.dc.html"
+ ],
+ "notes": {
+  "head": {
+   "x": 0,
+   "y": -260,
+   "text": "Спутник: шесть разных подходов к экрану «Сегодня»",
+   "kind": "title1",
+   "maxW": 2640,
+   "page": "r1"
+  },
+  "head2": {
+   "x": 0,
+   "y": -260,
+   "text": "Заход 2: тёмная тема, не чёрная — по референсам и свои",
+   "kind": "title1",
+   "maxW": 4000,
+   "page": "r2"
+  },
+  "head3": {
+   "x": 0,
+   "y": -260,
+   "text": "Заход 3: «Сегодня» в четырёх доведённых вариантах — выбрать один",
+   "kind": "title1",
+   "maxW": 2640,
+   "page": "r3"
+  }
+ },
+ "designSystems": []
+}
