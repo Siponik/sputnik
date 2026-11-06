@@ -11,7 +11,8 @@ import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
 import '../create/create_dialog.dart';
 import '../theme/tokens.dart';
-import '../widgets/common.dart';
+import '../g/kit.dart';
+import '../today/today_page.dart' show listHue;
 import '../widgets/task_dialog.dart';
 
 class CalendarPage extends StatefulWidget {
@@ -23,7 +24,7 @@ class CalendarPage extends StatefulWidget {
 }
 
 class _CalendarPageState extends State<CalendarPage> {
-  String mode = 'week';
+  String mode = calStartMode;
   late String sel = ymd(DateTime.now());
   final show = <String>{'events', 'tasks', 'habits', 'bdays'};
   final _focus = FocusNode();
@@ -84,83 +85,185 @@ class _CalendarPageState extends State<CalendarPage> {
         focusNode: _focus,
         autofocus: true,
         child: DotGround(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _bar(),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, box) {
-                    final side = box.maxWidth > 1000;
-                    final main = mode == 'week' ? _week(days, items) : _month(days, items);
-                    if (!side) return main;
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Expanded(child: main),
-                        SizedBox(width: 320, child: _dayPanel(sel, items[sel] ?? _items([sel])[sel]!)),
-                      ],
-                    );
-                  },
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _bar(),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, box) {
+                      final side = box.maxWidth > 1000;
+                      final main = mode == 'week' ? _week(days, items) : _month(days, items);
+                      if (!side) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(flex: 3, child: main),
+                            const SizedBox(height: 12),
+                            Expanded(flex: 2, child: _dayPanel(sel, items[sel] ?? _items([sel])[sel]!)),
+                          ],
+                        );
+                      }
+                      return WireBoard(
+                        wires: const [Wire('cal:hub', 'cal:day', SpColors.accent, width: 2)],
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: main),
+                            const SizedBox(width: 24),
+                            SizedBox(width: 324, child: _dayPanel(sel, items[sel] ?? _items([sel])[sel]!)),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                _overview(days, items),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _bar() => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-    child: Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
+  Widget _overview(List<String> days, Map<String, List<Json>> items) {
+    var busy = 0;
+    var dues = 0;
+    for (final d in days) {
+      for (final i in items[d]!) {
+        if (i['s'] != null && i['e'] != null && i['kind'] != 'habit') {
+          busy += ((i['e'] as num) - (i['s'] as num)).toInt();
+        }
+        if (i['kind'] == 'task' && i['s'] == null) dues++;
+      }
+    }
+    if (mode == 'month') {
+      return Wrap(
+        spacing: 0,
+        runSpacing: 4,
+        children: [
+          Text('ПОЛОСКА ВНИЗУ КЛЕТКИ', style: gMicro()),
+          const SizedBox(width: 14),
+          Text('ЗОЛОТО — ПРИВЫЧКИ СДЕЛАНЫ', style: gMicro(c: SpColors.gold)),
+          const SizedBox(width: 14),
+          Text('ПУНКТИР — ЕЩЁ ВПЕРЕДИ', style: gMicro()),
+        ],
+      );
+    }
+    return Row(
       children: [
-        Text(cal.periodTitle(sel, mode), style: SpType.text(20, w: FontWeight.w600)),
-        IconButton(onPressed: () => _shift(-1), icon: const Icon(Icons.chevron_left)),
-        TextButton(onPressed: () => setState(() => sel = s.todayYmd), child: const Text('Сегодня')),
-        IconButton(onPressed: () => _shift(1), icon: const Icon(Icons.chevron_right)),
-        const SizedBox(width: 12),
-        for (final (id, name) in [
-          ('events', 'События'),
-          ('tasks', 'Задачи'),
-          ('habits', 'Привычки'),
-          ('bdays', 'Дни рождения'),
-        ])
-          FilterChip(
-            label: Text(name),
-            selected: show.contains(id),
-            onSelected: (on) => setState(() => on ? show.add(id) : show.remove(id)),
-          ),
-        const SizedBox(width: 12),
-        SegmentedButton<String>(
-          showSelectedIcon: false,
-          segments: const [
-            ButtonSegment(value: 'week', label: Text('Неделя')),
-            ButtonSegment(value: 'month', label: Text('Месяц')),
-          ],
-          selected: {mode},
-          onSelectionChanged: (v) {
-            setState(() => mode = v.first);
-            _shift(0);
-          },
-        ),
+        Text(mode == 'week' ? 'ОБЗОР НЕДЕЛИ' : 'ОБЗОР МЕСЯЦА', style: gLbl(c: SpColors.ink)),
+        const SizedBox(width: 16),
+        Text('ЗАГРУЗКА ${(busy / 60).round()} Ч', style: gMicro()),
+        const SizedBox(width: 16),
+        Text('СРОКИ $dues', style: gMicro()),
+        const SizedBox(width: 16),
+        Expanded(child: DimLine('${days.length} ДНЕЙ · ЧАСЫ БЕЗ ДЕЛ СЖАТЫ')),
       ],
+    );
+  }
+
+  static const _monthUp = [
+    'ЯНВАРЬ',
+    'ФЕВРАЛЬ',
+    'МАРТ',
+    'АПРЕЛЬ',
+    'МАЙ',
+    'ИЮНЬ',
+    'ИЮЛЬ',
+    'АВГУСТ',
+    'СЕНТЯБРЬ',
+    'ОКТЯБРЬ',
+    'НОЯБРЬ',
+    'ДЕКАБРЬ',
+  ];
+
+  int _weekNo(DateTime d) {
+    final th = d.add(Duration(days: 3 - (d.weekday + 6) % 7));
+    final jan = DateTime(th.year, 1, 4);
+    return 1 + th.difference(jan.add(Duration(days: -((jan.weekday + 6) % 7)))).inDays ~/ 7 - 0;
+  }
+
+  Widget _sq(String t, VoidCallback on) => InkWell(
+    onTap: on,
+    borderRadius: BorderRadius.circular(6),
+    child: Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: SpColors.lineStrong),
+      ),
+      child: Text(t, style: gMono(12, c: SpColors.ink)),
     ),
   );
+
+  Widget _bar() {
+    final d = cal.parseYmd(sel);
+    return GNode(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 9, 12, 9),
+        child: Row(
+          children: [
+            Expanded(
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('${_monthUp[d.month - 1]} ${d.year}', style: gLbl(c: SpColors.ink, size: 11)),
+                  if (mode == 'week') Text('НЕДЕЛЯ ${_weekNo(d)}', style: gLbl(c: SpColors.dim, size: 10.5)),
+                  const SizedBox(width: 4),
+                  _sq('‹', () => _shift(-1)),
+                  _sq('›', () => _shift(1)),
+                  GBtn('Сегодня', sm: true, onTap: () => setState(() => sel = s.todayYmd)),
+                  Container(
+                    width: 1,
+                    height: 20,
+                    color: SpColors.line,
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                  ),
+                  for (final (id, name, c) in [
+                    ('events', 'События', SpColors.grey),
+                    ('tasks', 'Задачи', SpColors.accent),
+                    ('habits', 'Привычки', SpColors.gold),
+                    ('bdays', 'Дни рождения', SpColors.violet),
+                  ])
+                    GChip(
+                      name,
+                      on: show.contains(id),
+                      dot: c,
+                      color: c == SpColors.grey ? SpColors.lineStrong : c,
+                      onTap: () => setState(() => show.contains(id) ? show.remove(id) : show.add(id)),
+                    ),
+                ],
+              ),
+            ),
+            GSeg(
+              items: const ['Неделя', 'Месяц'],
+              active: mode == 'week' ? 0 : 1,
+              onTap: (i) {
+                setState(() => mode = i == 0 ? 'week' : 'month');
+                _shift(0);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Color _colorOf(Json i) => switch (i['kind']) {
     'event' => SpColors.grey,
     'birthday' => SpColors.violet,
     'habit' => SpColors.gold,
-    _ => switch (i['type']) {
-      'creative' => SpColors.accent,
-      'personal' => SpColors.green,
-      'study' => SpColors.violet,
-      _ => SpColors.blue,
-    },
+    _ => i['listId'] is String ? listHue(s, i['listId'] as String) : SpColors.accent,
   };
 
   // ---------- неделя ----------
@@ -168,52 +271,83 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget _week(List<String> days, Map<String, List<Json>> items) {
     final timed = [for (final d in days) ...items[d]!.where((i) => i['s'] != null)];
     final lay = cal.hourLayout(timed.cast<Json>());
-    const axis = 52.0;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+    const axis = 64.0;
+    var busy = 0;
+    for (final i in timed) {
+      if (i['e'] != null && i['kind'] != 'habit') busy += ((i['e'] as num) - (i['s'] as num)).toInt();
+    }
+    final a = cal.parseYmd(days.first), b = cal.parseYmd(days.last);
+    const gen = [
+      'января',
+      'февраля',
+      'марта',
+      'апреля',
+      'мая',
+      'июня',
+      'июля',
+      'августа',
+      'сентября',
+      'октября',
+      'ноября',
+      'декабря',
+    ];
+    final range = a.month == b.month
+        ? '${a.day.toString().padLeft(2, '0')}–${b.day.toString().padLeft(2, '0')} ${gen[b.month - 1]}'
+        : '${a.day} ${gen[a.month - 1]} – ${b.day} ${gen[b.month - 1]}';
+    return GNode(
+      hub: true,
       child: Column(
         children: [
-          // шапки дней + «весь день» + точки привычек
+          SockRow(
+            right: const Sock('cal:hub', SpColors.accent),
+            child: GHead(hub: true, name: 'Неделя · $range', kind: 'занято ${(busy / 60).round()} ч'),
+          ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(width: axis),
+              SizedBox(
+                width: axis,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8, top: 44),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ПРИВЫЧКИ', style: gMicro(), maxLines: 1, overflow: TextOverflow.clip),
+                      const SizedBox(height: 14),
+                      Text('ДЕНЬ', style: gMicro()),
+                    ],
+                  ),
+                ),
+              ),
               for (final d in days) Expanded(child: _dayHead(d, items[d]!)),
             ],
           ),
-          const SizedBox(height: 4),
+          const Divider(height: 1, color: SpColors.line),
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: SpColors.node,
-                borderRadius: BorderRadius.circular(SpRadius.node),
-                border: Border.all(color: SpColors.line),
-              ),
-              child: SingleChildScrollView(
-                child: SizedBox(
-                  height: lay.height.toDouble() + 8,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: axis,
-                        child: Stack(
-                          children: [
-                            for (final l in lay.labels)
-                              Positioned(
-                                top: (l['top'] as num).toDouble(),
-                                left: 8,
-                                child: Text(
-                                  l['text'] as String,
-                                  style: SpType.label(l['small'] == true ? 9 : 10.5, color: SpColors.dim),
-                                ),
+            child: SingleChildScrollView(
+              child: SizedBox(
+                height: lay.height.toDouble() + 8,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: axis,
+                      child: Stack(
+                        children: [
+                          for (final l in lay.labels)
+                            Positioned(
+                              top: (l['top'] as num).toDouble() + 2,
+                              left: 8,
+                              child: Text(
+                                l['text'] as String,
+                                style: gMono(l['small'] == true ? 9 : 10, c: SpColors.dim),
                               ),
-                          ],
-                        ),
+                            ),
+                        ],
                       ),
-                      for (final d in days) Expanded(child: _dayCol(d, items[d]!, lay)),
-                    ],
-                  ),
+                    ),
+                    for (final d in days) Expanded(child: _dayCol(d, items[d]!, lay)),
+                  ],
                 ),
               ),
             ),
@@ -230,69 +364,70 @@ class _CalendarPageState extends State<CalendarPage> {
       ..sort((a, b) => (a['done'] == true ? 1 : 0) - (b['done'] == true ? 1 : 0));
     final hab = s.habits
         .map((h) => (h, cal.habitDay(h, s.habitLog, d, s.todayYmd)))
-        .where((x) => x.$2['sched'] == true);
+        .where((x) => x.$2['sched'] == true)
+        .toList();
     final done = hab.where((x) => x.$2['done'] == true).length;
     return DragTarget<(String, Json)>(
       onAcceptWithDetails: (det) => s.schedule(det.data.$1, det.data.$2, d, null),
       builder: (context, cand, _) => InkWell(
         onTap: () => setState(() => sel = d),
         child: Container(
-          margin: const EdgeInsets.symmetric(horizontal: 2),
-          padding: const EdgeInsets.all(6),
+          constraints: const BoxConstraints(minHeight: 92),
+          padding: const EdgeInsets.fromLTRB(4, 10, 4, 6),
           decoration: BoxDecoration(
-            color: cand.isNotEmpty ? SpColors.accentWash : (sel == d ? SpColors.nodeHover : Colors.transparent),
-            borderRadius: BorderRadius.circular(SpRadius.button),
+            color: cand.isNotEmpty
+                ? SpColors.accentWash
+                : (today ? const Color(0xFF2A2A2E) : (sel == d ? SpColors.nodeHover : null)),
+            border: const Border(left: BorderSide(color: SpColors.lineSoft)),
           ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Wrap(
-                spacing: 6,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text((lab['short'] as String).toUpperCase(), style: SpType.label(10.5)),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                    decoration: BoxDecoration(
-                      color: today ? SpColors.accent : Colors.transparent,
-                      borderRadius: BorderRadius.circular(SpRadius.socket),
-                    ),
-                    child: Text(
-                      '${lab['n']}',
-                      style: SpType.text(15, w: FontWeight.w600, color: today ? SpColors.onAccent : SpColors.ink),
-                    ),
-                  ),
-                  if (hab.isNotEmpty) Text('$done/${hab.length}', style: SpType.label(9.5, color: SpColors.gold)),
-                ],
-              ),
-              if (hab.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Wrap(
-                    spacing: 3,
-                    children: [
-                      for (final x in hab)
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: x.$2['done'] == true ? SpColors.gold : Colors.transparent,
-                            border: Border.all(
-                              color: x.$2['done'] == true
-                                  ? SpColors.gold
-                                  : (x.$2['isToday'] == true ? SpColors.accent : SpColors.lineStrong),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+              Text.rich(
+                TextSpan(
+                  text: '${(lab['short'] as String).toUpperCase()} ${lab['n'].toString().padLeft(2, '0')}',
+                  children: [if (today) const TextSpan(text: ' СЕГОДНЯ')],
                 ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                style: gLbl(c: today ? SpColors.accent : SpColors.muted, size: 10),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                height: 14,
+                child: hab.isEmpty
+                    ? null
+                    : Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          for (final x in hab.take(5)) ...[
+                            Container(
+                              width: 7,
+                              height: 7,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(2),
+                                color: x.$2['done'] == true ? SpColors.gold : Colors.transparent,
+                                border: Border.all(
+                                  color: x.$2['done'] == true
+                                      ? SpColors.gold
+                                      : (x.$2['isToday'] == true ? SpColors.accent : SpColors.lineStrong),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 3),
+                          ],
+                          const SizedBox(width: 4),
+                          Text('$done/${hab.length}', style: gMicro()),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 4),
               for (final i in allDay.take(3)) _allDayRow(i),
               if (allDay.length > 3)
                 InkWell(
                   onTap: () => setState(() => sel = d),
-                  child: Text('+ ещё ${allDay.length - 3}', style: SpType.label(10, color: SpColors.muted)),
+                  child: Text('+ ЕЩЁ ${allDay.length - 3}', style: gMicro(c: SpColors.muted)),
                 ),
             ],
           ),
@@ -305,20 +440,28 @@ class _CalendarPageState extends State<CalendarPage> {
     final c = _colorOf(i);
     final w = Container(
       margin: const EdgeInsets.only(top: 3),
-      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: c.withValues(alpha: .16),
-        borderRadius: BorderRadius.circular(SpRadius.socket),
-        border: Border(left: BorderSide(color: c, width: 2)),
+        color: SpColors.node,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SpColors.line),
       ),
-      child: Text(
-        '${i['kind'] == 'birthday' ? '' : ''}${i['title']}',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: SpType.text(
-          11.5,
-          color: i['done'] == true ? SpColors.dim : SpColors.ink,
-        ).copyWith(decoration: i['done'] == true ? TextDecoration.lineThrough : null),
+      child: Row(
+        children: [
+          GDot(c),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '${i['kind'] == 'birthday' ? '★ ' : ''}${i['title']}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SpType.text(
+                11.5,
+                color: i['done'] == true ? SpColors.dim : SpColors.ink,
+              ).copyWith(decoration: i['done'] == true ? TextDecoration.lineThrough : null),
+            ),
+          ),
+        ],
       ),
     );
     if (i['kind'] != 'task') return w;
@@ -401,7 +544,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         left: 0,
                         right: 0,
                         height: (b['h'] as num).toDouble(),
-                        child: Container(color: SpColors.bg.withValues(alpha: .6)),
+                        child: CustomPaint(painter: _BandHatch()),
                       ),
                   for (final b in blocks) _block(b, w),
                   if (isToday)
@@ -409,7 +552,16 @@ class _CalendarPageState extends State<CalendarPage> {
                       top: lay.yAt(now.hour * 60 + now.minute).toDouble(),
                       left: 0,
                       right: 0,
-                      child: Container(height: 2, color: SpColors.accent),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(color: SpColors.accent, borderRadius: BorderRadius.circular(2)),
+                          ),
+                          Expanded(child: Container(height: 1.5, color: SpColors.accent)),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -425,44 +577,73 @@ class _CalendarPageState extends State<CalendarPage> {
     final col = (b['col'] as int?) ?? 0;
     final c = _colorOf(b);
     final habit = b['kind'] == 'habit';
+    final task = b['kind'] == 'task';
     final done = b['done'] == true;
-    final box = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-      decoration: BoxDecoration(
-        color: habit ? c.withValues(alpha: done ? .3 : .12) : c.withValues(alpha: b['kind'] == 'event' ? .22 : .28),
-        borderRadius: BorderRadius.circular(SpRadius.socket),
-        border: Border(left: BorderSide(color: c, width: 2)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (b['kind'] == 'task' || (habit && b['isToday'] == true))
-            Padding(
-              padding: const EdgeInsets.only(right: 4, top: 1),
-              child: Check(
-                done: done,
-                onTap: () {
-                  if (habit) {
-                    s.toggleHabit(b['h'] as Json);
-                  } else {
-                    s.toggleDone(b['listId'] as String, b['task'] as Json);
-                  }
-                },
+    final h = (b['height'] as num).toDouble();
+    final time = cal.fromMin((b['a'] as num).toInt());
+    final head = Row(
+      children: [
+        if (task || (habit && b['isToday'] == true))
+          InkWell(
+            onTap: () {
+              if (habit) {
+                s.toggleHabit(b['h'] as Json);
+              } else {
+                s.toggleDone(b['listId'] as String, b['task'] as Json);
+              }
+            },
+            child: Container(
+              width: 9,
+              height: 9,
+              margin: const EdgeInsets.only(right: 5),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: done ? c : null,
+                border: Border.all(color: c, width: 1.3),
               ),
             ),
-          Expanded(
-            child: Text(
-              '${cal.fromMin((b['a'] as num).toInt())} ${b['title']}',
-              maxLines: ((b['height'] as num) / 14).floor().clamp(1, 6),
-              overflow: TextOverflow.ellipsis,
-              style: SpType.text(11, color: done ? SpColors.dim : SpColors.ink),
-            ),
           ),
-        ],
+        Flexible(
+          child: Text(time, style: gMono(10, c: done ? SpColors.dim : c.withValues(alpha: .95)), maxLines: 1),
+        ),
+      ],
+    );
+    Widget box = Container(
+      padding: const EdgeInsets.fromLTRB(6, 4, 6, 3),
+      decoration: BoxDecoration(
+        color: habit ? c.withValues(alpha: done ? .18 : .06) : (task ? const Color(0xFF2B2622) : SpColors.nodeHover),
+        borderRadius: BorderRadius.circular(5),
+        border: habit ? null : Border.all(color: task ? Color.lerp(c, SpColors.node, .45)! : SpColors.line),
+      ),
+      child: ClipRect(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (h >= 30 || task) head,
+            if (h >= 22)
+              Flexible(
+                child: Text(
+                  b['title'] as String,
+                  maxLines: ((h - 16) / 14).floor().clamp(1, 6),
+                  overflow: TextOverflow.ellipsis,
+                  style: SpType.text(
+                    11.5,
+                    color: done ? SpColors.dim : SpColors.ink,
+                  ).copyWith(decoration: done ? TextDecoration.lineThrough : null, decorationColor: SpColors.dim),
+                ),
+              ),
+          ],
+        ),
       ),
     );
+    if (habit)
+      box = Dashed(
+        r: 5,
+        color: c.withValues(alpha: done ? .9 : .6),
+        child: box,
+      );
     Widget child = box;
-    if (b['kind'] == 'task') {
+    if (task) {
       child = _taskDrag(
         b,
         InkWell(onTap: () => openTask(context, s, b['listId'] as String, b['task'] as Json), child: box),
@@ -471,10 +652,10 @@ class _CalendarPageState extends State<CalendarPage> {
       child = Tooltip(message: _evTip(b['event'] as Json), child: box);
     }
     return Positioned(
-      top: (b['top'] as num).toDouble(),
-      height: (b['height'] as num).toDouble(),
-      left: w / cols * col + 1,
-      width: w / cols - 2,
+      top: (b['top'] as num).toDouble() + 1,
+      height: h - 2,
+      left: w / cols * col + 3,
+      width: w / cols - 6,
       child: child,
     );
   }
@@ -484,20 +665,39 @@ class _CalendarPageState extends State<CalendarPage> {
   // ---------- месяц ----------
 
   Widget _month(List<String> days, Map<String, List<Json>> items) {
-    final m = cal.parseYmd(sel).month;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 0, 12, 12),
+    final sd = cal.parseYmd(sel);
+    final m = sd.month;
+    final inMonth = days.where((d) => cal.parseYmd(d).month == m);
+    var n = 0;
+    for (final d in inMonth) {
+      n += items[d]!.where((i) => i['kind'] == 'task').length;
+    }
+    return GNode(
+      hub: true,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              for (final w in cal.wdShort)
-                Expanded(
-                  child: Center(child: Text(w.toUpperCase(), style: SpType.label(10.5))),
-                ),
-            ],
+          SockRow(
+            right: const Sock('cal:hub', SpColors.accent),
+            child: GHead(hub: true, name: '${_monthUp[m - 1]} ${sd.year}', kind: '${inMonth.length} дней · $n дел'),
           ),
-          const SizedBox(height: 4),
+          Container(
+            height: 24,
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: SpColors.line)),
+            ),
+            child: Row(
+              children: [
+                for (final w in cal.wdShort)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: Text(w.toUpperCase(), style: gMicro()),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
             child: Column(
               children: [
@@ -506,7 +706,8 @@ class _CalendarPageState extends State<CalendarPage> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (var c = 0; c < 7; c++) Expanded(child: _cell(days[r * 7 + c], items[days[r * 7 + c]]!, m)),
+                        for (var c = 0; c < 7; c++)
+                          Expanded(child: _cell(days[r * 7 + c], items[days[r * 7 + c]]!, m, c == 6, r == 5)),
                       ],
                     ),
                   ),
@@ -518,13 +719,160 @@ class _CalendarPageState extends State<CalendarPage> {
     );
   }
 
-  Widget _cell(String d, List<Json> its, int month) {
+  Widget _cell(String d, List<Json> its, int month, bool lastCol, bool lastRow) {
     final p = cal.parseYmd(d);
     final today = d == s.todayYmd;
+    final other = p.month != month;
     final list = its.where((i) => i['kind'] != 'habit').toList()
       ..sort((a, b) => ((a['s'] ?? -1) as num).compareTo((b['s'] ?? -1) as num));
-    final hab = s.habits.map((h) => cal.habitDay(h, s.habitLog, d, s.todayYmd)).where((x) => x['sched'] == true);
-    final hd = hab.where((x) => x['done'] == true).length;
+    final hab = s.habits
+        .map((h) => cal.habitDay(h, s.habitLog, d, s.todayYmd))
+        .where((x) => x['sched'] == true)
+        .toList();
+    String hm(num v) => '${(v ~/ 60).toString().padLeft(2, '0')}:${(v % 60).toInt().toString().padLeft(2, '0')}';
+    Widget body = Container(
+      padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+      decoration: BoxDecoration(
+        border: today
+            ? Border.all(color: SpColors.accent, width: 1.2)
+            : Border(
+                right: lastCol ? BorderSide.none : const BorderSide(color: SpColors.lineSoft),
+                bottom: lastRow ? BorderSide.none : const BorderSide(color: SpColors.lineSoft),
+              ),
+        borderRadius: today ? BorderRadius.circular(6) : null,
+        color: sel == d && !today ? SpColors.accentWash : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text(
+                p.day.toString().padLeft(2, '0'),
+                style: gMono(
+                  11,
+                  c: today ? SpColors.accent : (other ? SpColors.dim : SpColors.ink),
+                  w: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (today)
+                Flexible(
+                  child: Text(
+                    'СЕГОДНЯ',
+                    style: gMicro(c: SpColors.accent),
+                    maxLines: 1,
+                    overflow: TextOverflow.clip,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          if (!other)
+            Expanded(
+              child: ClipRect(
+                child: OverflowBox(
+                  alignment: Alignment.topLeft,
+                  maxHeight: double.infinity,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final i in list.take(3))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              GDot(_colorOf(i)),
+                              const SizedBox(width: 6),
+                              if (i['s'] != null) ...[
+                                Text(hm(i['s'] as num), style: gMono(9.5, c: SpColors.dim)),
+                                const SizedBox(width: 5),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  '${i['kind'] == 'birthday' ? '★ ' : ''}${i['title']}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.clip,
+                                  softWrap: false,
+                                  style: SpType.text(
+                                    11,
+                                    color: i['done'] == true ? SpColors.dim : SpColors.ink,
+                                  ).copyWith(decoration: i['done'] == true ? TextDecoration.lineThrough : null),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (list.length > 3) Text('+ ещё ${list.length - 3}', style: gMicro()),
+                    ],
+                  ),
+                ),
+              ),
+            )
+          else
+            const Spacer(),
+          if (!other)
+            SizedBox(
+              height: 3,
+              child: hab.isEmpty
+                  ? CustomPaint(painter: _DashLine())
+                  : Row(
+                      children: [
+                        for (final (k, h) in hab.indexed) ...[
+                          if (k > 0) const SizedBox(width: 4),
+                          Expanded(
+                            child: h['done'] == true
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      color: SpColors.gold,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  )
+                                : Container(
+                                    decoration: BoxDecoration(
+                                      color: SpColors.lineSoft,
+                                      borderRadius: BorderRadius.circular(2),
+                                    ),
+                                  ),
+                          ),
+                        ],
+                      ],
+                    ),
+            ),
+        ],
+      ),
+    );
+    if (today) body = CustomPaint(painter: _TodayHatch(), child: body);
+    final full = body;
+    body = LayoutBuilder(
+      builder: (context, box) => box.maxHeight < 70 || box.maxWidth < 70
+          ? Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                border: today
+                    ? Border.all(color: SpColors.accent)
+                    : const Border(
+                        right: BorderSide(color: SpColors.lineSoft),
+                        bottom: BorderSide(color: SpColors.lineSoft),
+                      ),
+              ),
+              child: ClipRect(
+                child: Wrap(
+                  spacing: 4,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      p.day.toString().padLeft(2, '0'),
+                      style: gMono(10, c: today ? SpColors.accent : (other ? SpColors.dim : SpColors.ink)),
+                    ),
+                    if (list.isNotEmpty && !other) GDot(_colorOf(list.first)),
+                  ],
+                ),
+              ),
+            )
+          : full,
+    );
     return DragTarget<(String, Json)>(
       onAcceptWithDetails: (det) {
         final slot = s.layTask(det.data.$2['id'] as String)['slot'] as Json?;
@@ -532,54 +880,7 @@ class _CalendarPageState extends State<CalendarPage> {
       },
       builder: (context, cand, _) => InkWell(
         onTap: () => setState(() => sel = d),
-        child: Container(
-          margin: const EdgeInsets.all(1.5),
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: cand.isNotEmpty ? SpColors.accentWash : SpColors.node,
-            borderRadius: BorderRadius.circular(SpRadius.socket),
-            border: Border.all(color: sel == d ? SpColors.accentLine : SpColors.lineSoft),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${p.day}',
-                style: SpType.text(
-                  12.5,
-                  w: today ? FontWeight.w700 : FontWeight.w400,
-                  color: today ? SpColors.accent : (p.month == month ? SpColors.ink : SpColors.dim),
-                ),
-              ),
-              Expanded(
-                child: ClipRect(
-                  child: OverflowBox(
-                    alignment: Alignment.topLeft,
-                    maxHeight: double.infinity,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        for (final i in list.take(3)) _allDayRow(i),
-                        if (list.length > 3) Text('+ ещё ${list.length - 3}', style: SpType.label(9.5)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              if (hab.isNotEmpty)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: hd / hab.length,
-                    minHeight: 3,
-                    color: SpColors.gold,
-                    backgroundColor: SpColors.lineSoft,
-                  ),
-                ),
-            ],
-          ),
-        ),
+        child: Container(color: cand.isNotEmpty ? SpColors.accentWash : null, child: body),
       ),
     );
   }
@@ -588,102 +889,238 @@ class _CalendarPageState extends State<CalendarPage> {
 
   Widget _dayPanel(String d, List<Json> its) {
     final lab = cal.dayLabel(d);
+    final today = d == s.todayYmd;
     final timed = its.where((i) => i['kind'] != 'habit').toList()
-      ..sort((a, b) => ((a['s'] ?? -1) as num).compareTo((b['s'] ?? -1) as num));
+      ..sort((a, b) => ((a['s'] ?? 9999) as num).compareTo((b['s'] ?? 9999) as num));
     final habs = s.habits.where((h) => cal.habitDay(h, s.habitLog, d, s.todayYmd)['sched'] == true).toList();
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(0, 0, 20, 12),
-      child: Node(
-        title: '${lab['weekday']}, ${lab['title']}',
-        head: d == s.todayYmd ? SpColors.headMain : SpColors.headGrey,
-        child: Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(10),
-            children: [
-              if (timed.isEmpty && habs.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Text('Свободный день', style: SpType.text(13, color: SpColors.muted)),
-                ),
-              for (final i in timed)
-                InkWell(
-                  onTap: i['kind'] == 'task'
-                      ? () => openTask(context, s, i['listId'] as String, i['task'] as Json)
-                      : null,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6),
-                    child: Row(
+    final hdone = habs.where((h) => hb.isDone(s.habitLog, h['id'], d)).length;
+    final now = DateTime.now().hour * 60 + DateTime.now().minute;
+    Json? cur;
+    if (today) {
+      for (final i in timed) {
+        if (i['kind'] == 'task' &&
+            i['done'] != true &&
+            i['s'] != null &&
+            (i['e'] ?? (i['s'] as num) + 60) as num > now) {
+          cur = i;
+          break;
+        }
+      }
+    }
+    final dd = cal.parseYmd(d);
+    return GNode(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SockRow(
+            left: const Sock('cal:day', SpColors.accent),
+            child: GHead(
+              name:
+                  '${(lab['short'] as String).toUpperCase()} ${dd.day.toString().padLeft(2, '0')} · ${today ? 'сегодня' : lab['title']}',
+              kind: '${timed.length} дел',
+              color: today ? SpColors.accent : SpColors.grey,
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(12),
+              children: [
+                if (timed.isEmpty && habs.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Column(
                       children: [
-                        SizedBox(
-                          width: 46,
-                          child: Text(
-                            i['s'] == null ? 'день' : cal.fromMin((i['s'] as num).toInt()),
-                            style: SpType.label(10.5),
-                          ),
-                        ),
-                        if (i['kind'] == 'task')
-                          Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: Check(
-                              done: i['done'] == true,
-                              onTap: () => s.toggleDone(i['listId'] as String, i['task'] as Json),
-                            ),
-                          )
-                        else
-                          Container(
-                            width: 8,
-                            height: 8,
-                            margin: const EdgeInsets.only(right: 10),
-                            decoration: BoxDecoration(color: _colorOf(i), shape: BoxShape.circle),
-                          ),
-                        Expanded(
-                          child: Text(
-                            i['title'] as String,
-                            style: SpType.text(13, color: i['done'] == true ? SpColors.dim : SpColors.ink),
-                          ),
-                        ),
+                        const GCoon('sleep', size: 56),
+                        const SizedBox(height: 8),
+                        Text('СВОБОДНЫЙ ДЕНЬ', style: gMicro()),
                       ],
                     ),
                   ),
-                ),
-              if (habs.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('ПРИВЫЧКИ', style: SpType.label(10)),
-                for (final h in habs)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      children: [
-                        if (d == s.todayYmd)
-                          Check(done: hb.isDone(s.habitLog, h['id'], d), onTap: () => s.toggleHabit(h))
-                        else
-                          Icon(
-                            hb.isDone(s.habitLog, h['id'], d) ? Icons.check_circle : Icons.radio_button_unchecked,
-                            size: 16,
-                            color: SpColors.gold,
-                          ),
-                        const SizedBox(width: 8),
-                        Expanded(child: Text(h['name'] as String, style: SpType.text(13))),
-                        Text('${hb.stats(h, s.habitLog)['streak']}', style: SpType.label(11, color: SpColors.gold)),
-                      ],
+                for (final i in timed) _panelRow(i, i == cur),
+                if (habs.isNotEmpty) ...[
+                  Container(
+                    margin: const EdgeInsets.only(top: 10),
+                    padding: const EdgeInsets.only(top: 10, bottom: 4),
+                    decoration: const BoxDecoration(
+                      border: Border(top: BorderSide(color: Color(0xFF8A7424))),
                     ),
+                    child: Text('ПРИВЫЧКИ · $hdone / ${habs.length}', style: gLbl(c: SpColors.gold, size: 10)),
+                  ),
+                  for (final h in habs)
+                    InkWell(
+                      onTap: today ? () => s.toggleHabit(h) : null,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 5),
+                        child: Row(
+                          children: [
+                            if (hb.isDone(s.habitLog, h['id'], d))
+                              const Padding(
+                                padding: EdgeInsets.only(right: 4),
+                                child: Icon(Icons.check, size: 14, color: SpColors.ink),
+                              ),
+                            Expanded(child: Text(h['name'] as String, style: SpType.text(13))),
+                            Text(
+                              '${hb.stats(h, s.habitLog)['streak']} ДН',
+                              style: gMono(10.5, c: hb.isDone(s.habitLog, h['id'], d) ? SpColors.gold : SpColors.muted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+                const SizedBox(height: 12),
+                InkWell(
+                  onTap: () => openCreate(context, s, day: d),
+                  child: Dashed(
+                    child: Container(
+                      height: 32,
+                      alignment: Alignment.center,
+                      child: Text('+ Добавить на этот день', style: SpType.text(13, w: FontWeight.w500)),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (_free(timed) case final (int, int) w)
+                  CoonTip(
+                    pose: 'think',
+                    color: SpColors.accentLine,
+                    text: 'Свободно ${cal.fromMin(w.$1)}–${cal.fromMin(w.$2)}.',
+                    action: 'Добавить туда',
+                    onAction: () => openCreate(context, s, day: d, time: cal.fromMin(w.$1)),
                   ),
               ],
-              const SizedBox(height: 10),
-              AddLine(
-                hint: '＋ Добавить на этот день',
-                onSubmit: (v) {
-                  final r = s.addLine(v);
-                  if (r == null) return;
-                  final t = s.tasks[r.listId]!.first;
-                  if (dueToYmd(t['due'] as String?) != d) s.setDue(r.listId, t, d);
-                  s.say('Добавлено в «${s.listName(r.listId)}»');
-                },
-              ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
+
+  /// Самое длинное окно 09–21 без дел (с текущего часа для сегодня), час и больше.
+  (int, int)? _free(List<Json> timed) {
+    final busy = [
+      for (final i in timed)
+        if (i['s'] != null) ((i['s'] as num).toInt(), ((i['e'] ?? (i['s'] as num) + 60) as num).toInt()),
+    ]..sort((a, b) => a.$1.compareTo(b.$1));
+    var from = 9 * 60;
+    if (sel == s.todayYmd) {
+      final n = DateTime.now();
+      from = ((n.hour + 1) * 60).clamp(9 * 60, 21 * 60);
+    }
+    (int, int)? best;
+    var at = from;
+    for (final (a, b) in [...busy, (21 * 60, 21 * 60)]) {
+      if (a > at && (best == null || a - at > best.$2 - best.$1)) best = (at, a.clamp(at, 21 * 60));
+      if (b > at) at = b;
+    }
+    return best != null && best.$2 - best.$1 >= 60 ? best : null;
+  }
+
+  Widget _panelRow(Json i, bool cur) {
+    final task = i['kind'] == 'task';
+    final done = i['done'] == true;
+    final row = Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: cur
+          ? BoxDecoration(
+              color: SpColors.accentWash,
+              borderRadius: BorderRadius.circular(6),
+              border: Border.all(color: SpColors.accent),
+            )
+          : const BoxDecoration(
+              border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
+            ),
+      child: Row(
+        children: [
+          if (task)
+            GCheck(
+              done: done,
+              color: SpColors.muted,
+              onTap: () => s.toggleDone(i['listId'] as String, i['task'] as Json),
+            )
+          else
+            const SizedBox(width: 14),
+          const SizedBox(width: 10),
+          SizedBox(
+            width: 42,
+            child: Text(
+              i['s'] == null ? 'ДЕНЬ' : cal.fromMin((i['s'] as num).toInt()),
+              style: gMono(11.5, c: cur ? SpColors.accentInk : (done ? SpColors.dim : SpColors.muted)),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${i['kind'] == 'birthday' ? '★ ' : ''}${i['title']}',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: SpType.text(
+                13,
+                color: done ? SpColors.dim : SpColors.ink,
+              ).copyWith(decoration: done ? TextDecoration.lineThrough : null, decorationColor: SpColors.dim),
+            ),
+          ),
+          GDot(_colorOf(i)),
+        ],
+      ),
+    );
+    if (!task) return Tooltip(message: _evTip(i['event'] as Json? ?? {}), child: row);
+    return InkWell(onTap: () => openTask(context, s, i['listId'] as String, i['task'] as Json), child: row);
+  }
+}
+
+/// С какого вида открывается календарь (для снимков и проверок).
+String calStartMode = 'week';
+
+class _DashLine extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = SpColors.line
+      ..strokeWidth = 1;
+    for (var x = 0.0; x < size.width; x += 5) {
+      canvas.drawLine(Offset(x, size.height / 2), Offset(x + 2, size.height / 2), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
+}
+
+class _TodayHatch extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = SpColors.accent.withValues(alpha: .07)
+      ..strokeWidth = 1;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    for (var x = -size.height; x < size.width; x += 7) {
+      canvas.drawLine(Offset(x, size.height), Offset(x + size.height, 0), p);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
+}
+
+class _BandHatch extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawRect(Offset.zero & size, Paint()..color = const Color(0xFF222327));
+    final p = Paint()
+      ..color = const Color(0xFF2E2F35)
+      ..strokeWidth = 1;
+    canvas.save();
+    canvas.clipRect(Offset.zero & size);
+    for (var x = 0.0; x < size.width; x += 6) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+    }
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

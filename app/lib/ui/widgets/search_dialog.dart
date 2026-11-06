@@ -7,6 +7,8 @@ import '../../core/search.dart' as srch;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import 'task_dialog.dart';
+import '../g/kit.dart';
+import '../today/today_page.dart' show listHue;
 
 /// onGo(tab, listId) — перейти в раздел или к списку на доске.
 Future<void> openSearch(BuildContext context, AppState s, void Function(int tab, String? listId) onGo) =>
@@ -62,32 +64,128 @@ class _SearchState extends State<_Search> {
     final text = q.text.trim();
     final pl = text.isEmpty ? <Json>[] : srch.findPlaces(text, places).take(5).toList();
     final ts = text.isEmpty ? const [] : srch.findTasks(text, s.boardLists, s.tasks, 20);
-    final rows = <(String, String, VoidCallback)>[
-      for (final p in pl)
-        (
-          '→ ${p['name']}',
-          p['list'] != null ? 'список' : 'раздел',
-          () {
-            Navigator.pop(context);
-            widget.onGo(p['tab'] as int, p['list'] as String?);
-          },
-        ),
+    // (группа, название, справа, список, задача, действие)
+    final rows = <(String, String, String, String?, Json?, VoidCallback)>[
       for (final r in ts)
         (
+          'Задачи',
           (r.task['title'] ?? '') as String,
-          '${r.list['title']}${r.parent != null ? ' · в «${r.parent!['title']}»' : ''}${r.task['status'] == 'completed' ? ' · сделано' : ''}',
+          '${r.parent != null ? 'в «${r.parent!['title']}» · ' : ''}${r.task['status'] == 'completed' ? 'сделано' : ''}',
+          r.list['id'] as String,
+          r.task,
           () {
             Navigator.pop(context);
             openTask(context, s, r.list['id'] as String, r.parent ?? r.task);
           },
         ),
+      for (final p in pl)
+        (
+          'Разделы и списки',
+          p['list'] != null ? 'Доска · ${p['name']}' : p['name'] as String,
+          '',
+          p['list'] as String?,
+          null,
+          () {
+            Navigator.pop(context);
+            widget.onGo(p['tab'] as int, p['list'] as String?);
+          },
+        ),
     ];
     if (sel >= rows.length) sel = rows.isEmpty ? 0 : rows.length - 1;
+    final groups = <String, int>{};
+    for (final r in rows) {
+      groups[r.$1] = (groups[r.$1] ?? 0) + 1;
+    }
+    Widget hl(String t) {
+      final i = text.isEmpty
+          ? -1
+          : t.toLowerCase().replaceAll('ё', 'е').indexOf(text.toLowerCase().replaceAll('ё', 'е'));
+      final st = SpType.text(13.5);
+      if (i < 0) return Text(t, style: st, maxLines: 1, overflow: TextOverflow.ellipsis);
+      return Text.rich(
+        TextSpan(
+          style: st,
+          children: [
+            TextSpan(text: t.substring(0, i)),
+            TextSpan(
+              text: t.substring(i, i + text.length),
+              style: st.copyWith(backgroundColor: SpColors.accent.withValues(alpha: .3)),
+            ),
+            TextSpan(text: t.substring(i + text.length)),
+          ],
+        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      );
+    }
+
+    Widget key(String k) => Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: SpColors.line),
+      ),
+      child: Text(k, style: gMicro()),
+    );
+    final list = <Widget>[];
+    String? last;
+    for (final (i, r) in rows.indexed) {
+      if (r.$1 != last) {
+        last = r.$1;
+        list.add(
+          Padding(
+            padding: const EdgeInsets.fromLTRB(18, 12, 18, 6),
+            child: Text('${r.$1} · ${groups[r.$1]}', style: SpType.text(12, color: SpColors.muted)),
+          ),
+        );
+      }
+      final t = r.$5;
+      list.add(
+        InkWell(
+          onTap: r.$6,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+            decoration: BoxDecoration(
+              color: i == sel ? SpColors.nodeHover : null,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                if (t != null) ...[
+                  GCheck(done: t['status'] == 'completed'),
+                  const SizedBox(width: 10),
+                ] else if (r.$4 != null) ...[
+                  GDot(listHue(s, r.$4!)),
+                  const SizedBox(width: 10),
+                ],
+                Expanded(child: hl(r.$2)),
+                if (t != null && r.$4 != null) ...[
+                  GDot(listHue(s, r.$4!)),
+                  const SizedBox(width: 6),
+                  Text(s.listName(r.$4!), style: SpType.text(12, color: SpColors.muted)),
+                  const SizedBox(width: 14),
+                  SizedBox(
+                    width: 70,
+                    child: Text(
+                      t['due'] == null ? r.$3 : humanDay((t['due'] as String).substring(0, 10)),
+                      textAlign: TextAlign.right,
+                      style: gMono(10.5, c: SpColors.ink2),
+                    ),
+                  ),
+                ],
+                if (t == null && i == sel) key('ENTER'),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
     return Dialog(
       alignment: const Alignment(0, -.6),
-      backgroundColor: SpColors.node,
+      backgroundColor: Colors.transparent,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 520),
+        constraints: const BoxConstraints(maxWidth: 720, maxHeight: 560),
         child: CallbackShortcuts(
           bindings: {
             const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
@@ -95,52 +193,77 @@ class _SearchState extends State<_Search> {
             const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
                 setState(() => sel = (sel - 1).clamp(0, rows.length - 1)),
           },
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: TextField(
-                  controller: q,
-                  autofocus: true,
-                  style: SpType.text(16),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Найти задачу, список или раздел',
-                    border: InputBorder.none,
-                  ),
-                  onChanged: (_) => setState(() => sel = 0),
-                  onSubmitted: (_) {
-                    if (rows.isNotEmpty) rows[sel].$3();
-                  },
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: rows.isEmpty
-                    ? Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Text(
-                          text.isEmpty ? 'Начни печатать' : 'Ничего не нашлось',
-                          style: SpType.text(13, color: SpColors.muted),
-                        ),
-                      )
-                    : ListView(
-                        shrinkWrap: true,
-                        children: [
-                          for (final (i, r) in rows.indexed)
-                            ListTile(
-                              dense: true,
-                              selected: i == sel,
-                              selectedTileColor: SpColors.nodeHover,
-                              title: Text(r.$1, style: SpType.text(14)),
-                              subtitle: Text(r.$2, style: SpType.label(10.5)),
-                              onTap: r.$3,
-                            ),
-                        ],
+          child: GNode(
+            hub: true,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                GHead(hub: true, name: 'Поиск · Ctrl K', kind: text.isEmpty ? null : '${rows.length} найдено'),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
+                  child: TextField(
+                    controller: q,
+                    autofocus: true,
+                    style: SpType.text(15),
+                    decoration: InputDecoration(
+                      prefixIcon: const Icon(Icons.search, size: 18, color: SpColors.muted),
+                      suffixIcon: Padding(padding: const EdgeInsets.all(12), child: key('ESC')),
+                      hintText: 'Найти задачу, список или раздел',
+                      hintStyle: SpType.text(15, color: SpColors.dim),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: SpColors.accent),
                       ),
-              ),
-            ],
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: SpColors.accent, width: 1.3),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() => sel = 0),
+                    onSubmitted: (_) {
+                      if (rows.isNotEmpty) rows[sel].$6();
+                    },
+                  ),
+                ),
+                Flexible(
+                  child: rows.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Text(
+                            text.isEmpty ? 'Начни печатать — найду задачи, списки и разделы.' : 'Ничего не нашлось',
+                            style: SpType.text(13, color: SpColors.muted),
+                          ),
+                        )
+                      : ListView(shrinkWrap: true, padding: const EdgeInsets.only(bottom: 10), children: list),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: const BoxDecoration(
+                    border: Border(top: BorderSide(color: SpColors.line)),
+                  ),
+                  child: Row(
+                    children: [
+                      key('↑ ↓'),
+                      const SizedBox(width: 6),
+                      Text('выбрать', style: SpType.text(12, color: SpColors.muted)),
+                      const SizedBox(width: 16),
+                      key('ENTER'),
+                      const SizedBox(width: 6),
+                      Text('открыть', style: SpType.text(12, color: SpColors.muted)),
+                      const Spacer(),
+                      Flexible(
+                        child: Text(
+                          'Ищу в названиях и заметках, ё = е',
+                          style: SpType.text(12, color: SpColors.muted),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

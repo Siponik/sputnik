@@ -51,7 +51,7 @@ abstract final class SpColors {
 
 abstract final class SpType {
   static const sans = 'Onest';
-  static const sansFallback = ['Segoe UI', 'Roboto', 'sans-serif'];
+  static const sansFallback = ['JetBrains Mono', 'Segoe UI', 'Segoe UI Symbol', 'Roboto', 'sans-serif'];
   static const mono = 'JetBrains Mono';
   static const monoFallback = ['Cascadia Mono', 'Consolas', 'monospace'];
 

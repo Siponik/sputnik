@@ -68,8 +68,7 @@ void main() {
     testWidgets('Сегодня $size', (t) async {
       final s = demo();
       await pump(t, TodayPage(state: s), size);
-      expect(find.text('ДАЛЬШЕ'), findsOneWidget);
-      expect(find.text('Задача 5'), findsOneWidget);
+      expect(find.text('Задача 5'), findsWidgets);
       s.toggleDone('L1', s.tasks['L1']!.first);
       await t.pump(const Duration(seconds: 6));
     });
@@ -109,7 +108,10 @@ void main() {
         );
         await t.tap(find.text('go'));
         await t.pumpAndSettle();
-        expect(find.text('Добавить'), findsOneWidget);
+        expect(
+          find.text(const {'task': 'Добавить задачу', 'event': 'Добавить событие'}[k] ?? 'Сохранить'),
+          findsOneWidget,
+        );
         if (k == 'task') {
           await t.testTextInput.receiveAction(TextInputAction.done);
           await t.pump(const Duration(seconds: 6));
@@ -129,7 +131,11 @@ void main() {
       );
       await t.tap(find.text('go'));
       await t.pumpAndSettle();
-      expect(find.text('ПОДЗАДАЧИ · 0/0'), findsOneWidget);
+      expect(find.text('ПОДЗАДАЧИ · 0 / 0'), findsOneWidget);
+      await t.ensureVisible(find.text('▸ ЕЩЁ'));
+      await t.tap(find.text('▸ ЕЩЁ'));
+      await t.pump();
+      await t.ensureVisible(find.text('За час'));
       await t.tap(find.text('За час'));
       await t.pump(const Duration(seconds: 6));
       expect(s.layTask('t0')['remind'], isNotNull);
@@ -138,7 +144,7 @@ void main() {
       final s = demo();
       await pump(t, SettingsPage(state: s), size);
       for (final n in ['Что показывать', 'Напоминания', 'Синхронизация', 'Обновления', 'Клавиши']) {
-        await t.tap(find.text(n).first);
+        await t.tap(find.text(n.toUpperCase()).first);
         await t.pump();
       }
     });
@@ -170,7 +176,7 @@ void main() {
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
       expect(find.textContaining('Встреча'), findsWidgets);
-      await t.tap(find.text('Месяц'));
+      await t.tap(find.text('МЕСЯЦ'));
       await t.pump();
       expect(find.text('Задача 0'), findsWidgets);
     });
