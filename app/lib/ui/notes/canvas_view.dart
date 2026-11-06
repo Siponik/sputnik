@@ -3,6 +3,8 @@
 // Перетащи заметку из списка слева — появится нода. Колёсико — масштаб, тянуть фон — двигать, двойной клик
 // по фону — текст, по заметке — открыть, по тексту — править. Delete — убрать выбранное.
 import 'dart:math' as math;
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/gestures.dart';
@@ -10,12 +12,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/notes/canvas.dart';
-import '../../core/notes/graph.dart' show GraphCamera, previewLines;
+import '../../core/notes/graph.dart' show GraphCamera;
 import '../../core/notes/parse.dart';
 import '../../core/notes/view.dart' show shownName;
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
 import 'hue.dart';
+import 'md_view.dart';
 import 'notes_search.dart';
 
 /// Цвета холста JSON Canvas: «1»…«6» — красный, оранжевый, жёлтый, зелёный, голубой, фиолетовый.
@@ -60,6 +63,12 @@ class _CanvasViewState extends State<CanvasView> {
   final _stackKey = GlobalKey();
   final _focus = FocusNode();
 
+  // Содержимое нод не зависит от камеры: строим один раз и переиспользуем, пока нода не изменилась.
+  // Иначе каждый кадр перетаскивания заново раскладывал текст всех нод — холст «лагал».
+  final _cache = <String, (String, Widget)>{};
+  int _ver = -1;
+  List<String>? _all;
+
   // Провод, который тянут из сокета.
   CanvasSide? _wireSide;
   String? _wireFrom;
@@ -89,6 +98,7 @@ class _CanvasViewState extends State<CanvasView> {
     final d = await st.canvas(widget.path);
     if (!mounted) return;
     setState(() {
+      _cache.clear();
       _doc = d;
       _loading = false;
       _fitted = false;
@@ -96,6 +106,7 @@ class _CanvasViewState extends State<CanvasView> {
   }
 
   void _changed() {
+    _cache.clear();
     st.canvasChanged(widget.path);
     setState(() {});
   }
@@ -271,7 +282,11 @@ class _CanvasViewState extends State<CanvasView> {
                 child: Listener(
                   onPointerSignal: (e) {
                     if (e is PointerScrollEvent) {
-                      setState(() => _cam.zoomAt(math.exp(-e.scrollDelta.dy / 400), e.localPosition.dx, e.localPosition.dy));
+                      // Колёсико над выбранной нодой прокручивает её содержимое (его ловит прокрутка внутри ноды), иначе — масштаб.
+                      GestureBinding.instance.pointerSignalResolver.register(e, (ev) {
+                        final se = ev as PointerScrollEvent;
+                        setState(() => _cam.zoomAt(math.exp(-se.scrollDelta.dy / 400), se.localPosition.dx, se.localPosition.dy));
+                      });
                     }
                   },
                   child: Stack(key: _stackKey, clipBehavior: Clip.hardEdge, children: [
@@ -291,9 +306,9 @@ class _CanvasViewState extends State<CanvasView> {
                         child: CustomPaint(painter: _Ground(_cam, cand.isNotEmpty)),
                       ),
                     ),
-                    for (final n in d.nodes.where((n) => n.isGroup)) _nodeBox(n),
+                    for (final n in d.nodes.where((n) => n.isGroup && _onScreen(n))) _nodeBox(n),
                     Positioned.fill(child: IgnorePointer(child: CustomPaint(painter: _Wires(d, _cam, _selEdge, _sel, _wireFrom, _wireSide, _wireTo)))),
-                    for (final n in d.nodes.where((n) => !n.isGroup)) _nodeBox(n),
+                    for (final n in d.nodes.where((n) => !n.isGroup && _onScreen(n))) _nodeBox(n),
                     for (final e in d.edges)
                       if (e.label.isNotEmpty) _edgeLabel(d, e),
                     if (_sel != null && d.node(_sel!) != null) ..._handles(d.node(_sel!)!),
@@ -362,6 +377,14 @@ class _CanvasViewState extends State<CanvasView> {
               textAlign: TextAlign.right, maxLines: 1, overflow: TextOverflow.ellipsis, style: SpType.label(9, color: SpColors.dim)),
         ),
         const SizedBox(width: 10),
+        IconButton(
+          tooltip: st.wide ? 'Обычный вид' : 'Во весь экран',
+          visualDensity: VisualDensity.compact,
+          iconSize: 18,
+          color: SpColors.muted,
+          onPressed: () => st.setWide(!st.wide),
+          icon: Icon(st.wide ? Icons.fullscreen_exit : Icons.fullscreen),
+        ),
         btn('Авто-раскладка', () {
           _doc!.autoLayout();
           _changed();
@@ -370,6 +393,9 @@ class _CanvasViewState extends State<CanvasView> {
       ]),
     );
   }
+
+  /// Ноду за краем экрана не строим (выбранную — всегда: её тянут).
+  bool _onScreen(CanvasNode n) => n.id == _sel || _size.isEmpty || _rectOf(n).overlaps(Offset.zero & _size);
 
   Rect _rectOf(CanvasNode n) {
     final (x, y) = _cam.toScreen(n.x, n.y);
@@ -414,95 +440,102 @@ class _CanvasViewState extends State<CanvasView> {
         child: FittedBox(
           fit: BoxFit.fill,
           alignment: Alignment.topLeft,
-          child: SizedBox(width: n.width, height: n.height, child: _content(n, sel)),
+          child: _cached(n, sel),
         ),
       ),
     );
   }
 
+  Widget _cached(CanvasNode n, bool sel) {
+    if (st.index.version != _ver) {
+      _ver = st.index.version;
+      _cache.clear();
+      _all = null;
+    }
+    final key = '${n.width}x${n.height}|$sel|${n.color}';
+    final hit = _cache[n.id];
+    if (hit != null && hit.$1 == key) return hit.$2;
+    final w = RepaintBoundary(child: SizedBox(width: n.width, height: n.height, child: _content(n, sel)));
+    _cache[n.id] = (key, w);
+    return w;
+  }
+
+  String? _resolve(String target) {
+    final all = _all ??= [...st.index.paths, ...st.index.files];
+    return resolveLink(target, widget.path, all);
+  }
+
+  /// Содержимое ноды целиком, как в Obsidian: длинное прокручивается колёсиком, когда нода выбрана.
+  Widget _scroll(bool sel, Widget child) => ScrollConfiguration(
+        behavior: const ScrollBehavior().copyWith(scrollbars: sel),
+        child: SingleChildScrollView(
+          physics: sel ? const ClampingScrollPhysics() : const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          child: child,
+        ),
+      );
+
   Widget _content(CanvasNode n, bool sel) {
     final tint = canvasColor(n.color);
-    final all = st.index.paths.toList();
-    final border = Border.all(color: sel ? SpColors.accent : (tint ?? SpColors.line), width: sel ? 1.5 : 1);
+    final border = Border.all(color: sel ? SpColors.accent : (tint ?? SpColors.line), width: sel ? 2 : 1);
+    final fileOf = st.vault?.file;
     if (n.isGroup) {
       final c = tint ?? SpColors.grey;
       return Container(
         decoration: BoxDecoration(color: c.withValues(alpha: .06), borderRadius: BorderRadius.circular(SpRadius.hub), border: Border.all(color: sel ? SpColors.accent : c.withValues(alpha: .5))),
         alignment: Alignment.topLeft,
         padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-        child: Text(n.label.isEmpty ? 'ГРУППА' : n.label.toUpperCase(), style: SpType.label(11, w: FontWeight.w500, color: c)),
+        child: Text(n.label.isEmpty ? 'ГРУППА' : n.label, style: SpType.text(15, w: FontWeight.w600, color: c)),
       );
     }
     if (n.type == 'text' || n.type == 'link') {
       return Container(
-        decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.circular(SpRadius.node), border: border),
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(n.type == 'link' ? 'ССЫЛКА' : 'ТЕКСТ НА ХОЛСТЕ', style: SpType.label(9, color: tint ?? SpColors.dim)),
-          const SizedBox(height: 4),
-          Expanded(
-            child: Text(n.type == 'link' ? n.url : n.text, overflow: TextOverflow.fade, style: SpType.text(13, color: SpColors.body, height: 19)),
-          ),
-        ]),
+        decoration: BoxDecoration(color: tint == null ? SpColors.node : Color.alphaBlend(tint.withValues(alpha: .08), SpColors.node), borderRadius: BorderRadius.circular(SpRadius.node), border: border),
+        clipBehavior: Clip.antiAlias,
+        child: _scroll(
+          sel,
+          n.type == 'link'
+              ? Text(n.url, style: SpType.text(13, color: SpColors.blue))
+              : MdView(text: n.text, resolve: _resolve, fileOf: fileOf),
+        ),
       );
     }
-    // Файл: картинка или заметка.
+    // Файл: картинка — целиком, без обрезки; заметка — полностью, с разметкой.
     final f = n.file;
     if (_isImage(f)) {
       return Container(
-        decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.circular(SpRadius.node), border: border),
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(SpRadius.node), border: sel ? border : null),
         clipBehavior: Clip.antiAlias,
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Container(
-            height: 26,
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            color: SpColors.headGrey,
-            child: Row(children: [
-              Expanded(child: Text(baseName(f).toUpperCase(), overflow: TextOverflow.ellipsis, style: SpType.label(9, w: FontWeight.w500, color: Colors.white))),
-              Text('КАРТИНКА', style: SpType.label(8.5, color: const Color(0xB3FFFFFF))),
-            ]),
-          ),
-          Expanded(
-            child: st.vault == null
-                ? const SizedBox()
-                : Image.file(st.vault!.file(f), fit: BoxFit.cover, errorBuilder: (_, _, _) => Center(child: Text(f, style: SpType.label(9, color: SpColors.dim)))),
-          ),
-        ]),
+        child: st.vault == null
+            ? const SizedBox()
+            : Image(
+                // Картинку читаем не больше, чем нужно ноде (с запасом на приближение), а не в полный размер файла.
+                image: ResizeImage(FileImage(st.vault!.file(f)), width: ((n.width * 2 / 256).ceil() * 256).clamp(256, 2048), policy: ResizeImagePolicy.fit),
+                fit: BoxFit.contain,
+                errorBuilder: (_, _, _) => Center(child: Text(f, style: SpType.label(9, color: SpColors.dim))),
+              ),
       );
     }
     final doc = st.index.doc(f);
+    final all = _all ??= [...st.index.paths, ...st.index.files];
     final head = tint == null ? folderHead(f, all) : Color.lerp(tint, Colors.black, .45)!;
     return Container(
-      decoration: BoxDecoration(
-        color: SpColors.node,
-        borderRadius: BorderRadius.circular(SpRadius.node),
-        border: doc == null ? Border.all(color: SpColors.dim) : border,
-        boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 14, offset: Offset(0, 6))],
-      ),
+      decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.circular(SpRadius.node), border: doc == null ? Border.all(color: SpColors.dim) : border),
       clipBehavior: Clip.antiAlias,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          height: 28,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           color: doc == null ? SpColors.headGrey : head,
           child: Row(children: [
-            Expanded(child: Text(shownName(f).toUpperCase(), overflow: TextOverflow.ellipsis, style: SpType.label(9.5, w: FontWeight.w500, color: Colors.white))),
-            if (f.contains('/')) Text(f.substring(0, f.indexOf('/')).toUpperCase(), style: SpType.label(8.5, color: const Color(0xB3FFFFFF))),
+            Expanded(child: Text(shownName(f), overflow: TextOverflow.ellipsis, style: SpType.text(12.5, w: FontWeight.w600, color: Colors.white))),
+            if (f.contains('/')) Text(f.substring(0, f.lastIndexOf('/')).replaceAll('/', ' › '), style: SpType.text(10.5, color: const Color(0xB3FFFFFF))),
           ]),
         ),
         Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-            child: doc == null
-                ? Text('Файла нет: $f', style: SpType.text(12, color: SpColors.muted))
-                : Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    for (final l in previewLines(st.index.text(f) ?? '', n: math.max(1, ((n.height - 60) / 17).floor()), width: 80))
-                      Text(l, maxLines: 1, overflow: TextOverflow.ellipsis, style: SpType.text(12, color: SpColors.body)),
-                    const Spacer(),
-                    if (doc.tags.isNotEmpty)
-                      Text(doc.tags.take(3).map((t) => '#$t').join('  '), maxLines: 1, overflow: TextOverflow.ellipsis, style: SpType.text(11.5, color: SpColors.blue)),
-                  ]),
-          ),
+          child: doc == null
+              ? Padding(padding: const EdgeInsets.all(12), child: Text('Файла нет: $f', style: SpType.text(12, color: SpColors.muted)))
+              : _scroll(sel, MdView(text: st.textOf(f), resolve: (t) => resolveLink(t, f, all), fileOf: fileOf)),
         ),
       ]),
     );
@@ -630,12 +663,18 @@ class _Ground extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     canvas.drawRect(Offset.zero & size, Paint()..color = drop ? const Color(0xFF1E1D1C) : SpColors.ground);
     final step = 24.0 * cam.k.clamp(.5, 2.0);
-    final p = Paint()..color = SpColors.dot;
+    final p = Paint()
+      ..color = SpColors.dot
+      ..strokeWidth = 1
+      ..strokeCap = StrokeCap.square;
+    // Все точки одним вызовом: по одной — тысячи вызовов на каждый кадр.
+    final pts = <double>[];
     for (var y = cam.dy % step; y < size.height; y += step) {
       for (var x = cam.dx % step; x < size.width; x += step) {
-        canvas.drawRect(Rect.fromLTWH(x, y, 1, 1), p);
+        pts..add(x + .5)..add(y + .5);
       }
     }
+    canvas.drawRawPoints(ui.PointMode.points, Float32List.fromList(pts), p);
   }
 
   @override

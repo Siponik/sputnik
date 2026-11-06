@@ -115,6 +115,13 @@ class NotesState extends ChangeNotifier {
   /// Следить за папкой (в тестах экрана выключено).
   bool watchFiles = true;
 
+  /// Холст во весь экран раздела (без левой колонки).
+  bool wide = false;
+  void setWide(bool v) {
+    wide = v;
+    notifyListeners();
+  }
+
   /// Задачи Спутника — задаёт оболочка приложения; нет — пункты чек-листа не отправить.
   TaskSink? tasks;
 

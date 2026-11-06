@@ -235,7 +235,7 @@ void main() {
         '"edges":[{"id":"e1","fromNode":"n1","toNode":"n2","label":"ведёт"}]}');
     await t.runAsync(() => st.open(vault.path, watch: false));
     await pump(t);
-    await t.tap(find.text('▸').first); // раскрыть «3D»
+    await t.tap(find.byIcon(Icons.keyboard_arrow_right).first); // раскрыть «3D»
     await t.pump();
     expect(find.text('Доска идей'), findsOneWidget);
     await t.runAsync(() => st.canvas('3D/Доска идей.canvas')); // чтение файла — вне поддельного времени
