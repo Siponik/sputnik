@@ -425,6 +425,14 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Ручной выбор списка учит угадывание (settings.route), как App.learnRoute.
+  void learnRoute(String title, String listId, [String? topic]) {
+    final st = Map<String, dynamic>.from(((layer['settings'] as Map?) ?? const {}));
+    final cur = st['route'] is Map ? st['route'] as Map : null;
+    final learned = route.learn(cur, title, listId, topic);
+    touch('settings', 'route', learned);
+  }
+
   void setTask(String id, Json patch) {
     touch('tasks', id, patch);
     notifyListeners();
@@ -483,6 +491,107 @@ class AppState extends ChangeNotifier {
       }),
     );
     notifyListeners();
+  }
+
+  // ---------- события и дни рождения (сразу в Google, без очереди: событие без связи создать нельзя) ----------
+
+  /// Календари, куда можно писать (без служебных).
+  List<Json> get writableCals => calendars
+      .where((c) => ['owner', 'writer'].contains(c['accessRole']) && calShown(c) || c['primary'] == true)
+      .toList();
+
+  static Map<String, dynamic> _remindProps(List<int> mins) =>
+      mins.isEmpty ? {} : {'sputnikR': '1', 'sputnikRemind': mins.toSet().join(',')};
+
+  Future<bool> createEvent({
+    required String title,
+    required String day,
+    Json? slot,
+    String notes = '',
+    List<int> remind = const [],
+    String calendarId = 'primary',
+    String location = '',
+    List<String>? recurrence,
+  }) async {
+    String local(String d, String hhmm) {
+      final p = d.split('-').map(int.parse).toList();
+      final t = hhmm.split(':').map(int.parse).toList();
+      return DateTime(p[0], p[1], p[2], t[0], t[1]).toUtc().toIso8601String();
+    }
+
+    String next(String d) {
+      final p = d.split('-').map(int.parse).toList();
+      return ymd(DateTime(p[0], p[1], p[2] + 1));
+    }
+
+    final body = <String, dynamic>{
+      'summary': title,
+      'start': slot != null ? {'dateTime': local(day, slot['s'] as String)} : {'date': day},
+      'end': slot != null ? {'dateTime': local(day, slot['e'] as String)} : {'date': next(day)},
+      if (notes.isNotEmpty) 'description': notes,
+      if (location.isNotEmpty) 'location': location,
+      if (remind.isNotEmpty) 'extendedProperties': {'private': _remindProps(remind)},
+    };
+    if (recurrence != null && recurrence.isNotEmpty) {
+      body['recurrence'] = recurrence;
+      if (slot != null) {
+        (body['start'] as Map)['timeZone'] = 'Europe/Moscow';
+        (body['end'] as Map)['timeZone'] = 'Europe/Moscow';
+      }
+    }
+    try {
+      final e = await api.createEvent(calendarId, body);
+      events = [
+        ...events,
+        {...e, 'calId': calendarId},
+      ];
+      notifyListeners();
+      return true;
+    } catch (e) {
+      say('Событие не создалось: $e');
+      return false;
+    }
+  }
+
+  Future<bool> createBirthday({
+    required String name,
+    required String day,
+    int? year,
+    List<int> remind = const [],
+    String calendarId = 'primary',
+    int giftDays = 0,
+    String? giftList,
+  }) async {
+    final p = day.split('-').map(int.parse).toList();
+    final body = {
+      'summary': '🎂 $name',
+      'start': {'date': day},
+      'end': {'date': ymd(DateTime(p[0], p[1], p[2] + 1))},
+      'recurrence': ['RRULE:FREQ=YEARLY'],
+      'transparency': 'transparent',
+      'extendedProperties': {
+        'private': {
+          'sputnik': 'birthday',
+          if (year != null) 'sputnikYear': '$year',
+          if (giftDays > 0) 'sputnikGift': '$giftDays',
+          if (giftDays > 0 && giftList != null) 'sputnikGiftList': giftList,
+          ..._remindProps(remind),
+        },
+      },
+      'reminders': {'useDefault': false},
+    };
+    try {
+      final e = await api.createEvent(calendarId, body);
+      events = [
+        ...events,
+        {...e, 'calId': calendarId},
+      ];
+      notifyListeners();
+      return true;
+    } catch (e) {
+      say('День рождения не сохранился: $e');
+      return false;
+    }
   }
 
   // ---------- действия ----------

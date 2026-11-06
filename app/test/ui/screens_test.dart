@@ -5,6 +5,7 @@ import 'package:sputnik_app/core/dates.dart';
 import 'package:sputnik_app/state/app_state.dart';
 import 'package:sputnik_app/ui/board/board_page.dart';
 import 'package:sputnik_app/ui/calendar/calendar_page.dart';
+import 'package:sputnik_app/ui/create/create_dialog.dart';
 import 'package:sputnik_app/ui/habits/habits_page.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
 import 'package:sputnik_app/ui/today/today_page.dart';
@@ -86,6 +87,29 @@ void main() {
         };
         await pump(t, BoardPage(state: s), size);
         expect(find.text('Задача 1'), findsWidgets);
+      });
+    }
+    for (final k in ['task', 'event', 'birthday']) {
+      testWidgets('Создать $k $size', (t) async {
+        final s = demo();
+        await pump(
+          t,
+          Builder(
+            builder: (c) => TextButton(
+              onPressed: () => openCreate(c, s, kind: k, text: 'встреча завтра 15:00'),
+              child: const Text('go'),
+            ),
+          ),
+          size,
+        );
+        await t.tap(find.text('go'));
+        await t.pumpAndSettle();
+        expect(find.text('Добавить'), findsOneWidget);
+        if (k == 'task') {
+          await t.testTextInput.receiveAction(TextInputAction.done);
+          await t.pump(const Duration(seconds: 6));
+          expect(s.tasks.values.expand((x) => x).map((x) => x['title']), contains('Встреча'));
+        }
       });
     }
     testWidgets('Календарь $size', (t) async {

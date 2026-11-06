@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../state/app_state.dart';
 import 'board/board_page.dart';
 import 'calendar/calendar_page.dart';
+import 'create/create_dialog.dart';
 import 'habits/habits_page.dart';
 import 'theme/tokens.dart';
 import 'today/today_page.dart';
@@ -31,6 +32,7 @@ class _AppShellState extends State<AppShell> {
         const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => setState(() => tab = 2),
         const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => tab = 3),
         const SingleActivator(LogicalKeyboardKey.f5): s.refresh,
+        const SingleActivator(LogicalKeyboardKey.keyN, control: true): _create,
       },
       child: Focus(
         autofocus: true,
@@ -59,6 +61,16 @@ class _AppShellState extends State<AppShell> {
         ),
       ),
     );
+  }
+
+  void _create() {
+    final s = widget.state;
+    if (s.needLogin) return;
+    if (tab == 3) {
+      editHabit(context, s, null);
+    } else {
+      openCreate(context, s);
+    }
   }
 
   Widget _bar(String text, Color c) => Container(
@@ -105,6 +117,12 @@ class _AppShellState extends State<AppShell> {
               'обновлено ${s.syncedAt!.hour.toString().padLeft(2, '0')}:${s.syncedAt!.minute.toString().padLeft(2, '0')}',
               style: SpType.label(11),
             ),
+          const SizedBox(width: 6),
+          FilledButton.icon(
+            onPressed: s.needLogin ? null : _create,
+            icon: const Icon(Icons.add, size: 16),
+            label: const Text('Создать'),
+          ),
           IconButton(
             tooltip: 'Обновить (F5)',
             onPressed: s.syncing ? null : s.refresh,
