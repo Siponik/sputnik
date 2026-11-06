@@ -24,7 +24,7 @@ def daypanel(y, h, title):
   <div style="margin: 0 12px; padding: 8px 0; border-top: 1px solid #8A7424">{lbl('ПРИВЫЧКИ · 1 / 3', GOLD)}{hab}</div>
   <div style="margin: 6px 12px 0">{btn('＋ Добавить на этот день', extra='; width: 100%; border-style: dashed')}</div>
   <div style="margin: 12px; padding: 10px; border-radius: 8px; border: 1px dashed #8A7424; display: flex; gap: 10px; align-items: center">{coon(44)}<span style="font-size: 12.5px; color: #C9CAD0">Свободно 17:00—19:00. Поставить туда «Рендер щита»? <a href="#">Поставить</a></span></div>'''
-    return node(924, y, 324, h, inner)
+    return node(924, y, 324, h, inner, extra=sock('l', 20, OR))
 
 # ---------- WEEK ----------
 days = ['ПН 02', 'ВТ 03', 'СР 04', 'ЧТ 05', 'ПТ 06', 'СБ 07', 'ВС 08']
@@ -88,7 +88,8 @@ g += f'<div style="position: absolute; left: {GX + 3 * CW}px; top: {ny}px; width
 g += f'<div style="position: absolute; left: {GX + 6 * CW + 34}px; top: {hy(13)}px; display: flex; flex-direction: column; align-items: center; gap: 6px">{coon(46, "СОН")}{micro("СВОБОДНЫЙ")}</div>'
 hubinner = nhead('', 'НЕДЕЛЯ · 02—08 НОЯБРЯ', 'ЗАНЯТО 31 Ч', OR, MUT, 34, OR, OR) + g
 st = toolbar('НЕДЕЛЯ')
-st += node(0, 64, 900, 556, hubinner, hub=True, style='; overflow: visible')
+st += svg(wire(900, 84 + 5, 924, 84 + 5, OR, 2, k=10) )
+st += node(0, 64, 900, 556, hubinner, hub=True, extra=sock('r', 20, OR), style='; overflow: visible')
 st += daypanel(64, 556, 'ЧТ 05 · СЕГОДНЯ')
 st += ab(0, 636, f'<span style="display: flex; align-items: center; gap: 14px">{lbl("ОБЗОР НЕДЕЛИ ▾", INK)}{micro("ЗАГРУЗКА 31 Ч", MUT)}{micro("СРОКИ 3", MUT)}{micro("СВОБОДНЕЕ ВСЕГО · ЧТ 17—19", GOLD)}</span>', w=900)
 st += dimline(0, 664, 900, 'ПН — ВС · 7 ДНЕЙ · ЧАСЫ 09—21 КРУПНО, ОСТАЛЬНОЕ СЖАТО')
@@ -126,7 +127,8 @@ for k in range(42):
     m += f'<div style="position: absolute; left: {x}px; top: {y}px; width: {CWm}px; height: {RH}px; box-sizing: border-box; padding: 6px 8px; {brd} {bgc} overflow: hidden">{cell}</div>'
 hub = nhead('', 'НОЯБРЬ 2026', '30 ДНЕЙ · 18 ДЕЛ', OR, MUT, 34, OR, OR) + m
 st = toolbar('МЕСЯЦ')
-st += node(0, 64, 900, 556, hub, hub=True)
+st += svg(wire(900, 89, 924, 89, OR, 2, k=10))
+st += node(0, 64, 900, 556, hub, hub=True, extra=sock('r', 20, OR))
 st += daypanel(64, 556, 'ЧТ 05 · СЕГОДНЯ')
 st += ab(0, 636, f'<span style="display: flex; align-items: center; gap: 14px">{lbl("ПОЛОСКА ВНИЗУ КЛЕТКИ", DIM)}{micro("ЗОЛОТО — ПРИВЫЧКИ СДЕЛАНЫ", GOLD)}{micro("ПУНКТИР — ЕЩЁ ВПЕРЕДИ", MUT)}</span>', w=900)
 st += dimline(0, 664, 900, '26.10 — 06.12 · 6 НЕДЕЛЬ')
