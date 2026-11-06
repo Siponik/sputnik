@@ -5,6 +5,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../keys.dart';
+
 import '../../core/calendar.dart' as cal;
 import '../../core/dates.dart';
 import '../../core/habits.dart' as hb;
@@ -33,6 +35,7 @@ class _CalendarPageState extends State<CalendarPage> {
 
   @override
   void dispose() {
+    PageKeys.clear(this);
     _focus.dispose();
     super.dispose();
   }
@@ -73,14 +76,15 @@ class _CalendarPageState extends State<CalendarPage> {
   Widget build(BuildContext context) {
     final days = cal.periodDays(sel, mode);
     final items = _items(days);
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.arrowLeft): () => _shift(-1),
-        const SingleActivator(LogicalKeyboardKey.arrowRight): () => _shift(1),
-        const SingleActivator(LogicalKeyboardKey.keyT): () => setState(() => sel = s.todayYmd),
-        const SingleActivator(LogicalKeyboardKey.keyW): () => setState(() => mode = 'week'),
-        const SingleActivator(LogicalKeyboardKey.keyM): () => setState(() => mode = 'month'),
-      },
+    PageKeys.set(this, {
+      const PKey(PhysicalKeyboardKey.arrowLeft): () => _shift(-1),
+      const PKey(PhysicalKeyboardKey.arrowRight): () => _shift(1),
+      const PKey(PhysicalKeyboardKey.keyT): () => setState(() => sel = s.todayYmd),
+      const PKey(PhysicalKeyboardKey.keyW): () => setState(() => mode = 'week'),
+      const PKey(PhysicalKeyboardKey.keyM): () => setState(() => mode = 'month'),
+      const PKey(PhysicalKeyboardKey.keyA): () => openCreate(context, s, day: sel),
+    });
+    return KeyedSubtree(
       child: Focus(
         focusNode: _focus,
         autofocus: true,

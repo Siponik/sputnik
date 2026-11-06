@@ -6,6 +6,7 @@ import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../g/kit.dart';
+import '../keys.dart';
 
 const habitIcons = <String, IconData>{
   'cup': Icons.local_cafe_outlined,
@@ -69,9 +70,19 @@ class _HabitsPageState extends State<HabitsPage> {
   String? open;
 
   @override
+  void dispose() {
+    PageKeys.clear(this);
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final s = widget.state;
     final all = s.habits;
+    // Shift+1…9 — отметить привычку по порядку.
+    PageKeys.set(this, {
+      for (final (i, h) in all.take(9).indexed) PKey(digits[i], shift: true): () => s.toggleHabit(h),
+    });
     final list = part == 'all' ? all : all.where((h) => hb.partOf(h) == part).toList();
     final log = s.habitLog;
     final todays = all.where((h) => hb.scheduledOn(h, log, s.todayYmd)).toList();
@@ -380,7 +391,7 @@ class _HabitsPageState extends State<HabitsPage> {
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Row(
                 children: [
-                  for (final (k, d) in hb.last7(h, log).indexed) ...[
+                  for (final (k, d) in hb.weekRow(h, log).indexed) ...[
                     if (k > 0) const SizedBox(width: 10),
                     Expanded(child: _sq(d['st'] as String, d['today'] == true, d['wd'] as String, c)),
                   ],
@@ -414,30 +425,38 @@ class _HabitsPageState extends State<HabitsPage> {
     children: [
       AspectRatio(
         aspectRatio: 1,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-          decoration: BoxDecoration(
-            color: switch (st) {
-              'd' => c,
-              'p' => c.withValues(alpha: .35),
-              'm' => null,
-              _ => null,
-            },
-            borderRadius: BorderRadius.circular(4),
-            border: st == 'd'
-                ? null
-                : Border.all(
-                    color: today
-                        ? c
-                        : st == 'm'
-                        ? SpColors.red.withValues(alpha: .7)
-                        : (st == 'k' ? const Color(0xFF6FB6CF) : SpColors.line),
-                  ),
-          ),
-        ),
+        child: st == 'f'
+            ? Opacity(
+                opacity: .45,
+                child: Dashed(r: 4, color: SpColors.dim, child: const SizedBox.expand()),
+              )
+            : Container(
+                constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
+                decoration: BoxDecoration(
+                  color: switch (st) {
+                    'd' => c,
+                    'p' => c.withValues(alpha: .35),
+                    'm' => null,
+                    _ => null,
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  border: st == 'd'
+                      ? null
+                      : Border.all(
+                          color: today
+                              ? c
+                              : st == 'm'
+                              ? SpColors.red.withValues(alpha: .7)
+                              : (st == 'k' ? const Color(0xFF6FB6CF) : SpColors.line),
+                        ),
+                ),
+              ),
       ),
       const SizedBox(height: 4),
-      Text(wd.toUpperCase(), style: SpType.label(9, color: today ? SpColors.accent : SpColors.dim)),
+      Text(
+        wd.toUpperCase(),
+        style: SpType.label(9, color: today ? SpColors.accent : (st == 'f' ? SpColors.line : SpColors.dim)),
+      ),
     ],
   );
 

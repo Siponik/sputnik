@@ -848,3 +848,39 @@ Color hueOf(String? cssOrId) {
       return SpColors.accent;
   }
 }
+
+/// Рамка-скобки: уголки по четырём углам (выбранная сфера, G_Spheres).
+class Brackets extends StatelessWidget {
+  const Brackets({super.key, required this.child, this.on = true, this.color = SpColors.accent});
+  final Widget child;
+  final bool on;
+  final Color color;
+  @override
+  Widget build(BuildContext context) => on ? CustomPaint(foregroundPainter: _Brackets(color), child: child) : child;
+}
+
+class _Brackets extends CustomPainter {
+  _Brackets(this.c);
+  final Color c;
+  @override
+  void paint(Canvas canvas, Size s) {
+    const l = 8.0;
+    final p = Paint()
+      ..color = c
+      ..strokeWidth = 1.4
+      ..style = PaintingStyle.stroke;
+    final w = s.width, h = s.height;
+    for (final (x, y, dx, dy) in [(0.0, 0.0, 1, 1), (w, 0.0, -1, 1), (0.0, h, 1, -1), (w, h, -1, -1)]) {
+      canvas.drawPath(
+        Path()
+          ..moveTo(x + dx * l, y)
+          ..lineTo(x, y)
+          ..lineTo(x, y + dy * l),
+        p,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_Brackets o) => o.c != c;
+}

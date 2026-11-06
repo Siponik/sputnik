@@ -12,6 +12,7 @@ import '../../core/today.dart' as today;
 import '../../state/app_state.dart';
 import '../board/card_menu.dart';
 import '../habits/habits_page.dart';
+import '../keys.dart';
 import '../theme/tokens.dart';
 import '../widgets/task_dialog.dart';
 import '../g/kit.dart';
@@ -176,8 +177,7 @@ class _CreateState extends State<_Create> {
     final hint = cr.suggestKind(line.text, p);
     return CallbackShortcuts(
       bindings: {
-        for (final (i, k) in kinds.indexed)
-          SingleActivator(LogicalKeyboardKey(LogicalKeyboardKey.digit1.keyId + i), alt: true): () => _setKind(k.$1),
+        for (final (i, k) in kinds.indexed) PKey(digits[i], alt: true): () => _setKind(k.$1),
         const SingleActivator(LogicalKeyboardKey.enter, control: true): () => _submit(more: true),
       },
       child: Dialog(
