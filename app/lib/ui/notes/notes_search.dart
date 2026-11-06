@@ -94,16 +94,16 @@ class _SearchState extends State<_Search> {
           final h = hits[path];
           row = _row(
             me,
-            icon: '¶',
+            icon: Icons.description_outlined,
             title: _hl(baseName(path), q, SpType.text(13.5, w: FontWeight.w500)),
             sub: h == null || h.snippet.isEmpty ? null : _hl('«${h.snippet}»', q, SpType.text(12, color: SpColors.muted)),
             right: folderOf(path).isEmpty ? null : folderOf(path).split('/').first,
             dot: folderHue(path, all),
           );
         case PickTask(:final task):
-          row = _row(me, icon: '○', title: _hl(task.title, q, SpType.text(13.5)), right: task.list);
+          row = _row(me, icon: Icons.radio_button_unchecked, title: _hl(task.title, q, SpType.text(13.5)), right: task.list);
         case PickNew(:final title):
-          row = _row(me, icon: '＋', title: Text('Новая заметка «$title»', style: SpType.text(13.5, color: SpColors.accent)));
+          row = _row(me, icon: Icons.add, title: Text('Новая заметка «$title»', style: SpType.text(13.5, color: SpColors.accent)));
       }
       rows.add(row);
       i++;
@@ -186,7 +186,7 @@ class _SearchState extends State<_Search> {
     );
   }
 
-  Widget _row(int i, {required String icon, required Widget title, Widget? sub, String? right, Color? dot}) {
+  Widget _row(int i, {required IconData icon, required Widget title, Widget? sub, String? right, Color? dot}) {
     final on = i == _at;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
@@ -203,7 +203,7 @@ class _SearchState extends State<_Search> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: on ? const BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
             child: Row(children: [
-              SizedBox(width: 18, child: Text(icon, style: SpType.text(12, color: SpColors.dim))),
+              SizedBox(width: 18, child: Icon(icon, size: 14, color: SpColors.dim)),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [title, ?sub])),
               if (right != null) ...[
                 const SizedBox(width: 10),

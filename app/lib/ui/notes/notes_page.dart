@@ -84,6 +84,8 @@ class _NotesPageState extends State<NotesPage> {
           );
         } else if (st.view == 'graph') {
           body = GraphView(st: st);
+        } else if (st.wide && st.view == 'note' && st.active != null && isCanvasPath(st.active!)) {
+          body = Padding(padding: const EdgeInsets.all(10), child: _Main(st: st));
         } else {
           body = Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
@@ -241,7 +243,7 @@ class _SideState extends State<_Side> {
       rows.add(_Section('НАЙДЕНО · ${hits.length}'));
       for (final h in hits) {
         rows.add(_Row(
-          icon: '¶',
+          icon: Icons.description_outlined,
           name: baseName(h.path),
           hint: h.snippet,
           active: h.path == st.active,
@@ -254,7 +256,7 @@ class _SideState extends State<_Side> {
       if (recent.isNotEmpty) {
         rows.add(_Section('НЕДАВНИЕ'));
         for (final p in recent) {
-          rows.add(_Row(icon: isCanvasPath(p) ? '▦' : '¶', name: shownName(p), active: p == st.active, onTap: () => st.openNote(p)));
+          rows.add(_Row(icon: isCanvasPath(p) ? Icons.dashboard_outlined : Icons.description_outlined, name: shownName(p), active: p == st.active, onTap: () => st.openNote(p)));
         }
       }
       rows.add(_Section('ПАПКИ', line: recent.isNotEmpty));
@@ -269,7 +271,7 @@ class _SideState extends State<_Side> {
             depth: r.depth,
             caret: r.open ? '▾' : '▸',
             dot: r.depth == 0 ? folderHue('${r.path}/', notes) : null,
-            icon: r.depth == 0 ? null : '▭',
+            icon: r.depth == 0 ? null : (r.open ? Icons.folder_open_outlined : Icons.folder_outlined),
             name: r.name,
             count: '${r.count}',
             active: st.view == 'folder' && st.folder == r.path,
@@ -280,7 +282,7 @@ class _SideState extends State<_Side> {
             },
           ));
         } else {
-          final row = _Row(depth: r.depth, icon: isCanvasPath(r.path) ? '▦' : '¶', name: shownName(r.path), active: st.view == 'note' && r.path == st.active, onTap: () => st.openNote(r.path));
+          final row = _Row(depth: r.depth, icon: isCanvasPath(r.path) ? Icons.dashboard_outlined : Icons.description_outlined, name: shownName(r.path), active: st.view == 'note' && r.path == st.active, onTap: () => st.openNote(r.path));
           // Заметку можно перетащить на открытый холст.
           rows.add(Draggable<String>(
             data: r.path,
@@ -326,9 +328,9 @@ class _SideState extends State<_Side> {
                 ),
               ),
               const SizedBox(width: 6),
-              _Square(label: '＋', tip: 'Новая заметка', onTap: () => newNoteDialog(context, st)),
+              _Square(icon: Icons.note_add_outlined, tip: 'Новая заметка', onTap: () => newNoteDialog(context, st)),
               const SizedBox(width: 6),
-              _Square(label: '▦', tip: 'Новый холст', onTap: () => newCanvasDialog(context, st)),
+              _Square(icon: Icons.dashboard_customize_outlined, tip: 'Новый холст', onTap: () => newCanvasDialog(context, st)),
             ]),
           ),
           Expanded(child: ListView(padding: const EdgeInsets.only(bottom: 8), children: rows)),
@@ -357,8 +359,8 @@ Color _syncColor(NotesState st) {
 }
 
 class _Square extends StatelessWidget {
-  const _Square({required this.label, required this.onTap, this.tip});
-  final String label;
+  const _Square({required this.icon, required this.onTap, this.tip});
+  final IconData icon;
   final String? tip;
   final VoidCallback onTap;
   @override
@@ -370,7 +372,7 @@ class _Square extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: onTap,
-            child: SizedBox(width: 32, height: 32, child: Center(child: Text(label, style: SpType.text(16, w: FontWeight.w600, color: SpColors.onAccent)))),
+            child: SizedBox(width: 32, height: 32, child: Center(child: Icon(icon, size: 17, color: SpColors.onAccent))),
           ),
         ),
       );
@@ -389,13 +391,20 @@ class _Section extends StatelessWidget {
       );
 }
 
+/// ▸ / ▾ у папки — иконкой, текстом это выглядело как «не подтянулось».
+Widget? _caretIcon(String? c) => switch (c) {
+      '▾' => const Icon(Icons.keyboard_arrow_down, size: 14, color: SpColors.dim),
+      '▸' => const Icon(Icons.keyboard_arrow_right, size: 14, color: SpColors.dim),
+      _ => null,
+    };
+
 class _Row extends StatelessWidget {
   const _Row({required this.name, required this.onTap, this.onCaret, this.depth = 0, this.caret, this.icon, this.dot, this.count, this.hint, this.active = false});
   final VoidCallback? onCaret;
   final String name;
   final int depth;
   final String? caret;
-  final String? icon;
+  final IconData? icon;
   final Color? dot;
   final String? count;
   final String? hint;
@@ -418,16 +427,16 @@ class _Row extends StatelessWidget {
             decoration: active ? const BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
             child: Row(children: [
               onCaret == null
-                  ? SizedBox(width: 10, child: Text(caret ?? '', style: SpType.text(10, color: SpColors.dim)))
+                  ? SizedBox(width: 14, child: _caretIcon(caret))
                   : InkWell(
                       onTap: onCaret,
-                      child: SizedBox(width: 14, height: 24, child: Center(child: Text(caret ?? '', style: SpType.text(10, color: SpColors.dim)))),
+                      child: SizedBox(width: 14, height: 24, child: Center(child: _caretIcon(caret))),
                     ),
               const SizedBox(width: 7),
               if (dot != null)
                 Container(width: 7, height: 7, margin: const EdgeInsets.only(right: 5), decoration: BoxDecoration(color: dot, borderRadius: BorderRadius.circular(2)))
               else
-                SizedBox(width: 12, child: Text(icon ?? '', style: SpType.text(11, color: SpColors.dim))),
+                SizedBox(width: 14, child: icon == null ? null : Icon(icon, size: 14, color: SpColors.dim)),
               const SizedBox(width: 7),
               Expanded(
                 child: Column(
