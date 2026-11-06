@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/create.dart' as cr;
-import '../../core/dates.dart';
 import '../../core/reminders.dart' as rem;
 import '../../core/repeat.dart' as rep;
 import '../../core/route.dart' as route;
@@ -13,6 +12,7 @@ import '../../state/app_state.dart';
 import '../board/card_menu.dart';
 import '../habits/habits_page.dart';
 import '../keys.dart';
+import '../widgets/date_time_picker.dart';
 import '../theme/tokens.dart';
 import '../widgets/task_dialog.dart';
 import '../g/kit.dart';
@@ -471,30 +471,28 @@ class _CreateState extends State<_Create> {
   Widget _dayChip() => GPick(
     humanDay(day) + (slotS != null && !allDay ? ' · $slotS' : ''),
     on: true,
-    onTap: () async {
-      final d = await showDatePicker(
-        context: context,
-        initialDate: DateTime.parse(day),
-        firstDate: DateTime(2020),
-        lastDate: DateTime(2100),
-      );
-      if (d != null) setState(() => due = ymd(d));
-    },
+    onTap: () => _pick(withTime: kind != 'birthday'),
   );
 
-  Widget _timeChip() => GPick(
-    slotS == null ? '+ время' : 'Другое время',
-    onTap: () async {
-      final t = await showTimePicker(
-        context: context,
-        initialTime: TimeOfDay(hour: DateTime.now().hour + 1, minute: 0),
-        builder: (c, w) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: w!),
-      );
-      if (t != null) {
-        setState(() => time = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}');
-      }
-    },
-  );
+  Future<void> _pick({bool withTime = true}) async {
+    final r = await pickDateTime(
+      context,
+      day: day,
+      time: slotS,
+      withTime: withTime && !allDay,
+      withEnd: false,
+      allowClear: false,
+      title: kind == 'event' ? 'Когда' : 'Срок',
+      busy: (d) => busyHours(s, d),
+    );
+    if (r == null || !mounted) return;
+    setState(() {
+      if (r.day != null) due = r.day;
+      if (withTime && !allDay) time = r.time;
+    });
+  }
+
+  Widget _timeChip() => GPick(slotS == null ? '+ время' : 'Другое время', onTap: _pick);
 
   Widget _remindChips(String k) => Wrap(
     spacing: 6,

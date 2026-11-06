@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:sputnik_app/ui/widgets/date_time_picker.dart';
 import 'package:sputnik_app/ui/app_shell.dart';
 import 'package:sputnik_app/ui/create/create_dialog.dart' show openCreate;
 import 'package:sputnik_app/ui/widgets/search_dialog.dart';
@@ -54,6 +55,7 @@ void main() {
     (2, 'create', 'C'),
     (0, 'search', 'S'),
     (2, 'list', 'U'),
+    (2, 'datetime', 'P'),
   ]) {
     testWidgets('снимок $name', skip: !on, (t) async {
       t.view.physicalSize = const Size(1440, 900);
@@ -75,6 +77,18 @@ void main() {
       await t.pump();
       if (list == 'C') {
         openCreate(t.element(find.byType(AppShell)), s, text: 'Рендер щита завтра 17:00 !!');
+        await t.pump();
+        await t.pump(const Duration(milliseconds: 400));
+      }
+      if (list == 'P') {
+        pickDateTime(
+          t.element(find.byType(AppShell)),
+          day: s.todayYmd,
+          time: '17:00',
+          end: '19:00',
+          about: 'про «Текстуры для щита»',
+          busy: (d) => {10, 12, 15, 16, 19},
+        );
         await t.pump();
         await t.pump(const Duration(milliseconds: 400));
       }
