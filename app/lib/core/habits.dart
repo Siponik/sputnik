@@ -486,6 +486,27 @@ String dayState(Json h, Map? log, String day, [String? today]) {
   return day == td ? 'w' : 'm';
 }
 
+/// Текущая неделя пн–вс; дни после сегодня — `future: true`.
+List<Json> weekRow(Json h, Map? log, [DateTime? now]) {
+  final n = now ?? habitsClock();
+  final today = ymd(n);
+  final mon = _addD(DateTime(n.year, n.month, n.day), -dow(n));
+  return [
+    for (var i = 0; i < 7; i++)
+      (() {
+        final d = _addD(mon, i), s = ymd(d);
+        final fut = s.compareTo(today) > 0;
+        return {
+          'day': s,
+          'wd': weekdays[i],
+          'st': fut ? 'f' : dayState(h, log, s, today),
+          'today': s == today,
+          'future': fut,
+        };
+      })(),
+  ];
+}
+
 List<Json> last7(Json h, Map? log, [DateTime? now]) {
   final n = now ?? habitsClock();
   final today = ymd(n);

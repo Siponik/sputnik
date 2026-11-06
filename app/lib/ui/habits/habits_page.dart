@@ -391,7 +391,7 @@ class _HabitsPageState extends State<HabitsPage> {
               padding: const EdgeInsets.fromLTRB(14, 8, 14, 0),
               child: Row(
                 children: [
-                  for (final (k, d) in hb.last7(h, log).indexed) ...[
+                  for (final (k, d) in hb.weekRow(h, log).indexed) ...[
                     if (k > 0) const SizedBox(width: 10),
                     Expanded(child: _sq(d['st'] as String, d['today'] == true, d['wd'] as String, c)),
                   ],
@@ -425,30 +425,38 @@ class _HabitsPageState extends State<HabitsPage> {
     children: [
       AspectRatio(
         aspectRatio: 1,
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
-          decoration: BoxDecoration(
-            color: switch (st) {
-              'd' => c,
-              'p' => c.withValues(alpha: .35),
-              'm' => null,
-              _ => null,
-            },
-            borderRadius: BorderRadius.circular(4),
-            border: st == 'd'
-                ? null
-                : Border.all(
-                    color: today
-                        ? c
-                        : st == 'm'
-                        ? SpColors.red.withValues(alpha: .7)
-                        : (st == 'k' ? const Color(0xFF6FB6CF) : SpColors.line),
-                  ),
-          ),
-        ),
+        child: st == 'f'
+            ? Opacity(
+                opacity: .45,
+                child: Dashed(r: 4, color: SpColors.dim, child: const SizedBox.expand()),
+              )
+            : Container(
+                constraints: const BoxConstraints(maxWidth: 24, maxHeight: 24),
+                decoration: BoxDecoration(
+                  color: switch (st) {
+                    'd' => c,
+                    'p' => c.withValues(alpha: .35),
+                    'm' => null,
+                    _ => null,
+                  },
+                  borderRadius: BorderRadius.circular(4),
+                  border: st == 'd'
+                      ? null
+                      : Border.all(
+                          color: today
+                              ? c
+                              : st == 'm'
+                              ? SpColors.red.withValues(alpha: .7)
+                              : (st == 'k' ? const Color(0xFF6FB6CF) : SpColors.line),
+                        ),
+                ),
+              ),
       ),
       const SizedBox(height: 4),
-      Text(wd.toUpperCase(), style: SpType.label(9, color: today ? SpColors.accent : SpColors.dim)),
+      Text(
+        wd.toUpperCase(),
+        style: SpType.label(9, color: today ? SpColors.accent : (st == 'f' ? SpColors.line : SpColors.dim)),
+      ),
     ],
   );
 

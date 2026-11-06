@@ -139,11 +139,22 @@ class _BoardPageState extends State<BoardPage> {
               padding: const EdgeInsets.only(bottom: 8),
               children: [
                 for (final sp in [...s.spheres, null])
-                  if (groups[sp?['id']] != null || (sp?['shared'] == true && f.isEmpty)) ...[
-                    _sphereRow(s, sp, fold),
-                    if (sp == null || fold[sp['id']] != true)
-                      for (final l in groups[sp?['id']] ?? const <Json>[]) _listRow(s, l, l['id'] == id),
-                  ],
+                  if (groups[sp?['id']] != null || (sp?['shared'] == true && f.isEmpty))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      child: Brackets(
+                        on: sp != null && (groups[sp['id']] ?? const <Json>[]).any((l) => l['id'] == id),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _sphereRow(s, sp, fold),
+                            if (sp == null || fold[sp['id']] != true)
+                              for (final l in groups[sp?['id']] ?? const <Json>[]) _listRow(s, l, l['id'] == id),
+                            const SizedBox(height: 4),
+                          ],
+                        ),
+                      ),
+                    ),
               ],
             ),
           ),
