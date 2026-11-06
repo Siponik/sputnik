@@ -15,14 +15,23 @@ import '../habits/habits_page.dart';
 import '../theme/tokens.dart';
 import '../widgets/task_dialog.dart';
 
-Future<void> openCreate(BuildContext context, AppState s, {String kind = 'task', String? listId, String text = ''}) =>
-    showDialog<void>(
-      context: context,
-      builder: (_) => _Create(s: s, kind: kind, listId: listId, text: text),
-    );
+Future<void> openCreate(
+  BuildContext context,
+  AppState s, {
+  String kind = 'task',
+  String? listId,
+  String text = '',
+  String? day,
+  String? time,
+}) => showDialog<void>(
+  context: context,
+  builder: (_) => _Create(s: s, kind: kind, listId: listId, text: text, day: day, time: time),
+);
 
 class _Create extends StatefulWidget {
-  const _Create({required this.s, required this.kind, this.listId, this.text = ''});
+  const _Create({required this.s, required this.kind, this.listId, this.text = '', this.day, this.time});
+  final String? day;
+  final String? time;
   final AppState s;
   final String kind;
   final String? listId;
@@ -57,6 +66,8 @@ class _CreateState extends State<_Create> {
   void initState() {
     super.initState();
     listId = widget.listId;
+    due = widget.day;
+    time = widget.time;
     remind = {kind == 'event' ? 15 : (kind == 'birthday' ? 1440 : 60)};
     line.addListener(() => setState(() {}));
   }

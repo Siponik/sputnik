@@ -131,13 +131,24 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _loadEvents() async {
-    final cals = await api.calendars();
-    calendars = cals;
-    final now = DateTime.now();
-    final from = DateTime(now.year, now.month, now.day - (now.weekday - 1) - 7);
-    final to = from.add(const Duration(days: 42));
-    final show = cals.where((c) => calShown(c)).toList();
+  DateTime? evFrom, evTo; // загруженное окно событий
+
+  /// Календарь листают за пределы загруженного: догрузить события (по месяцу с запасом).
+  Future<void> ensureEvents(DateTime from, DateTime to) async {
+    if (needLogin || (evFrom != null && !from.isBefore(evFrom!) && !to.isAfter(evTo!))) return;
+    final a = DateTime(from.year, from.month - 1, 1), b = DateTime(to.year, to.month + 2, 1);
+    try {
+      final got = await _eventsIn(a, b);
+      final have = {for (final e in events) '${e['calId']}|${e['id']}'};
+      events = [...events, ...got.where((e) => !have.contains('${e['calId']}|${e['id']}'))];
+      evFrom = evFrom == null || a.isBefore(evFrom!) ? a : evFrom;
+      evTo = evTo == null || b.isAfter(evTo!) ? b : evTo;
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  Future<List<Json>> _eventsIn(DateTime from, DateTime to) async {
+    final show = calendars.where((c) => calShown(c)).toList();
     final got = await Future.wait(
       show.map((c) async {
         try {
@@ -147,8 +158,30 @@ class AppState extends ChangeNotifier {
         }
       }),
     );
-    events = got.expand((x) => x).where((e) => e['status'] != 'cancelled').toList();
+    return got.expand((x) => x).where((e) => e['status'] != 'cancelled').toList();
   }
+
+  Future<void> _loadEvents() async {
+    final cals = await api.calendars();
+    calendars = cals;
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month - 1, 1);
+    final to = DateTime(now.year, now.month + 3, 1);
+    evFrom = from;
+    evTo = to;
+    events = await _eventsIn(from, to);
+  }
+
+  /// Задача → новый день и время (перетаскивание в календаре). slot null — «весь день».
+  void schedule(String listId, Json t, String day, Json? slot) {
+    if (dueToYmd(t['due'] as String?) != day) setDue(listId, t, day);
+    setTask(t['id'] as String, {'slot': slot});
+  }
+
+  bool isBirthday(Json e) =>
+      ((e['extendedProperties'] as Map?)?['private'] as Map?)?['sputnik'] == 'birthday' ||
+      e['eventType'] == 'birthday' ||
+      ((e['calId'] ?? '') as String).contains('#contacts@');
 
   /// Показывать ли календарь: выбран в Google, не скрыт в слое, не служебный.
   bool calShown(Json c) {

@@ -132,7 +132,10 @@ void main() {
     });
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
-      expect(find.text('Встреча'), findsOneWidget);
+      expect(find.textContaining('Встреча'), findsWidgets);
+      await t.tap(find.text('Месяц'));
+      await t.pump();
+      expect(find.text('Задача 0'), findsWidgets);
     });
   }
 }
