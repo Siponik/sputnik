@@ -10,13 +10,13 @@ sph = [('Р', '3D и заказы', OR, [('3D-ассеты', 'К', 7), ('Ико�
        ('Д', 'Дом', GREEN, [('Дела по дому', 'С', 11), ('Покупки', 'Л', 5)], ''),
        ('У', 'Учёба', VIO, [('Учёба', 'Л', 4)], '')]
 def sbody(ls):
-    return '<div style="padding: 8px">' + ''.join(f'<div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 6px; border-bottom: 1px solid {SOFT}"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid {LINE}; display: grid; place-items: center; font: 500 9px {MONO}; color: {MUT}">{v}</span><span style="flex: 1">{t}</span><span style="font: 400 10.5px {MONO}; color: {DIM}">{n}</span></div>' for t, v, n in ls) + f'<div style="height: 32px; display: flex; align-items: center; padding: 0 6px; color: {MUT}">＋ Список</div></div>'
+    return '<div style="padding: 8px">' + ''.join(f'<div style="height: 32px; display: flex; align-items: center; gap: 8px; padding: 0 6px; border-bottom: 1px solid transparent"><span style="width: 16px; height: 16px; border-radius: 4px; border: 1px solid {LINE}; display: grid; place-items: center; font: 500 9px {MONO}; color: {MUT}">{v}</span><span style="flex: 1">{t}</span><span style="font: 400 10.5px {MONO}; color: {DIM}">{n}</span></div>' for t, v, n in ls) + f'<div style="height: 32px; display: flex; align-items: center; padding: 0 6px; color: {MUT}">＋ Список</div></div>'
 st = sidebar('', 'Перетащи список в другую сферу прямо в колонке слева.')
 st += node(236, 0, 668, 48, f'<div style="height: 100%; display: flex; align-items: center; gap: 12px; padding: 0 12px"><span style="font-weight: 600; font-size: 15px">Сферы</span>{micro("4 СФЕРЫ · 8 СПИСКОВ", DIM)}<span style="flex: 1"></span>{btn("＋ Сфера", "acc", True)}</div>')
 for i, (ic, n, c, ls, tag) in enumerate(sph):
     r, cc = divmod(i, 2)
     x = 236 + cc * 344; y = 64 + r * 240
-    ex = sock('', -6, c, abs_left=300) if i == 0 else ''
+    ex = ''
     st += node(x, y, 324, 0, nhead('', n.upper(), tag or f'{len(ls)} СП.', c) + sbody(ls), hub=(i == 0), extra=ex)
 st += node(236, 560, 668, 0, nhead('', 'БЕЗ СФЕРЫ', '1', GREY) + f'<div style="padding: 12px; display: flex; gap: 10px; align-items: center">{coon(36, "СОН")}<span style="color: {MUT}">«Старые заметки» пока ни в какой сфере. Перетащи в нужную.</span></div>', wait=True)
 icons = ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; box-sizing: border-box; display: grid; place-items: center; {"background: " + WASH + "; border: 1px solid " + OR if j == 0 else "border: 1px solid " + LINE}; color: {INK}; font-size: 14px">{g}</span>' for j, g in enumerate(['◆', '✎', '▲', '●', '☕', '♫', '⚑', '✦', '⌂', '✈', '☀', '♥']))
@@ -29,8 +29,7 @@ ed = f'''<div style="padding: 16px 18px; display: flex; flex-direction: column; 
  {field("Вместе с другими", f'<span style="font-size: 12.5px; color: {MUT}">С тобой работают Оля и Аня.</span>{btn("Участники", sm=True)}')}
  <div style="display: flex; gap: 8px; margin-top: 4px">{btn("Сохранить", "acc")}{btn("Удалить сферу", "ghost", extra="; color: " + RED)}</div>
 </div>'''
-st += svg(f'<path d="M541 60 C 541 52, 880 52, 928 79" stroke="{OR}" stroke-width="2"></path>')
-st += node(928, 64, 320, 636, nhead('', 'СФЕРА · ПРАВКА', 'ENTER', OR, None, 32) + ed, extra=sock('l', 10, OR))
+st += node(928, 64, 320, 636, nhead('', 'СФЕРА · ПРАВКА', 'ENTER', OR, None, 32) + ed)
 save2('G_Spheres.dc.html', page('Сферы', 'ДОСКА', st), 'Сферы')
 
 # ---------- TEMPLATES ----------

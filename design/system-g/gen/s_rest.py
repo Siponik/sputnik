@@ -16,8 +16,8 @@ habs = [('Зарядка', 'З', GOLD, 'КАЖДЫЙ ДЕНЬ · УТРО', '21'
 def hcard(x, y, w, h, d, sel=False):
     n, ic, c, kind, num, unit, l7, foot, done_today, _ = d
     sq = ''
-    for ch, dl in zip(l7, ['ПТ', 'СБ', 'ВС', 'ПН', 'ВТ', 'СР', 'ЧТ']):
-        stl = {'d': f'background: {c}', 'p': f'background: linear-gradient(0deg, {c} 60%, transparent 60%); border: 1px solid {c}', 'm': f'border: 1px solid {RED}', 'o': f'border: 1px solid #45464D', 'k': f'border: 1px dashed {DIM}', 'f': f'border: 1.5px solid {OR}'}[ch]
+    for ch, dl in zip(l7[3:] + 'xxx', ['ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ', 'ВС']):
+        stl = {'x': f'border: 1px dashed #3A3B42; opacity: .6', 'd': f'background: {c}', 'p': f'background: linear-gradient(0deg, {c} 60%, transparent 60%); border: 1px solid {c}', 'm': f'border: 1px solid {RED}', 'o': f'border: 1px solid #45464D', 'k': f'border: 1px dashed {DIM}', 'f': f'border: 1.5px solid {OR}'}[ch]
         sq += f'<span style="display: flex; flex-direction: column; align-items: center; gap: 4px"><span style="width: 22px; height: 22px; border-radius: 5px; box-sizing: border-box; {stl}"></span>{micro(dl, OR if dl == "ЧТ" else DIM)}</span>'
     numc = DIM if num == '0' else INK
     btnh = (f'<button type="button" style="height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: {c}; color: {DARK}; font: 600 12px {SANS}">✓ Сделано</button>' if done_today
@@ -55,7 +55,7 @@ pin = (nhead('', 'ЗАРЯДКА · ПАНЕЛЬ', 'КАЖДЫЙ ДЕНЬ', GOLD
        f'''<div style="padding: 14px 16px; display: flex; flex-direction: column; gap: 16px">
   <div style="display: flex; align-items: flex-end; gap: 12px"><span style="font: 200 64px/56px {SANS}; letter-spacing: -.03em">21</span><span style="padding-bottom: 8px">{micro("ДЕНЬ ПОДРЯД · ВЕХА ПРОЙДЕНА", GOLD)}</span></div>
   <div>{lbl("ВЕХИ", MUT, 10)}<div style="position: relative; height: 34px; margin-top: 8px">{msvg}{ms}</div></div>
-  <div>{lbl("НОЯБРЬ", MUT, 10)}<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 8px">{cal}</div></div>
+  <div>{lbl("НОЯБРЬ", MUT, 10)}<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; margin-top: 8px">{''.join(f'<span style="text-align: center">{micro(w_, DIM)}</span>' for w_ in ['ПН','ВТ','СР','ЧТ','ПТ','СБ','ВС'])}{cal}</div></div>
   <div style="display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid {LINE}; border-radius: 8px">{"".join(f'<span style="padding: 8px 10px; {"border-right: 1px solid " + LINE if i < 2 else ""}"><span style="display: block; font: 300 20px {SANS}">{v}</span>{micro(t)}</span>' for i, (v, t) in enumerate([("34", "ЛУЧШАЯ"), ("112", "ВСЕГО"), ("86%", "ЗА МЕСЯЦ")]))}</div>
   {prow("ОКНО", f'<span style="font: 400 12px {MONO}">07:00 — 09:00</span>{micro("УТРО", DIM)}')}
   {prow("НАПОМНИТЬ", chip("TELEGRAM", True, GOLD) + chip("WINDOWS", True, GOLD))}

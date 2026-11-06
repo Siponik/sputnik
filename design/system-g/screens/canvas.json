@@ -280,7 +280,7 @@
    "y": 3760,
    "w": 1280,
    "h": 820,
-   "title": "Окно «Создать»",
+   "title": "Окно «Создать» · задача и «Ещё параметры»",
    "expand": "fill",
    "page": "r4"
   },
@@ -325,7 +325,7 @@
    "y": 5640,
    "w": 1280,
    "h": 820,
-   "title": "Поиск",
+   "title": "Поиск · раскрывается из поля в шапке",
    "expand": "fill",
    "page": "r4"
   },
@@ -442,7 +442,7 @@
    "y": 12220,
    "w": 1280,
    "h": 820,
-   "title": "Окно привычки · окно «с — до», цель, напоминания",
+   "title": "Привычка · правка в том же окне «Создать»",
    "expand": "fill",
    "page": "r4"
   },
@@ -643,6 +643,24 @@
    "title": "Знания · заметка с открытой панелью «Связи»",
    "expand": "fill",
    "page": "kb"
+  },
+  "G_CreateFrom.dc.html": {
+   "x": 0,
+   "y": 16920,
+   "w": 1280,
+   "h": 820,
+   "title": "Создать · одно окно для всех мест",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_Motion.dc.html": {
+   "x": 1360,
+   "y": 16920,
+   "w": 1280,
+   "h": 820,
+   "title": "Анимации · каталог",
+   "expand": "fill",
+   "page": "r4"
   }
  },
  "order": [
@@ -713,7 +731,9 @@
   "G_NotesWindows.dc.html",
   "G_NotesSync.dc.html",
   "G_NotesHow.dc.html",
-  "G_NotesLinks.dc.html"
+  "G_NotesLinks.dc.html",
+  "G_CreateFrom.dc.html",
+  "G_Motion.dc.html"
  ],
  "notes": {
   "head": {
