@@ -636,12 +636,13 @@ class _CalendarPageState extends State<CalendarPage> {
         ),
       ),
     );
-    if (habit)
+    if (habit) {
       box = Dashed(
         r: 5,
         color: c.withValues(alpha: done ? .9 : .6),
         child: box,
       );
+    }
     Widget child = box;
     if (task) {
       child = _taskDrag(
