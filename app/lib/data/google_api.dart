@@ -36,6 +36,9 @@ class GoogleApi {
     return text.isEmpty ? <String, dynamic>{} : jsonDecode(text) as Map<String, dynamic>;
   }
 
+  /// Любой запрос к *.googleapis.com (общие сферы ходят в Календарь напрямую).
+  Future<Map<String, dynamic>> call(String method, String url, [Object? body]) => _call(method, url, body);
+
   static const _tasks = 'https://tasks.googleapis.com/tasks/v1';
 
   Future<List<Map<String, dynamic>>> lists() async {

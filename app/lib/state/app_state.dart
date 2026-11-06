@@ -24,6 +24,8 @@ import '../data/notify.dart';
 import '../data/google_auth.dart';
 import '../data/outbox.dart';
 import '../data/store.dart';
+import '../data/shared_store.dart';
+import '../core/sharedcore.dart' as shc;
 
 typedef Json = Map<String, dynamic>;
 
@@ -34,7 +36,11 @@ class AppState extends ChangeNotifier {
       ..onSaved = _saved
       ..onRejected = _rejected
       ..onChange = notifyListeners;
+    shared = SharedStore(api, store);
+    outbox.shared = shared;
   }
+
+  late final SharedStore shared;
 
   final GoogleApi api;
   final Store store;
@@ -74,6 +80,7 @@ class AppState extends ChangeNotifier {
     try {
       layer = {...lay.emptyLayer(), ...await store.readLayer()};
       await outbox.load();
+      await shared.load();
       final c = await store.readCache();
       if (c != null) {
         lists = ((c['lists'] ?? []) as List).cast<Json>();
@@ -122,8 +129,24 @@ class AppState extends ChangeNotifier {
         ];
         fresh[id] = list;
       }
-      lists = ls;
+      try {
+        final gone = await shared.pullAll();
+        if (gone.isNotEmpty) say('Пропал доступ к общей сфере');
+      } on ApiError catch (_) {}
+      final shl = shared.lists();
+      for (final l in shl) {
+        final id = l['id'] as String;
+        final old = {for (final t in tasks[id] ?? const <Json>[]) t['id']: t};
+        fresh[id] = [
+          for (final t in shared.tasks(id))
+            if (outbox.pendingFor(t['id'] as String) && old[t['id']] != null) old[t['id']]! else t,
+          for (final t in tasks[id] ?? const <Json>[])
+            if ((t['id'] as String).startsWith('tmp-') && outbox.pendingFor(t['id'] as String)) t,
+        ];
+      }
+      lists = [...ls, ...shl];
       tasks = fresh;
+      _reconcileShared();
       await _loadEvents();
       await _loadInbox();
       offline = false;
@@ -246,6 +269,7 @@ class AppState extends ChangeNotifier {
     final s = (layer[section] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
     layer[section] = s;
     s[key] = {...((s[key] as Map?) ?? const {}), ...patch, 't': DateTime.now().millisecondsSinceEpoch};
+    if (key.startsWith('sh:') || section == 'tasks') _pushShared(section, key);
     _saveLayer();
   }
 
@@ -323,6 +347,7 @@ class AppState extends ChangeNotifier {
       if (layList(id)['quiet'] == true) continue;
       for (final x in tasks[id] ?? const <Json>[]) {
         if (!_top(x)) continue;
+        if (id.startsWith('sh:') && !_mine(x)) continue;
         final due = dueToYmd(x['due'] as String?);
         if (isDone(x)) {
           if (dueToYmd(x['completed'] as String?) == t || (due.isNotEmpty && due == t)) out.add((id, x));
@@ -745,12 +770,156 @@ class AppState extends ChangeNotifier {
 
   // ---------- списки и сферы ----------
 
-  List<Json> get spheres => sph.spheresFrom(layer);
+  List<Json> get spheres => [
+    ...sph.spheresFrom(layer),
+    for (final cal in [...shared.activeCalendars, ...shared.stores.keys.where(shared.isLost)])
+      if (shared.sphereRec(cal) case final Map r)
+        {
+          ...((r['f'] as Map).cast<String, dynamic>()),
+          'id': shc.sphereId(cal),
+          'order': 1000,
+          'shared': true,
+          'lost': shared.isLost(cal),
+          'owner': shared.isOwner(cal),
+        },
+  ];
+
+  // ---------- общие сферы ----------
+
+  List<Json> get invites => shared.invites;
+  String? calOf(String sphereId) => shc.calOfSphere(sphereId);
+  List<Json> people(String sphereId) => shared.people(calOf(sphereId) ?? '');
+  String get myEmail => shared.me;
+
+  /// Поля слоя задач и списков общих сфер ↔ записи календаря (трёхстороннее сведение, как App.svelte).
+  void _reconcileShared() {
+    var changed = false;
+    for (final cal in shared.activeCalendars) {
+      final st = shared.stores[cal]!;
+      final recs = (st['recs'] ?? const {}) as Map;
+      final base = (st['base'] ??= <String, dynamic>{}) as Map;
+      for (final r in recs.values.whereType<Map>()) {
+        final k = r['k'] as String;
+        final kind = shc.kindOf(k);
+        if (kind != 'task' && kind != 'list') continue;
+        final lk = kind == 'list' ? shc.listId(k) : k;
+        final sec = kind == 'list' ? 'lists' : 'tasks';
+        final cur = (layer[sec] as Map?)?[lk] as Map?;
+        final res = shc.reconcile(cur, base[k] as Map?, r, kind!);
+        final toLayer = (res['toLayer'] as Map).cast<String, dynamic>();
+        if (kind == 'list' && cur?['sphere'] != shc.sphereId(cal)) toLayer['sphere'] = shc.sphereId(cal);
+        if (toLayer.isNotEmpty) {
+          final s0 = (layer[sec] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{};
+          layer[sec] = s0;
+          s0[lk] = {...?cur, ...toLayer, 't': cur?['t'] ?? DateTime.now().millisecondsSinceEpoch};
+          changed = true;
+        }
+        final toRec = res['toRec'] as Map;
+        if (toRec.isNotEmpty) shared.patchSoon(cal, k, toRec);
+        base[k] = r;
+      }
+    }
+    if (changed) _saveLayer();
+  }
+
+  /// Правка слоя задачи/списка общей сферы — сразу в календарь (поля с «$»).
+  void _pushShared(String section, String key) {
+    if (section != 'tasks' && section != 'lists') return;
+    final rk = section == 'lists' ? shc.listKey(key) : key;
+    final cal = shared.calOfList(section == 'lists' ? rk : _listOfTask(key));
+    if (cal == null || rk == null) return;
+    final patch = shc.sharedOf((layer[section] as Map?)?[key], section == 'lists' ? 'list' : 'task');
+    if (section == 'lists') patch.remove(r'$sphere');
+    if (patch.isNotEmpty) shared.patchSoon(cal, rk, patch);
+  }
+
+  /// Задача общей сферы — моя или ничья (sharedcore.forMe).
+  bool _mine(Json t) {
+    final w = layTask(t['id'] as String)['who'];
+    return w == null || w == '' || w == shared.me;
+  }
+
+  String? _listOfTask(String id) {
+    for (final e in tasks.entries) {
+      if (e.key.startsWith('sh:') && e.value.any((t) => t['id'] == id)) return shc.listKey(e.key);
+    }
+    return null;
+  }
+
+  Future<void> _shared(Future<void> Function() f, String fail) async {
+    try {
+      await f();
+      await refresh();
+    } catch (e) {
+      say('$fail: $e');
+    }
+  }
+
+  Future<void> acceptInvite(String cal) => _shared(() => shared.accept(cal), 'Не принялось');
+  Future<void> declineInvite(String cal) => _shared(() => shared.decline(cal), 'Не получилось');
+  Future<void> joinSphere(String code) => _shared(() => shared.join(code), 'Не вошёл в сферу');
+  Future<void> forgetSphere(String cal) => _shared(() => shared.forget(cal), 'Не убралось');
+  Future<void> invitePerson(String cal, String email) => _shared(() => shared.invite(cal, email), 'Не позвал');
+  Future<void> removePerson(String cal, String email) => _shared(() => shared.removeMember(cal, email), 'Не убрал');
+
+  /// Сделать сферу общей: календарь сферы, списки переезжают туда вместе с задачами.
+  Future<String?> shareSphere(String sphereId) async {
+    final sp = spheres.firstWhere((x) => x['id'] == sphereId, orElse: () => {});
+    if (sp.isEmpty) return null;
+    try {
+      final cal = await shared.createSphere(
+        (sp['name'] ?? 'Сфера') as String,
+        (sp['color'] ?? 'clay') as String,
+        (sp['icon'] ?? 'star') as String,
+      );
+      for (final l in lists.where((l) => sphereOf(l['id'] as String) == sphereId).toList()) {
+        final nl = await shared.createList(cal, (l['title'] ?? '') as String);
+        final nid = nl['id'] as String;
+        final L = Json.from(layList(l['id'] as String))..remove('t');
+        touch('lists', nid, {...L, 'sphere': shc.sphereId(cal)});
+        final old = tasks[l['id']] ?? const <Json>[];
+        final ids = <String, String>{};
+        for (final t in old.where((t) => t['parent'] == null)) {
+          final lt = Json.from(layTask(t['id'] as String))..remove('t');
+          final r = await shared.createTask(nid, _body(t), layer: shc.sharedOf(lt));
+          ids[t['id'] as String] = r['id'] as String;
+          if (lt.isNotEmpty) touch('tasks', r['id'] as String, lt);
+        }
+        for (final t in old.where((t) => t['parent'] != null)) {
+          final p = ids[t['parent']];
+          if (p != null) await shared.createTask(nid, _body(t), parent: p);
+        }
+        await api.deleteList(l['id'] as String);
+      }
+      deleteSphere(sphereId);
+      await refresh();
+      say('Сфера стала общей — позови людей');
+      return shc.sphereId(cal);
+    } catch (e) {
+      say('Не получилось сделать общей: $e');
+      return null;
+    }
+  }
+
+  Json _body(Json t) => {
+    'title': t['title'] ?? '',
+    'notes': t['notes'] ?? '',
+    'due': ?t['due'],
+    'status': t['status'] ?? 'needsAction',
+    'completed': ?t['completed'],
+  };
+
+  String inviteText(String sphereId) {
+    final sp = spheres.firstWhere((x) => x['id'] == sphereId, orElse: () => {});
+    return shared.inviteText(calOf(sphereId) ?? '', (sp['name'] ?? '') as String);
+  }
+
   String? sphereOf(String listId) => sph.sphereOf(listId, layer);
 
   Future<String?> createList(String title, {String template = 'work', String? sphere, String? view}) async {
     try {
-      final l = await api.createList(title);
+      final cal = sphere == null ? null : shc.calOfSphere(sphere);
+      final l = cal != null ? await shared.createList(cal, title) : await api.createList(title);
       lists = [...lists, l];
       touch('lists', l['id'] as String, {'template': template, 'sphere': ?sphere, 'view': ?view});
       notifyListeners();
@@ -767,7 +936,7 @@ class AppState extends ChangeNotifier {
     l['title'] = title;
     notifyListeners();
     try {
-      await api.renameList(id, title);
+      await (id.startsWith('sh:') ? shared.renameList(id, title) : api.renameList(id, title));
     } catch (e) {
       l['title'] = was;
       say('Не переименовался: $e');
@@ -776,7 +945,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> deleteList(String id) async {
     try {
-      await api.deleteList(id);
+      await (id.startsWith('sh:') ? shared.deleteList(id) : api.deleteList(id));
       final ids = [for (final t in tasks[id] ?? const <Json>[]) t['id'] as String];
       layer = lay.forgetList(layer, id, ids);
       lists = lists.where((l) => l['id'] != id).toList();
@@ -800,6 +969,14 @@ class AppState extends ChangeNotifier {
   }
 
   void saveSphere(String? id, Json fields) {
+    final cal = id == null ? null : shc.calOfSphere(id);
+    if (cal != null) {
+      shared.patchSoon(cal, shc.sphereKey, fields);
+      final r = shared.sphereRec(cal);
+      if (r != null) (r['f'] as Map).addAll(fields);
+      notifyListeners();
+      return;
+    }
     final sid = id ?? 'sp-${DateTime.now().millisecondsSinceEpoch}';
     final order = spheres.fold<num>(0, (m, x) => ((x['order'] ?? 0) as num) > m ? (x['order'] as num) : m) + 1;
     touch('spheres', sid, {if (id == null) 'order': order, ...fields});
@@ -807,6 +984,11 @@ class AppState extends ChangeNotifier {
   }
 
   void deleteSphere(String id) {
+    final cal = shc.calOfSphere(id);
+    if (cal != null) {
+      unawaited(_shared(() => shared.removeSphere(cal), 'Не удалилась сфера'));
+      return;
+    }
     touch('spheres', id, {'removed': true});
     for (final l in lists) {
       if (layList(l['id'] as String)['sphere'] == id) touch('lists', l['id'] as String, {'sphere': null});

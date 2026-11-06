@@ -63,5 +63,8 @@ class Store {
     return j is Map<String, dynamic> ? j : null;
   }
 
+  Future<Map<String, dynamic>?> readShared() async => (await _read(ownFile('shared.json'))) as Map<String, dynamic>?;
+  Future<void> writeShared(Map<String, dynamic> j) => _write('shared.json', j);
+
   Future<void> writeCache(Map<String, dynamic> c) => _write('cache.json', c);
 }

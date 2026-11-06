@@ -6,6 +6,7 @@ import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/coon.dart';
 
 const habitIcons = <String, IconData>{
   'cup': Icons.local_cafe_outlined,
@@ -79,6 +80,7 @@ class _HabitsPageState extends State<HabitsPage> {
             runSpacing: 8,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
+              const Coon('flag', size: 44),
               Text('Привычки', style: SpType.text(24, w: FontWeight.w600)),
               const SizedBox(width: 12),
               Text(

@@ -9,6 +9,7 @@ import '../widgets/common.dart';
 import '../widgets/task_dialog.dart';
 import 'card_menu.dart';
 import 'list_dialogs.dart';
+import 'share_dialog.dart';
 import '../../core/spheres.dart' as sph;
 import 'rows_view.dart';
 import 'stickers_view.dart';
@@ -50,6 +51,11 @@ class _BoardPageState extends State<BoardPage> {
                   children: [
                     Expanded(child: Text('СПИСКИ', style: SpType.label(11))),
                     IconButton(
+                      tooltip: 'Войти в общую сферу',
+                      onPressed: () => joinDialog(context, s),
+                      icon: const Icon(Icons.group_add_outlined, size: 16, color: SpColors.muted),
+                    ),
+                    IconButton(
                       tooltip: 'Новая сфера',
                       onPressed: () => sphereDialog(context, s),
                       icon: const Icon(Icons.workspaces_outline, size: 16, color: SpColors.muted),
@@ -66,10 +72,12 @@ class _BoardPageState extends State<BoardPage> {
                 ),
               ),
               for (final sp in [...s.spheres, null])
-                if (groups[sp?['id']] != null) ...[
+                if (groups[sp?['id']] != null || sp?['shared'] == true) ...[
                   if (sp != null)
                     GestureDetector(
-                      onSecondaryTap: () => sphereDialog(context, s, sp),
+                      onSecondaryTap: () => sp['shared'] == true
+                          ? shareDialog(context, s, sp['id'] as String)
+                          : sphereDialog(context, s, sp),
                       child: InkWell(
                         onTap: () => s.touch('settings', 'sphereFold', {sp['id'] as String: folded[sp['id']] != true}),
                         child: Padding(
@@ -84,6 +92,18 @@ class _BoardPageState extends State<BoardPage> {
                                   style: SpType.label(10.5, color: SpColors.ink2),
                                 ),
                               ),
+                              if (sp['shared'] == true)
+                                InkWell(
+                                  onTap: () => shareDialog(context, s, sp['id'] as String),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    child: Icon(
+                                      sp['lost'] == true ? Icons.link_off : Icons.group_outlined,
+                                      size: 14,
+                                      color: sp['lost'] == true ? SpColors.red : SpColors.muted,
+                                    ),
+                                  ),
+                                ),
                               Icon(
                                 folded[sp['id']] == true ? Icons.chevron_right : Icons.expand_more,
                                 size: 14,
@@ -100,7 +120,7 @@ class _BoardPageState extends State<BoardPage> {
                       child: Text('БЕЗ СФЕРЫ', style: SpType.label(10.5, color: SpColors.dim)),
                     ),
                   if (sp == null || folded[sp['id']] != true)
-                    for (final l in groups[sp?['id']]!) _listRow(s, l, l['id'] == id),
+                    for (final l in groups[sp?['id']] ?? const <Json>[]) _listRow(s, l, l['id'] == id),
                 ],
             ],
           ),

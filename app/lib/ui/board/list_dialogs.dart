@@ -319,6 +319,14 @@ class _SphereState extends State<_Sphere> {
       if (widget.sp != null)
         TextButton(
           onPressed: () {
+            Navigator.pop(context);
+            widget.s.shareSphere(widget.sp!['id'] as String);
+          },
+          child: const Text('Сделать общей'),
+        ),
+      if (widget.sp != null)
+        TextButton(
+          onPressed: () {
             widget.s.deleteSphere(widget.sp!['id'] as String);
             Navigator.pop(context);
           },

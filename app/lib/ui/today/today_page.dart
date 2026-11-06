@@ -5,10 +5,12 @@ import '../../core/dates.dart';
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
+import '../widgets/coon.dart';
 import '../widgets/task_dialog.dart';
 import '../../core/habits.dart' as hb;
 import '../../core/meta.dart' as meta;
 import '../board/card_menu.dart';
+import '../board/share_dialog.dart';
 
 class TodayPage extends StatelessWidget {
   const TodayPage({super.key, required this.state});
@@ -27,13 +29,26 @@ class TodayPage extends StatelessWidget {
           final main = ListView(
             padding: const EdgeInsets.all(20),
             children: [
-              Text(_title(), style: SpType.text(24, w: FontWeight.w600)),
-              const SizedBox(height: 4),
-              Text(
-                open == 0 ? 'На сегодня всё сделано' : 'Осталось $open',
-                style: SpType.text(13, color: SpColors.muted),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_title(), style: SpType.text(24, w: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(
+                          open == 0 ? 'На сегодня всё сделано' : 'Осталось $open',
+                          style: SpType.text(13, color: SpColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Coon(s.offline ? 'oops' : (open == 0 && items.isNotEmpty ? 'cheer' : 'hi'), size: 56),
+                ],
               ),
               const SizedBox(height: 16),
+              InviteBar(s: s),
               AddLine(
                 hint: 'Новая задача: «позвонить маме завтра 17:00 @дом !!»',
                 autofocus: true,

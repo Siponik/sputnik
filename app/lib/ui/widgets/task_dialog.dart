@@ -124,6 +124,28 @@ class _TaskDialogState extends State<_TaskDialog> {
                         ),
                     ],
                   ),
+                  if (s.sphereOf(widget.listId) case final String sid when sid.startsWith('sh:')) ...[
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text('ДЕЛАЕТ', style: SpType.label(10.5)),
+                        ChoiceChip(
+                          label: const Text('Никто'),
+                          selected: s.layTask(widget.id)['who'] == null,
+                          onSelected: (_) => s.setTask(widget.id, {'who': null}),
+                        ),
+                        for (final p in s.people(sid))
+                          ChoiceChip(
+                            label: Text('${p['name'] ?? p['email']}${p['email'] == s.myEmail ? ' (я)' : ''}'),
+                            selected: s.layTask(widget.id)['who'] == p['email'],
+                            onSelected: (_) => s.setTask(widget.id, {'who': p['email']}),
+                          ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
