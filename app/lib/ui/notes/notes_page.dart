@@ -668,11 +668,14 @@ class _Toolbar extends StatelessWidget {
           onSelected: (v) async {
             if (v == 'rename') await renameDialog(context, st, path);
             if (v == 'image') await attachDialog(st, path);
+            if (v == 'todos' && context.mounted) await todosDialog(context, st, path);
             if (v == 'trash') await st.trash(path);
           },
           itemBuilder: (_) => [
             PopupMenuItem(value: 'rename', child: Text('Переименовать…', style: SpType.text(13))),
             PopupMenuItem(value: 'image', child: Text('Вставить картинку…', style: SpType.text(13))),
+            if (st.tasks != null && st.todosOf(path).any((t) => !t.sent))
+              PopupMenuItem(value: 'todos', child: Text('Чек-лист → в задачи · ${st.todosOf(path).where((t) => !t.sent).length}', style: SpType.text(13))),
             PopupMenuItem(value: 'trash', child: Text('Удалить в корзину папки', style: SpType.text(13, color: SpColors.red))),
           ],
         ),
@@ -959,6 +962,85 @@ Future<void> newNoteDialog(BuildContext context, NotesState st) async {
   final name = c.text.trim();
   if (ok != true || name.isEmpty) return;
   await st.create(dir, name, template: tpl);
+}
+
+/// Пункты `- [ ]` заметки → задачи Спутника в выбранном списке. Заметка не меняется.
+Future<void> todosDialog(BuildContext context, NotesState st, String path) async {
+  final sink = st.tasks;
+  if (sink == null) return;
+  final todos = st.todosOf(path);
+  final lists = sink.lists();
+  if (lists.isEmpty) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(const SnackBar(content: Text('Списков задач пока нет: войди в Google в «Сегодня»')));
+    return;
+  }
+  final pick = {for (final t in todos) if (!t.sent) t.line};
+  var list = lists.keys.first;
+  var busy = false;
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, set) => AlertDialog(
+        backgroundColor: SpColors.node,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: const BorderSide(color: SpColors.line)),
+        title: Text('Чек-лист → в задачи', style: SpType.text(17, w: FontWeight.w600)),
+        content: SizedBox(
+          width: 460,
+          child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text('Заметка не изменится. У задачи в описании будет, из какой она заметки.', style: SpType.text(12.5, color: SpColors.muted)),
+            const SizedBox(height: 10),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 300),
+              child: ListView(shrinkWrap: true, children: [
+                for (final t in todos)
+                  CheckboxListTile(
+                    dense: true,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    value: pick.contains(t.line),
+                    activeColor: SpColors.accent,
+                    onChanged: (v) => set(() => v == true ? pick.add(t.line) : pick.remove(t.line)),
+                    title: Text(t.text, style: SpType.text(13.5, color: t.sent ? SpColors.muted : SpColors.ink)),
+                    subtitle: t.sent ? Text('уже отправлен', style: SpType.text(11.5, color: SpColors.dim)) : null,
+                  ),
+              ]),
+            ),
+            const SizedBox(height: 12),
+            Text('В список', style: SpType.text(13, color: SpColors.muted)),
+            const SizedBox(height: 6),
+            Wrap(spacing: 6, runSpacing: 6, children: [
+              for (final e in lists.entries)
+                ChoiceChip(
+                  label: Text(e.value, style: SpType.text(12.5, color: list == e.key ? SpColors.onAccent : SpColors.ink)),
+                  selected: list == e.key,
+                  showCheckmark: false,
+                  selectedColor: SpColors.accent,
+                  backgroundColor: SpColors.bg,
+                  side: const BorderSide(color: SpColors.line),
+                  onSelected: (_) => set(() => list = e.key),
+                ),
+            ]),
+          ]),
+        ),
+        actions: [
+          _Btn('Отмена', onTap: () => Navigator.pop(ctx, false)),
+          _Btn(busy ? 'Отправляю…' : 'В задачи · ${pick.length}', main: true, onTap: () {
+            if (pick.isEmpty || busy) return;
+            set(() => busy = true);
+            Navigator.pop(ctx, true);
+          }),
+        ],
+      ),
+    ),
+  );
+  if (ok != true || pick.isEmpty) return;
+  final items = [for (final t in todos) if (pick.contains(t.line)) t];
+  try {
+    final n = await st.sendTodos(path, items, list);
+    if (context.mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('В «${lists[list]}» ушло задач: $n')));
+  } catch (e) {
+    if (context.mounted) ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(content: Text('Не получилось отправить: $e')));
+  }
 }
 
 /// Новый холст `.canvas` в папке открытой заметки (или в корне).

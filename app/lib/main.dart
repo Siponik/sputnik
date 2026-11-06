@@ -11,7 +11,9 @@ void main() {
   final state = AppState()..load();
   // «Знания»: настройки и база синхронизации — в своей подпапке flutter/, общая копия — «Спутник / Знания» на Drive.
   final drive = DriveStore(state.api.auth);
-  final notes = NotesState(DirNotesFiles(ownFile('notes.json').parent), remote: () => drive)..load();
+  final notes = NotesState(DirNotesFiles(ownFile('notes.json').parent), remote: () => drive)
+    ..tasks = TaskSink(lists: () => state.listNames, create: state.addTask)
+    ..load();
   runApp(
     MaterialApp(
       title: 'Спутник',

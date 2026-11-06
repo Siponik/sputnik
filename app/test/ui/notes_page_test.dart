@@ -256,6 +256,32 @@ void main() {
     await t.pump(const Duration(milliseconds: 20)); // таймер сохранения холста (запись проверена в тесте состояния)
   });
 
+  testWidgets('чек-лист → в задачи: пункт меню, выбор списка, отправка', (t) async {
+    put('3D/Щит.md', 'Пёк по [[Запекание нормалей]].\n- [ ] Перепечь щит\n- [x] Развёртка\n');
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    final got = <String>[];
+    st.tasks = TaskSink(lists: () => {'L1': 'Работа', 'L2': '3D-ассеты'}, create: (l, title, n) async {
+      got.add('$l:$title');
+      return 'x';
+    });
+    st.openNote('3D/Щит.md');
+    await pump(t);
+    await t.tap(find.byTooltip('Ещё'));
+    await t.pumpAndSettle();
+    await t.tap(find.text('Чек-лист → в задачи · 1'));
+    await t.pumpAndSettle();
+    expect(find.text('Перепечь щит'), findsWidgets);
+    expect(find.text('Развёртка'), findsNothing);
+    await t.tap(find.text('3D-ассеты'));
+    await t.pump();
+    await t.tap(find.text('В задачи · 1'));
+    await t.pumpAndSettle();
+    await t.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 100)));
+    await t.pump();
+    expect(got, ['L2:Перепечь щит']);
+    expect(st.todosOf('3D/Щит.md').single.sent, isTrue);
+  });
+
   testWidgets('папка пропала — понятное состояние', (t) async {
     await t.runAsync(() => st.open('${tmp.path}/нет-такой', watch: false));
     await pump(t);

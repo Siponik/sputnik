@@ -55,6 +55,12 @@ class GoogleApi {
     return out;
   }
 
+  /// Новая задача в списке, вернёт её id.
+  Future<String> createTask(String listId, String title, {String notes = ''}) async {
+    final j = await _call('POST', '$_tasks/lists/$listId/tasks', {'title': title, if (notes.isNotEmpty) 'notes': notes});
+    return j['id'] as String;
+  }
+
   Future<void> setDone(String listId, String taskId, bool done) => _call(
     'PATCH',
     '$_tasks/lists/$listId/tasks/$taskId',

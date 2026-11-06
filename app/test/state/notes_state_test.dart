@@ -174,6 +174,34 @@ void main() {
     expect(await st.canvas('сломан.canvas'), isNull);
     expect(st.canvasErrors['сломан.canvas'], isNotNull);
   });
+  test('чек-лист → в задачи: заметка не меняется, второй раз не уходит, ошибка не теряет ушедшие', () async {
+    const text = 'Дела:\n- [ ] Нарисовать карту\n- [ ] Имя трактирщику\n- [x] Сделано\n';
+    put('DND/Сессия 3.md', text);
+    await st.open(vault.path, watch: false);
+    final got = <String>[];
+    var failOn = '';
+    st.tasks = TaskSink(
+      lists: () => {'L1': 'DND'},
+      create: (list, title, notes) async {
+        if (title == failOn) throw StateError('нет связи');
+        got.add('$list:$title:$notes');
+        return 'id${got.length}';
+      },
+    );
+    expect(st.todosOf('DND/Сессия 3.md').map((t) => t.text), ['Нарисовать карту', 'Имя трактирщику']);
+    failOn = 'Имя трактирщику';
+    await expectLater(st.sendTodos('DND/Сессия 3.md', st.todosOf('DND/Сессия 3.md'), 'L1'), throwsStateError);
+    expect(got, ['L1:Нарисовать карту:Из заметки «Сессия 3» · DND/Сессия 3.md']);
+    failOn = '';
+    final rest = st.todosOf('DND/Сессия 3.md').where((t) => !t.sent).toList();
+    expect(rest.map((t) => t.text), ['Имя трактирщику']);
+    expect(await st.sendTodos('DND/Сессия 3.md', rest, 'L1'), 1);
+    expect(read('DND/Сессия 3.md'), text);
+    final again = NotesState(DirNotesFiles(Directory('${tmp.path}/cfg')));
+    await again.load();
+    expect(again.config.sent.length, 2);
+    again.dispose();
+  });
 }
 
 class _Broken extends MemStore {

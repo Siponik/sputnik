@@ -99,4 +99,12 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  /// Новая задача (из чек-листа заметки): сразу в памяти, id — от Google.
+  Future<String> addTask(String listId, String title, String notes) async {
+    final id = await api.createTask(listId, title, notes: notes);
+    all.add(TodayTask(id: id, listId: listId, title: title, day: ''));
+    notifyListeners();
+    return id;
+  }
 }

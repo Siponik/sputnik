@@ -12,6 +12,7 @@ import '../core/notes/edit.dart';
 import '../core/notes/index.dart';
 import '../core/notes/parse.dart';
 import '../core/notes/sync.dart';
+import '../core/notes/tasks.dart';
 import '../data/notes/notes_sync.dart';
 import '../data/notes/vault.dart';
 
@@ -25,10 +26,14 @@ class NotesConfig {
 
   /// Вид папки: `list` | `cards` | `table` (папка → вид).
   Map<String, String> modes;
-  NotesConfig({this.folder, List<String>? recent, List<String>? tabs, this.active, this.sync = true, Map<String, String>? modes})
+
+  /// Пункты чек-листа, уже отправленные в задачи (`todoKey`).
+  Set<String> sent;
+  NotesConfig({this.folder, List<String>? recent, List<String>? tabs, this.active, this.sync = true, Map<String, String>? modes, Set<String>? sent})
       : recent = recent ?? [],
         tabs = tabs ?? [],
-        modes = modes ?? {};
+        modes = modes ?? {},
+        sent = sent ?? {};
 
   Map<String, dynamic> toJson() => {
         'folder': folder,
@@ -37,6 +42,7 @@ class NotesConfig {
         'active': active,
         'sync': sync,
         'modes': modes,
+        if (sent.isNotEmpty) 'sent': sent.toList(),
       };
 
   factory NotesConfig.fromJson(Map<String, dynamic> j) => NotesConfig(
@@ -46,6 +52,7 @@ class NotesConfig {
         active: j['active'] as String?,
         sync: j['sync'] as bool? ?? true,
         modes: (j['modes'] as Map?)?.cast<String, String>(),
+        sent: (j['sent'] as List?)?.cast<String>().toSet(),
       );
 }
 
@@ -68,6 +75,13 @@ class DirNotesFiles implements NotesFiles {
     await t.writeAsString(text, flush: true);
     await t.rename(_f(name).path);
   }
+}
+
+/// Куда отправлять задачи из заметок: списки задач и создание одной задачи (вернёт её id).
+class TaskSink {
+  final Map<String, String> Function() lists;
+  final Future<String> Function(String listId, String title, String notes) create;
+  const TaskSink({required this.lists, required this.create});
 }
 
 class NotesState extends ChangeNotifier {
@@ -100,6 +114,34 @@ class NotesState extends ChangeNotifier {
 
   /// Следить за папкой (в тестах экрана выключено).
   bool watchFiles = true;
+
+  /// Задачи Спутника — задаёт оболочка приложения; нет — пункты чек-листа не отправить.
+  TaskSink? tasks;
+
+  /// Пункты чек-листа заметки, которые можно отправить в задачи.
+  List<Todo> todosOf(String path) {
+    final d = index.doc(path);
+    return d == null ? const [] : openTodos(parseNote(path, textOf(path)), config.sent);
+  }
+
+  /// Отправить пункты в список [listId]. Файл заметки не меняется. Вернёт, сколько ушло.
+  Future<int> sendTodos(String path, List<Todo> items, String listId) async {
+    final sink = tasks;
+    if (sink == null) return 0;
+    var n = 0;
+    try {
+      for (final t in items) {
+        await sink.create(listId, t.text, taskNotesFrom(path));
+        config.sent.add(todoKey(path, t.text));
+        n++;
+      }
+    } finally {
+      // Ушедшие до ошибки второй раз не отправятся.
+      await _saveConfig();
+      notifyListeners();
+    }
+    return n;
+  }
 
   SyncReport? lastSync;
   bool syncing = false;
