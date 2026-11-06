@@ -10,6 +10,7 @@ import 'package:flutter/foundation.dart';
 import '../core/dates.dart';
 import '../core/habits.dart' as hb;
 import '../core/layer.dart' as lay;
+import '../core/repeat.dart' as rep;
 import '../core/route.dart' as route;
 import '../core/templates.dart' as tpl;
 import '../core/today.dart' as today;
@@ -114,6 +115,7 @@ class AppState extends ChangeNotifier {
       offline = false;
       error = null;
       syncedAt = DateTime.now();
+      rollRepeats(quiet: true);
       unawaited(store.writeCache({'lists': lists, 'tasks': tasks, 'calendars': calendars, 'events': events}));
     } on AuthError catch (e) {
       needLogin = e.needLogin;
@@ -594,6 +596,46 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  // ---------- повтор: выполненная задача с правилом → следующая с новым сроком (как tasks.svelte.js rollRepeats) ----------
+
+  void rollRepeats({bool quiet = false}) {
+    final ls = lists.where((l) => !tpl.isHabitList(l, layer)).toList();
+    final todo = rep.dueRepeats(ls, tasks, (layer['tasks'] as Map?)?.cast<String, dynamic>());
+    for (final r in todo) {
+      final listId = r['listId'] as String;
+      final t = r['task'] as Json;
+      final day = rep.nextDue(r['rule'], dueToYmd(t['due'] as String?), todayYmd);
+      if (day == null) continue;
+      final have = rep.existingNext(tasks[listId], t, day);
+      if (have != null) {
+        touch('tasks', t['id'] as String, {
+          'repeatNext': have['id'],
+          'repeatAt': DateTime.now().millisecondsSinceEpoch,
+        });
+        continue;
+      }
+      final was = layTask(t['id'] as String);
+      final carry = {
+        for (final k in rep.carry)
+          if (was[k] != null) k: was[k],
+      };
+      final x = addTask(listId, (t['title'] ?? '') as String, due: day, layerPatch: carry);
+      if ((t['notes'] ?? '') != '') setNotes(listId, x, t['notes'] as String);
+      touch('tasks', t['id'] as String, {'repeatNext': x['id'], 'repeatAt': DateTime.now().millisecondsSinceEpoch});
+      if (!quiet) say('Повтор: «${t['title']}» — снова ${day == todayYmd ? 'сегодня' : day}');
+    }
+  }
+
+  /// «Отменить» выполнение в первые 10 минут убирает созданную копию.
+  void _unroll(String listId, Json t) {
+    final was = layTask(t['id'] as String);
+    final next = was['repeatNext'] as String?;
+    if (next == null || DateTime.now().millisecondsSinceEpoch - ((was['repeatAt'] ?? 0) as num) > 10 * 60000) return;
+    touch('tasks', t['id'] as String, {'repeatNext': null, 'repeatAt': null});
+    final n = task(listId, next);
+    if (n != null && !isDone(n)) remove(listId, n);
+  }
+
   // ---------- действия ----------
 
   void say(String msg) {
@@ -620,6 +662,7 @@ class AppState extends ChangeNotifier {
 
   void toggleDone(String listId, Json t) {
     final done = !isDone(t);
+    if (!done) _unroll(listId, t);
     _send(
       listId,
       t['id'] as String,
@@ -627,6 +670,7 @@ class AppState extends ChangeNotifier {
           ? {'status': 'completed', 'completed': DateTime.now().toUtc().toIso8601String()}
           : {'status': 'needsAction', 'completed': null},
     );
+    if (done && layTask(t['id'] as String)['repeat'] != null) rollRepeats();
   }
 
   /// Перенос по колонкам: «готово» — выполнить, из «готово» — вернуть.
@@ -708,6 +752,9 @@ class AppState extends ChangeNotifier {
       if (i < 0) continue;
       final local = e.value[i];
       e.value[i] = {...real, if (local['status'] != real['status']) 'status': local['status']};
+      for (final r in ((layer['tasks'] as Map?) ?? const {}).values) {
+        if (r is Map && r['repeatNext'] == tmp) r['repeatNext'] = real['id'];
+      }
       final L = (layer['tasks'] as Map?)?[tmp];
       if (L != null) {
         (layer['tasks'] as Map)[real['id']] = L;
