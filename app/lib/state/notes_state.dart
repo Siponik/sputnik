@@ -358,6 +358,16 @@ class NotesState extends ChangeNotifier {
     return '![[${p.substring(p.lastIndexOf('/') + 1)}]]';
   }
 
+  /// «Связать»: упоминание заметки [path] в заметке [from] (строка [line]) превратить в ссылку. Получилось — true.
+  bool linkMentionIn(String path, String from, int line) {
+    final d = index.doc(path);
+    if (d == null) return false;
+    final out = linkMention(textOf(from), line, [d.title, ...d.aliases], wikiTargetFor(path, index.paths));
+    if (out == null) return false;
+    edit(from, out);
+    return true;
+  }
+
   /// Отметить чек-лист прямо в тексте заметки.
   void toggleTask(String path, int line, bool done) => edit(path, setTaskDone(textOf(path), line, done));
 

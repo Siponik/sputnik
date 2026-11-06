@@ -134,6 +134,17 @@ void main() {
     expect(st.config.folder, isNull);
     expect(File('${vault.path}/DND/Мира Тёрн.md').existsSync(), isTrue);
   });
+
+  test('«Связать» превращает упоминание в ссылку и оно уходит из «упомянуто без ссылки»', () async {
+    st.edit('DND/Город Вельск.md', 'Тут [[Мира Тёрн]].');
+    st.edit('Шаблоны/НПС.md', 'Похожа на мира тёрн.');
+    expect(st.index.mentions('DND/Мира Тёрн.md').map((m) => m.from), ['Шаблоны/НПС.md']);
+    final m = st.index.mentions('DND/Мира Тёрн.md').single;
+    expect(st.linkMentionIn('DND/Мира Тёрн.md', m.from, m.line), isTrue);
+    expect(st.textOf('Шаблоны/НПС.md'), 'Похожа на [[Мира Тёрн|мира тёрн]].');
+    expect(st.index.mentions('DND/Мира Тёрн.md'), isEmpty);
+    expect(st.index.backlinks('DND/Мира Тёрн.md').length, 2);
+  });
 }
 
 class _Broken extends MemStore {

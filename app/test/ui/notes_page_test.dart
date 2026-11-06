@@ -88,6 +88,34 @@ void main() {
     await t.pumpAndSettle();
   });
 
+  testWidgets('панель «Связи»: наружу, сюда, «Создать», «Связать», локальный граф', (t) async {
+    put('Учёба/Конспект.md', 'Сегодня разбирали запекание нормалей.');
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    st.openNote('3D/Техники/Запекание нормалей.md');
+    await pump(t);
+    expect(find.text('↔ Связи · 2'), findsOneWidget);
+    await t.tap(find.text('↔ Связи · 2'));
+    await t.pump();
+    expect(find.text('СВЯЗИ'), findsOneWidget);
+    expect(find.text('ССЫЛАЕТСЯ НА · 2'), findsOneWidget);
+    expect(find.text('СОЗДАТЬ'), findsOneWidget);
+    expect(find.text('ССЫЛАЮТСЯ СЮДА · 1'), findsWidgets);
+    expect(find.text('УПОМЯНУТО БЕЗ ССЫЛКИ · 1'), findsOneWidget);
+    expect(find.text('ЛОКАЛЬНЫЙ ГРАФ · ГЛУБИНА 1'), findsOneWidget);
+    expect(find.text('Глубина 1 · 3 заметки'), findsOneWidget);
+
+    await t.tap(find.text('Связать'));
+    await t.pump();
+    expect(st.textOf('Учёба/Конспект.md'), 'Сегодня разбирали [[Запекание нормалей|запекание нормалей]].');
+    expect(find.text('УПОМЯНУТО БЕЗ ССЫЛКИ · 1'), findsNothing);
+    expect(find.text('ССЫЛАЮТСЯ СЮДА · 2'), findsWidgets);
+
+    await t.tap(find.text('ЗАКРЫТЬ ✕'));
+    await t.pump();
+    expect(find.text('СВЯЗИ'), findsNothing);
+    await t.pump(const Duration(milliseconds: 20)); // таймер автосохранения (сама запись проверена в тесте состояния)
+  });
+
   testWidgets('папка пропала — понятное состояние', (t) async {
     await t.runAsync(() => st.open('${tmp.path}/нет-такой', watch: false));
     await pump(t);

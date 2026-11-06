@@ -13,6 +13,8 @@ import '../../core/notes/sync.dart' show parentFolders;
 import '../../core/notes/view.dart';
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
+import 'hue.dart';
+import 'links_panel.dart';
 import 'note_editor.dart';
 
 class NotesPage extends StatefulWidget {
@@ -222,13 +224,10 @@ class _SideState extends State<_Side> {
     if (a != null) _open.addAll(parentFolders(a));
   }
 
-  Color _hue(String top, List<String> tops) => SpColors.hues[tops.indexOf(top) % SpColors.hues.length];
-
   @override
   Widget build(BuildContext context) {
     _reveal();
     final notes = st.index.paths.toList();
-    final tops = {for (final p in notes) if (p.contains('/')) p.substring(0, p.indexOf('/'))}.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     final q = _q.text.trim();
     final rows = <Widget>[];
     if (q.isNotEmpty) {
@@ -254,7 +253,6 @@ class _SideState extends State<_Side> {
       }
       rows.add(_Section('ПАПКИ', line: recent.isNotEmpty));
       for (final r in folderTree(notes, _open, cap: 5)) {
-        final top = r.path.contains('/') ? r.path.substring(0, r.path.indexOf('/')) : r.path;
         if (r.path.startsWith('…more:')) {
           rows.add(InkWell(
             onTap: () => setState(() => _open.add('…all:${r.path.substring(6)}')),
@@ -264,7 +262,7 @@ class _SideState extends State<_Side> {
           rows.add(_Row(
             depth: r.depth,
             caret: r.open ? '▾' : '▸',
-            dot: r.depth == 0 ? _hue(top, tops) : null,
+            dot: r.depth == 0 ? folderHue('${r.path}/', notes) : null,
             icon: r.depth == 0 ? null : '▭',
             name: r.name,
             count: '${r.count}',
@@ -433,11 +431,22 @@ class _Main extends StatefulWidget {
 
 class _MainState extends State<_Main> {
   bool _read = false;
+  bool _links = false;
   NotesState get st => widget.st;
 
   @override
   Widget build(BuildContext context) {
     final path = st.active;
+    final hub = _hub(context, path);
+    if (!_links || path == null) return hub;
+    return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+      Expanded(child: hub),
+      const SizedBox(width: 16),
+      SizedBox(width: 320, child: LinksPanel(st: st, path: path, onClose: () => setState(() => _links = false))),
+    ]);
+  }
+
+  Widget _hub(BuildContext context, String? path) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -456,9 +465,9 @@ class _MainState extends State<_Main> {
                 if (path == null)
                   Expanded(child: _Empty(st: st))
                 else ...[
-                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => _read = r)),
+                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => _read = r), links: _links, onLinks: () => setState(() => _links = !_links)),
                   if (st.conflicts.containsKey(path)) _ConflictBar(st: st, path: path),
-                  Expanded(child: _NoteBody(key: ValueKey(path), st: st, path: path, read: _read)),
+                  Expanded(child: _NoteBody(key: ValueKey(path), st: st, path: path, read: _read, onAllLinks: () => setState(() => _links = true))),
                   _Footer(st: st, path: path),
                 ],
               ],
@@ -562,11 +571,13 @@ class _Tabs extends StatelessWidget {
 }
 
 class _Toolbar extends StatelessWidget {
-  const _Toolbar({required this.st, required this.path, required this.read, required this.onMode});
+  const _Toolbar({required this.st, required this.path, required this.read, required this.onMode, required this.links, required this.onLinks});
   final NotesState st;
   final String path;
   final bool read;
   final ValueChanged<bool> onMode;
+  final bool links;
+  final VoidCallback onLinks;
   @override
   Widget build(BuildContext context) {
     final dir = folderOf(path);
@@ -593,6 +604,19 @@ class _Toolbar extends StatelessWidget {
                 ),
               ),
           ]),
+        ),
+        const SizedBox(width: 10),
+        TextButton(
+          onPressed: onLinks,
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 28),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            backgroundColor: links ? SpColors.accentWash : Colors.transparent,
+            foregroundColor: links ? SpColors.accentInk : SpColors.ink,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: BorderSide(color: links ? SpColors.accentLine : SpColors.lineStrong)),
+            textStyle: SpType.text(12.5, w: FontWeight.w500),
+          ),
+          child: Text('↔ Связи · ${st.index.degree(path)}'),
         ),
         const SizedBox(width: 6),
         PopupMenuButton<String>(
@@ -654,10 +678,11 @@ class _Empty extends StatelessWidget {
 }
 
 class _NoteBody extends StatelessWidget {
-  const _NoteBody({super.key, required this.st, required this.path, required this.read});
+  const _NoteBody({super.key, required this.st, required this.path, required this.read, required this.onAllLinks});
   final NotesState st;
   final String path;
   final bool read;
+  final VoidCallback onAllLinks;
 
   void _follow(BuildContext context, String? to, NoteLink l) {
     if (to != null) {
@@ -686,7 +711,11 @@ class _NoteBody extends StatelessWidget {
               padding: const EdgeInsets.only(top: 12),
               decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('ССЫЛАЮТСЯ СЮДА · ${back.length}', style: SpType.label(9.5)),
+                Row(children: [
+                  Text('ССЫЛАЮТСЯ СЮДА · ${back.length}', style: SpType.label(9.5)),
+                  const Spacer(),
+                  InkWell(onTap: onAllLinks, child: Text('все связи →', style: SpType.text(12.5, color: SpColors.accent))),
+                ]),
                 const SizedBox(height: 8),
                 LayoutBuilder(builder: (context, b) {
                   final cw = (b.maxWidth - 8) / 2;

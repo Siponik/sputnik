@@ -473,3 +473,34 @@ class _Words {
     return 0;
   }
 }
+
+/// «Связать»: в строке [line] текста [text] первое упоминание [names] (целым словом, без регистра, ё = е,
+/// не внутри `[[…]]`) превратить в ссылку на [target]. Совпало с [target] буква в букву — `[[target]]`,
+/// иначе `[[target|как было написано]]`. Ничего не нашлось — null.
+String? linkMention(String text, int line, Iterable<String> names, String target) {
+  final start = _lineStart(text, line);
+  final raw = _lineAt(text, line);
+  final fl = foldText(raw);
+  // foldText меняет буквы один к одному, поэтому позиции совпадают с исходной строкой.
+  if (fl.length != raw.length) return null;
+  var best = -1, len = 0;
+  for (final n0 in names) {
+    final n = foldText(n0.trim());
+    if (n.length < 3) continue;
+    var from = 0;
+    while (from <= fl.length) {
+      final at = _wholeWord(fl.substring(from), n);
+      if (at < 0) break;
+      final pos = from + at;
+      if (!_insideBrackets(raw, pos)) {
+        if (best < 0 || pos < best) (best, len) = (pos, n.length);
+        break;
+      }
+      from = pos + 1;
+    }
+  }
+  if (best < 0) return null;
+  final seen = raw.substring(best, best + len);
+  final link = seen == target ? '[[$target]]' : '[[$target|$seen]]';
+  return text.replaceRange(start + best, start + best + len, link);
+}
