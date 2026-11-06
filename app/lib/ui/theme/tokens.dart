@@ -88,11 +88,40 @@ abstract final class SpRadius {
   static const socket = 3.0;
 }
 
+/// Движение (G_Motion): двигаются только сдвиг, масштаб и прозрачность; уход быстрее появления.
+/// [mode] ставит оболочка из настройки «Анимации»: full | min | off; системное «уменьшить движение» = min.
 abstract final class SpMotion {
   static const fast = Duration(milliseconds: 120);
   static const base = Duration(milliseconds: 200);
   static const slow = Duration(milliseconds: 320);
   static const ease = Curves.easeOutCubic;
+
+  static const dur1 = Duration(milliseconds: 120);
+  static const dur2 = Duration(milliseconds: 180);
+  static const dur3 = Duration(milliseconds: 260);
+  static const dur4 = Duration(milliseconds: 420);
+  static const easeOut = Cubic(.2, .8, .2, 1);
+  static const easeIn = Cubic(.4, 0, 1, 1);
+  static const easePop = Cubic(.3, 1.4, .5, 1);
+
+  static String mode = 'full';
+
+  /// Текущий уровень с учётом системного «уменьшить движение».
+  static String level(BuildContext c) {
+    if (mode == 'off') return 'off';
+    if (mode == 'min' || (MediaQuery.maybeDisableAnimationsOf(c) ?? false)) return 'min';
+    return 'full';
+  }
+
+  /// Длительность для уровня: min — затухание не дольше 120 мс, off — ноль.
+  static Duration d(BuildContext c, Duration full) => switch (level(c)) {
+    'off' => Duration.zero,
+    'min' => full < dur1 ? full : dur1,
+    _ => full,
+  };
+
+  /// Можно ли сдвигать и масштабировать (только при «полных»).
+  static bool moves(BuildContext c) => level(c) == 'full';
 }
 
 ThemeData spTheme() => ThemeData(

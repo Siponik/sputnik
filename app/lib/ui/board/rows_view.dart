@@ -254,7 +254,13 @@ class _ConveyorState extends State<ConveyorView> {
                   shut = false;
                   open = id;
                 }),
-          child: inner,
+          // Раскрытие строки: высота растёт плавно.
+          child: AnimatedSize(
+            duration: SpMotion.d(context, SpMotion.dur3),
+            curve: SpMotion.easeOut,
+            alignment: Alignment.topCenter,
+            child: inner,
+          ),
         ),
       ),
     );
