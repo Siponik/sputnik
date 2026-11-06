@@ -59,4 +59,18 @@ void main() {
     expect(of(SpanKind.heading), '# Заголовок ');
     expect(of(SpanKind.tag), '#тег');
   });
+
+  test('подсветка запроса: начало слов, ё = е, самое длинное совпадение', () {
+    expect(matchRanges('Запекание нормалей и запёк', 'запек'), [(0, 5), (21, 26)]);
+    expect(matchRanges('Курс: текстуры', 'тек кур'), [(0, 3), (6, 9)]);
+    expect(matchRanges('Перепечь щит', 'печь'), isEmpty); // середина слова не считается
+    expect(matchRanges('что угодно', '  '), isEmpty);
+  });
+
+  test('задача подходит, если все слова запроса начинают её слова', () {
+    expect(matchesAll('Перепечь щит с новым кейджем', 'щит кейдж'), isTrue);
+    expect(matchesAll('Перепечь щит', 'щит кейдж'), isFalse);
+    expect(matchesAll('Ёлка', 'елк'), isTrue);
+    expect(matchesAll('что-то', ''), isFalse);
+  });
 }

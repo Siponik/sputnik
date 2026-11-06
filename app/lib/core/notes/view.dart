@@ -146,3 +146,28 @@ List<TextPiece> pieces(String path, String text, String? Function(NoteLink l) re
   fillTo(text.length);
   return out;
 }
+
+/// Где в строке подсветить запрос: слова, которые начинаются с какого-нибудь слова запроса (без регистра, ё = е).
+/// Отрезки [start, end) по порядку, без наложений.
+List<(int, int)> matchRanges(String text, String query) {
+  final q = RegExp(r'[\p{L}\p{N}]+', unicode: true).allMatches(query.toLowerCase().replaceAll('ё', 'е')).map((m) => m[0]!).toList();
+  if (q.isEmpty) return const [];
+  final folded = text.toLowerCase().replaceAll('ё', 'е');
+  if (folded.length != text.length) return const [];
+  final out = <(int, int)>[];
+  for (final m in RegExp(r'[\p{L}\p{N}]+', unicode: true).allMatches(folded)) {
+    var best = 0;
+    for (final w in q) {
+      if (m[0]!.startsWith(w) && w.length > best) best = w.length;
+    }
+    if (best > 0) out.add((m.start, m.start + best));
+  }
+  return out;
+}
+
+/// Все слова запроса начинают какое-нибудь слово [text] (для задач в поиске Ctrl K).
+bool matchesAll(String text, String query) {
+  final ws = RegExp(r'[\p{L}\p{N}]+', unicode: true).allMatches(text.toLowerCase().replaceAll('ё', 'е')).map((m) => m[0]!).toList();
+  final q = RegExp(r'[\p{L}\p{N}]+', unicode: true).allMatches(query.toLowerCase().replaceAll('ё', 'е')).map((m) => m[0]!).toList();
+  return q.isNotEmpty && q.every((w) => ws.any((x) => x.startsWith(w)));
+}

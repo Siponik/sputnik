@@ -1,9 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sputnik_app/state/notes_state.dart';
 import 'package:sputnik_app/ui/notes/notes_page.dart';
+import 'package:sputnik_app/ui/notes/notes_search.dart';
 import 'package:sputnik_app/ui/theme/tokens.dart';
 
 void main() {
@@ -150,6 +152,46 @@ void main() {
     await t.pumpAndSettle();
     expect(st.view, 'note');
     expect(find.text('02 · ГРАФ ЗНАНИЙ'), findsNothing);
+  });
+
+  testWidgets('поиск Ctrl K: заметки с подсветкой, задачи, «Новая заметка», стрелки и Enter', (t) async {
+    await t.runAsync(() => st.open(vault.path, watch: false));
+    SearchPick? got;
+    t.view.physicalSize = const Size(1400, 900);
+    t.view.devicePixelRatio = 1;
+    addTearDown(t.view.reset);
+    await t.pumpWidget(MaterialApp(
+      theme: spTheme(),
+      home: Builder(
+        builder: (ctx) => TextButton(
+          onPressed: () async => got = await showNotesSearch(ctx, st, tasks: const [(title: 'Перепечь щит с новым кейджем', list: '3D-ассеты')]),
+          child: const Text('открыть'),
+        ),
+      ),
+    ));
+    await t.tap(find.text('открыть'));
+    await t.pumpAndSettle();
+    expect(find.text('ПОИСК · CTRL K'), findsOneWidget);
+
+    await t.enterText(find.byType(TextField), 'щит');
+    await t.pump();
+    expect(find.text('ЗАМЕТКИ · 1'), findsOneWidget);
+    expect(find.text('ЗАДАЧИ · 1'), findsOneWidget);
+    expect(find.text('2 НАЙДЕНО'), findsOneWidget);
+    expect(find.text('Новая заметка «щит»'), findsNothing); // «Щит» уже есть
+    await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await t.testTextInput.receiveAction(TextInputAction.done);
+    await t.pumpAndSettle();
+    expect(got, isA<PickTask>());
+
+    await t.tap(find.text('открыть'));
+    await t.pumpAndSettle();
+    await t.enterText(find.byType(TextField), 'Кейджи');
+    await t.pump();
+    expect(find.text('Новая заметка «Кейджи»'), findsOneWidget);
+    await t.testTextInput.receiveAction(TextInputAction.done);
+    await t.pumpAndSettle();
+    expect((got as PickNew).title, 'Кейджи');
   });
 
   testWidgets('папка пропала — понятное состояние', (t) async {

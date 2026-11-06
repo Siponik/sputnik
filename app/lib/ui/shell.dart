@@ -3,10 +3,14 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../core/notes/parse.dart' show folderOf;
 
 import '../state/app_state.dart';
 import '../state/notes_state.dart';
 import 'notes/notes_page.dart';
+import 'notes/notes_search.dart';
 import 'theme/tokens.dart';
 import 'today_page.dart';
 
@@ -43,6 +47,24 @@ class _ShellState extends State<Shell> {
     super.dispose();
   }
 
+  /// Ctrl K из любого раздела: заметка — открыть в «Знаниях», задача — в «Сегодня».
+  Future<void> _search() async {
+    final app = widget.app, notes = widget.notes;
+    final tasks = [for (final t in app.all) (title: t.title, list: app.listNames[t.listId] ?? '')];
+    final pick = await showNotesSearch(context, notes, tasks: tasks);
+    if (!mounted || pick == null) return;
+    switch (pick) {
+      case PickNote(:final path):
+        setState(() => _tab = 1);
+        notes.openNote(path);
+      case PickNew(:final title):
+        setState(() => _tab = 1);
+        await notes.create(notes.active == null ? '' : folderOf(notes.active!), title);
+      case PickTask():
+        setState(() => _tab = 0);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -51,7 +73,10 @@ class _ShellState extends State<Shell> {
     return Scaffold(
       backgroundColor: SpColors.bg,
       body: CallbackShortcuts(
-        bindings: _tab == 1 ? notesKeys(context, widget.notes) : const {},
+        bindings: {
+          const SingleActivator(LogicalKeyboardKey.keyK, control: true): _search,
+          if (_tab == 1) ...notesKeys(context, widget.notes),
+        },
         child: Focus(
           autofocus: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
@@ -79,6 +104,24 @@ class _ShellState extends State<Shell> {
                 const Spacer(),
                 Text(time, style: SpType.label(11, w: FontWeight.w500, spacing: .14)),
                 const SizedBox(width: 16),
+                InkWell(
+                  onTap: _search,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 32,
+                    constraints: const BoxConstraints(minWidth: 150),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(border: Border.all(color: SpColors.line), borderRadius: BorderRadius.circular(8)),
+                    child: Row(mainAxisSize: MainAxisSize.min, children: [
+                      const Icon(Icons.search, size: 13, color: SpColors.muted),
+                      const SizedBox(width: 8),
+                      Text('НАЙТИ', style: SpType.label(11, w: FontWeight.w500, spacing: .14)),
+                      const SizedBox(width: 18),
+                      Text('CTRL K', style: SpType.label(10, color: SpColors.dim)),
+                    ]),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 ListenableBuilder(
                   listenable: widget.notes,
                   builder: (context, _) => Tooltip(
