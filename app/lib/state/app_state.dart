@@ -4,6 +4,7 @@
 // Пока без Riverpod: один ChangeNotifier, чтобы быстрее дойти до рабочей сборки.
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
@@ -24,6 +25,7 @@ import '../data/notify.dart';
 import '../data/google_auth.dart';
 import '../data/outbox.dart';
 import '../data/store.dart';
+import '../data/paths.dart';
 import '../data/shared_store.dart';
 import '../core/sharedcore.dart' as shc;
 
@@ -112,8 +114,8 @@ class AppState extends ChangeNotifier {
     syncing = true;
     notifyListeners();
     try {
-      await outbox.flush(force: true);
-      await _syncLayer();
+      await _step('отправка правок', () => outbox.flush(force: true));
+      await _step('слой', _syncLayer);
       final ls = await api.lists();
       final got = await Future.wait(ls.map((l) => api.tasks(l['id'] as String)));
       final fresh = <String, List<Json>>{};
@@ -129,10 +131,10 @@ class AppState extends ChangeNotifier {
         ];
         fresh[id] = list;
       }
-      try {
+      await _step('общие сферы', () async {
         final gone = await shared.pullAll();
         if (gone.isNotEmpty) say('Пропал доступ к общей сфере');
-      } on ApiError catch (_) {}
+      });
       final shl = shared.lists();
       for (final l in shl) {
         final id = l['id'] as String;
@@ -146,13 +148,13 @@ class AppState extends ChangeNotifier {
       }
       lists = [...ls, ...shl];
       tasks = fresh;
-      _reconcileShared();
-      await _loadEvents();
-      await _loadInbox();
       offline = false;
       error = null;
+      await _step('общие задачи', () async => _reconcileShared());
+      await _step('календарь', _loadEvents);
+      await _step('входящие', _loadInbox);
       syncedAt = DateTime.now();
-      rollRepeats(quiet: true);
+      await _step('повторы', () async => rollRepeats(quiet: true));
       unawaited(botSync());
       unawaited(store.writeCache({'lists': lists, 'tasks': tasks, 'calendars': calendars, 'events': events}));
     } on AuthError catch (e) {
@@ -161,12 +163,33 @@ class AppState extends ChangeNotifier {
       error = e.message;
     } on ApiError catch (e) {
       error = e.toString();
-    } catch (e) {
+    } on SocketException catch (e) {
       offline = true;
       error = 'Нет связи с Google';
+      _log('refresh', e);
+    } catch (e, st) {
+      error = 'Не смог забрать задачи: $e';
+      _log('refresh', e, st);
     }
     syncing = false;
     notifyListeners();
+  }
+
+  /// Необязательный шаг синхронизации: его ошибка не мешает показать задачи.
+  Future<void> _step(String name, Future<void> Function() f) async {
+    try {
+      await f();
+    } catch (e, st) {
+      _log(name, e, st);
+      error ??= 'Сбой ($name): $e';
+    }
+  }
+
+  void _log(String where, Object e, [StackTrace? st]) {
+    try {
+      final f = ownFile('errors.log');
+      f.writeAsStringSync('${DateTime.now().toIso8601String()} [$where] $e\n${st ?? ''}\n', mode: FileMode.append);
+    } catch (_) {}
   }
 
   DateTime? evFrom, evTo; // загруженное окно событий
