@@ -169,6 +169,25 @@ class NoteVault {
     return ctrl.stream;
   }
 
+  /// Все файлы папки (заметки и вложения, без служебных): путь → (размер, время изменения).
+  Future<Map<String, (int, int)>> listFiles() async {
+    final out = <String, (int, int)>{};
+    if (!await root.exists()) return out;
+    await for (final e in root.list(recursive: true, followLinks: false)) {
+      if (e is! File) continue;
+      final r = rel(e.path);
+      if (skipPath(r)) continue;
+      final st = await e.stat();
+      out[r] = (st.size, st.modified.millisecondsSinceEpoch);
+    }
+    return out;
+  }
+
+  Future<List<int>> readBytes(String r) => file(r).readAsBytes();
+
+  /// Записать содержимое, пришедшее с другого компьютера (через временный файл).
+  Future<void> writeBytes(String r, List<int> bytes) => _atomicWrite(r, bytes);
+
   /// Изменился ли файл на диске с тех пор, как мы его прочли.
   Future<bool> changedOutside(String r) async {
     final was = _stamps[r];
