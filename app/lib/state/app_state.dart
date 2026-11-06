@@ -16,7 +16,11 @@ import '../core/route.dart' as route;
 import '../core/spheres.dart' as sph;
 import '../core/templates.dart' as tpl;
 import '../core/today.dart' as today;
+import '../core/reminders.dart' as rem;
+import '../core/sharedbot.dart' as sbot;
+import '../data/bot_api.dart';
 import '../data/google_api.dart';
+import '../data/notify.dart';
 import '../data/google_auth.dart';
 import '../data/outbox.dart';
 import '../data/store.dart';
@@ -34,6 +38,9 @@ class AppState extends ChangeNotifier {
 
   final GoogleApi api;
   final Store store;
+  final BotApi bot = BotApi();
+  String botErr = '';
+  DateTime? botAt;
   late final Outbox outbox;
 
   List<Json> lists = []; // списки Google Tasks
@@ -56,6 +63,7 @@ class AppState extends ChangeNotifier {
 
   Timer? _poll;
   Timer? _layerTimer;
+  Timer? _botTimer;
   Timer? _toastTimer;
   bool _layerDirty = false;
 
@@ -83,6 +91,7 @@ class AppState extends ChangeNotifier {
     if (!needLogin) unawaited(refresh());
     _poll = Timer.periodic(const Duration(minutes: 2), (_) => refresh());
     Timer.periodic(const Duration(seconds: 30), (_) => outbox.flush());
+    Timer.periodic(const Duration(minutes: 1), (_) => _tickNotify());
   }
 
   @override
@@ -121,6 +130,7 @@ class AppState extends ChangeNotifier {
       error = null;
       syncedAt = DateTime.now();
       rollRepeats(quiet: true);
+      unawaited(botSync());
       unawaited(store.writeCache({'lists': lists, 'tasks': tasks, 'calendars': calendars, 'events': events}));
     } on AuthError catch (e) {
       needLogin = e.needLogin;
@@ -243,6 +253,8 @@ class AppState extends ChangeNotifier {
     _layerDirty = true;
     unawaited(store.writeLayer(layer));
     _layerTimer?.cancel();
+    _botTimer?.cancel();
+    _botTimer = Timer(const Duration(seconds: 3), () => botSync());
     _layerTimer = Timer(const Duration(seconds: 4), () async {
       if (!_layerDirty || needLogin) return;
       _layerDirty = false;
@@ -800,6 +812,130 @@ class AppState extends ChangeNotifier {
       if (layList(l['id'] as String)['sphere'] == id) touch('lists', l['id'] as String, {'sphere': null});
     }
     notifyListeners();
+  }
+
+  // ---------- общий Telegram-бот ----------
+
+  String? get botKey => ((layer['settings'] as Map?)?['tgbot'] as Map?)?['key'] as String?;
+
+  /// Пункты напоминаний (как в App.svelte) — для бота.
+  List<Json> remindItems() {
+    final hb0 = (((layer['settings'] as Map?)?['remindHour'] as Map?)?['v']) as String?;
+    rem.setDefaultTime(hb0);
+    final evs = events
+        .where((e) => ((e['extendedProperties'] as Map?)?['private'] as Map?)?['sputnikR'] == '1')
+        .toList();
+    final ls = boardLists.cast<Map>();
+    return [
+      ...rem.collect(ls, tasks, layer['tasks'] as Map?, habitList, const [], evs.cast<Map>()),
+      ...rem.habitItems(habits, habitLog),
+      ...rem.assignedItems(ls, tasks, layer['tasks'] as Map?),
+    ];
+  }
+
+  Future<void> botSync() async {
+    final key = botKey;
+    if (key == null || key.isEmpty) return;
+    try {
+      final live = boardLists.where((l) => layList(l['id'] as String)['quiet'] != true).cast<Map>().toList();
+      await bot.push(
+        key,
+        remindItems(),
+        sbot.snapshot(live, tasks, layer['tasks'] as Map?),
+        sbot.guessCtx(boardLists.cast<Map>(), layer),
+      );
+      final r = await bot.inbox(key);
+      final ok = <Object?>[];
+      var added = 0;
+      for (final x in ((r['items'] ?? []) as List).cast<Map>()) {
+        if (x['type'] == 'add') {
+          final ctx = boardLists.cast<Map>();
+          final t = x['draft'] is Map
+              ? sbot.fromDraft(x['draft'] as Map, lists: ctx, layer: layer, tasks: tasks)
+              : sbot.fromText(x['text'], lists: ctx, layer: layer, tasks: tasks);
+          if (t != null) {
+            final patch = Json.from((t['layer'] as Map?) ?? const {});
+            if (t['slot'] != null) patch['slot'] = t['slot'];
+            if (!patch.containsKey('remind')) patch['remind'] = rem.defaultRule(layer['settings'] as Map?);
+            if (patch['remind'] == null) patch.remove('remind');
+            final n = addTask(t['listId'] as String, t['title'] as String, due: t['due'] as String?, layerPatch: patch);
+            if (((t['notes'] ?? '') as String).isNotEmpty) setNotes(t['listId'] as String, n, t['notes'] as String);
+            added++;
+          }
+        } else if (x['type'] == 'move' || x['type'] == 'done') {
+          final tk = task(x['listId'] as String, x['taskId'] as String);
+          if (tk != null && !isDone(tk)) {
+            if (x['type'] == 'done') {
+              toggleDone(x['listId'] as String, tk);
+            } else {
+              setDue(x['listId'] as String, tk, x['due'] as String?);
+            }
+          }
+        }
+        ok.add(x['id']);
+      }
+      if (ok.isNotEmpty) await bot.ack(key, ok);
+      if (added > 0) say(added == 1 ? 'Из Telegram — новая задача' : 'Из Telegram — новых задач: $added');
+      botErr = '';
+      botAt = DateTime.now();
+    } catch (e) {
+      botErr = '$e';
+    }
+    notifyListeners();
+  }
+
+  Future<String?> botLinkCode(String code) async {
+    final key = botKey ?? sbot.newKey();
+    try {
+      final r = await bot.link(code, key);
+      bot.forget();
+      touch('settings', 'tgbot', {'key': key, 'name': r['name'] ?? '', 'at': DateTime.now().millisecondsSinceEpoch});
+      say('Telegram подключён ✓ — напоминания придут туда');
+      unawaited(botSync());
+      return null;
+    } catch (e) {
+      return '$e';
+    }
+  }
+
+  Future<void> botTest() async {
+    try {
+      await bot.test(botKey ?? '');
+      say('Отправил проверку — загляни в Telegram');
+    } catch (e) {
+      say('Бот не ответил: $e');
+    }
+  }
+
+  Future<void> botUnlink() async {
+    try {
+      await bot.unlink(botKey ?? '');
+    } catch (_) {}
+    touch('settings', 'tgbot', {'key': null, 'name': '', 'at': null});
+    say('Telegram отключён');
+  }
+
+  // ---------- уведомления Windows: окно привычки и задачи «за N минут», пока приложение открыто ----------
+
+  final Set<String> _shown = {};
+
+  void _tickNotify() {
+    if (layer['settings'] is Map && ((layer['settings'] as Map)['notify'] as Map?)?['v'] == false) return;
+    final today = todayYmd;
+    for (final h in rem.habitWinDue(habits, habitLog, _shown.toList())) {
+      _shown.add('${h['id']}|$today');
+      notify('Привычка · ${h['name']}', 'Ещё не отмечено сегодня');
+    }
+    // Задачи и события — в Telegram, если бот привязан; иначе — уведомлением Windows.
+    if (botKey != null && botKey!.isNotEmpty) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final it in remindItems()) {
+      final at = DateTime.tryParse((it['fireAt'] ?? '') as String)?.millisecondsSinceEpoch;
+      final key = '${it['key']}';
+      if (at == null || _shown.contains(key) || at > now || now - at > 5 * 60000) continue;
+      _shown.add(key);
+      notify('Спутник · напоминание', '${it['title'] ?? ''}${it['list'] != null ? ' · ${it['list']}' : ''}');
+    }
   }
 
   // ---------- действия ----------

@@ -190,11 +190,14 @@ class _SettingsPageState extends State<SettingsPage> {
           (v) => setState(() => _set('remindHour', {'v': v})),
         ),
       ]),
-      _card('Telegram', [
-        Text(
-          'Общий бот @SputnikTasksBot привязывается в старом Спутнике (Настройки → Напоминания → Telegram). '
-          'Новый Спутник шлёт напоминания через тот же бот, когда он привязан.',
-          style: SpType.text(13, color: SpColors.muted),
+      _card('Telegram', [_Tg(s: s)]),
+      _card('Уведомления Windows', [
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Показывать уведомления'),
+          subtitle: const Text('Окно привычки; задачи — если Telegram не привязан'),
+          value: ((settings['notify'] as Map?)?['v']) != false,
+          onChanged: (v) => setState(() => _set('notify', {'v': v})),
         ),
       ]),
     ];
@@ -301,4 +304,85 @@ class _SettingsPageState extends State<SettingsPage> {
       ],
     ),
   );
+}
+
+class _Tg extends StatefulWidget {
+  const _Tg({required this.s});
+  final AppState s;
+  @override
+  State<_Tg> createState() => _TgState();
+}
+
+class _TgState extends State<_Tg> {
+  final code = TextEditingController();
+  String? err;
+  bool busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = widget.s;
+    final linked = (s.botKey ?? '').isNotEmpty;
+    if (linked) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Подключён @SputnikTasksBot — напоминания и задачи на неделю идут туда', style: SpType.text(13.5)),
+          if (s.botErr.isNotEmpty) Text(s.botErr, style: SpType.text(12.5, color: SpColors.red)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            children: [
+              OutlinedButton(onPressed: s.botTest, child: const Text('Проверить')),
+              TextButton(
+                onPressed: () async {
+                  await s.botUnlink();
+                  setState(() {});
+                },
+                child: const Text('Отключить'),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Открой @SputnikTasksBot в Telegram, нажми /start и введи сюда код из 6 цифр.', style: SpType.text(13.5)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            SizedBox(
+              width: 160,
+              child: TextField(
+                controller: code,
+                decoration: const InputDecoration(hintText: '123456', isDense: true),
+              ),
+            ),
+            const SizedBox(width: 10),
+            FilledButton(
+              onPressed: busy
+                  ? null
+                  : () async {
+                      setState(() => busy = true);
+                      final e = await s.botLinkCode(code.text);
+                      if (mounted) {
+                        setState(() {
+                          busy = false;
+                          err = e;
+                        });
+                      }
+                    },
+              child: const Text('Подключить'),
+            ),
+          ],
+        ),
+        if (err != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 6),
+            child: Text(err!, style: SpType.text(12.5, color: SpColors.red)),
+          ),
+      ],
+    );
+  }
 }
