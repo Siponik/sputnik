@@ -1,0 +1,56 @@
+# Сборка нового приложения (Flutter, app/) под Windows: zip с Sputnik.exe в пререлиз «app-beta».
+# Пререлиз никогда не «последний» — старый трекер обновляется по releases/latest, его не трогаем.
+name: Сборка Flutter-приложения
+
+on:
+  push:
+    branches: [beta]
+    paths:
+      - 'app/**'
+      - '.github/workflows/app-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: app
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+      - run: flutter pub get
+      - name: Сборка
+        env:
+          CLIENT: ${{ secrets.GOOGLE_CLIENT_JSON }}
+        run: |
+          if [ -n "$CLIENT" ]; then
+            printf '%s' "$CLIENT" > ../client.json
+          fi
+          node -e "const fs=require('fs');let c='';try{c=fs.readFileSync('../client.json','utf8')}catch{};fs.writeFileSync('../defines.json',JSON.stringify({SPUTNIK_GOOGLE_CLIENT:c}))"
+          flutter build windows --release --dart-define-from-file=../defines.json
+          rm -f ../client.json ../defines.json
+      - name: Архив
+        run: |
+          cd build/windows/x64/runner/Release
+          7z a -tzip "$GITHUB_WORKSPACE/Sputnik-flutter-win.zip" . >/dev/null
+      - name: Пререлиз app-beta
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cd "$GITHUB_WORKSPACE"
+          NOTE="Пробная сборка нового Спутника (Flutter) с $(git log -1 --format=%cd --date=format:'%d.%m %H:%M'). Распакуй zip в любую папку и запусти sputnik_app.exe."
+          if gh release view app-beta >/dev/null 2>&1; then
+            gh release edit app-beta --notes "$NOTE" --prerelease --latest=false
+          else
+            gh release create app-beta --target "$GITHUB_SHA" --prerelease --latest=false --title "Новый Спутник · пробная сборка" --notes "$NOTE"
+          fi
+          gh release upload app-beta Sputnik-flutter-win.zip --clobber

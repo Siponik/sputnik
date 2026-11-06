@@ -3,8 +3,9 @@
 import 'dart:io';
 
 String dataDir() {
-  final appdata = Platform.environment['APPDATA'];
-  if (appdata == null) throw StateError('Нет переменной APPDATA (пока работает только в Windows)');
+  // Не Windows (тесты, позже Android): своя папка во временной.
+  final appdata =
+      Platform.environment['APPDATA'] ?? '${Directory.systemTemp.path}${Platform.pathSeparator}sputnik-data';
   return '$appdata${Platform.pathSeparator}com.siponik.sputnik';
 }
 
