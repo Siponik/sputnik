@@ -278,7 +278,7 @@ class _HabitsPageState extends State<HabitsPage> {
           for (final (i, h) in list.indexed)
             SizedBox(
               width: w,
-              child: _card(context, s, h, s.habits.indexOf(h) < 0 ? i : s.habits.indexOf(h), log, sel == h['id'], wide),
+              child: _card(context, s, h, !s.habits.contains(h) ? i : s.habits.indexOf(h), log, sel == h['id'], wide),
             ),
         ],
       );
