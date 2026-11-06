@@ -31,7 +31,7 @@ def save3(fname, html, title, i):
     c = json.load(open(P + 'canvas.json'))
     if not any(p['id'] == 'kb' for p in c['pages']):
         c['pages'].append({'id': 'kb', 'name': 'Знания'})
-    i = {-1: 0, 0: 1, 0.5: 2}.get(i, i + 2)
+    i = {-1: 0, -0.5: 1, 0: 2, 0.5: 3, 0.7: 4}.get(i, i + 4)
     c["boards"][fname] = {"x": (i % 2) * 1360, "y": (i // 2) * 940, "w": 1280, "h": 820, "title": title, "expand": "fill", "page": 'kb'}
     if fname not in c['order']:
         c['order'].append(fname)
@@ -59,6 +59,16 @@ def thumb(w, h, c, label='', r=6):
 def search_inp(t, ph=True, w='100%'):
     c = MUT if ph else INK
     return f'<div style="width: {w}; height: 32px; box-sizing: border-box; border-radius: 8px; border: 1px solid {STRONG}; background: {BG}; display: flex; align-items: center; gap: 8px; padding: 0 10px; color: {c}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>{t}</div>'
+
+
+def modeswitch(active):
+    # главный переключатель раздела «Знания»: одинаковый на всех экранах, слева сверху
+    out = ''
+    for t, ic, k in [('Заметки', '¶', 'Ctrl 1'), ('Граф', '◉', 'Ctrl G'), ('Холст', '▦', '')]:
+        on = t == active
+        s_ = f'background: {OR}; color: {DARK}; font-weight: 600' if on else f'color: #C9CAD0'
+        out += f'<span style="flex: 1; height: 32px; border-radius: 7px; {s_}; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px"><span style="opacity: .8">{ic}</span>{t}</span>'
+    return f'<div style="padding: 6px; border-bottom: 1px solid {LINE}"><div role="tablist" aria-label="Вид знаний" style="display: flex; gap: 3px; padding: 3px; border-radius: 9px; background: {BG}">{out}</div></div>'
 
 
 # =================== 1. ЗНАНИЯ: ПАПКИ · СПИСОК · ЗАМЕТКА · СВЯЗИ ===================
@@ -236,12 +246,12 @@ def body(w):
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 34px; box-sizing: border-box; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 10px; padding: 0 16px; font-size: 12px; color: {DIM}">{dot(GREEN)}<span>Сохранено · Запекание нормалей.md</span><span style="margin-left: auto">312 слов</span></div>'''
 
 
-st = node(0, 0, 264, 700, nhead('', 'ЗАМЕТКИ', '152', GREY, None, 34) + side)
+st = node(0, 0, 264, 700, modeswitch('Заметки') + side)
 st += node(280, 0, 968, 700, tabs('Запекание нормалей') + tool(False) + body(640), hub=True)
 NOTES = st
 save3('G_Notes.dc.html', page('Знания', 'ЗНАНИЯ', st, R), 'Знания · заметка (основной экран)', 0)
 
-st = node(0, 0, 264, 700, nhead('', 'ЗАМЕТКИ', '152', GREY, None, 34) + side)
+st = node(0, 0, 264, 700, modeswitch('Заметки') + side)
 st += node(280, 0, 664, 700, tabs('Запекание нормалей') + tool(True) + body(560), hub=True)
 st += node(960, 0, 288, 700, nhead('', 'СВЯЗИ', 'ЗАКРЫТЬ ✕', OR, None, 34) + links
            + f'<div style="border-top: 1px solid {LINE}; padding: 10px 16px 0">{micro("ЛОКАЛЬНЫЙ ГРАФ · ГЛУБИНА 1", MUT)}</div>' + mini)
@@ -287,7 +297,7 @@ for it in range(260):
         p['vx'] += (cx0 - p['x']) * .004; p['vy'] += (cy0 - p['y']) * .004
         p['x'] += max(-8, min(8, p['vx'])); p['y'] += max(-8, min(8, p['vy']))
 xs = [p['x'] for p in pts]; ys = [p['y'] for p in pts]
-W, H = 960, 640
+W, H = 640, 640
 for p in pts:
     p['x'] = 30 + (p['x'] - min(xs)) / (max(xs) - min(xs)) * (W - 60)
     p['y'] = 30 + (p['y'] - min(ys)) / (max(ys) - min(ys)) * (H - 60)
@@ -329,17 +339,22 @@ def slider(t, v):
 flt += f'<div style="border-top: 1px solid {LINE}; padding: 8px 0">{micro("СИЛЫ", MUT, "; padding-left: 12px")}{slider("Отталкивание", 62)}{slider("Длина связей", 40)}{slider("Притяжение к центру", 25)}</div>'
 
 sp = pts[SEL]
-tip = node(gx + sp['x'] + 150, gy + sp['y'] - 150, 240, 0,
-           nhead('', 'ЗАПЕКАНИЕ НОРМАЛЕЙ', '↔ 11', OR, None, 28) +
-           f'<div style="padding: 10px 12px; font-size: 12.5px; line-height: 18px; color: #C9CAD0">Кейдж, сглаживание, сначала низкий полигонаж готов…</div>'
-           f'<div style="padding: 0 12px 10px; display: flex; gap: 6px">{tag("baking")}{tag("substance")}</div>'
-           f'<div style="border-top: 1px solid {LINE}; padding: 6px 12px; display: flex; gap: 12px; font-size: 12px; color: {MUT}"><span>{kbd("ENTER")} открыть</span><span>{kbd("L")} локальный</span></div>', style=SH)
-zoom = f'<div style="position: absolute; left: 1188px; top: 44px; display: flex; flex-direction: column; gap: 6px">' + ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {LINE}; background: {NODE}; display: grid; place-items: center; color: {MUT}">{t}</span>' for t in ['＋', '−', '⤢']) + '</div>'
+nb_ = ['Пайплайн ассета', 'UV без растяжений', 'Умные маски Substance', 'Курс: текстуры', 'Щит паладина']
+rd = (nhead('', 'ЧИТАЮ · ЗАПЕКАНИЕ НОРМАЛЕЙ', '↔ 11', OR, None, 34) +
+      f"""<div style="padding: 14px 16px 0"><div style="font-size: 12px; color: {MUT}">3D › Техники · изменено 22:14</div>
+      <div style="margin-top: 4px; font: 600 20px {SANS}">Запекание нормалей</div>
+      <div style="margin-top: 8px; display: flex; gap: 6px">{tag('baking')}{tag('substance')}</div>
+      <div style="margin-top: 12px; font-size: 13.5px; line-height: 22px; color: #D4D5DA">1. Низкий полигонаж готов, UV — см. {wl('UV без растяжений')}.<br>2. Кейдж чуть больше модели.<br>3. Пеку в Substance, потом {wl('Умные маски Substance')}.<br><span style="color: {MUT}">…ещё 2 раздела</span></div>
+      <div style="margin-top: 12px; font-size: 12px; color: {MUT}">Клик по ссылке — граф переезжает к той заметке, панель показывает её.</div></div>
+      <div style="margin-top: 12px; border-top: 1px solid {LINE}; padding: 10px 16px 0">{micro('СОСЕДИ · 11', MUT)}<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px">{''.join(f'<span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px">{dot(OR)}{n}</span>' for n in nb_)}<span style="font-size: 12.5px; color: {MUT}; align-self: center">ещё 6</span></div></div>
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid {LINE}; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px">{btn('Открыть в заметках', 'acc', True, '; width: 100%')}<div style="display: flex; gap: 8px">{btn('Читать целиком', sm=True, extra='; flex: 1')}{btn('Локальный граф', sm=True, extra='; flex: 1')}</div><div style="display: flex; gap: 12px; font-size: 12px; color: {MUT}"><span>{kbd('ENTER')} открыть</span><span>{kbd('L')} локальный</span><span>{kbd('ESC')} закрыть</span></div></div>""")
+tip = node(928, 0, 320, 700, rd, hub=True)
+tip += svg(f'<path d="M{gx + sp["x"] + 12:.0f} {gy + sp["y"]:.0f} C {gx + sp["x"] + 120:.0f} {gy + sp["y"]:.0f}, 860 60, 928 17" stroke="{OR}" stroke-width="1.5" stroke-dasharray="4 4" fill="none"></path>')
+zoom = f'<div style="position: absolute; left: 872px; top: 44px; display: flex; flex-direction: column; gap: 6px">' + ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {LINE}; background: {NODE}; display: grid; place-items: center; color: {MUT}">{t}</span>' for t in ['＋', '−', '⤢']) + '</div>'
 
-st = node(0, 0, 252, 700, nhead('01', 'ФИЛЬТРЫ', '', GREY, None, 34) + flt)
-st += ab(268, 6, f'<div style="display: flex; align-items: center; gap: 12px">{lbl("02 · ГРАФ ЗНАНИЙ", INK)}{micro("152 ЗАМЕТКИ · 318 СВЯЗЕЙ · ВЫБРАНО: 11 СОСЕДЕЙ", MUT)}</div>')
+st = node(0, 0, 252, 700, modeswitch('Граф') + flt)
+st += ab(268, 6, f'<div style="display: flex; align-items: center; gap: 12px">{lbl("ГРАФ ЗНАНИЙ", INK)}{micro("152 ЗАМЕТКИ · 318 СВЯЗЕЙ · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА", MUT)}</div>')
 st += graph + tip + zoom
-st += stamp(968, 640, 'ГРАФ ЗНАНИЙ', '152 · 318', 'МАСШТАБ 1:1')
 save3('G_NotesGraph.dc.html', page('Граф знаний', 'ЗНАНИЯ', st, R), 'Знания · граф (как в Obsidian)', 1)
 
 
