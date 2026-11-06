@@ -19,6 +19,7 @@ import '../core/templates.dart' as tpl;
 import '../core/today.dart' as today;
 import '../core/reminders.dart' as rem;
 import '../core/sharedbot.dart' as sbot;
+import 'notes_state.dart';
 import '../data/bot_api.dart';
 import '../data/google_api.dart';
 import '../data/notify.dart';
@@ -43,6 +44,10 @@ class AppState extends ChangeNotifier {
   }
 
   late final SharedStore shared;
+
+  /// «Знания» (для блока «Заметки» в окне задачи) и как открыть заметку — задаёт оболочка.
+  NotesState? notes;
+  void Function(String path)? showNote;
 
   final GoogleApi api;
   final Store store;
@@ -1224,9 +1229,13 @@ class AppState extends ChangeNotifier {
   int _seq = 0;
 
   /// Новая задача: сразу в памяти с временным id, в Google — из очереди.
-  Json addTask(String listId, String title, {String? due, Json layerPatch = const {}, String? col}) {
+  Json addTask(String listId, String title, {String? due, Json layerPatch = const {}, String? col, String notes = ''}) {
     final tmp = 'tmp-${DateTime.now().millisecondsSinceEpoch}-${_seq++}';
-    final body = <String, dynamic>{'title': title, if (due != null && due.isNotEmpty) 'due': ymdToDue(due)};
+    final body = <String, dynamic>{
+      'title': title,
+      if (due != null && due.isNotEmpty) 'due': ymdToDue(due),
+      if (notes.isNotEmpty) 'notes': notes,
+    };
     final t = <String, dynamic>{'id': tmp, ...body, 'status': 'needsAction'};
     (tasks[listId] ??= []).insert(0, t);
     final patch = {...layerPatch, if (col != null && col != 'done') 'status': col};

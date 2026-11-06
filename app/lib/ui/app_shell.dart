@@ -1,8 +1,15 @@
-// Оболочка: шапка с вкладками «Сегодня · Доска · Календарь», состояние связи, обновить. Ctrl+1…3 — вкладки, F5 — обновить.
+// Оболочка: шапка с вкладками «Сегодня · Календарь · Доска · Привычки · Знания», состояние связи, обновить.
+// Ctrl+1…5 — вкладки, F5 — обновить.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../core/notes/parse.dart' show folderOf;
 import '../state/app_state.dart';
+import '../state/notes_state.dart';
+import 'notes/notes_page.dart';
+import 'notes/notes_search.dart';
 import 'board/board_page.dart';
 import 'calendar/calendar_page.dart';
 import 'create/create_dialog.dart';
@@ -15,9 +22,19 @@ import 'g/kit.dart';
 import 'today/today_page.dart';
 
 class AppShell extends StatefulWidget {
-  const AppShell({super.key, required this.state, this.initialTab = 0});
+  const AppShell({
+    super.key,
+    required this.state,
+    this.notes,
+    this.initialTab = 0,
+    this.syncEvery = const Duration(minutes: 2),
+  });
   final AppState state;
+
+  /// «Знания»; нет — вкладки нет.
+  final NotesState? notes;
   final int initialTab;
+  final Duration syncEvery;
 
   @override
   State<AppShell> createState() => _AppShellState();
@@ -25,7 +42,34 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   late int tab = widget.initialTab;
-  static const tabs = ['Сегодня', 'Календарь', 'Доска', 'Привычки'];
+  List<String> get tabs => ['Сегодня', 'Календарь', 'Доска', 'Привычки', if (widget.notes != null) 'Знания'];
+
+  /// Настройки — не вкладка шапки, а кнопка «Состояние»; «Знания» в шапке пятые, но номер у них 5.
+  static const settingsTab = 4;
+  static const notesTab = 5;
+  int _tabAt(int i) => i == 4 ? notesTab : i;
+  Timer? _sync;
+
+  @override
+  void initState() {
+    super.initState();
+    final n = widget.notes;
+    if (n == null) return;
+    widget.state.showNote = (path) {
+      setState(() => tab = notesTab);
+      n.openNote(path);
+    };
+    // «Знания» сверяются с Drive раз в 2 минуты и вскоре после запуска.
+    _sync = Timer.periodic(widget.syncEvery, (_) => n.syncNow());
+    Future.delayed(const Duration(seconds: 3), () => mounted ? n.syncNow() : null);
+  }
+
+  @override
+  void dispose() {
+    _sync?.cancel();
+    widget.notes?.flush();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,10 +80,13 @@ class _AppShellState extends State<AppShell> {
         const SingleActivator(LogicalKeyboardKey.digit2, control: true): () => setState(() => tab = 1),
         const SingleActivator(LogicalKeyboardKey.digit3, control: true): () => setState(() => tab = 2),
         const SingleActivator(LogicalKeyboardKey.digit4, control: true): () => setState(() => tab = 3),
+        if (widget.notes != null)
+          const SingleActivator(LogicalKeyboardKey.digit5, control: true): () => setState(() => tab = notesTab),
+        if (widget.notes != null && tab == notesTab) ...notesKeys(context, widget.notes!),
         const SingleActivator(LogicalKeyboardKey.f5): s.refresh,
         const SingleActivator(LogicalKeyboardKey.keyN, control: true): _create,
         const SingleActivator(LogicalKeyboardKey.keyK, control: true): _search,
-        const SingleActivator(LogicalKeyboardKey.comma, control: true): () => setState(() => tab = 4),
+        const SingleActivator(LogicalKeyboardKey.comma, control: true): () => setState(() => tab = settingsTab),
       },
       child: Focus(
         autofocus: true,
@@ -85,6 +132,10 @@ class _AppShellState extends State<AppShell> {
   }
 
   void _search() {
+    if (tab == notesTab && widget.notes != null) {
+      _notesSearch(widget.notes!);
+      return;
+    }
     if (widget.state.needLogin) return;
     openSearch(context, widget.state, (t, list) {
       setState(() {
@@ -94,7 +145,31 @@ class _AppShellState extends State<AppShell> {
     });
   }
 
+  /// Ctrl K в «Знаниях»: заметки, задачи, новая заметка.
+  Future<void> _notesSearch(NotesState notes) async {
+    final s = widget.state;
+    final ts = [
+      for (final l in s.boardLists)
+        for (final t in s.topTasks(l['id'] as String))
+          (title: (t['title'] ?? '') as String, list: (l['title'] ?? '') as String),
+    ];
+    final pick = await showNotesSearch(context, notes, tasks: ts);
+    if (!mounted || pick == null) return;
+    switch (pick) {
+      case PickNote(:final path):
+        notes.openNote(path);
+      case PickNew(:final title):
+        await notes.create(notes.active == null ? '' : folderOf(notes.active!), title);
+      case PickTask():
+        setState(() => tab = 0);
+    }
+  }
+
   void _create() {
+    if (tab == notesTab && widget.notes != null) {
+      newNoteDialog(context, widget.notes!);
+      return;
+    }
     final s = widget.state;
     if (s.needLogin) return;
     if (tab == 3) {
@@ -138,15 +213,15 @@ class _AppShellState extends State<AppShell> {
             Padding(
               padding: const EdgeInsets.only(right: 20),
               child: InkWell(
-                onTap: () => setState(() => tab = i),
+                onTap: () => setState(() => tab = _tabAt(i)),
                 child: Container(
                   padding: const EdgeInsets.only(bottom: 3),
                   decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: tab == i ? SpColors.accent : Colors.transparent)),
+                    border: Border(bottom: BorderSide(color: tab == _tabAt(i) ? SpColors.accent : Colors.transparent)),
                   ),
                   child: Text(
                     tabs[i].toUpperCase(),
-                    style: gLbl(c: tab == i ? SpColors.ink : SpColors.muted, size: 11),
+                    style: gLbl(c: tab == _tabAt(i) ? SpColors.ink : SpColors.muted, size: 11),
                   ),
                 ),
               ),
@@ -212,14 +287,14 @@ class _AppShellState extends State<AppShell> {
                       ? 'Всё в порядке'
                       : 'Всё в порядке · обновлено ${two(s.syncedAt!.hour)}:${two(s.syncedAt!.minute)}'),
             child: InkWell(
-              onTap: () => setState(() => tab = 4),
+              onTap: () => setState(() => tab = settingsTab),
               borderRadius: BorderRadius.circular(8),
               child: Container(
                 height: 32,
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: tab == 4 ? SpColors.accent : SpColors.line),
+                  border: Border.all(color: tab == settingsTab ? SpColors.accent : SpColors.line),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -238,6 +313,8 @@ class _AppShellState extends State<AppShell> {
   }
 
   Widget _body(AppState s) {
+    // «Знаниям» Google не нужен: папка заметок — на этом компьютере.
+    if (tab == notesTab && widget.notes != null) return NotesPage(state: widget.notes!);
     if (!s.started) return const Center(child: CircularProgressIndicator());
     if (s.loggingIn) {
       return Center(

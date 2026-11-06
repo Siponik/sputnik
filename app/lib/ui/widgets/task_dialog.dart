@@ -2,6 +2,8 @@
 import 'package:flutter/material.dart';
 
 import '../../core/dates.dart';
+import '../../core/notes/parse.dart' show baseName, folderOf;
+import '../../core/notes/tasks.dart' show notesForTask;
 import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../../core/reminders.dart' as rem;
@@ -433,6 +435,7 @@ class _TaskDialogState extends State<_TaskDialog> {
                           ),
                         ),
                       ),
+                      _notesBlock(context, x),
                       const SizedBox(height: 14),
                       InkWell(
                         onTap: () => setState(() => more = !more),
@@ -517,6 +520,67 @@ class _TaskDialogState extends State<_TaskDialog> {
 }
 
 extension on _TaskDialogState {
+  /// «Заметки» из «Знаний»: откуда задача пришла и где о ней написано. Клик — открыть заметку.
+  Widget _notesBlock(BuildContext context, Json x) {
+    final s = widget.s, kn = s.notes, go = s.showNote;
+    if (kn == null || go == null || !kn.hasFolder) return const SizedBox.shrink();
+    final title = ((x['title'] ?? '') as String).trim();
+    final found = notesForTask(kn.index, title, (x['notes'] ?? '') as String);
+    void open(String p) {
+      Navigator.of(context).pop();
+      go(p);
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(found.isEmpty ? 'ЗАМЕТКИ' : 'ЗАМЕТКИ · ${found.length}', style: gLbl(c: SpColors.muted)),
+          const SizedBox(height: 6),
+          for (final p in found)
+            InkWell(
+              onTap: () => open(p),
+              borderRadius: BorderRadius.circular(6),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+                child: Row(
+                  children: [
+                    Text('¶', style: SpType.text(13, color: SpColors.accent)),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(baseName(p), overflow: TextOverflow.ellipsis, style: SpType.text(13.5)),
+                    ),
+                    if (folderOf(p).isNotEmpty)
+                      Flexible(
+                        child: Text(
+                          folderOf(p).replaceAll('/', ' › '),
+                          overflow: TextOverflow.ellipsis,
+                          style: gMicro(),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          if (title.isNotEmpty && !found.any((p) => baseName(p).toLowerCase() == title.toLowerCase()))
+            InkWell(
+              onTap: () async {
+                final nav = Navigator.of(context);
+                final p = await kn.create('', title);
+                nav.pop();
+                if (p != null) go(p);
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 4),
+                child: Text('＋ Заметка «$title»', style: SpType.text(13, color: SpColors.muted)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
   Widget _more(BuildContext context, Json x) {
     final s = widget.s;
     final id = widget.id;
