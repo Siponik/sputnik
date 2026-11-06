@@ -78,6 +78,16 @@ void main() {
       s.toggleHabit(s.habits.first);
       await t.pump(const Duration(seconds: 6));
     });
+    for (final v in ['pipe', 'stickers', 'list']) {
+      testWidgets('Доска $v $size', (t) async {
+        final s = demo();
+        s.layer['lists'] = {
+          'L1': {'view': v},
+        };
+        await pump(t, BoardPage(state: s), size);
+        expect(find.text('Задача 1'), findsWidgets);
+      });
+    }
     testWidgets('Календарь $size', (t) async {
       await pump(t, CalendarPage(state: demo()), size);
       expect(find.text('Встреча'), findsOneWidget);

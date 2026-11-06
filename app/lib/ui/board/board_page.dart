@@ -7,6 +7,9 @@ import '../../state/app_state.dart';
 import '../theme/tokens.dart';
 import '../widgets/common.dart';
 import '../widgets/task_dialog.dart';
+import 'card_menu.dart';
+import 'rows_view.dart';
+import 'stickers_view.dart';
 
 class BoardPage extends StatefulWidget {
   const BoardPage({super.key, required this.state});
@@ -79,6 +82,11 @@ class _BoardPageState extends State<BoardPage> {
     );
   }
 
+  String _view(Json b) {
+    final v = (b['view'] ?? 'kanban') as String;
+    return v == 'gallery' ? 'pipe' : (['kanban', 'pipe', 'stickers', 'list'].contains(v) ? v : 'kanban');
+  }
+
   Widget _board(BuildContext context, AppState s, String listId) {
     final b = s.board(listId);
     final cols = (b['cols'] as List).cast<Map>();
@@ -88,27 +96,61 @@ class _BoardPageState extends State<BoardPage> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-          child: Row(
+          child: Wrap(
+            spacing: 12,
+            runSpacing: 8,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(s.listName(listId), style: SpType.text(20, w: FontWeight.w600)),
               const SizedBox(width: 12),
               Text((b['name'] ?? '') as String, style: SpType.label(11)),
+
+              SegmentedButton<String>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(value: 'kanban', label: Text('Канбан')),
+                  ButtonSegment(value: 'pipe', label: Text('Конвейер')),
+                  ButtonSegment(value: 'stickers', label: Text('Стикеры')),
+                  ButtonSegment(value: 'list', label: Text('Список')),
+                ],
+                selected: {_view(b)},
+                onSelectionChanged: (v) => s.setView(listId, v.first),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: 'Архив',
+                onPressed: () => archiveDialog(context, s, listId),
+                icon: const Icon(Icons.inventory_2_outlined, size: 18, color: SpColors.muted),
+              ),
             ],
           ),
         ),
-        Expanded(
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
-            children: [
-              for (final c in cols)
-                Padding(
-                  padding: const EdgeInsets.only(right: 14),
-                  child: SizedBox(width: 280, child: _column(context, s, listId, c, byCol[c['id']] ?? const [])),
-                ),
-            ],
+        if (_view(b) == 'stickers')
+          Expanded(
+            child: StickersView(s: s, listId: listId),
+          )
+        else if (_view(b) == 'pipe')
+          Expanded(
+            child: ConveyorView(s: s, listId: listId),
+          )
+        else if (_view(b) == 'list')
+          Expanded(
+            child: ListRowsView(s: s, listId: listId),
+          )
+        else
+          Expanded(
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 20),
+              children: [
+                for (final c in cols)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 14),
+                    child: SizedBox(width: 280, child: _column(context, s, listId, c, byCol[c['id']] ?? const [])),
+                  ),
+              ],
+            ),
           ),
-        ),
       ],
     );
   }
@@ -163,7 +205,10 @@ class _BoardPageState extends State<BoardPage> {
           child: SizedBox(width: 264, child: card),
         ),
         childWhenDragging: Opacity(opacity: .3, child: card),
-        child: InkWell(onTap: () => openTask(context, s, listId, t), child: card),
+        child: GestureDetector(
+          onSecondaryTapUp: (d) => cardMenu(context, s, listId, t, d.globalPosition),
+          child: InkWell(onTap: () => openTask(context, s, listId, t), child: card),
+        ),
       ),
     );
   }

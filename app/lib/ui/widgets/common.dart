@@ -139,3 +139,14 @@ Color headFor(Object? c) {
   final i = c is num ? c.toInt() : 0;
   return i >= 0 && i < byPalette.length ? byPalette[i] : SpColors.headGrey;
 }
+
+/// Цвет из имени CSS-переменной старого трекера ('var(--clay)' …) — для тем стикеров, сфер, палитры колонок.
+Color cssColor(Object? v) => switch ('$v') {
+  'var(--clay)' => SpColors.accent,
+  'var(--gold)' => SpColors.gold,
+  'var(--type-work)' => SpColors.blue,
+  'var(--type-study)' => SpColors.violet,
+  'var(--type-personal)' => SpColors.green,
+  'var(--signal-done)' => const Color(0xFF6FB6CF),
+  _ => SpColors.grey,
+};

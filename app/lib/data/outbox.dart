@@ -104,11 +104,14 @@ class Outbox {
     final list = op['list'] as String;
     switch (op['op']) {
       case 'create':
-        final r = await api.createTask(list, Map<String, dynamic>.from(op['body'] as Map));
+        final parent = op['parent'] as String?;
+        if (parent != null && parent.startsWith('tmp-')) throw const SocketException('родитель ещё не создан');
+        final r = await api.createTask(list, Map<String, dynamic>.from(op['body'] as Map), parent: parent);
         final tmp = op['tmp'] as String;
         final real = r['id'] as String;
         for (final o in ops) {
           if (o['id'] == tmp) o['id'] = real;
+          if (o['parent'] == tmp) o['parent'] = real;
         }
         onCreated?.call(tmp, r);
       case 'patch':

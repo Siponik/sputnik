@@ -413,6 +413,78 @@ class AppState extends ChangeNotifier {
     if (t != null) remove(hl!['id'] as String, t);
   }
 
+  // ---------- доска: вид, темы, закреп, перенос, дубль, архив ----------
+
+  void setView(String listId, String view) {
+    touch('lists', listId, {'view': view});
+    notifyListeners();
+  }
+
+  void setListField(String listId, Json patch) {
+    touch('lists', listId, patch);
+    notifyListeners();
+  }
+
+  void setTask(String id, Json patch) {
+    touch('tasks', id, patch);
+    notifyListeners();
+  }
+
+  /// Перенос в другой список: в Google — создать там и удалить здесь; поля слоя едут с задачей.
+  void moveToList(String from, Json t, String to) {
+    if (from == to) return;
+    final L = Json.from(layTask(t['id'] as String))..remove('t');
+    final x = addTask(to, (t['title'] ?? '') as String, due: dueToYmd(t['due'] as String?), layerPatch: L);
+    if ((t['notes'] ?? '') != '') setNotes(to, x, t['notes'] as String);
+    final id = t['id'] as String;
+    tasks[from]?.removeWhere((y) => y['id'] == id);
+    if (id.startsWith('tmp-')) {
+      outbox.ops.removeWhere((o) => o['tmp'] == id || o['id'] == id);
+    } else {
+      unawaited(outbox.add({'op': 'delete', 'list': from, 'id': id}));
+    }
+    say('Перенесено в «${listName(to)}»');
+  }
+
+  void duplicate(String listId, Json t) {
+    final L = Json.from(layTask(t['id'] as String))..remove('t');
+    final x = addTask(listId, '${t['title'] ?? ''} (копия)', due: dueToYmd(t['due'] as String?), layerPatch: L);
+    if ((t['notes'] ?? '') != '') setNotes(listId, x, t['notes'] as String);
+  }
+
+  /// Архив списка: выполненные дольше срока архива.
+  List<Json> archived(String listId) {
+    final days = tpl.archiveDays(layList(listId));
+    return (tasks[listId] ?? const <Json>[]).where((t) => _top(t) && isDone(t) && tpl.isArchived(t, days)).toList()
+      ..sort((a, b) => ((b['completed'] ?? '') as String).compareTo((a['completed'] ?? '') as String));
+  }
+
+  /// Открытые задачи верхнего уровня (для стикеров, конвейера, списка).
+  List<Json> topTasks(String listId, {bool withDone = false}) => (tasks[listId] ?? const <Json>[])
+      .where(_top)
+      .where((t) => withDone ? !tpl.isArchived(t, tpl.archiveDays(layList(listId))) : !isDone(t))
+      .toList();
+
+  /// Подзадачи задачи.
+  List<Json> subtasks(String listId, String id) =>
+      (tasks[listId] ?? const <Json>[]).where((t) => t['parent'] == id && t['deleted'] != true).toList()
+        ..sort((a, b) => ((a['position'] ?? '') as String).compareTo((b['position'] ?? '') as String));
+
+  void addSubtask(String listId, String parent, String title) {
+    final tmp = 'tmp-${DateTime.now().millisecondsSinceEpoch}-${_seq++}';
+    (tasks[listId] ??= []).add({'id': tmp, 'title': title, 'status': 'needsAction', 'parent': parent});
+    unawaited(
+      outbox.add({
+        'op': 'create',
+        'list': listId,
+        'tmp': tmp,
+        'body': {'title': title},
+        'parent': parent,
+      }),
+    );
+    notifyListeners();
+  }
+
   // ---------- действия ----------
 
   void say(String msg) {
@@ -520,6 +592,9 @@ class AppState extends ChangeNotifier {
 
   void _created(String tmp, Json real) {
     for (final e in tasks.entries) {
+      for (final c in e.value) {
+        if (c['parent'] == tmp) c['parent'] = real['id'];
+      }
       final i = e.value.indexWhere((x) => x['id'] == tmp);
       if (i < 0) continue;
       final local = e.value[i];
