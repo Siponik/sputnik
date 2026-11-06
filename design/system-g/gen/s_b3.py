@@ -23,8 +23,7 @@ prof = f'''<div style="padding: 16px 18px; display: flex; flex-direction: column
  <div>{btn("Сохранить", "acc", True)}</div>
 </div>'''
 st = K + pop(150, 30, 560, 0, 'ОБЩАЯ СФЕРА · УЧАСТНИКИ', mk, VIO, 'ВМЕСТЕ · 3', hub=True)
-st += svg(wire(711, 260, 760, 120, OR, 1.5, k=20))
-st += pop(760, 90, 340, 0, 'КАК МЕНЯ ВИДЯТ', prof, OR) + sock('', 114, OR, abs_left=755) + sock('', 255, OR, abs_left=706)
+st += pop(760, 90, 340, 0, 'КАК МЕНЯ ВИДЯТ', prof, OR)
 save2('G_SharePeople.dc.html', page('Общая сфера · участники', 'ДОСКА', st), 'Общая сфера · участники и профиль')
 
 # ---------- SHARE: board ----------

@@ -103,7 +103,6 @@ W = s_cal.WEEK
 st = dim(W, .35)
 # draft block in grid (thursday column, 17:00)
 st += f'<div style="position: absolute; left: 416px; top: 452px; width: 112px; height: 58px; box-sizing: border-box; border-radius: 6px; border: 1.5px dashed {OR}; background: rgba(240,160,75,.14); padding: 4px 8px; font-size: 12px; color: {ORI}"><b style="font-weight: 600">+ 17:00</b><br>Ретопология шлема</div>'
-st += svg(wire(528, 481, 900, 300, OR, 1.5, True, k=80))
 st += pop(900, 150, 348, 400, 'ЧТ 05 · ДОБАВИТЬ НА ЭТОТ ДЕНЬ', form, OR, 'ENTER', hub=True)
 st += ab(900, 570, f'<div style="display: flex; gap: 10px; align-items: center; padding: 10px; border-radius: 8px; border: 1px dashed #8A7424; width: 348px; box-sizing: border-box">{coon(40, "ДУМАЕТ")}<span style="font-size: 12.5px; color: #C9CAD0">Клик по пустому часу открывает эту форму. Esc — убрать черновик.</span></div>')
 save2('G_CalAdd.dc.html', page('Календарь · добавить', 'КАЛЕНДАРЬ', st), 'Календарь · клик по часу и форма дня')
