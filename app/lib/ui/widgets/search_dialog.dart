@@ -11,14 +11,34 @@ import '../g/kit.dart';
 import '../today/today_page.dart' show listHue;
 
 /// onGo(tab, listId) — перейти в раздел или к списку на доске.
-Future<void> openSearch(BuildContext context, AppState s, void Function(int tab, String? listId) onGo) =>
-    showDialog<void>(
-      context: context,
-      builder: (_) => _Search(s: s, onGo: onGo),
+/// [anchor] — поле «Найти» в шапке: оно растёт до 400 px, результаты выпадают под ним (560 px, по правому краю).
+Future<void> openSearch(
+  BuildContext context,
+  AppState s,
+  void Function(int tab, String? listId) onGo, {
+  Rect? anchor,
+}) => showGeneralDialog<void>(
+  context: context,
+  barrierDismissible: true,
+  barrierLabel: 'Закрыть',
+  barrierColor: Colors.black26,
+  transitionDuration: const Duration(milliseconds: 180),
+  pageBuilder: (_, _, _) => _Search(s: s, onGo: onGo, anchor: anchor),
+  transitionBuilder: (c, a, _, w) {
+    final k = CurvedAnimation(parent: a, curve: const Cubic(.2, .8, .2, 1));
+    return FadeTransition(
+      opacity: k,
+      child: SlideTransition(
+        position: Tween(begin: const Offset(0, -.01), end: Offset.zero).animate(k),
+        child: w,
+      ),
     );
+  },
+);
 
 class _Search extends StatefulWidget {
-  const _Search({required this.s, required this.onGo});
+  const _Search({required this.s, required this.onGo, this.anchor});
+  final Rect? anchor;
   final AppState s;
   final void Function(int tab, String? listId) onGo;
   @override
@@ -181,18 +201,145 @@ class _SearchState extends State<_Search> {
         ),
       );
     }
+    final field = TextField(
+      controller: q,
+      autofocus: true,
+      style: SpType.text(15),
+      decoration: InputDecoration(
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(vertical: 11),
+        prefixIcon: const Icon(Icons.search, size: 18, color: SpColors.muted),
+        suffixIcon: Padding(padding: const EdgeInsets.all(12), child: key('ESC')),
+        hintText: 'Найти задачу, список или раздел',
+        hintStyle: SpType.text(15, color: SpColors.dim),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: SpColors.accent),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: SpColors.accent, width: 1.3),
+        ),
+      ),
+      onChanged: (_) => setState(() => sel = 0),
+      onSubmitted: (_) {
+        if (rows.isNotEmpty) rows[sel].$6();
+      },
+    );
+    final keys = {
+      const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+          setState(() => sel = (sel + 1).clamp(0, rows.length - 1)),
+      const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+          setState(() => sel = (sel - 1).clamp(0, rows.length - 1)),
+    };
+    final a = widget.anchor;
+    if (a != null) {
+      // Поле шапки растёт до 400 px, под ним — результаты 560 px по правому краю.
+      final scr = MediaQuery.sizeOf(context);
+      final w = 560.0.clamp(0.0, scr.width - 24);
+      return CallbackShortcuts(
+        bindings: keys,
+        child: Stack(
+          children: [
+            Positioned(
+              top: a.top - 4,
+              right: (scr.width - a.right).clamp(12.0, scr.width),
+              width: w,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    TweenAnimationBuilder<double>(
+                      tween: Tween(begin: a.width, end: 400.0.clamp(0.0, w)),
+                      duration: const Duration(milliseconds: 260),
+                      curve: const Cubic(.2, .8, .2, 1),
+                      builder: (_, v, c) => SizedBox(width: v, height: 40, child: c),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: SpColors.bg,
+                          borderRadius: BorderRadius.circular(8),
+                          boxShadow: const [BoxShadow(color: Colors.black54, blurRadius: 18)],
+                        ),
+                        child: field,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxHeight: (scr.height - a.bottom - 24).clamp(120.0, 520.0)),
+                      child: GNode(
+                        hub: true,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (text.isNotEmpty)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+                                child: Text('${rows.length} найдено', style: gMicro(c: SpColors.muted)),
+                              ),
+                            Flexible(
+                              child: rows.isEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Text(
+                                        text.isEmpty
+                                            ? 'Начни печатать — найду задачи, списки и разделы.'
+                                            : 'Ничего не нашлось',
+                                        style: SpType.text(13, color: SpColors.muted),
+                                      ),
+                                    )
+                                  : ListView(
+                                      shrinkWrap: true,
+                                      padding: const EdgeInsets.only(bottom: 10),
+                                      children: list,
+                                    ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                              decoration: const BoxDecoration(
+                                border: Border(top: BorderSide(color: SpColors.line)),
+                              ),
+                              child: Row(
+                                children: [
+                                  key('↑ ↓'),
+                                  const SizedBox(width: 6),
+                                  Text('выбрать', style: SpType.text(12, color: SpColors.muted)),
+                                  const SizedBox(width: 16),
+                                  key('ENTER'),
+                                  const SizedBox(width: 6),
+                                  Text('открыть', style: SpType.text(12, color: SpColors.muted)),
+                                  const Spacer(),
+                                  Flexible(
+                                    child: Text(
+                                      'Ищу в названиях и заметках, ё = е',
+                                      style: SpType.text(12, color: SpColors.muted),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     return Dialog(
       alignment: const Alignment(0, -.6),
       backgroundColor: Colors.transparent,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720, maxHeight: 560),
         child: CallbackShortcuts(
-          bindings: {
-            const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
-                setState(() => sel = (sel + 1).clamp(0, rows.length - 1)),
-            const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
-                setState(() => sel = (sel - 1).clamp(0, rows.length - 1)),
-          },
+          bindings: keys,
           child: GNode(
             hub: true,
             child: Column(
@@ -200,32 +347,7 @@ class _SearchState extends State<_Search> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 GHead(hub: true, name: 'Поиск · Ctrl K', kind: text.isEmpty ? null : '${rows.length} найдено'),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 14, 14, 4),
-                  child: TextField(
-                    controller: q,
-                    autofocus: true,
-                    style: SpType.text(15),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search, size: 18, color: SpColors.muted),
-                      suffixIcon: Padding(padding: const EdgeInsets.all(12), child: key('ESC')),
-                      hintText: 'Найти задачу, список или раздел',
-                      hintStyle: SpType.text(15, color: SpColors.dim),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: SpColors.accent),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: SpColors.accent, width: 1.3),
-                      ),
-                    ),
-                    onChanged: (_) => setState(() => sel = 0),
-                    onSubmitted: (_) {
-                      if (rows.isNotEmpty) rows[sel].$6();
-                    },
-                  ),
-                ),
+                Padding(padding: const EdgeInsets.fromLTRB(14, 14, 14, 4), child: field),
                 Flexible(
                   child: rows.isEmpty
                       ? Padding(

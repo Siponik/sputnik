@@ -51,6 +51,7 @@ class _AppShellState extends State<AppShell> {
   static const notesTab = 5;
   int _tabAt(int i) => i == 4 ? notesTab : i;
   Timer? _sync;
+  final _findKey = GlobalKey();
 
   @override
   void initState() {
@@ -189,7 +190,9 @@ class _AppShellState extends State<AppShell> {
       return;
     }
     if (widget.state.needLogin) return;
-    openSearch(context, widget.state, (t, list) {
+    final box = _findKey.currentContext?.findRenderObject() as RenderBox?;
+    final at = box == null || !box.hasSize ? null : box.localToGlobal(Offset.zero) & box.size;
+    openSearch(context, widget.state, anchor: at, (t, list) {
       setState(() {
         tab = t;
         if (list != null) widget.state.activeList = list;
@@ -307,6 +310,7 @@ class _AppShellState extends State<AppShell> {
           ),
           const SizedBox(width: 26),
           InkWell(
+            key: _findKey,
             onTap: _search,
             borderRadius: BorderRadius.circular(8),
             child: Container(

@@ -11,6 +11,7 @@ import '../../core/repeat.dart' as repeats;
 import '../board/card_menu.dart';
 import '../g/kit.dart';
 import '../today/today_page.dart' show listHue;
+import 'date_time_picker.dart';
 
 Future<void> openTask(BuildContext context, AppState s, String listId, Json t) => showDialog<void>(
   context: context,
@@ -319,19 +320,15 @@ class _TaskDialogState extends State<_TaskDialog> {
                                 spacing: 6,
                                 runSpacing: 6,
                                 children: [
-                                  chip(
-                                    due.isEmpty
-                                        ? 'Без срока'
-                                        : '${_human(due)}${slot?['s'] == null ? '' : ' · ${slot!['s']}${slot['e'] == null ? '' : '–${slot['e']}'}'}',
-                                    due.isNotEmpty,
-                                    () => _pickDue(context, x, due),
-                                    x: due.isEmpty ? null : () => s.setDue(widget.listId, x, null),
-                                  ),
-                                  chip(
-                                    slot?['s'] == null ? '+ время' : 'время',
-                                    false,
-                                    () => _pickTime(context),
-                                    x: slot?['s'] == null ? null : () => s.setTask(id, {'slot': null}),
+                                  Builder(
+                                    builder: (bc) => chip(
+                                      due.isEmpty
+                                          ? 'Без срока'
+                                          : '${_human(due)}${slot?['s'] == null ? '' : ' · ${slot!['s']}${slot['e'] == null ? '' : '–${slot['e']}'}'}',
+                                      due.isNotEmpty,
+                                      () => _pickDue(bc, x, due, slot),
+                                      x: due.isEmpty ? null : () => s.setDue(widget.listId, x, null),
+                                    ),
                                   ),
                                   for (final m in mins.toList()..sort())
                                     chip(
@@ -490,32 +487,31 @@ class _TaskDialogState extends State<_TaskDialog> {
     );
   }
 
-  Future<void> _pickDue(BuildContext context, Json x, String due) async {
-    final now = DateTime.now();
-    final d = await showDatePicker(
-      context: context,
-      locale: const Locale('ru'),
-      initialDate: due.isEmpty ? now : DateTime.parse(due),
-      firstDate: DateTime(now.year - 2),
-      lastDate: DateTime(now.year + 5),
+  Future<void> _pickDue(BuildContext context, Json x, String due, Map? slot) async {
+    final s = widget.s;
+    final r = await pickDateTime(
+      context,
+      day: due,
+      time: slot?['s'] as String?,
+      end: slot?['e'] as String?,
+      about: (x['title'] ?? '') as String,
+      busy: (d) => busyHours(s, d),
     );
-    if (d != null) widget.s.setDue(widget.listId, x, ymd(d));
+    if (r == null) return;
+    if (r.cleared) {
+      s.setDue(widget.listId, x, null);
+      s.setTask(widget.id, {'slot': null});
+      return;
+    }
+    if (r.day != null && r.day != due) s.setDue(widget.listId, x, r.day);
+    s.setTask(widget.id, {
+      'slot': r.time == null ? null : {'s': r.time, 'e': r.end ?? _plusHour(r.time!)},
+    });
   }
 
-  Future<void> _pickTime(BuildContext context) async {
-    final t = await showTimePicker(
-      context: context,
-      initialTime: const TimeOfDay(hour: 10, minute: 0),
-      builder: (c, w) => MediaQuery(data: MediaQuery.of(c).copyWith(alwaysUse24HourFormat: true), child: w!),
-    );
-    if (t == null) return;
-    final st = '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    final e = t.hour >= 23
-        ? '23:59'
-        : '${(t.hour + 1).toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
-    widget.s.setTask(widget.id, {
-      'slot': {'s': st, 'e': e},
-    });
+  static String _plusHour(String t) {
+    final h = int.parse(t.substring(0, 2));
+    return h >= 23 ? '23:59' : '${(h + 1).toString().padLeft(2, '0')}${t.substring(2)}';
   }
 }
 
