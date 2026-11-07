@@ -333,7 +333,7 @@ class _Dashed extends CustomPainter {
 
 /// Пунктирная рамка вокруг чего угодно.
 class Dashed extends StatelessWidget {
-  Dashed({super.key, required this.child, this.r = 8, this.color = kWait});
+  const Dashed({super.key, required this.child, this.r = 8, this.color = kWait});
   final Widget child;
   final double r;
   final Color color;
@@ -517,7 +517,7 @@ class GSeg extends StatelessWidget {
 }
 
 class GDot extends StatelessWidget {
-  GDot(this.color, {super.key, this.size = 6});
+  const GDot(this.color, {super.key, this.size = 6});
   final Color color;
   final double size;
   @override
@@ -589,7 +589,7 @@ class GStages extends StatelessWidget {
 
 /// Енот в пунктирном круге (на макете — место под енота).
 class GCoon extends StatelessWidget {
-  GCoon(this.pose, {super.key, this.size = 50});
+  const GCoon(this.pose, {super.key, this.size = 50});
   final String pose;
   final double size;
   @override
@@ -611,7 +611,7 @@ class GCoon extends StatelessWidget {
 
 /// Карточка енота с советом (пунктир).
 class CoonTip extends StatelessWidget {
-  CoonTip({super.key, required this.pose, required this.text, this.action, this.onAction, this.color = kWait});
+  const CoonTip({super.key, required this.pose, required this.text, this.action, this.onAction, this.color = kWait});
   final String pose;
   final String text;
   final String? action;

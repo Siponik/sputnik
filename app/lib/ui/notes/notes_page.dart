@@ -120,7 +120,7 @@ class _NotesPageState extends State<NotesPage> {
 }
 
 class _Center extends StatelessWidget {
-  _Center({required this.child});
+  const _Center({required this.child});
   final Widget child;
   @override
   Widget build(BuildContext context) => Center(child: SizedBox(width: 460, child: child));

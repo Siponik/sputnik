@@ -46,7 +46,7 @@ class Node extends StatelessWidget {
 
 /// Круглая отметка «сделано».
 class Check extends StatelessWidget {
-  Check({super.key, required this.done, required this.onTap});
+  const Check({super.key, required this.done, required this.onTap});
   final bool done;
   final VoidCallback onTap;
 
@@ -70,7 +70,7 @@ class Check extends StatelessWidget {
 
 /// Строка «добавить»: Enter — создать, поле очищается и остаётся в фокусе.
 class AddLine extends StatefulWidget {
-  AddLine({super.key, required this.hint, required this.onSubmit, this.autofocus = false});
+  const AddLine({super.key, required this.hint, required this.onSubmit, this.autofocus = false});
   final String hint;
   final bool autofocus;
   final void Function(String text) onSubmit;
