@@ -317,7 +317,25 @@ class NotesState extends ChangeNotifier {
   /// Когда файл последний раз менялся (мс), для колонки «Изменено».
   int? mtimeOf(String path) => vault?.stamps[path]?.mtime;
 
-  void openNote(String path) {
+  /// Откуда пришли (для Alt+← в чтении и правке).
+  final _back = <String>[];
+  bool get canGoBack => _back.isNotEmpty;
+  void goBack() {
+    while (_back.isNotEmpty) {
+      final p = _back.removeLast();
+      if (index.doc(p) != null) {
+        openNote(p, remember: false);
+        return;
+      }
+    }
+  }
+
+  void openNote(String path, {bool remember = true}) {
+    final was = config.active;
+    if (remember && was != null && was != path) {
+      _back.add(was);
+      if (_back.length > 50) _back.removeAt(0);
+    }
     view = 'note';
     if (!config.tabs.contains(path)) config.tabs.add(path);
     config.active = path;

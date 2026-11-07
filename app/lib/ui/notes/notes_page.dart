@@ -1124,6 +1124,7 @@ Map<ShortcutActivator, VoidCallback> notesKeys(BuildContext context, NotesState 
       const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => newNoteDialog(context, st),
       const SingleActivator(LogicalKeyboardKey.keyG, control: true): () => st.show(st.view == 'graph' ? 'note' : 'graph'),
       const SingleActivator(LogicalKeyboardKey.keyE, control: true): st.toggleReading,
+      const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): st.goBack,
       const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
         if (st.active != null) st.closeTab(st.active!);
       },

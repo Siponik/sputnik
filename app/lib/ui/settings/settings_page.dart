@@ -240,7 +240,9 @@ class _SettingsPageState extends State<SettingsPage> {
                       color: e.value.$2,
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: ((settings['accent'] as Map?)?['v'] ?? 'orange') == e.key ? SpColors.ink : Colors.transparent,
+                        color: ((settings['accent'] as Map?)?['v'] ?? 'orange') == e.key
+                            ? SpColors.ink
+                            : Colors.transparent,
                         width: 2.5,
                       ),
                     ),
@@ -415,6 +417,7 @@ class _SettingsPageState extends State<SettingsPage> {
         ('R, F5', 'Обновить из Google'),
         ('[ ]', 'Предыдущий / следующий список'),
         ('F', 'Архив списка'),
+        ('Ctrl+B', 'Спрятать / показать левую колонку доски'),
         ('Ctrl+,', 'Настройки'),
       ],
     ),

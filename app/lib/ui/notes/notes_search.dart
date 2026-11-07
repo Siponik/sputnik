@@ -135,6 +135,12 @@ class _SearchState extends State<_Search> {
             child: Focus(
               onKeyEvent: (_, e) {
                 if (e is! KeyDownEvent && e is! KeyRepeatEvent) return KeyEventResult.ignored;
+                // Shift+Enter — открыть найденную заметку сразу на графе.
+                if (e.logicalKey == LogicalKeyboardKey.enter && HardwareKeyboard.instance.isShiftPressed && items.isNotEmpty) {
+                  searchToGraph = true;
+                  Navigator.pop(context, items[_at]);
+                  return KeyEventResult.handled;
+                }
                 if (e.logicalKey == LogicalKeyboardKey.arrowDown) {
                   setState(() => _at = items.isEmpty ? 0 : (_at + 1) % items.length);
                   return KeyEventResult.handled;
@@ -235,3 +241,6 @@ class _SearchState extends State<_Search> {
     return Text.rich(TextSpan(style: base, children: kids), maxLines: 1, overflow: TextOverflow.ellipsis);
   }
 }
+
+/// Поиск закрыт по Shift+Enter: открыть заметку на графе. Сбрасывает тот, кто прочитал.
+bool searchToGraph = false;

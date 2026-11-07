@@ -47,6 +47,10 @@ void main() {
     expect(find.text('Где лежат твои заметки?'), findsOneWidget);
     await t.runAsync(() async {
       await t.tap(find.text('Выбрать папку…'));
+      // Папка читается с диска — ждём, пока появится дерево (на медленной машине дольше).
+      for (var i = 0; i < 50 && !st.hasFolder; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+      }
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     await t.pump();
