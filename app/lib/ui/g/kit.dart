@@ -21,10 +21,10 @@ Color headFill(Color c) => switch (c.toARGB32()) {
   _ => SpColors.headGrey,
 };
 
-TextStyle gLbl({Color c = SpColors.muted, double size = 10.5, FontWeight w = FontWeight.w500}) =>
+TextStyle gLbl({Color? c, double size = 10.5, FontWeight w = FontWeight.w500}) =>
     SpType.label(size, color: c, w: w, spacing: .14);
-TextStyle gMicro({Color c = SpColors.dim}) => SpType.label(9.5, color: c, spacing: .12);
-TextStyle gMono(double size, {Color c = SpColors.muted, FontWeight w = FontWeight.w400}) =>
+TextStyle gMicro({Color? c}) => SpType.label(9.5, color: c ?? SpColors.dim, spacing: .12);
+TextStyle gMono(double size, {Color? c, FontWeight w = FontWeight.w400}) =>
     SpType.label(size, color: c, w: w, spacing: 0);
 
 // ---------- провода ----------
@@ -208,7 +208,7 @@ class GHead extends StatelessWidget {
           decoration: BoxDecoration(
             color: hub ? SpColors.headMain : (color == null ? null : headFill(color!)),
             borderRadius: filled ? BorderRadius.vertical(top: Radius.circular(r)) : null,
-            border: filled ? null : const Border(bottom: BorderSide(color: SpColors.line)),
+            border: filled ? null : Border(bottom: BorderSide(color: SpColors.line)),
           ),
           child: Row(
             children: [
@@ -225,7 +225,7 @@ class GHead extends StatelessWidget {
                 ),
               ),
               if (kind != null) ...[
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 ConstrainedBox(
                   constraints: BoxConstraints(maxWidth: kindMax),
                   child: Text(
@@ -247,14 +247,14 @@ class GHead extends StatelessWidget {
 
 /// Нода: контур, скругление 8 (главная — 12, рамка цвета accent-line, тень и уголки-скобки), «ждёт» — пунктир.
 class GNode extends StatelessWidget {
-  const GNode({
+  GNode({
     super.key,
     required this.child,
     this.hub = false,
     this.wait = false,
     this.width,
-    this.color = SpColors.node,
-  });
+    Color? color,
+  }) : color = color ?? SpColors.node;
   final Widget child;
   final bool hub, wait;
   final double? width;
@@ -285,7 +285,7 @@ class GNode extends StatelessWidget {
             bottom: t ? null : -5,
             left: l ? -5 : null,
             right: l ? null : -5,
-            child: CustomPaint(size: const Size(14, 14), painter: _Tick(t, l)),
+            child: CustomPaint(size: Size(14, 14), painter: _Tick(t, l)),
           ),
       ],
     );
@@ -333,7 +333,7 @@ class _Dashed extends CustomPainter {
 
 /// Пунктирная рамка вокруг чего угодно.
 class Dashed extends StatelessWidget {
-  const Dashed({super.key, required this.child, this.r = 8, this.color = kWait});
+  Dashed({super.key, required this.child, this.r = 8, this.color = kWait});
   final Widget child;
   final double r;
   final Color color;
@@ -373,11 +373,11 @@ class GBtn extends StatelessWidget {
         borderRadius: BorderRadius.circular(SpRadius.button),
         child: Container(
           height: sm ? 28 : 32,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
+          padding: EdgeInsets.symmetric(horizontal: 12),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (icon != null) ...[Icon(icon, size: 14, color: fg), const SizedBox(width: 4)],
+              if (icon != null) ...[Icon(icon, size: 14, color: fg), SizedBox(width: 4)],
               Flexible(
                 child: Text(
                   text,
@@ -400,7 +400,7 @@ class GBtn extends StatelessWidget {
 
 /// Моно-чип (фильтр): включённый — заливка accent-wash и рамка цвета.
 class GChip extends StatelessWidget {
-  const GChip(this.text, {super.key, this.on = false, this.color = SpColors.accent, this.onTap, this.dot});
+  GChip(this.text, {super.key, this.on = false, Color? color, this.onTap, this.dot}) : color = color ?? SpColors.accent;
   final String text;
   final bool on;
   final Color color;
@@ -413,7 +413,7 @@ class GChip extends StatelessWidget {
     borderRadius: BorderRadius.circular(SpRadius.button),
     child: Container(
       height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
+      padding: EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: on ? SpColors.accentWash : Colors.transparent,
         borderRadius: BorderRadius.circular(SpRadius.button),
@@ -422,7 +422,7 @@ class GChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (dot != null) ...[GDot(dot!), const SizedBox(width: 6)],
+          if (dot != null) ...[GDot(dot!), SizedBox(width: 6)],
           Flexible(
             child: Text(
               text.toUpperCase(),
@@ -439,7 +439,7 @@ class GChip extends StatelessWidget {
 
 /// Дружелюбный чип окон (обычные слова): выбранный — рамка цвета и accent-wash.
 class GPick extends StatelessWidget {
-  const GPick(this.text, {super.key, this.on = false, this.color = SpColors.accent, this.onTap, this.dot});
+  GPick(this.text, {super.key, this.on = false, Color? color, this.onTap, this.dot}) : color = color ?? SpColors.accent;
   final String text;
   final bool on;
   final Color color;
@@ -498,7 +498,7 @@ class GSeg extends StatelessWidget {
               borderRadius: BorderRadius.circular(5),
               child: Container(
                 height: 26,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
+                padding: EdgeInsets.symmetric(horizontal: 10),
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: i == active ? SpColors.ink : null,
@@ -517,7 +517,7 @@ class GSeg extends StatelessWidget {
 }
 
 class GDot extends StatelessWidget {
-  const GDot(this.color, {super.key, this.size = 6});
+  GDot(this.color, {super.key, this.size = 6});
   final Color color;
   final double size;
   @override
@@ -530,7 +530,7 @@ class GDot extends StatelessWidget {
 
 /// Отметка 14 px: сделано — серая заливка с ✓.
 class GCheck extends StatelessWidget {
-  const GCheck({super.key, required this.done, this.onTap, this.color = SpColors.lineStrong});
+  GCheck({super.key, required this.done, this.onTap, Color? color}) : color = color ?? SpColors.lineStrong;
   final bool done;
   final VoidCallback? onTap;
   final Color color;
@@ -555,7 +555,7 @@ class GCheck extends StatelessWidget {
         child: done
             ? Transform.scale(
                 scale: SpMotion.moves(context) ? v.clamp(0.0, 1.4) : 1,
-                child: const Icon(Icons.check, size: 10, color: SpColors.ink),
+                child: Icon(Icons.check, size: 10, color: SpColors.ink),
               )
             : null,
       ),
@@ -589,7 +589,7 @@ class GStages extends StatelessWidget {
 
 /// Енот в пунктирном круге (на макете — место под енота).
 class GCoon extends StatelessWidget {
-  const GCoon(this.pose, {super.key, this.size = 50});
+  GCoon(this.pose, {super.key, this.size = 50});
   final String pose;
   final double size;
   @override
@@ -611,7 +611,7 @@ class GCoon extends StatelessWidget {
 
 /// Карточка енота с советом (пунктир).
 class CoonTip extends StatelessWidget {
-  const CoonTip({super.key, required this.pose, required this.text, this.action, this.onAction, this.color = kWait});
+  CoonTip({super.key, required this.pose, required this.text, this.action, this.onAction, this.color = kWait});
   final String pose;
   final String text;
   final String? action;
@@ -669,7 +669,7 @@ class ColHead extends StatelessWidget {
           style: SpType.label(10, w: FontWeight.w500, color: SpColors.dim, spacing: .16),
         ),
         const SizedBox(width: 8),
-        const Expanded(child: Divider(height: 1, color: SpColors.line)),
+        Expanded(child: Divider(height: 1, color: SpColors.line)),
       ],
     ),
   );
@@ -684,14 +684,14 @@ class DimLine extends StatelessWidget {
     children: [
       Text('|', style: gMicro()),
       const SizedBox(width: 8),
-      const Expanded(child: Divider(height: 1, color: kBar)),
+      Expanded(child: Divider(height: 1, color: kBar)),
       const SizedBox(width: 8),
       Flexible(
         flex: 8,
         child: Text(text, style: gMicro(), maxLines: 1, overflow: TextOverflow.ellipsis),
       ),
       const SizedBox(width: 8),
-      const Expanded(child: Divider(height: 1, color: kBar)),
+      Expanded(child: Divider(height: 1, color: kBar)),
       const SizedBox(width: 8),
       Text('|', style: gMicro()),
     ],
@@ -707,9 +707,9 @@ class Stamp extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget cell(String t, {bool last = false}) => Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
         decoration: BoxDecoration(
-          border: last ? null : const Border(right: BorderSide(color: SpColors.line)),
+          border: last ? null : Border(right: BorderSide(color: SpColors.line)),
         ),
         child: Text(t, style: gMicro(), maxLines: 1, overflow: TextOverflow.clip),
       ),
@@ -724,8 +724,8 @@ class Stamp extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: const BoxDecoration(
+            padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SpColors.line)),
             ),
             child: Text('ЛИСТ · $sheet', style: gMicro(c: SpColors.ink)),
@@ -739,15 +739,16 @@ class Stamp extends StatelessWidget {
 
 /// Строка ноды-источника: текст и моно-подпись справа.
 class SrcRow extends StatelessWidget {
-  const SrcRow(
+  SrcRow(
     this.text,
     this.right, {
     super.key,
-    this.rc = SpColors.muted,
-    this.tc = SpColors.ink,
+    Color? rc,
+    Color? tc,
     this.strike = false,
     this.onTap,
-  });
+  }) : rc = rc ?? SpColors.muted,
+       tc = tc ?? SpColors.ink;
   final String text, right;
   final Color rc, tc;
   final bool strike;
@@ -757,7 +758,7 @@ class SrcRow extends StatelessWidget {
     onTap: onTap,
     child: Container(
       height: 28,
-      padding: const EdgeInsets.fromLTRB(12, 0, 16, 0),
+      padding: EdgeInsets.fromLTRB(12, 0, 16, 0),
       child: Row(
         children: [
           Expanded(
@@ -771,7 +772,7 @@ class SrcRow extends StatelessWidget {
               ).copyWith(decoration: strike ? TextDecoration.lineThrough : null, decorationColor: tc),
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text(right, style: gMono(11, c: rc)),
         ],
       ),
@@ -781,7 +782,7 @@ class SrcRow extends StatelessWidget {
 
 /// Таблетка привычки: сделано — золотая заливка.
 class HabitPill extends StatelessWidget {
-  const HabitPill(this.text, {super.key, required this.done, this.color = SpColors.gold, this.onTap});
+  HabitPill(this.text, {super.key, required this.done, Color? color, this.onTap}) : color = color ?? SpColors.gold;
   final String text;
   final bool done;
   final Color color;
@@ -799,7 +800,7 @@ class HabitPill extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (done) ...[const Icon(Icons.check, size: 14, color: kDark), const SizedBox(width: 4)],
+            if (done) ...[Icon(Icons.check, size: 14, color: kDark), const SizedBox(width: 4)],
             Text(
               text,
               style: SpType.text(12.5, color: done ? kDark : SpColors.ink, w: done ? FontWeight.w600 : FontWeight.w500),
@@ -831,9 +832,9 @@ class _Logo extends CustomPainter {
     c.rotate(-28 * 3.14159 / 180);
     c.drawOval(Rect.fromCenter(center: Offset.zero, width: 20, height: 8), p);
     c.restore();
-    final arc = Path()..addArc(Rect.fromCircle(center: const Offset(12, 12), radius: 5), -0.86, -4.56);
+    final arc = Path()..addArc(Rect.fromCircle(center: Offset(12, 12), radius: 5), -0.86, -4.56);
     c.drawPath(arc, p..strokeWidth = 1.5);
-    c.drawRect(const Rect.fromLTWH(18, 6, 3, 3), Paint()..color = SpColors.accent);
+    c.drawRect(Rect.fromLTWH(18, 6, 3, 3), Paint()..color = SpColors.accent);
   }
 
   @override
@@ -862,7 +863,7 @@ Color hueOf(String? cssOrId) {
 
 /// Рамка-скобки: уголки по четырём углам (выбранная сфера, G_Spheres).
 class Brackets extends StatelessWidget {
-  const Brackets({super.key, required this.child, this.on = true, this.color = SpColors.accent});
+  Brackets({super.key, required this.child, this.on = true, Color? color}) : color = color ?? SpColors.accent;
   final Widget child;
   final bool on;
   final Color color;

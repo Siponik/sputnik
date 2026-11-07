@@ -216,9 +216,41 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ]),
       _card('Тема', [
-        GSeg(items: const ['Тёмная'], active: 0, onTap: (_) {}),
+        _chips(
+          [('dark', 'Тёмная'), ('light', 'Светлая')],
+          ((settings['theme'] as Map?)?['v'] ?? 'dark') as String,
+          (v) => _set('theme', {'v': v}),
+        ),
+      ]),
+      _card('Акцент', [
+        Wrap(
+          spacing: 10,
+          runSpacing: 10,
+          children: [
+            for (final e in SpColors.accents.entries)
+              Tooltip(
+                message: e.value.$1,
+                child: InkWell(
+                  onTap: () => _set('accent', {'v': e.key}),
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    decoration: BoxDecoration(
+                      color: e.value.$2,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: ((settings['accent'] as Map?)?['v'] ?? 'orange') == e.key ? SpColors.ink : Colors.transparent,
+                        width: 2.5,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 6),
-        Text('Светлая тема появится позже.', style: SpType.text(12.5, color: SpColors.muted)),
+        Text('Цвет кнопок, выделения и главной ноды.', style: SpType.text(12.5, color: SpColors.muted)),
       ]),
     ];
   }
@@ -419,7 +451,7 @@ class _SettingsPageState extends State<SettingsPage> {
         style: SpType.text(13.5),
         decoration: InputDecoration(
           isDense: true,
-          prefixIcon: const Icon(Icons.search, size: 16, color: SpColors.muted),
+          prefixIcon: Icon(Icons.search, size: 16, color: SpColors.muted),
           hintText: 'Найти клавишу или действие',
           hintStyle: SpType.text(13.5, color: SpColors.dim),
         ),

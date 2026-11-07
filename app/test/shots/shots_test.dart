@@ -56,6 +56,9 @@ void main() {
     (2, 'list', 'U'),
     (2, 'datetime', 'P'),
     (3, 'habitedit', 'E'),
+    (0, 'today-light', 'L'),
+    (2, 'board-light', 'L'),
+    (1, 'calendar-light', 'L'),
   ]) {
     testWidgets('снимок $name', skip: !on, (t) async {
       t.view.physicalSize = const Size(1440, 900);
@@ -63,8 +66,9 @@ void main() {
       addTearDown(t.view.reset);
       calStartMode = list == 'M' ? 'month' : 'week';
       habitsStartMonth = list == 'H';
+      SpColors.apply(theme: list == 'L' ? 'light' : 'dark', accentId: list == 'L' ? 'blue' : 'orange');
       final s = gDemo();
-      if (list.length == 1 && !'MHTCSE'.contains(list)) s.activeList = list;
+      if (list.length == 1 && !'MHTCSEL'.contains(list)) s.activeList = list;
       await t.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,

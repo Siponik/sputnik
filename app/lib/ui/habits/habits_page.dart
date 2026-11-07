@@ -9,7 +9,7 @@ import '../theme/tokens.dart';
 import '../g/kit.dart';
 import '../keys.dart';
 
-const habitIcons = <String, IconData>{
+final habitIcons = <String, IconData>{
   'cup': Icons.local_cafe_outlined,
   'gym': Icons.fitness_center,
   'pencil': Icons.edit_outlined,
@@ -21,7 +21,7 @@ const habitIcons = <String, IconData>{
   'leaf': Icons.eco_outlined,
   'music': Icons.music_note_outlined,
 };
-const habitColors = <String, Color>{
+final habitColors = <String, Color>{
   'work': SpColors.blue,
   'clay': SpColors.accent,
   'gold': SpColors.gold,
@@ -172,7 +172,7 @@ class _HabitsPageState extends State<HabitsPage> {
               children: [
                 Expanded(child: main),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 18 + 52 + 18 + 50, 16, 16),
+                  padding: EdgeInsets.fromLTRB(8, 18 + 52 + 18 + 50, 16, 16),
                   child: SizedBox(
                     width: 380,
                     child: HabitPanel(s: s, id: sel['id'] as String, i: all.indexOf(sel), sock: 'hb:panel'),
@@ -201,10 +201,10 @@ class _HabitsPageState extends State<HabitsPage> {
 
   Widget _top(BuildContext context, AppState s, List<Json> all, int today, int done) => GNode(
     child: Padding(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      padding: EdgeInsets.fromLTRB(12, 10, 12, 10),
       child: Row(
         children: [
-          const GCoon('flag', size: 32),
+          GCoon('flag', size: 32),
           const SizedBox(width: 12),
           Expanded(
             child: Wrap(
@@ -259,7 +259,7 @@ class _HabitsPageState extends State<HabitsPage> {
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const GHead(name: 'Начни с одной', color: SpColors.gold),
+        GHead(name: 'Начни с одной', color: SpColors.gold),
         Padding(
           padding: const EdgeInsets.all(14),
           child: Wrap(
@@ -342,7 +342,7 @@ class _HabitsPageState extends State<HabitsPage> {
               child: Container(
                 height: 34,
                 padding: const EdgeInsets.fromLTRB(12, 0, 12, 0),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: SpColors.line)),
                 ),
                 child: Row(
@@ -473,7 +473,7 @@ class _HabitsPageState extends State<HabitsPage> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (done) ...[const Icon(Icons.check, size: 14, color: kDark), const SizedBox(width: 4)],
+            if (done) ...[Icon(Icons.check, size: 14, color: kDark), const SizedBox(width: 4)],
             Text(
               done ? 'Сделано' : (plus ? '+1' : 'Отметить'),
               style: SpType.text(12.5, w: FontWeight.w600, color: done ? kDark : SpColors.ink),
@@ -546,7 +546,7 @@ class _HabitsPageState extends State<HabitsPage> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(bottom: BorderSide(color: SpColors.line)),
                   ),
                   child: Row(
@@ -585,7 +585,7 @@ class _HabitsPageState extends State<HabitsPage> {
                     final p = r['pct'];
                     return Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
                       ),
                       child: Row(
@@ -845,7 +845,7 @@ class HabitPanel extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                               decoration: BoxDecoration(
-                                border: k == 0 ? null : const Border(left: BorderSide(color: SpColors.line)),
+                                border: k == 0 ? null : Border(left: BorderSide(color: SpColors.line)),
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1421,7 +1421,7 @@ class _HabitEditState extends State<_HabitEdit> {
                     ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(24, 12, 16, 12),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(top: BorderSide(color: SpColors.line)),
                       ),
                       child: Row(

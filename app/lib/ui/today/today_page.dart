@@ -131,8 +131,8 @@ class _Model {
       ),
     for (final x in inbox) Wire('src:in:${(x['task'] as Json)['id']}', 'hub:inbox', SpColors.grey, dash: true),
     for (final h in habits) Wire('src:hb:${h['id']}', 'hub:habits', SpColors.gold),
-    if (next != null) const Wire('hub:next', 'out:next', SpColors.accent, width: 2),
-    const Wire('hub:sum', 'out:sum', SpColors.ink),
+    if (next != null) Wire('hub:next', 'out:next', SpColors.accent, width: 2),
+    Wire('hub:sum', 'out:sum', SpColors.ink),
   ];
 
   /// Занятость 09–21 по часам: 0 — свободно, иначе цвет.
@@ -325,7 +325,7 @@ class _Hub extends StatelessWidget {
               for (final (i, (l, t)) in m.items.indexed)
                 SockRow(
                   left: Sock('hub:${t['id']}', s.isDone(t) ? const Color(0xFF7C7E88) : listHue(s, l)),
-                  right: m.next?.$2['id'] == t['id'] ? const Sock('hub:next', SpColors.accent) : null,
+                  right: m.next?.$2['id'] == t['id'] ? Sock('hub:next', SpColors.accent) : null,
                   child: m.next?.$2['id'] == t['id']
                       ? _NextRow(m: m, n: i + 1, listId: l, t: t)
                       : _Row(m: m, n: i + 1, listId: l, t: t),
@@ -334,7 +334,7 @@ class _Hub extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                   child: SockRow(
-                    left: const Sock('hub:inbox', SpColors.grey, ring: true),
+                    left: Sock('hub:inbox', SpColors.grey, ring: true),
                     child: Dashed(
                       child: Container(
                         height: 38,
@@ -362,8 +362,8 @@ class _Hub extends StatelessWidget {
                 ),
               if (m.habits.isNotEmpty)
                 SockRow(
-                  left: const Sock('hub:habits', SpColors.gold),
-                  right: const Sock('hub:sum', SpColors.ink),
+                  left: Sock('hub:habits', SpColors.gold),
+                  right: Sock('hub:sum', SpColors.ink),
                   child: Container(
                     margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
                     padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
@@ -387,7 +387,7 @@ class _Hub extends StatelessWidget {
                   ),
                 )
               else
-                SockRow(right: const Sock('hub:sum', SpColors.ink), child: const SizedBox(height: 16)),
+                SockRow(right: Sock('hub:sum', SpColors.ink), child: const SizedBox(height: 16)),
               const SizedBox(height: 4),
             ],
           ),
@@ -491,7 +491,7 @@ class _Row extends StatelessWidget {
         height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 12),
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
         ),
         child: Row(
@@ -718,7 +718,7 @@ class _Output extends StatelessWidget {
         if (nx != null) ...[
           GNode(
             child: SockRow(
-              left: const Sock('out:next', SpColors.accent),
+              left: Sock('out:next', SpColors.accent),
               child: InkWell(
                 onTap: () => openTask(context, s, nx.$1, nx.$2),
                 child: Column(
@@ -754,11 +754,11 @@ class _Output extends StatelessWidget {
         ],
         GNode(
           child: SockRow(
-            left: const Sock('out:sum', SpColors.ink),
+            left: Sock('out:sum', SpColors.ink),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const GHead(num: 'В2', name: 'Итог дня', color: SpColors.grey),
+                GHead(num: 'В2', name: 'Итог дня', color: SpColors.grey),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
                   child: Column(
@@ -842,7 +842,7 @@ class _Output extends StatelessWidget {
   Widget _sumRow(String a, String b) => Container(
     padding: const EdgeInsets.only(bottom: 6, top: 2),
     margin: const EdgeInsets.only(bottom: 6),
-    decoration: const BoxDecoration(
+    decoration: BoxDecoration(
       border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
     ),
     child: Row(

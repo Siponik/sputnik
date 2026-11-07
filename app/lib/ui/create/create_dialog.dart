@@ -190,7 +190,7 @@ class _CreateState extends State<_Create> {
     }
   }
 
-  static const allKinds = [
+  static final allKinds = [
     ('task', 'Задача', SpColors.accent, Icons.check),
     ('event', 'Событие', SpColors.blue, Icons.schedule),
     ('habit', 'Привычка', SpColors.gold, Icons.autorenew),
@@ -401,7 +401,7 @@ class _CreateState extends State<_Create> {
                     ),
                     Container(
                       padding: const EdgeInsets.fromLTRB(24, 12, 24, 12),
-                      decoration: const BoxDecoration(
+                      decoration: BoxDecoration(
                         border: Border(top: BorderSide(color: SpColors.line)),
                       ),
                       child: Row(
@@ -645,7 +645,7 @@ class _CreateState extends State<_Create> {
                       Text(why, style: SpType.text(12, color: SpColors.gold)),
                     ],
                     const SizedBox(width: 6),
-                    const Icon(Icons.arrow_drop_down, size: 16, color: SpColors.muted),
+                    Icon(Icons.arrow_drop_down, size: 16, color: SpColors.muted),
                   ],
                 ),
               ),
@@ -716,10 +716,10 @@ class _CreateState extends State<_Create> {
     children: [
       for (final (i, x) in subs.indexed)
         Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: EdgeInsets.only(bottom: 4),
           child: Row(
             children: [
-              const GCheck(done: false),
+              GCheck(done: false),
               const SizedBox(width: 8),
               Expanded(child: Text(x, style: SpType.text(13))),
               InkWell(
@@ -789,7 +789,7 @@ class _CreateState extends State<_Create> {
                   for (final x in shown) x.$3,
                   if (extra && rest.isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    const Divider(height: 1, color: SpColors.line),
+                    Divider(height: 1, color: SpColors.line),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 6,
@@ -847,11 +847,11 @@ class _CreateState extends State<_Create> {
       contentPadding: const EdgeInsets.all(12),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: SpColors.line),
+        borderSide: BorderSide(color: SpColors.line),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: SpColors.accent),
+        borderSide: BorderSide(color: SpColors.accent),
       ),
     ),
   );
@@ -922,11 +922,11 @@ class _CreateState extends State<_Create> {
             contentPadding: const EdgeInsets.all(11),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: SpColors.line),
+              borderSide: BorderSide(color: SpColors.line),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: SpColors.accent),
+              borderSide: BorderSide(color: SpColors.accent),
             ),
           ),
         ),
@@ -956,11 +956,11 @@ class _CreateState extends State<_Create> {
                 contentPadding: const EdgeInsets.all(11),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: SpColors.line),
+                  borderSide: BorderSide(color: SpColors.line),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: SpColors.accent),
+                  borderSide: BorderSide(color: SpColors.accent),
                 ),
               ),
             ),

@@ -106,13 +106,13 @@ class _CalendarPageState extends State<CalendarPage> {
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
                             Expanded(flex: 3, child: main),
-                            const SizedBox(height: 12),
+                            SizedBox(height: 12),
                             Expanded(flex: 2, child: _dayPanel(sel, items[sel] ?? _items([sel])[sel]!)),
                           ],
                         );
                       }
                       return WireBoard(
-                        wires: const [Wire('cal:hub', 'cal:day', SpColors.accent, width: 2)],
+                        wires: [Wire('cal:hub', 'cal:day', SpColors.accent, width: 2)],
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
@@ -303,7 +303,7 @@ class _CalendarPageState extends State<CalendarPage> {
       child: Column(
         children: [
           SockRow(
-            right: const Sock('cal:hub', SpColors.accent),
+            right: Sock('cal:hub', SpColors.accent),
             child: GHead(hub: true, name: 'Неделя · $range', kind: 'занято ${(busy / 60).round()} ч'),
           ),
           Row(
@@ -326,7 +326,7 @@ class _CalendarPageState extends State<CalendarPage> {
               for (final d in days) Expanded(child: _dayHead(d, items[d]!)),
             ],
           ),
-          const Divider(height: 1, color: SpColors.line),
+          Divider(height: 1, color: SpColors.line),
           Expanded(
             child: SingleChildScrollView(
               child: SizedBox(
@@ -382,7 +382,7 @@ class _CalendarPageState extends State<CalendarPage> {
             color: cand.isNotEmpty
                 ? SpColors.accentWash
                 : (today ? const Color(0xFF2A2A2E) : (sel == d ? SpColors.nodeHover : null)),
-            border: const Border(left: BorderSide(color: SpColors.lineSoft)),
+            border: Border(left: BorderSide(color: SpColors.lineSoft)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -530,7 +530,7 @@ class _CalendarPageState extends State<CalendarPage> {
             child: Container(
               decoration: BoxDecoration(
                 color: cand.isNotEmpty ? SpColors.accentWash : null,
-                border: const Border(left: BorderSide(color: SpColors.lineSoft)),
+                border: Border(left: BorderSide(color: SpColors.lineSoft)),
               ),
               child: Stack(
                 children: [
@@ -683,12 +683,12 @@ class _CalendarPageState extends State<CalendarPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SockRow(
-            right: const Sock('cal:hub', SpColors.accent),
+            right: Sock('cal:hub', SpColors.accent),
             child: GHead(hub: true, name: '${_monthUp[m - 1]} ${sd.year}', kind: '${inMonth.length} дней · $n дел'),
           ),
           Container(
             height: 24,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(bottom: BorderSide(color: SpColors.line)),
             ),
             child: Row(
@@ -741,8 +741,8 @@ class _CalendarPageState extends State<CalendarPage> {
         border: today
             ? Border.all(color: SpColors.accent, width: 1.2)
             : Border(
-                right: lastCol ? BorderSide.none : const BorderSide(color: SpColors.lineSoft),
-                bottom: lastRow ? BorderSide.none : const BorderSide(color: SpColors.lineSoft),
+                right: lastCol ? BorderSide.none : BorderSide(color: SpColors.lineSoft),
+                bottom: lastRow ? BorderSide.none : BorderSide(color: SpColors.lineSoft),
               ),
         borderRadius: today ? BorderRadius.circular(6) : null,
         color: sel == d && !today ? SpColors.accentWash : null,
@@ -857,7 +857,7 @@ class _CalendarPageState extends State<CalendarPage> {
               decoration: BoxDecoration(
                 border: today
                     ? Border.all(color: SpColors.accent)
-                    : const Border(
+                    : Border(
                         right: BorderSide(color: SpColors.lineSoft),
                         bottom: BorderSide(color: SpColors.lineSoft),
                       ),
@@ -918,7 +918,7 @@ class _CalendarPageState extends State<CalendarPage> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           SockRow(
-            left: const Sock('cal:day', SpColors.accent),
+            left: Sock('cal:day', SpColors.accent),
             child: GHead(
               name:
                   '${(lab['short'] as String).toUpperCase()} ${dd.day.toString().padLeft(2, '0')} · ${today ? 'сегодня' : lab['title']}',
@@ -928,14 +928,14 @@ class _CalendarPageState extends State<CalendarPage> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12),
               children: [
                 if (timed.isEmpty && habs.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    padding: EdgeInsets.symmetric(vertical: 16),
                     child: Column(
                       children: [
-                        const GCoon('sleep', size: 56),
+                        GCoon('sleep', size: 56),
                         const SizedBox(height: 8),
                         Text('СВОБОДНЫЙ ДЕНЬ', style: gMicro()),
                       ],
@@ -959,7 +959,7 @@ class _CalendarPageState extends State<CalendarPage> {
                         child: Row(
                           children: [
                             if (hb.isDone(s.habitLog, h['id'], d))
-                              const Padding(
+                              Padding(
                                 padding: EdgeInsets.only(right: 4),
                                 child: Icon(Icons.check, size: 14, color: SpColors.ink),
                               ),
@@ -1033,7 +1033,7 @@ class _CalendarPageState extends State<CalendarPage> {
               borderRadius: BorderRadius.circular(6),
               border: Border.all(color: SpColors.accent),
             )
-          : const BoxDecoration(
+          : BoxDecoration(
               border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
             ),
       child: Row(

@@ -321,7 +321,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: SpType.text(12.5, color: SpColors.muted)),
             SliderTheme(
-              data: const SliderThemeData(
+              data: SliderThemeData(
                 trackHeight: 2,
                 activeTrackColor: SpColors.accent,
                 inactiveTrackColor: SpColors.line,
@@ -339,7 +339,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
         Container(
           height: 34,
           padding: const EdgeInsets.only(left: 12, right: 10),
-          decoration: const BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
+          decoration: BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
           child: Row(children: [
             Text('01', style: SpType.label(10.5, color: const Color(0x99FFFFFF))),
             const SizedBox(width: 8),
@@ -361,13 +361,13 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                     isDense: true,
                     hintText: 'Найти на графе',
                     hintStyle: SpType.text(13, color: SpColors.muted),
-                    prefixIcon: const Icon(Icons.search, size: 15, color: SpColors.muted),
+                    prefixIcon: Icon(Icons.search, size: 15, color: SpColors.muted),
                     prefixIconConstraints: const BoxConstraints(minWidth: 30),
                     filled: true,
                     fillColor: SpColors.bg,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
                   ),
                 ),
               ),
@@ -456,7 +456,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
   Widget _sec(String t) => Container(
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
         child: Text(t, style: SpType.label(9.5)),
       );
 
@@ -480,7 +480,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
           Container(
             height: 44,
             padding: const EdgeInsets.only(left: 16, right: 10),
-            decoration: const BoxDecoration(color: SpColors.node, border: Border(bottom: BorderSide(color: SpColors.line))),
+            decoration: BoxDecoration(color: SpColors.node, border: Border(bottom: BorderSide(color: SpColors.line))),
             child: Row(children: [
               NotesModeSwitch(st: st),
               const SizedBox(width: 14),
@@ -635,13 +635,13 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
             padding: const EdgeInsets.symmetric(horizontal: 12),
             backgroundColor: main ? SpColors.accent : Colors.transparent,
             foregroundColor: main ? SpColors.onAccent : SpColors.ink,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: main ? BorderSide.none : const BorderSide(color: SpColors.lineStrong)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: main ? BorderSide.none : BorderSide(color: SpColors.lineStrong)),
           ),
           child: Text(t, style: SpType.text(12.5, w: FontWeight.w500, color: main ? SpColors.onAccent : SpColors.ink)),
         );
     return Container(
       width: 320,
-      decoration: const BoxDecoration(color: SpColors.node, border: Border(left: BorderSide(color: SpColors.line))),
+      decoration: BoxDecoration(color: SpColors.node, border: Border(left: BorderSide(color: SpColors.line))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
           height: 34,
@@ -691,7 +691,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
           child: Wrap(spacing: 6, runSpacing: 6, children: [
             btn(n.kind == GraphKind.missing ? 'Создать' : 'Открыть в заметках', () => _open(n.id), main: true),
             if (note)
@@ -712,7 +712,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
     final level = _cam.k >= zoomNodes ? '×3' : _cam.k >= zoomNames ? '×2' : '×1';
     Widget cell(String t, {bool first = false}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          decoration: BoxDecoration(border: first ? null : const Border(left: BorderSide(color: SpColors.line))),
+          decoration: BoxDecoration(border: first ? null : Border(left: BorderSide(color: SpColors.line))),
           child: Text(t, style: SpType.label(9, color: SpColors.dim)),
         );
     return Container(
@@ -768,7 +768,7 @@ class _ZoomBtn extends StatelessWidget {
         message: tip,
         child: Material(
           color: SpColors.node,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: const BorderSide(color: SpColors.line)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: BorderSide(color: SpColors.line)),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(SpRadius.button),

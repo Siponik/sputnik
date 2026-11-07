@@ -42,6 +42,9 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
+/// Последний открытый раздел — чтобы смена темы (перестройка окна) не сбрасывала его.
+int lastTab = 0;
+
 const tabNames = {0: 'Сегодня', 1: 'Календарь', 2: 'Доска', 3: 'Привычки', 5: 'Знания'};
 
 /// Порядок вкладок: сохранённый (неизвестные выброшены, недостающие — в конец) или исходный.
@@ -155,6 +158,7 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
+    lastTab = tab;
     final s = widget.state;
     return CallbackShortcuts(
       bindings: {if (widget.notes != null && tab == notesTab) ...notesKeys(context, widget.notes!)},
@@ -339,7 +343,7 @@ class _AppShellState extends State<AppShell> {
     ];
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: SpColors.bg,
         border: Border(bottom: BorderSide(color: SpColors.line)),
       ),
@@ -409,7 +413,7 @@ class _AppShellState extends State<AppShell> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.search, size: 13, color: SpColors.muted),
+                  Icon(Icons.search, size: 13, color: SpColors.muted),
                   const SizedBox(width: 8),
                   Text('НАЙТИ', style: gLbl(size: 11)),
                   const SizedBox(width: 24),
