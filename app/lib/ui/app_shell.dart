@@ -297,11 +297,16 @@ class _AppShellState extends State<AppShell> {
         for (final t in s.topTasks(l['id'] as String))
           (title: (t['title'] ?? '') as String, list: (l['title'] ?? '') as String),
     ];
+    searchToGraph = false;
     final pick = await showNotesSearch(context, notes, tasks: ts);
     if (!mounted || pick == null) return;
     switch (pick) {
       case PickNote(:final path):
         notes.openNote(path);
+        if (searchToGraph) {
+          setState(() => tab = notesTab);
+          notes.show('graph');
+        }
       case PickNew(:final title):
         await notes.create(notes.active == null ? '' : folderOf(notes.active!), title);
       case PickTask():

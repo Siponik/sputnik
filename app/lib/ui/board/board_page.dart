@@ -2,12 +2,14 @@
 // «Шаблоны · Архив · Показывать»), справа шапка доски (название, «по шаблону …», вид) и колонки-ноды с цветными
 // шапками, соединённые проводами; «В работе» — главная нода с уголками и лимитом. Карточки перетаскиваются.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/dates.dart';
 import '../../core/spheres.dart' as sph;
 import '../../core/templates.dart' as tpl;
 import '../../state/app_state.dart';
 import '../g/kit.dart';
+import '../keys.dart';
 import '../create/create_dialog.dart';
 import '../theme/tokens.dart';
 import '../today/today_page.dart' show listHue;
@@ -42,9 +44,22 @@ class _BoardPageState extends State<BoardPage> {
   String filter = '';
   final folded = <String, bool>{};
 
+  /// Левая колонка закреплена (`settings.sidePin.v`); Ctrl+B прячет и показывает.
+  bool get sideOn => ((widget.state.layer['settings'] as Map?)?['sidePin'] as Map?)?['v'] != false;
+
+  @override
+  void dispose() {
+    PageKeys.clear(this);
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = widget.state;
+    PageKeys.set(this, {
+      const PKey(PhysicalKeyboardKey.keyB, ctrl: true): () =>
+          setState(() => s.touch('settings', 'sidePin', {'v': !sideOn})),
+    });
     final ls = s.boardLists;
     final id = ls.any((l) => l['id'] == active) ? active! : (ls.isEmpty ? null : ls.first['id'] as String);
     return DotGround(
@@ -56,7 +71,7 @@ class _BoardPageState extends State<BoardPage> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (!narrow) ...[SizedBox(width: 220, child: _side(s, ls, id)), const SizedBox(width: 16)],
+                if (!narrow && sideOn) ...[SizedBox(width: 220, child: _side(s, ls, id)), const SizedBox(width: 16)],
                 Expanded(
                   child: id == null
                       ? Center(
