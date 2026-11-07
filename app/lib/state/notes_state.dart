@@ -288,7 +288,7 @@ class NotesState extends ChangeNotifier {
 
   /// Холст: последний открытый `.canvas` (из вкладок или недавних), иначе null.
   String? get lastCanvas {
-    for (final p in [if (active != null) active!, ...config.tabs, ...config.recent]) {
+    for (final p in [?active, ...config.tabs, ...config.recent]) {
       if (p.toLowerCase().endsWith('.canvas') && index.doc(p) != null) return p;
     }
     return null;
