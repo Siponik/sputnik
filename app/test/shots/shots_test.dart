@@ -9,7 +9,7 @@ import 'package:sputnik_app/ui/app_shell.dart';
 import 'package:sputnik_app/ui/create/create_dialog.dart' show openCreate;
 import 'package:sputnik_app/ui/widgets/task_dialog.dart' show openTask;
 import 'package:sputnik_app/ui/calendar/calendar_page.dart' show calStartMode;
-import 'package:sputnik_app/ui/habits/habits_page.dart' show habitsStartMonth;
+import 'package:sputnik_app/ui/habits/habits_page.dart' show habitsStartMonth, editHabit;
 import 'package:sputnik_app/ui/theme/tokens.dart';
 
 import 'demo.dart';
@@ -55,6 +55,7 @@ void main() {
     (0, 'search', 'S'),
     (2, 'list', 'U'),
     (2, 'datetime', 'P'),
+    (3, 'habitedit', 'E'),
   ]) {
     testWidgets('снимок $name', skip: !on, (t) async {
       t.view.physicalSize = const Size(1440, 900);
@@ -63,7 +64,7 @@ void main() {
       calStartMode = list == 'M' ? 'month' : 'week';
       habitsStartMonth = list == 'H';
       final s = gDemo();
-      if (list.length == 1 && !'MHTCS'.contains(list)) s.activeList = list;
+      if (list.length == 1 && !'MHTCSE'.contains(list)) s.activeList = list;
       await t.pumpWidget(
         MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -88,6 +89,11 @@ void main() {
           about: 'про «Текстуры для щита»',
           busy: (d) => {10, 12, 15, 16, 19},
         );
+        await t.pump();
+        await t.pump(const Duration(milliseconds: 400));
+      }
+      if (list == 'E') {
+        editHabit(t.element(find.byType(AppShell)), s, s.habits.first);
         await t.pump();
         await t.pump(const Duration(milliseconds: 400));
       }
