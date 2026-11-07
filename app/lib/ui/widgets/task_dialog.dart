@@ -555,6 +555,14 @@ extension on _TaskDialogState {
                           style: gMicro(),
                         ),
                       ),
+                    const SizedBox(width: 8),
+                    InkWell(
+                      onTap: () {
+                        open(p);
+                        kn.show('graph');
+                      },
+                      child: Text('на графе', style: SpType.text(12, color: SpColors.accent)),
+                    ),
                   ],
                 ),
               ),
