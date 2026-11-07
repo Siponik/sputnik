@@ -1,6 +1,7 @@
 // «Привычки»: карточки (значок, серия, точки за 7 дней, отметка), чипы части дня, «Сегодня | Месяц»,
 // панель привычки с календарём месяца, окно новой/правки привычки. Логика — core/habits.dart.
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/habits.dart' as hb;
 import '../../state/app_state.dart';
@@ -1053,133 +1054,394 @@ class _HabitEditState extends State<_HabitEdit> {
     Navigator.pop(context);
   }
 
-  @override
-  Widget build(BuildContext context) => Dialog(
-    backgroundColor: SpColors.node,
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 480),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+  bool more = false;
+
+  String get _freq => perWeek > 0
+      ? 'n'
+      : days.length == 7
+      ? 'all'
+      : (days.length == 5 && days.containsAll({0, 1, 2, 3, 4}) ? 'work' : 'own');
+
+  Widget _row(String label, Widget child) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 104,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 7),
+            child: Text(label, style: SpType.text(13, color: SpColors.muted)),
+          ),
+        ),
+        Expanded(child: child),
+      ],
+    ),
+  );
+
+  Widget _chips(List<Widget> c) => Wrap(spacing: 6, runSpacing: 6, children: c);
+
+  Widget _fields(Color kc) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      TextField(
+        controller: name,
+        autofocus: true,
+        style: SpType.text(17),
+        onChanged: (_) => setState(() {}),
+        decoration: InputDecoration(
+          hintText: 'Название: «Зарядка», «8 стаканов воды»',
+          isDense: true,
+          filled: true,
+          fillColor: SpColors.bg,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: kc.withValues(alpha: .6)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(8),
+            borderSide: BorderSide(color: kc, width: 1.5),
+          ),
+        ),
+        onSubmitted: (_) => _save(),
+      ),
+      _row(
+        'Значок',
+        Wrap(
+          spacing: 4,
+          runSpacing: 4,
+          children: [
+            for (final e in habitIcons.entries)
+              InkWell(
+                onTap: () => setState(() => icon = e.key),
+                borderRadius: BorderRadius.circular(6),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: icon == e.key ? kc.withValues(alpha: .18) : SpColors.bg,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: icon == e.key ? kc : SpColors.line),
+                  ),
+                  child: Icon(e.value, size: 17, color: icon == e.key ? kc : SpColors.muted),
+                ),
+              ),
+          ],
+        ),
+      ),
+      _row(
+        'Как часто',
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.h == null ? 'Новая привычка' : 'Привычка', style: SpType.label(11)),
-            TextField(
-              controller: name,
-              autofocus: true,
-              style: SpType.text(20, w: FontWeight.w600),
-              decoration: const InputDecoration(border: InputBorder.none, hintText: 'Название'),
-              onSubmitted: (_) => _save(),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 4,
-              children: [
-                for (final e in habitIcons.entries)
-                  IconButton(
-                    isSelected: icon == e.key,
-                    onPressed: () => setState(() => icon = e.key),
-                    icon: Icon(e.value, size: 20, color: icon == e.key ? SpColors.accent : SpColors.muted),
-                  ),
-              ],
-            ),
-            Wrap(
-              spacing: 8,
-              children: [
-                for (final e in habitColors.entries)
-                  InkWell(
-                    onTap: () => setState(() => color = e.key),
-                    child: Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: e.value,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: color == e.key ? SpColors.ink : Colors.transparent, width: 2),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Text('КОГДА', style: SpType.label(10.5)),
-            const SizedBox(height: 6),
-            Wrap(
-              spacing: 6,
-              children: [
-                for (final p in hb.parts)
-                  ChoiceChip(
-                    label: Text(p['name'] as String),
-                    selected: part == p['id'],
-                    onSelected: (_) => setState(() => part = p['id'] as String),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 4,
-              children: [
+            _chips([
+              GPick(
+                'Каждый день',
+                color: kc,
+                on: _freq == 'all',
+                onTap: () => setState(() {
+                  perWeek = 0;
+                  days = {0, 1, 2, 3, 4, 5, 6};
+                }),
+              ),
+              GPick(
+                'По будням',
+                color: kc,
+                on: _freq == 'work',
+                onTap: () => setState(() {
+                  perWeek = 0;
+                  days = {0, 1, 2, 3, 4};
+                }),
+              ),
+              GPick(
+                'Свои дни',
+                color: kc,
+                on: _freq == 'own',
+                onTap: () => setState(() {
+                  perWeek = 0;
+                  if (days.length == 7 || _freq == 'work') days = {0, 2, 4};
+                }),
+              ),
+              GPick(
+                'N раз в неделю',
+                color: kc,
+                on: _freq == 'n',
+                onTap: () => setState(() {
+                  if (perWeek == 0) perWeek = 3;
+                }),
+              ),
+            ]),
+            if (_freq == 'own') ...[
+              const SizedBox(height: 8),
+              _chips([
                 for (var d = 0; d < 7; d++)
-                  FilterChip(
-                    label: Text(hb.weekdays[d]),
-                    selected: perWeek == 0 && days.contains(d),
-                    onSelected: perWeek > 0
-                        ? null
-                        : (on) => setState(() => on ? days.add(d) : (days.length > 1 ? days.remove(d) : null)),
+                  GPick(
+                    hb.weekdays[d],
+                    color: kc,
+                    on: days.contains(d),
+                    onTap: () => setState(() {
+                      if (days.contains(d)) {
+                        if (days.length > 1) days.remove(d);
+                      } else {
+                        days.add(d);
+                      }
+                    }),
                   ),
-              ],
+              ]),
+            ],
+            if (_freq == 'n') ...[
+              const SizedBox(height: 8),
+              _chips([
+                for (final n in [1, 2, 3, 4, 5, 6])
+                  GPick('$n', color: kc, on: perWeek == n, onTap: () => setState(() => perWeek = n)),
+              ]),
+            ],
+          ],
+        ),
+      ),
+      _row(
+        'Цель на день',
+        Row(
+          children: [
+            SizedBox(
+              width: 64,
+              child: TextField(
+                controller: goal,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(hintText: '1', isDense: true),
+              ),
             ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Text('или раз в неделю:', style: SpType.text(13, color: SpColors.muted)),
-                const SizedBox(width: 8),
-                for (final n in [0, 1, 2, 3, 4, 5])
-                  Padding(
-                    padding: const EdgeInsets.only(right: 4),
-                    child: ChoiceChip(
-                      label: Text(n == 0 ? 'нет' : '$n'),
-                      selected: perWeek == n,
-                      onSelected: (_) => setState(() => perWeek = n),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Text('Цель в день:', style: SpType.text(13, color: SpColors.muted)),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 60,
-                  child: TextField(
-                    controller: goal,
-                    decoration: const InputDecoration(hintText: '1', isDense: true),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 120,
-                  child: TextField(
-                    controller: unit,
-                    decoration: const InputDecoration(hintText: 'стаканов', isDense: true),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
-                const SizedBox(width: 8),
-                FilledButton(onPressed: _save, child: Text(widget.h == null ? 'Добавить' : 'Сохранить')),
-              ],
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 140,
+              child: TextField(
+                controller: unit,
+                onChanged: (_) => setState(() {}),
+                decoration: const InputDecoration(hintText: 'раз, стаканов…', isDense: true),
+              ),
             ),
           ],
         ),
       ),
-    ),
+      _row(
+        'Часть дня',
+        _chips([
+          for (final p in hb.parts)
+            GPick(
+              p['name'] as String,
+              color: kc,
+              on: part == p['id'],
+              onTap: () => setState(() => part = p['id'] as String),
+            ),
+        ]),
+      ),
+      const SizedBox(height: 14),
+      InkWell(
+        onTap: () => setState(() => more = !more),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Text(
+            '${more ? '▾' : '▸'} Ещё параметры · цвет${widget.h == null ? '' : ', удалить'}',
+            style: SpType.text(13, color: SpColors.muted, w: FontWeight.w500),
+          ),
+        ),
+      ),
+      if (more) ...[
+        _row(
+          'Цвет',
+          Wrap(
+            spacing: 8,
+            children: [
+              for (final e in habitColors.entries)
+                InkWell(
+                  onTap: () => setState(() => color = e.key),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: e.value,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color == e.key ? SpColors.ink : Colors.transparent, width: 2),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        if (widget.h != null)
+          _row(
+            '',
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () {
+                  widget.s.removeHabit(widget.h!['id'] as String);
+                  Navigator.pop(context);
+                },
+                child: Text('Удалить привычку', style: SpType.text(13, color: SpColors.red)),
+              ),
+            ),
+          ),
+      ],
+    ],
   );
+
+  Widget _preview(Color kc) {
+    final n = name.text.trim();
+    final gn = int.tryParse(goal.text.trim()) ?? 1;
+    final freq = switch (_freq) {
+      'all' => 'каждый день',
+      'work' => 'по будням',
+      'n' => '$perWeek раз в неделю',
+      _ => (days.toList()..sort()).map((d) => hb.weekdays[d]).join(' · '),
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            'Так будет в «Привычках»',
+            style: SpType.text(12.5, color: SpColors.muted, w: FontWeight.w500),
+          ),
+        ),
+        GNode(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              GHead(name: 'Привычка', color: kc, kind: freq),
+              Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: kc.withValues(alpha: .16),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: kc),
+                      ),
+                      child: Icon(habitIcons[icon] ?? Icons.check, size: 20, color: kc),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            n.isEmpty ? 'Название' : n,
+                            style: SpType.text(14, w: FontWeight.w600, color: n.isEmpty ? SpColors.dim : SpColors.ink),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            gn > 1 ? '0 / $gn ${unit.text.trim()}' : 'серия 0 дней',
+                            style: gMono(11.5, c: SpColors.muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        CoonTip(pose: 'flag', color: kc, text: 'Начни с малого: лучше 5 минут каждый день, чем час раз в месяц.'),
+      ],
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final kc = habitColors[color] ?? SpColors.gold;
+    final n = name.text.trim();
+    return CallbackShortcuts(
+      bindings: {const SingleActivator(LogicalKeyboardKey.enter, control: true): _save},
+      child: Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(24),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 820),
+          child: LayoutBuilder(
+            builder: (context, box) {
+              final wide = box.maxWidth > 700;
+              return GNode(
+                hub: true,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Container(
+                      height: 46,
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      decoration: BoxDecoration(
+                        color: headFill(kc),
+                        borderRadius: const BorderRadius.vertical(top: Radius.circular(11)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${widget.h == null ? 'НОВАЯ ПРИВЫЧКА' : 'ПРИВЫЧКА'}${n.isEmpty ? '' : ' · $n'}',
+                              style: gLbl(c: Colors.white, size: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () => Navigator.pop(context),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8),
+                              child: Icon(Icons.close, size: 18, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Flexible(
+                      child: SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(24, 20, 24, 20),
+                        child: wide
+                            ? Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(flex: 3, child: _fields(kc)),
+                                  const SizedBox(width: 24),
+                                  Expanded(flex: 2, child: _preview(kc)),
+                                ],
+                              )
+                            : _fields(kc),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.fromLTRB(24, 12, 16, 12),
+                      decoration: const BoxDecoration(
+                        border: Border(top: BorderSide(color: SpColors.line)),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text('Ctrl+Enter — сохранить · Esc — закрыть', style: gMicro(c: SpColors.muted)),
+                          ),
+                          GBtn('Отмена', onTap: () => Navigator.pop(context)),
+                          const SizedBox(width: 8),
+                          GBtn(widget.h == null ? 'Добавить' : 'Сохранить', kind: BtnKind.acc, onTap: _save),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
 }
