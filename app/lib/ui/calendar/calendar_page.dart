@@ -525,7 +525,7 @@ class _CalendarPageState extends State<CalendarPage> {
               setState(() => sel = d);
               final m = _minAt(lay, det.localPosition.dy);
               final hh = cal.fromMin((m ~/ 60) * 60);
-              openCreate(context, s, kind: 'event', day: d, time: hh);
+              openCreate(context, s, kind: 'event', kinds: const ['task', 'event'], day: d, time: hh);
             },
             child: Container(
               decoration: BoxDecoration(

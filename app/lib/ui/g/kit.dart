@@ -538,16 +538,27 @@ class GCheck extends StatelessWidget {
   Widget build(BuildContext context) => InkResponse(
     onTap: onTap,
     radius: 14,
-    child: Container(
-      width: 14,
-      height: 14,
-      alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: done ? kBar : null,
-        borderRadius: BorderRadius.circular(4),
-        border: done ? null : Border.all(color: color),
+    // «Выполнено»: галочка выскакивает с лёгким перелётом (easePop).
+    child: TweenAnimationBuilder<double>(
+      tween: Tween(begin: done ? 1 : 0, end: done ? 1 : 0),
+      duration: SpMotion.d(context, SpMotion.dur2),
+      curve: SpMotion.easePop,
+      builder: (_, v, _) => Container(
+        width: 14,
+        height: 14,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: done ? kBar : null,
+          borderRadius: BorderRadius.circular(4),
+          border: done ? null : Border.all(color: color),
+        ),
+        child: done
+            ? Transform.scale(
+                scale: SpMotion.moves(context) ? v.clamp(0.0, 1.4) : 1,
+                child: const Icon(Icons.check, size: 10, color: SpColors.ink),
+              )
+            : null,
       ),
-      child: done ? const Icon(Icons.check, size: 10, color: SpColors.ink) : null,
     ),
   );
 }

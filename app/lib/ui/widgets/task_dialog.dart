@@ -655,6 +655,7 @@ extension on _TaskDialogState {
 const _mon = ['янв', 'фев', 'мар', 'апр', 'мая', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
 
 String _human(String day) {
+  if (day.isEmpty) return 'Без срока';
   final d = DateTime.parse(day);
   final now = DateTime.now();
   final diff = DateTime(d.year, d.month, d.day).difference(DateTime(now.year, now.month, now.day)).inDays;

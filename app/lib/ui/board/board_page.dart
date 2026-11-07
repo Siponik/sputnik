@@ -8,6 +8,7 @@ import '../../core/spheres.dart' as sph;
 import '../../core/templates.dart' as tpl;
 import '../../state/app_state.dart';
 import '../g/kit.dart';
+import '../create/create_dialog.dart';
 import '../theme/tokens.dart';
 import '../today/today_page.dart' show listHue;
 import '../widgets/common.dart';
@@ -583,7 +584,11 @@ class _BoardPageState extends State<BoardPage> {
                           ],
                         ),
                       ),
-                    if (first) _AddCard(onAdd: (v) => s.addTask(listId, v, col: colId)),
+                    if (first)
+                      _AddCard(
+                        onOpen: () =>
+                            openCreate(context, s, kinds: const ['task'], listId: listId, preset: {'col': colId}),
+                      ),
                   ],
                 ),
               ),
@@ -716,72 +721,29 @@ class _Hatch extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// «+ Добавить задачу» — пунктирная кнопка, по клику — поле прямо в колонке (Enter — добавить, Esc — отмена).
-class _AddCard extends StatefulWidget {
-  const _AddCard({required this.onAdd});
-  final void Function(String) onAdd;
-  @override
-  State<_AddCard> createState() => _AddCardState();
-}
-
-class _AddCardState extends State<_AddCard> {
-  bool open = false;
-  final c = TextEditingController();
-  final f = FocusNode();
+/// «+ Добавить задачу» — открывает то же окно «Создать» с этим списком и колонкой.
+class _AddCard extends StatelessWidget {
+  const _AddCard({required this.onOpen});
+  final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    if (!open) {
-      return InkWell(
-        onTap: () {
-          setState(() => open = true);
-          f.requestFocus();
-        },
-        child: Dashed(
-          r: 6,
-          child: Container(
-            height: 36,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              children: [
-                Text('+ Добавить задачу', style: SpType.text(13, color: SpColors.muted)),
-                const Spacer(),
-                Text('N', style: gMicro()),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: SpColors.bg,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: SpColors.accent),
-      ),
-      child: Focus(
-        onKeyEvent: (_, e) {
-          if (e.logicalKey.keyLabel == 'Escape') {
-            setState(() => open = false);
-            return KeyEventResult.handled;
-          }
-          return KeyEventResult.ignored;
-        },
-        child: TextField(
-          controller: c,
-          focusNode: f,
-          style: SpType.text(13),
-          decoration: const InputDecoration(isDense: true, border: InputBorder.none, hintText: 'Название и Enter'),
-          onSubmitted: (v) {
-            if (v.trim().isNotEmpty) widget.onAdd(v.trim());
-            c.clear();
-            f.requestFocus();
-          },
+  Widget build(BuildContext context) => InkWell(
+    onTap: onOpen,
+    child: Dashed(
+      r: 6,
+      child: Container(
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: [
+            Text('+ Добавить задачу', style: SpType.text(13, color: SpColors.muted)),
+            const Spacer(),
+            Text('N', style: gMicro()),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
 }
 
 String _pipeMeta(AppState s, String listId) {

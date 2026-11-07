@@ -147,42 +147,110 @@ class _AppShellState extends State<AppShell> {
           listenable: s,
           builder: (context, _) => Scaffold(
             backgroundColor: SpColors.ground,
-            body: Column(
-              children: [
-                _header(s),
-                if (s.offline)
-                  _bar('Нет связи с Google — правки сохранены и уйдут, когда связь вернётся', SpColors.headGold),
-                if (s.error != null && !s.offline && !s.needLogin) _bar(s.error!, SpColors.headRed),
-                Expanded(child: _body(s)),
-              ],
-            ),
-            bottomSheet: s.toast == null
-                ? null
-                : Container(
-                    width: double.infinity,
-                    color: SpColors.node,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                    child: Row(
+            body: Builder(
+              builder: (context) {
+                SpMotion.mode = (((s.layer['settings'] as Map?)?['motion'] as Map?)?['v'] ?? 'full') as String;
+                final dur = SpMotion.d(context, SpMotion.dur3);
+                final moves = SpMotion.moves(context);
+                return Stack(
+                  children: [
+                    Column(
                       children: [
-                        Expanded(child: Text(s.toast!, style: SpType.text(13))),
-                        if (s.toastAction != null)
-                          TextButton(
-                            onPressed: () {
-                              final a = s.toastAction!;
-                              s.toastAction = null;
-                              s.toast = null;
-                              a();
-                            },
-                            child: Text(s.toastLabel),
+                        _header(s),
+                        if (s.offline)
+                          _bar(
+                            'Нет связи с Google — правки сохранены и уйдут, когда связь вернётся',
+                            SpColors.headGold,
                           ),
+                        if (s.error != null && !s.offline && !s.needLogin) _bar(s.error!, SpColors.headRed),
+                        // Смена раздела: новый экран проявляется и чуть поднимается, старый уходит быстрее.
+                        Expanded(
+                          child: AnimatedSwitcher(
+                            duration: dur,
+                            reverseDuration: SpMotion.d(context, SpMotion.dur1),
+                            switchInCurve: SpMotion.easeOut,
+                            switchOutCurve: SpMotion.easeIn,
+                            transitionBuilder: (w, a) => FadeTransition(
+                              opacity: a,
+                              child: moves
+                                  ? SlideTransition(
+                                      position: Tween(begin: const Offset(0, .012), end: Offset.zero).animate(a),
+                                      child: w,
+                                    )
+                                  : w,
+                            ),
+                            child: KeyedSubtree(key: ValueKey(tab), child: _body(s)),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
+                    // Плашка «Готово · Отменить»: выезжает снизу.
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 20,
+                      child: Center(
+                        child: AnimatedSwitcher(
+                          duration: SpMotion.d(context, SpMotion.dur2),
+                          reverseDuration: SpMotion.d(context, SpMotion.dur1),
+                          switchInCurve: SpMotion.easeOut,
+                          switchOutCurve: SpMotion.easeIn,
+                          transitionBuilder: (w, a) => FadeTransition(
+                            opacity: a,
+                            child: moves
+                                ? SlideTransition(
+                                    position: Tween(begin: const Offset(0, .5), end: Offset.zero).animate(a),
+                                    child: w,
+                                  )
+                                : w,
+                          ),
+                          child: s.toast == null ? const SizedBox.shrink() : _toast(s),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _toast(AppState s) => Container(
+    key: ValueKey(s.toast),
+    constraints: const BoxConstraints(maxWidth: 560),
+    padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+    decoration: BoxDecoration(
+      color: SpColors.node,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: SpColors.line),
+      boxShadow: const [BoxShadow(color: Color(0x88000000), blurRadius: 20, offset: Offset(0, 8))],
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: Text(s.toast!, style: SpType.text(13), maxLines: 2, overflow: TextOverflow.ellipsis),
+        ),
+        const SizedBox(width: 12),
+        if (s.toastAction != null)
+          GBtn(
+            s.toastLabel,
+            sm: true,
+            onTap: () {
+              final a = s.toastAction!;
+              s.toastAction = null;
+              s.toast = null;
+              a();
+            },
+          )
+        else
+          const SizedBox(width: 8),
+      ],
+    ),
+  );
 
   void _search() {
     if (tab == notesTab && widget.notes != null) {
