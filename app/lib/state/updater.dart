@@ -27,9 +27,12 @@ class Updater extends ChangeNotifier {
   String status = 'Проверка ещё не запускалась';
   Timer? _t;
 
+  /// Настройка «Проверять сами» (settings.update.auto); выключено — только ручная проверка.
+  bool Function() autoOn = () => true;
+
   void start() {
-    Timer(const Duration(seconds: 30), check);
-    _t = Timer.periodic(const Duration(hours: 6), (_) => check());
+    Timer(const Duration(seconds: 30), () => autoOn() ? check() : null);
+    _t = Timer.periodic(const Duration(hours: 6), (_) => autoOn() ? check() : null);
   }
 
   @override

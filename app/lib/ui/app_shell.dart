@@ -57,6 +57,7 @@ class _AppShellState extends State<AppShell> {
   void initState() {
     super.initState();
     HardwareKeyboard.instance.addHandler(_onKey);
+    updater.autoOn = () => (((widget.state.layer['settings'] as Map?)?['update'] as Map?)?['auto']) != false;
     final n = widget.notes;
     if (n == null) return;
     widget.state.showNote = (path) {

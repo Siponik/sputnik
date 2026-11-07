@@ -321,32 +321,82 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
       ),
     ]),
+    _card('Как ставить', [
+      _toggle(
+        'Проверять и предлагать сами',
+        ((settings['update'] as Map?)?['auto']) != false,
+        (v) => setState(() => _set('update', {'auto': v})),
+      ),
+    ]),
   ];
 
-  List<Widget> _keys() => [
-    _card('Везде', [
-      for (final (k, v) in [
-        ('Ctrl+1…4', 'Сегодня · Календарь · Доска · Привычки'),
-        ('Ctrl+N', 'Создать'),
-        ('Ctrl+K', 'Найти'),
+  static const _allKeys = [
+    (
+      'Везде',
+      [
+        ('1 … 4', 'Сегодня · Календарь · Доска · Привычки'),
+        ('Q / E', 'Раздел левее / правее'),
+        ('Ctrl+1 … 5', 'Разделы, «Знания» — пятый'),
+        ('N, Ctrl+N', 'Создать'),
+        ('/, Ctrl+K', 'Найти'),
+        ('R, F5', 'Обновить из Google'),
+        ('[ ]', 'Предыдущий / следующий список'),
+        ('F', 'Архив списка'),
         ('Ctrl+,', 'Настройки'),
-        ('F5', 'Обновить из Google'),
-      ])
-        _keyRow(k, v),
-    ]),
-    _card('Окно «Создать»', [
-      for (final (k, v) in [
-        ('Alt+1…4', 'Задача · Событие · Привычка · День рождения'),
+      ],
+    ),
+    (
+      'Окно «Создать»',
+      [
+        ('Alt+1 … 4', 'Задача · Событие · Привычка · День рождения'),
         ('Enter', 'Добавить'),
         ('Ctrl+Enter', 'Создать и ещё'),
-      ])
-        _keyRow(k, v),
-    ]),
-    _card('Календарь', [
-      for (final (k, v) in [('← →', 'Неделя или месяц назад / вперёд'), ('T', 'Сегодня'), ('W / M', 'Неделя / Месяц')])
-        _keyRow(k, v),
-    ]),
+        ('Esc', 'Закрыть'),
+      ],
+    ),
+    (
+      'Календарь',
+      [
+        ('← →', 'Неделя или месяц назад / вперёд'),
+        ('T', 'Сегодня'),
+        ('W / M', 'Неделя / Месяц'),
+        ('A', 'Добавить на выбранный день'),
+      ],
+    ),
+    ('Конвейер', [('Space', 'Следующий ассет'), ('Enter', 'Окно задачи'), ('Esc', 'Свернуть строку')]),
+    ('Привычки', [('Shift+1 … 9', 'Отметить привычку по порядку')]),
+    ('Поиск', [('↑ ↓', 'Выбрать'), ('Enter', 'Открыть'), ('Esc', 'Закрыть')]),
   ];
+
+  String keyQuery = '';
+
+  List<Widget> _keys() {
+    final q = keyQuery.trim().toLowerCase().replaceAll('ё', 'е');
+    bool hit(String a, String b) => q.isEmpty || '$a $b'.toLowerCase().replaceAll('ё', 'е').contains(q);
+    return [
+      TextField(
+        style: SpType.text(13.5),
+        decoration: InputDecoration(
+          isDense: true,
+          prefixIcon: const Icon(Icons.search, size: 16, color: SpColors.muted),
+          hintText: 'Найти клавишу или действие',
+          hintStyle: SpType.text(13.5, color: SpColors.dim),
+        ),
+        onChanged: (v) => setState(() => keyQuery = v),
+      ),
+      const SizedBox(height: 6),
+      Text(
+        'Клавиши работают в любой раскладке; одиночные молчат, пока курсор в поле ввода.',
+        style: SpType.text(12.5, color: SpColors.muted),
+      ),
+      for (final (g, rows) in _allKeys)
+        if (rows.any((r) => hit(r.$1, r.$2) || hit(g, '')))
+          _card(g, [
+            for (final (k, v) in rows)
+              if (hit(k, v) || hit(g, '')) _keyRow(k, v),
+          ]),
+    ];
+  }
 
   Widget _keyRow(String k, String v) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 4),
