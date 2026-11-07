@@ -9,6 +9,7 @@ import '../../data/paths.dart';
 import '../../state/app_state.dart';
 import '../../state/updater.dart';
 import '../theme/tokens.dart';
+import '../app_shell.dart' show tabNames, tabOrder;
 import '../g/kit.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -148,6 +149,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _toggle(String text, bool on, void Function(bool) set, {Color? dot}) =>
       GChip(text, on: on, dot: dot ?? (on ? SpColors.accent : SpColors.dim), onTap: () => set(!on));
 
+  void _moveTab(int k, int d) {
+    final o = tabOrder(settings);
+    final t = o.removeAt(k);
+    o.insert(k + d, t);
+    setState(() => _set('tabs', {'v': o}));
+  }
+
   void _set(String key, Json patch) => s.touch('settings', key, patch);
 
   List<Widget> _view() {
@@ -172,6 +180,39 @@ class _SettingsPageState extends State<SettingsPage> {
           [('full', 'Полные'), ('min', 'Минимум'), ('off', 'Выключены')],
           motion,
           (v) => setState(() => _set('motion', {'v': v})),
+        ),
+      ]),
+      _card('Порядок вкладок', [
+        for (final (k, t) in tabOrder(settings).indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text('${k + 1}', style: gMono(11.5, c: SpColors.muted)),
+                ),
+                Flexible(
+                  child: SizedBox(width: 140, child: Text(tabNames[t]!, style: SpType.text(13.5))),
+                ),
+                IconButton(
+                  tooltip: 'Выше',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: k == 0 ? null : () => _moveTab(k, -1),
+                  icon: const Icon(Icons.arrow_upward, size: 16),
+                ),
+                IconButton(
+                  tooltip: 'Ниже',
+                  visualDensity: VisualDensity.compact,
+                  onPressed: k == tabOrder(settings).length - 1 ? null : () => _moveTab(k, 1),
+                  icon: const Icon(Icons.arrow_downward, size: 16),
+                ),
+              ],
+            ),
+          ),
+        TextButton(
+          onPressed: () => setState(() => _set('tabs', {'v': null})),
+          child: Text('Как было', style: SpType.text(12.5, color: SpColors.muted)),
         ),
       ]),
       _card('Тема', [

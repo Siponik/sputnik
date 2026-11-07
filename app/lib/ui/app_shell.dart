@@ -42,14 +42,29 @@ class AppShell extends StatefulWidget {
   State<AppShell> createState() => _AppShellState();
 }
 
+const tabNames = {0: 'Сегодня', 1: 'Календарь', 2: 'Доска', 3: 'Привычки', 5: 'Знания'};
+
+/// Порядок вкладок: сохранённый (неизвестные выброшены, недостающие — в конец) или исходный.
+List<int> tabOrder(Object? settings, {bool notes = true}) {
+  final all = [0, 1, 2, 3, if (notes) 5];
+  final saved = (((settings as Map?)?['tabs'] as Map?)?['v'] as List?)?.whereType<num>().map((x) => x.toInt());
+  final out = <int>{
+    for (final t in saved ?? const <int>[])
+      if (all.contains(t)) t,
+  }.toList();
+  return [
+    ...out,
+    for (final t in all)
+      if (!out.contains(t)) t,
+  ];
+}
+
 class _AppShellState extends State<AppShell> {
   late int tab = widget.initialTab;
-  List<String> get tabs => ['Сегодня', 'Календарь', 'Доска', 'Привычки', if (widget.notes != null) 'Знания'];
 
   /// Настройки — не вкладка шапки, а кнопка «Состояние»; «Знания» в шапке пятые, но номер у них 5.
   static const settingsTab = 4;
   static const notesTab = 5;
-  int _tabAt(int i) => i == 4 ? notesTab : i;
   Timer? _sync;
   final _findKey = GlobalKey();
 
@@ -72,7 +87,8 @@ class _AppShellState extends State<AppShell> {
   void _go(int t) => setState(() => tab = t);
 
   /// Порядок вкладок для Q/E и 1–4.
-  List<int> get _order => [0, 1, 2, 3, if (widget.notes != null) notesTab];
+  /// Порядок вкладок шапки, Q/E и 1–4 — из Настройки → Вид (`settings.tabs.v`).
+  List<int> get _order => tabOrder(widget.state.layer['settings'], notes: widget.notes != null);
 
   /// Глобальные клавиши по физической клавише — работают в русской раскладке и не теряют фокус.
   bool _onKey(KeyEvent e) {
@@ -333,19 +349,19 @@ class _AppShellState extends State<AppShell> {
           const SizedBox(width: 10),
           Text('СПУТНИК', style: gLbl(c: SpColors.ink, size: 11)),
           const SizedBox(width: 26),
-          for (var i = 0; i < tabs.length; i++)
+          for (final i in _order)
             Padding(
               padding: const EdgeInsets.only(right: 20),
               child: InkWell(
-                onTap: () => setState(() => tab = _tabAt(i)),
+                onTap: () => setState(() => tab = i),
                 child: Container(
                   padding: const EdgeInsets.only(bottom: 3),
                   decoration: BoxDecoration(
-                    border: Border(bottom: BorderSide(color: tab == _tabAt(i) ? SpColors.accent : Colors.transparent)),
+                    border: Border(bottom: BorderSide(color: tab == i ? SpColors.accent : Colors.transparent)),
                   ),
                   child: Text(
-                    tabs[i].toUpperCase(),
-                    style: gLbl(c: tab == _tabAt(i) ? SpColors.ink : SpColors.muted, size: 11),
+                    tabNames[i]!.toUpperCase(),
+                    style: gLbl(c: tab == i ? SpColors.ink : SpColors.muted, size: 11),
                   ),
                 ),
               ),
