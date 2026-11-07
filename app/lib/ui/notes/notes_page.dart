@@ -747,10 +747,13 @@ class _Empty extends StatelessWidget {
 }
 
 class _NoteBody extends StatelessWidget {
-  const _NoteBody({super.key, required this.st, required this.path, required this.read, required this.onAllLinks});
+  const _NoteBody({super.key, required this.st, required this.path, required this.read, required this.onAllLinks, this.side = true});
   final NotesState st;
   final String path;
   final bool read;
+
+  /// В чтении показывать справа «Где эта заметка» (выключено у вложенного тела).
+  final bool side;
   final VoidCallback onAllLinks;
 
   void _follow(BuildContext context, String? to, NoteLink l) {
@@ -766,7 +769,54 @@ class _NoteBody extends StatelessWidget {
     final doc = st.index.doc(path);
     final back = st.index.backlinks(path);
     return LayoutBuilder(builder: (context, box) {
-      final w = box.maxWidth.clamp(0.0, 640.0 + 80) - 80;
+      // Чтение: колонка 600 px, справа «Где эта заметка» — соседи, клик открывает тут же, в чтении.
+      if (read && side && box.maxWidth >= 980) {
+        final near = st.index.neighbours(path).where((p) => p != path && st.index.doc(p) != null).toList();
+        return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Expanded(child: _NoteBody(st: st, path: path, read: true, onAllLinks: onAllLinks, side: false)),
+          Container(
+            width: 260,
+            margin: const EdgeInsets.fromLTRB(0, 30, 20, 30),
+            decoration: BoxDecoration(
+              color: SpColors.bg,
+              borderRadius: BorderRadius.circular(SpRadius.node),
+              border: Border.all(color: SpColors.line),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+                child: Text('ГДЕ ЭТА ЗАМЕТКА · ${near.length}', style: SpType.label(9.5)),
+              ),
+              Expanded(
+                child: ListView(padding: const EdgeInsets.symmetric(horizontal: 6), children: [
+                  for (final p in near)
+                    InkWell(
+                      onTap: () => st.openNote(p),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                        child: Row(children: [
+                          Container(width: 7, height: 7, decoration: BoxDecoration(color: folderHue(p, st.index.paths.toList()), shape: BoxShape.circle)),
+                          const SizedBox(width: 9),
+                          Expanded(child: Text(baseName(p), overflow: TextOverflow.ellipsis, style: SpType.text(13))),
+                        ]),
+                      ),
+                    ),
+                  if (near.isEmpty) Padding(padding: const EdgeInsets.all(8), child: Text('Связей пока нет.', style: SpType.text(12.5, color: SpColors.muted))),
+                ]),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(10),
+                child: TextButton(
+                  onPressed: () => st.show('graph'),
+                  child: Text('◉ Открыть на графе · Ctrl+G', style: SpType.text(12.5, color: SpColors.accent)),
+                ),
+              ),
+            ]),
+          ),
+        ]);
+      }
+      final w = box.maxWidth.clamp(0.0, (read ? 600.0 : 640.0) + 80) - 80;
       return SingleChildScrollView(
         padding: EdgeInsets.fromLTRB((box.maxWidth - w) / 2, 30, (box.maxWidth - w) / 2, 30),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
