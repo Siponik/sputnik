@@ -79,7 +79,7 @@ class _PeopleState extends State<_People> {
                               ? IconButton(
                                   tooltip: 'Убрать',
                                   onPressed: busy ? null : () => _do(() => s.removePerson(cal, p['email'] as String)),
-                                  icon: const Icon(Icons.close, size: 16, color: SpColors.muted),
+                                  icon: Icon(Icons.close, size: 16, color: SpColors.muted),
                                 )
                               : null,
                         ),

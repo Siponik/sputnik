@@ -208,17 +208,17 @@ class _SearchState extends State<_Search> {
       decoration: InputDecoration(
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(vertical: 11),
-        prefixIcon: const Icon(Icons.search, size: 18, color: SpColors.muted),
+        prefixIcon: Icon(Icons.search, size: 18, color: SpColors.muted),
         suffixIcon: Padding(padding: const EdgeInsets.all(12), child: key('ESC')),
         hintText: 'Найти задачу, список или раздел',
         hintStyle: SpType.text(15, color: SpColors.dim),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: SpColors.accent),
+          borderSide: BorderSide(color: SpColors.accent),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: SpColors.accent, width: 1.3),
+          borderSide: BorderSide(color: SpColors.accent, width: 1.3),
         ),
       ),
       onChanged: (_) => setState(() => sel = 0),
@@ -298,7 +298,7 @@ class _SearchState extends State<_Search> {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                              decoration: const BoxDecoration(
+                              decoration: BoxDecoration(
                                 border: Border(top: BorderSide(color: SpColors.line)),
                               ),
                               child: Row(
@@ -361,7 +361,7 @@ class _SearchState extends State<_Search> {
                 ),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  decoration: const BoxDecoration(
+                  decoration: BoxDecoration(
                     border: Border(top: BorderSide(color: SpColors.line)),
                   ),
                   child: Row(

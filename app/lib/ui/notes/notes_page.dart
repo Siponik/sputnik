@@ -85,15 +85,29 @@ class _NotesPageState extends State<NotesPage> {
         } else if (st.view == 'graph') {
           body = GraphView(st: st);
         } else if (st.wide && st.view == 'note' && st.active != null && isCanvasPath(st.active!)) {
-          body = Padding(padding: const EdgeInsets.all(10), child: _Main(st: st));
+          body = Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              NotesModeSwitch(st: st),
+              const SizedBox(height: 8),
+              Expanded(child: _Main(st: st)),
+            ]),
+          );
         } else {
           body = Padding(
-            padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
+            padding: EdgeInsets.fromLTRB(16, 18, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(width: 264, child: _Side(st: st)),
-                const SizedBox(width: 16),
+                SizedBox(
+                  width: 264,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    NotesModeSwitch(st: st),
+                    SizedBox(height: 10),
+                    Expanded(child: _Side(st: st)),
+                  ]),
+                ),
+                SizedBox(width: 16),
                 Expanded(child: st.view == 'folder' && st.folder != null ? FolderView(st: st, folder: st.folder!) : _Main(st: st)),
               ],
             ),
@@ -114,7 +128,7 @@ class _Center extends StatelessWidget {
 
 /// Нода состояния: цветная шапка, заголовок, пояснение, кнопки.
 class _StateNode extends StatelessWidget {
-  const _StateNode({required this.head, required this.title, required this.text, this.actions = const [], this.tone = SpColors.headGrey});
+  _StateNode({required this.head, required this.title, required this.text, this.actions = const [], Color? tone}) : tone = tone ?? SpColors.headGrey;
   final String head;
   final String title;
   final String text;
@@ -125,15 +139,15 @@ class _StateNode extends StatelessWidget {
         head: head,
         tone: tone,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 18, 20, 20),
+          padding: EdgeInsets.fromLTRB(20, 18, 20, 20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(title, style: SpType.text(19, w: FontWeight.w600)),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Text(text, style: SpType.text(13.5, color: SpColors.muted, height: 20)),
-              if (actions.isNotEmpty) ...[const SizedBox(height: 18), Wrap(spacing: 8, runSpacing: 8, children: actions)],
+              if (actions.isNotEmpty) ...[SizedBox(height: 18), Wrap(spacing: 8, runSpacing: 8, children: actions)],
             ],
           ),
         ),
@@ -142,7 +156,7 @@ class _StateNode extends StatelessWidget {
 
 /// Нода: контур, цветная шапка с моно-подписью.
 class _Node extends StatelessWidget {
-  const _Node({required this.head, required this.child, this.tone = SpColors.headGrey, this.count});
+  _Node({required this.head, required this.child, Color? tone, this.count}) : tone = tone ?? SpColors.headGrey;
   final String head;
   final String? count;
   final Widget child;
@@ -193,7 +207,7 @@ class _Btn extends StatelessWidget {
           foregroundColor: main ? SpColors.onAccent : SpColors.ink,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(SpRadius.button),
-            side: main ? BorderSide.none : const BorderSide(color: SpColors.lineStrong),
+            side: main ? BorderSide.none : BorderSide(color: SpColors.lineStrong),
           ),
           textStyle: SpType.text(small ? 12.5 : 13, w: FontWeight.w600),
         ),
@@ -297,7 +311,7 @@ class _SideState extends State<_Side> {
       }
     }
     return _Node(
-      head: 'ЗАМЕТКИ',
+      head: dirName(st.config.folder ?? '').toUpperCase(),
       count: '${st.index.length}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -316,13 +330,13 @@ class _SideState extends State<_Side> {
                       isDense: true,
                       hintText: 'Найти заметку',
                       hintStyle: SpType.text(13, color: SpColors.muted),
-                      prefixIcon: const Icon(Icons.search, size: 15, color: SpColors.muted),
+                      prefixIcon: Icon(Icons.search, size: 15, color: SpColors.muted),
                       prefixIconConstraints: const BoxConstraints(minWidth: 30),
                       filled: true,
                       fillColor: SpColors.bg,
                       contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
                     ),
                   ),
                 ),
@@ -335,7 +349,7 @@ class _SideState extends State<_Side> {
           ),
           Expanded(child: ListView(padding: const EdgeInsets.only(bottom: 8), children: rows)),
           Container(
-            decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+            decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(children: [
               Expanded(
@@ -386,15 +400,15 @@ class _Section extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: EdgeInsets.only(top: line ? 8 : 0),
         padding: EdgeInsets.fromLTRB(16, line ? 12 : 8, 16, 4),
-        decoration: line ? const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))) : null,
+        decoration: line ? BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))) : null,
         child: Text(text, style: SpType.label(9.5)),
       );
 }
 
 /// ▸ / ▾ у папки — иконкой, текстом это выглядело как «не подтянулось».
 Widget? _caretIcon(String? c) => switch (c) {
-      '▾' => const Icon(Icons.keyboard_arrow_down, size: 14, color: SpColors.dim),
-      '▸' => const Icon(Icons.keyboard_arrow_right, size: 14, color: SpColors.dim),
+      '▾' => Icon(Icons.keyboard_arrow_down, size: 14, color: SpColors.dim),
+      '▸' => Icon(Icons.keyboard_arrow_right, size: 14, color: SpColors.dim),
       _ => null,
     };
 
@@ -424,7 +438,7 @@ class _Row extends StatelessWidget {
           child: Container(
             constraints: const BoxConstraints(minHeight: 28),
             padding: EdgeInsets.only(left: 8.0 + 14 * depth, right: 10, top: hint == null ? 0 : 4, bottom: hint == null ? 0 : 4),
-            decoration: active ? const BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
+            decoration: active ? BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
             child: Row(children: [
               onCaret == null
                   ? SizedBox(width: 14, child: _caretIcon(caret))
@@ -468,7 +482,7 @@ class _Main extends StatefulWidget {
 }
 
 class _MainState extends State<_Main> {
-  bool _read = false;
+  bool get _read => widget.st.reading;
   bool _links = false;
   NotesState get st => widget.st;
 
@@ -505,7 +519,7 @@ class _MainState extends State<_Main> {
                 else if (isCanvasPath(path))
                   Expanded(child: CanvasView(key: ValueKey(path), st: st, path: path))
                 else ...[
-                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => _read = r), links: _links, onLinks: () => setState(() => _links = !_links)),
+                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => st.reading = r), links: _links, onLinks: () => setState(() => _links = !_links)),
                   if (st.conflicts.containsKey(path)) _ConflictBar(st: st, path: path),
                   Expanded(child: _NoteBody(key: ValueKey(path), st: st, path: path, read: _read, onAllLinks: () => setState(() => _links = true))),
                   _Footer(st: st, path: path),
@@ -558,7 +572,7 @@ class _Tabs extends StatelessWidget {
     return Container(
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: const BoxDecoration(color: SpColors.headMain, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.hub - 1))),
+      decoration: BoxDecoration(color: SpColors.headMain, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.hub - 1))),
       child: Row(children: [
         Expanded(
           child: ListView(
@@ -624,7 +638,7 @@ class _Toolbar extends StatelessWidget {
     return Container(
       height: 44,
       padding: const EdgeInsets.only(left: 20, right: 14),
-      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
       child: Row(children: [
         Expanded(child: Text(dir.isEmpty ? 'Корень папки' : dir.replaceAll('/', ' › '), overflow: TextOverflow.ellipsis, style: SpType.text(12.5, color: SpColors.muted))),
         Container(
@@ -661,13 +675,14 @@ class _Toolbar extends StatelessWidget {
         const SizedBox(width: 4),
         TextButton(
           onPressed: () => st.show('graph'),
+          // «◉ На графе»: эта заметка в центре графа.
           style: TextButton.styleFrom(
             minimumSize: const Size(0, 28),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             foregroundColor: SpColors.muted,
             textStyle: SpType.text(12.5, w: FontWeight.w500),
           ),
-          child: const Text('Граф'),
+          child: const Text('◉ На графе'),
         ),
         const SizedBox(width: 6),
         PopupMenuButton<String>(
@@ -763,7 +778,7 @@ class _NoteBody extends StatelessWidget {
             const SizedBox(height: 26),
             Container(
               padding: const EdgeInsets.only(top: 12),
-              decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+              decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
                   Text('ССЫЛАЮТСЯ СЮДА · ${back.length}', style: SpType.label(9.5)),
@@ -864,7 +879,7 @@ class _Footer extends StatelessWidget {
     return Container(
       height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
       child: Row(children: [
         Container(width: 6, height: 6, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
         const SizedBox(width: 10),
@@ -883,7 +898,7 @@ Future<String?> _ask(BuildContext context, {required String title, required Stri
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: SpColors.node,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: const BorderSide(color: SpColors.line)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: BorderSide(color: SpColors.line)),
       title: Text(title, style: SpType.text(17, w: FontWeight.w600)),
       content: SizedBox(
         width: 420,
@@ -928,7 +943,7 @@ Future<void> newNoteDialog(BuildContext context, NotesState st) async {
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, set) => AlertDialog(
         backgroundColor: SpColors.node,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: const BorderSide(color: SpColors.line)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: BorderSide(color: SpColors.line)),
         title: Text('Новая заметка', style: SpType.text(17, w: FontWeight.w600)),
         content: SizedBox(
           width: 440,
@@ -954,7 +969,7 @@ Future<void> newNoteDialog(BuildContext context, NotesState st) async {
                     showCheckmark: false,
                     selectedColor: SpColors.accent,
                     backgroundColor: SpColors.bg,
-                    side: const BorderSide(color: SpColors.line),
+                    side: BorderSide(color: SpColors.line),
                     onSelected: (_) => set(() => tpl = t),
                   ),
               ]),
@@ -991,7 +1006,7 @@ Future<void> todosDialog(BuildContext context, NotesState st, String path) async
     builder: (ctx) => StatefulBuilder(
       builder: (ctx, set) => AlertDialog(
         backgroundColor: SpColors.node,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: const BorderSide(color: SpColors.line)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: BorderSide(color: SpColors.line)),
         title: Text('Чек-лист → в задачи', style: SpType.text(17, w: FontWeight.w600)),
         content: SizedBox(
           width: 460,
@@ -1025,7 +1040,7 @@ Future<void> todosDialog(BuildContext context, NotesState st, String path) async
                   showCheckmark: false,
                   selectedColor: SpColors.accent,
                   backgroundColor: SpColors.bg,
-                  side: const BorderSide(color: SpColors.line),
+                  side: BorderSide(color: SpColors.line),
                   onSelected: (_) => set(() => list = e.key),
                 ),
             ]),
@@ -1064,8 +1079,8 @@ Future<void> newCanvasDialog(BuildContext context, NotesState st) async {
 InputDecoration _field() => InputDecoration(
       filled: true,
       fillColor: SpColors.bg,
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
     );
 
 /// Картинка с диска → в «Вложения/», ссылка — в конец заметки.
@@ -1108,7 +1123,68 @@ Future<void> renameDialog(BuildContext context, NotesState st, String path) asyn
 Map<ShortcutActivator, VoidCallback> notesKeys(BuildContext context, NotesState st) => {
       const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => newNoteDialog(context, st),
       const SingleActivator(LogicalKeyboardKey.keyG, control: true): () => st.show(st.view == 'graph' ? 'note' : 'graph'),
+      const SingleActivator(LogicalKeyboardKey.keyE, control: true): st.toggleReading,
       const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
         if (st.active != null) st.closeTab(st.active!);
       },
     };
+
+/// Главный переключатель раздела «Заметки · Граф · Холст» (слева сверху на всех экранах «Знаний»).
+class NotesModeSwitch extends StatelessWidget {
+  const NotesModeSwitch({super.key, required this.st});
+  final NotesState st;
+
+  String get _cur {
+    if (st.view == 'graph') return 'graph';
+    final a = st.active;
+    return st.view == 'note' && a != null && isCanvasPath(a) ? 'canvas' : 'notes';
+  }
+
+  void _go(BuildContext context, String m) {
+    switch (m) {
+      case 'graph':
+        st.show('graph');
+      case 'canvas':
+        final c = st.lastCanvas;
+        if (c == null) {
+          newCanvasDialog(context, st);
+        } else {
+          st.openNote(c);
+          st.show('note');
+        }
+      default:
+        final a = st.active;
+        if (a != null && isCanvasPath(a)) {
+          final n = [...st.config.tabs, ...st.config.recent].where((p) => !isCanvasPath(p) && st.index.doc(p) != null).firstOrNull;
+          if (n != null) st.openNote(n);
+        }
+        st.show('note');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = _cur;
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: SpColors.bg, borderRadius: BorderRadius.circular(7), border: Border.all(color: SpColors.lineStrong)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final (id, label, tip) in const [('notes', 'ЗАМЕТКИ', 'Заметки'), ('graph', 'ГРАФ', 'Граф · Ctrl+G'), ('canvas', 'ХОЛСТ', 'Холст')])
+          Tooltip(
+            message: tip,
+            child: InkWell(
+              onTap: () => _go(context, id),
+              borderRadius: BorderRadius.circular(5),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: cur == id ? SpColors.ink : Colors.transparent, borderRadius: BorderRadius.circular(5)),
+                child: Text(label, style: SpType.label(10.5, w: FontWeight.w500, color: cur == id ? SpColors.bg : SpColors.muted)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}

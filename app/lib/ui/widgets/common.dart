@@ -5,7 +5,7 @@ import '../theme/tokens.dart';
 
 /// Нода дизайна G: тёмная карточка, шапка ЗАГЛАВНЫМИ моноширинным.
 class Node extends StatelessWidget {
-  const Node({super.key, required this.title, required this.child, this.head = SpColors.headGrey, this.trailing});
+  Node({super.key, required this.title, required this.child, Color? head, this.trailing}) : head = head ?? SpColors.headGrey;
   final String title;
   final Widget child;
   final Color head;
@@ -16,7 +16,7 @@ class Node extends StatelessWidget {
     color: SpColors.node,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(SpRadius.node),
-      side: const BorderSide(color: SpColors.line),
+      side: BorderSide(color: SpColors.line),
     ),
     clipBehavior: Clip.antiAlias,
     child: Column(
@@ -63,7 +63,7 @@ class Check extends StatelessWidget {
         color: done ? SpColors.blue : Colors.transparent,
         border: Border.all(color: done ? SpColors.blue : SpColors.lineStrong, width: 1.5),
       ),
-      child: done ? const Icon(Icons.check, size: 12, color: SpColors.ground) : null,
+      child: done ? Icon(Icons.check, size: 12, color: SpColors.ground) : null,
     ),
   );
 }
@@ -100,20 +100,20 @@ class _AddLineState extends State<AddLine> {
       isDense: true,
       filled: true,
       fillColor: SpColors.bg,
-      prefixIcon: const Icon(Icons.add, size: 18, color: SpColors.accent),
+      prefixIcon: Icon(Icons.add, size: 18, color: SpColors.accent),
       hintText: widget.hint,
       hintStyle: SpType.text(14, color: SpColors.dim),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(SpRadius.button),
-        borderSide: const BorderSide(color: SpColors.line),
+        borderSide: BorderSide(color: SpColors.line),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(SpRadius.button),
-        borderSide: const BorderSide(color: SpColors.line),
+        borderSide: BorderSide(color: SpColors.line),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(SpRadius.button),
-        borderSide: const BorderSide(color: SpColors.accentLine),
+        borderSide: BorderSide(color: SpColors.accentLine),
       ),
     ),
     onSubmitted: (v) {
@@ -127,7 +127,7 @@ class _AddLineState extends State<AddLine> {
 
 /// Цвет шапки по цвету колонки шаблона (0…6 → оттенок G).
 Color headFor(Object? c) {
-  const byPalette = [
+  final byPalette = [
     SpColors.headGrey,
     SpColors.headBlue,
     SpColors.headOrange,

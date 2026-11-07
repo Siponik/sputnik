@@ -483,7 +483,7 @@ class _ConveyorState extends State<ConveyorView> {
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(110, 10, 18, 12),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(top: BorderSide(color: SpColors.line)),
           ),
           child: Row(
@@ -807,7 +807,7 @@ class ListRowsView extends StatelessWidget {
         onTap: () => openTask(context, s, listId, t),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
           ),
           child: Row(

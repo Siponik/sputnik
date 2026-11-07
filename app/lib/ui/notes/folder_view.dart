@@ -88,7 +88,7 @@ class _FolderViewState extends State<FolderView> {
         ),
         Container(
           padding: const EdgeInsets.fromLTRB(16, 8, 14, 8),
-          decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
           child: Row(children: [
             Expanded(
               child: Wrap(spacing: 6, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
@@ -141,7 +141,7 @@ class _FolderViewState extends State<FolderView> {
     return ListView.separated(
       padding: const EdgeInsets.symmetric(vertical: 6),
       itemCount: docs.length,
-      separatorBuilder: (_, _) => const Divider(height: 1, color: SpColors.lineSoft),
+      separatorBuilder: (_, _) => Divider(height: 1, color: SpColors.lineSoft),
       itemBuilder: (_, i) {
         final d = docs[i];
         final first = st.index.text(d.path) ?? '';
@@ -275,7 +275,7 @@ class _FolderViewState extends State<FolderView> {
             width: width,
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Container(
-                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
+                decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.line))),
                 child: Row(children: [
                   head('Название', '', nameW),
                   for (final c in cols) head(c, c, colW),
@@ -288,7 +288,7 @@ class _FolderViewState extends State<FolderView> {
                 child: ListView(children: [
                   for (final d in rows)
                     Container(
-                      decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.lineSoft))),
+                      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: SpColors.lineSoft))),
                       child: Row(children: [
                         cell(d.title, nameW, onTap: () => st.openNote(d.path), style: SpType.text(13, w: FontWeight.w600)),
                         for (final c in cols) cell(cellText(d.props[c]), colW, onTap: () => _editCell(d, c)),
@@ -342,7 +342,7 @@ Future<String?> _askText(BuildContext context, String title, String label, Strin
     context: context,
     builder: (ctx) => AlertDialog(
       backgroundColor: SpColors.node,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: const BorderSide(color: SpColors.line)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.hub), side: BorderSide(color: SpColors.line)),
       title: Text(title, style: SpType.text(17, w: FontWeight.w600)),
       content: SizedBox(
         width: 380,
@@ -357,8 +357,8 @@ Future<String?> _askText(BuildContext context, String title, String label, Strin
             decoration: InputDecoration(
               filled: true,
               fillColor: SpColors.bg,
-              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
             ),
           ),
         ]),

@@ -135,7 +135,7 @@ class _LinksPanelState extends State<LinksPanel> {
         Container(
           height: 34,
           padding: const EdgeInsets.only(left: 12, right: 4),
-          decoration: const BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
+          decoration: BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
           child: Row(children: [
             Text('СВЯЗИ', style: SpType.label(10.5, w: FontWeight.w500, color: Colors.white, spacing: .14)),
             const Spacer(),
@@ -167,7 +167,7 @@ class _Head extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         margin: EdgeInsets.only(top: line ? 6 : 0),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
-        decoration: line ? const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))) : null,
+        decoration: line ? BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))) : null,
         child: Text(text, style: SpType.label(9.5)),
       );
 }
@@ -243,7 +243,7 @@ class _Item extends StatelessWidget {
                     minimumSize: const Size(0, 24),
                     padding: const EdgeInsets.symmetric(horizontal: 8),
                     foregroundColor: SpColors.accent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: const BorderSide(color: SpColors.accentLine)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: BorderSide(color: SpColors.accentLine)),
                   ),
                   child: Text(action!, style: action == action!.toUpperCase() ? SpType.label(9.5, color: SpColors.accent) : SpType.text(12, w: FontWeight.w600, color: SpColors.accent)),
                 ),

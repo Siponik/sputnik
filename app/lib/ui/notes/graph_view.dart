@@ -17,6 +17,9 @@ import '../../core/notes/index.dart' show foldText;
 import '../../state/notes_state.dart';
 import '../theme/tokens.dart';
 import 'hue.dart';
+import 'md_view.dart';
+import 'notes_page.dart' show NotesModeSwitch;
+import '../../core/notes/parse.dart' show resolveLink;
 
 class GraphView extends StatefulWidget {
   const GraphView({super.key, required this.st});
@@ -49,6 +52,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
   Duration _now = Duration.zero;
 
   final _focus = FocusNode();
+  final _qFocus = FocusNode();
 
   @override
   void initState() {
@@ -61,6 +65,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
   void dispose() {
     _ticker.dispose();
     _q.dispose();
+    _qFocus.dispose();
     _focus.dispose();
     super.dispose();
   }
@@ -316,7 +321,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(label, style: SpType.text(12.5, color: SpColors.muted)),
             SliderTheme(
-              data: const SliderThemeData(
+              data: SliderThemeData(
                 trackHeight: 2,
                 activeTrackColor: SpColors.accent,
                 inactiveTrackColor: SpColors.line,
@@ -334,7 +339,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
         Container(
           height: 34,
           padding: const EdgeInsets.only(left: 12, right: 10),
-          decoration: const BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
+          decoration: BoxDecoration(color: SpColors.headGrey, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
           child: Row(children: [
             Text('01', style: SpType.label(10.5, color: const Color(0x99FFFFFF))),
             const SizedBox(width: 8),
@@ -349,19 +354,20 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                 height: 32,
                 child: TextField(
                   controller: _q,
+                  focusNode: _qFocus,
                   onChanged: (_) => setState(() {}),
                   style: SpType.text(13),
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: 'Найти на графе',
                     hintStyle: SpType.text(13, color: SpColors.muted),
-                    prefixIcon: const Icon(Icons.search, size: 15, color: SpColors.muted),
+                    prefixIcon: Icon(Icons.search, size: 15, color: SpColors.muted),
                     prefixIconConstraints: const BoxConstraints(minWidth: 30),
                     filled: true,
                     fillColor: SpColors.bg,
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
                   ),
                 ),
               ),
@@ -450,7 +456,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
   Widget _sec(String t) => Container(
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
-        decoration: const BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+        decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
         child: Text(t, style: SpType.label(9.5)),
       );
 
@@ -474,9 +480,9 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
           Container(
             height: 44,
             padding: const EdgeInsets.only(left: 16, right: 10),
-            decoration: const BoxDecoration(color: SpColors.node, border: Border(bottom: BorderSide(color: SpColors.line))),
+            decoration: BoxDecoration(color: SpColors.node, border: Border(bottom: BorderSide(color: SpColors.line))),
             child: Row(children: [
-              Text('02 · ГРАФ ЗНАНИЙ', style: SpType.label(10.5, w: FontWeight.w500, color: SpColors.ink, spacing: .14)),
+              NotesModeSwitch(st: st),
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
@@ -485,11 +491,6 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                   overflow: TextOverflow.ellipsis,
                   style: SpType.label(9.5),
                 ),
-              ),
-              TextButton(
-                onPressed: () => st.show('note'),
-                style: TextButton.styleFrom(minimumSize: const Size(0, 28), padding: const EdgeInsets.symmetric(horizontal: 10), foregroundColor: SpColors.ink),
-                child: Text('← К заметке', style: SpType.text(12.5, w: FontWeight.w500)),
               ),
             ]),
           ),
@@ -516,7 +517,15 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                     return KeyEventResult.handled;
                   }
                   if (e.logicalKey == LogicalKeyboardKey.escape) {
-                    st.show('note');
+                    if (_sel != null) {
+                      setState(() => _sel = null);
+                    } else {
+                      st.show('note');
+                    }
+                    return KeyEventResult.handled;
+                  }
+                  if (e.logicalKey == LogicalKeyboardKey.slash) {
+                    _qFocus.requestFocus();
                     return KeyEventResult.handled;
                   }
                   if (e.logicalKey == LogicalKeyboardKey.equal || e.logicalKey == LogicalKeyboardKey.numpadAdd) {
@@ -579,9 +588,9 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                       ),
                     ),
                   ),
-                  if (sel != null) Positioned(left: 16, bottom: 16, child: _card(sel)),
+                  if (sel != null) Positioned(top: 0, right: 0, bottom: 0, child: _panel(sel)),
                   Positioned(
-                    right: 16,
+                    right: sel != null ? 336 : 16,
                     bottom: 16,
                     child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                       Row(children: [
@@ -604,56 +613,93 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _card(GraphNode n) {
-    final tags = n.kind == GraphKind.note ? (st.index.doc(n.id)?.tags ?? const <String>[]) : const <String>[];
-    final lines = n.kind == GraphKind.note ? previewLines(st.index.text(n.id) ?? '', n: 1, width: 48) : const <String>[];
+  /// Перейти к соседу: выделить и плавно подвести к нему камеру.
+  void _goTo(String id) {
+    final i = _g!.indexOf(id);
+    if (i < 0) return;
+    final n = _sim!.nodes[i];
+    setState(() => _sel = id);
+    _fly(GraphCamera()..centerOn(n.x, n.y, _size.width, _size.height, _cam.k));
+  }
+
+  /// Панель чтения справа (320 px): текст заметки со ссылками, соседи чипами, кнопки.
+  Widget _panel(GraphNode n) {
     final all = st.index.paths.toList();
+    final note = n.kind == GraphKind.note;
+    final text = note ? (st.index.text(n.id) ?? '') : '';
+    final near = note ? (st.index.neighbours(n.id).toList()..remove(n.id)) : <String>[];
+    Widget btn(String t, VoidCallback f, {bool main = false}) => TextButton(
+          onPressed: f,
+          style: TextButton.styleFrom(
+            minimumSize: const Size(0, 30),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            backgroundColor: main ? SpColors.accent : Colors.transparent,
+            foregroundColor: main ? SpColors.onAccent : SpColors.ink,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: main ? BorderSide.none : BorderSide(color: SpColors.lineStrong)),
+          ),
+          child: Text(t, style: SpType.text(12.5, w: FontWeight.w500, color: main ? SpColors.onAccent : SpColors.ink)),
+        );
     return Container(
-      width: 300,
-      decoration: BoxDecoration(
-        color: SpColors.node,
-        borderRadius: BorderRadius.circular(SpRadius.node),
-        border: Border.all(color: SpColors.accentLine),
-        boxShadow: const [BoxShadow(color: Color(0x59000000), blurRadius: 24, offset: Offset(0, 10))],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, mainAxisSize: MainAxisSize.min, children: [
+      width: 320,
+      decoration: BoxDecoration(color: SpColors.node, border: Border(left: BorderSide(color: SpColors.line))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
         Container(
-          height: 30,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(color: folderHead(n.id, all), borderRadius: const BorderRadius.vertical(top: Radius.circular(SpRadius.node - 1))),
+          height: 34,
+          padding: const EdgeInsets.only(left: 14, right: 4),
+          color: folderHead(n.id, all),
           child: Row(children: [
             Expanded(child: Text(n.label.toUpperCase(), overflow: TextOverflow.ellipsis, style: SpType.label(10.5, w: FontWeight.w500, color: Colors.white))),
-            Text('↔ ${n.kind == GraphKind.note ? st.index.degree(n.id) : n.degree}', style: SpType.label(10.5, color: const Color(0xCCFFFFFF))),
+            Text('↔ ${note ? st.index.degree(n.id) : n.degree}', style: SpType.label(10.5, color: const Color(0xCCFFFFFF))),
+            IconButton(
+              tooltip: 'Закрыть · Esc',
+              visualDensity: VisualDensity.compact,
+              onPressed: () => setState(() => _sel = null),
+              icon: const Icon(Icons.close, size: 16, color: Colors.white),
+            ),
           ]),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            if (n.kind == GraphKind.missing) Text('Заметки ещё нет', style: SpType.text(12.5, color: SpColors.muted)),
-            for (final l in lines) Text(l, maxLines: 2, overflow: TextOverflow.ellipsis, style: SpType.text(12.5, color: SpColors.body)),
-            if (tags.isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Wrap(spacing: 6, children: [for (final t in tags.take(4)) Text('#$t', style: SpType.text(12, color: SpColors.blue))]),
-            ],
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(
-                child: Wrap(spacing: 12, runSpacing: 4, children: [
-                  Row(mainAxisSize: MainAxisSize.min, children: [
-                    _Kbd('ENTER'),
-                    Text(n.kind == GraphKind.missing ? ' создать' : ' открыть', style: SpType.text(12, color: SpColors.muted)),
-                  ]),
-                  if (n.kind == GraphKind.note)
-                    Row(mainAxisSize: MainAxisSize.min, children: [_Kbd('L'), Text(_local ? ' весь граф' : ' локальный', style: SpType.text(12, color: SpColors.muted))]),
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              if (n.kind == GraphKind.missing) Text('Заметки ещё нет — Enter создаст её.', style: SpType.text(13, color: SpColors.muted)),
+              if (note)
+                MdView(
+                  text: text.length > 4000 ? '${text.substring(0, 4000)}…' : text,
+                  size: 13.5,
+                  resolve: (t) => resolveLink(t, n.id, all),
+                ),
+              if (near.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Text('СОСЕДИ · ${near.length}', style: SpType.label(9.5)),
+                const SizedBox(height: 8),
+                Wrap(spacing: 6, runSpacing: 6, children: [
+                  for (final id in near.take(24))
+                    InkWell(
+                      onTap: () => _goTo(id),
+                      borderRadius: BorderRadius.circular(SpRadius.button),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(SpRadius.button), border: Border.all(color: SpColors.lineStrong)),
+                        child: Text(_node(id)?.label ?? id.split('/').last.replaceAll('.md', ''), style: SpType.text(12, color: SpColors.ink)),
+                      ),
+                    ),
                 ]),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: () => _open(n.id),
-                style: TextButton.styleFrom(minimumSize: const Size(0, 26), padding: const EdgeInsets.symmetric(horizontal: 10), backgroundColor: SpColors.accent, foregroundColor: SpColors.onAccent),
-                child: Text(n.kind == GraphKind.missing ? 'Создать' : 'Открыть', style: SpType.text(12, w: FontWeight.w600, color: SpColors.onAccent)),
-              ),
+              ],
             ]),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 10, 14, 12),
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: SpColors.line))),
+          child: Wrap(spacing: 6, runSpacing: 6, children: [
+            btn(n.kind == GraphKind.missing ? 'Создать' : 'Открыть в заметках', () => _open(n.id), main: true),
+            if (note)
+              btn('Читать целиком', () {
+                st.reading = true;
+                _open(n.id);
+              }),
+            if (note) btn(_local ? 'Весь граф' : 'Локальный граф', () => setState(() => _local = !_local)),
           ]),
         ),
       ]),
@@ -666,7 +712,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
     final level = _cam.k >= zoomNodes ? '×3' : _cam.k >= zoomNames ? '×2' : '×1';
     Widget cell(String t, {bool first = false}) => Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-          decoration: BoxDecoration(border: first ? null : const Border(left: BorderSide(color: SpColors.line))),
+          decoration: BoxDecoration(border: first ? null : Border(left: BorderSide(color: SpColors.line))),
           child: Text(t, style: SpType.label(9, color: SpColors.dim)),
         );
     return Container(
@@ -722,24 +768,13 @@ class _ZoomBtn extends StatelessWidget {
         message: tip,
         child: Material(
           color: SpColors.node,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: const BorderSide(color: SpColors.line)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(SpRadius.button), side: BorderSide(color: SpColors.line)),
           child: InkWell(
             onTap: onTap,
             borderRadius: BorderRadius.circular(SpRadius.button),
             child: SizedBox(width: 30, height: 30, child: Center(child: Text(label, style: SpType.text(15, color: SpColors.ink)))),
           ),
         ),
-      );
-}
-
-class _Kbd extends StatelessWidget {
-  const _Kbd(this.t);
-  final String t;
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-        decoration: BoxDecoration(border: Border.all(color: SpColors.line), borderRadius: BorderRadius.circular(4)),
-        child: Text(t, style: SpType.label(9, color: SpColors.muted, spacing: .06)),
       );
 }
 

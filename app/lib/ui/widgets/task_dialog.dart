@@ -146,7 +146,7 @@ class _TaskDialogState extends State<_TaskDialog> {
               Container(
                 height: 46,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(bottom: BorderSide(color: SpColors.line)),
                 ),
                 child: Row(
@@ -375,7 +375,7 @@ class _TaskDialogState extends State<_TaskDialog> {
                       for (final st in subs)
                         Container(
                           padding: const EdgeInsets.symmetric(vertical: 7),
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             border: Border(bottom: BorderSide(color: SpColors.lineSoft)),
                           ),
                           child: Row(
@@ -424,11 +424,11 @@ class _TaskDialogState extends State<_TaskDialog> {
                           contentPadding: const EdgeInsets.all(12),
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: SpColors.line),
+                            borderSide: BorderSide(color: SpColors.line),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(8),
-                            borderSide: const BorderSide(color: SpColors.accent),
+                            borderSide: BorderSide(color: SpColors.accent),
                           ),
                         ),
                       ),
@@ -452,7 +452,7 @@ class _TaskDialogState extends State<_TaskDialog> {
               Container(
                 height: 40,
                 padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   border: Border(top: BorderSide(color: SpColors.line)),
                 ),
                 child: Row(

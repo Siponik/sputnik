@@ -3,50 +3,119 @@
 // системные Segoe UI и Consolas/Cascadia Mono (из сети шрифты не грузим).
 import 'package:flutter/material.dart';
 
+/// Цвета темы. Не `const`: тема (тёмная/светлая) и акцент меняются в Настройки → Вид — [SpColors.apply].
 abstract final class SpColors {
-  static const ground = Color(0xFF191A1E); // холст под нодами, с точками
-  static const bg = Color(0xFF1C1D21); // шапка, поля ввода
-  static const node = Color(0xFF25262B); // нода, меню, окно
-  static const nodeHover = Color(0xFF2C2D33); // строка под курсором, серая плашка
-  static const line = Color(0xFF3A3B42);
-  static const lineSoft = Color(0xFF303137);
-  static const lineStrong = Color(0xFF6E7079);
-  static const ink = Color(0xFFE2E3E8);
-  static const ink2 = Color(0xFFC9CAD0); // строки второго уровня в дереве
-  static const body = Color(0xFFD4D5DA); // текст заметки
-  static const muted = Color(0xFF9A9CA6);
-  static const dim = Color(0xFF7A7C86);
-  static const accent = Color(0xFFF0A04B);
-  static const accentInk = Color(0xFFFFD29C);
-  static const accentWash = Color(0xFF2E2722);
-  static const accentLine = Color(0xFF6A5238);
-  static const onAccent = Color(0xFF2A1A0A);
+  static bool light = false;
+  static Color ground = const Color(0xFF191A1E); // холст под нодами, с точками
+  static Color bg = const Color(0xFF1C1D21); // шапка, поля ввода
+  static Color node = const Color(0xFF25262B); // нода, меню, окно
+  static Color nodeHover = const Color(0xFF2C2D33); // строка под курсором, серая плашка
+  static Color line = const Color(0xFF3A3B42);
+  static Color lineSoft = const Color(0xFF303137);
+  static Color lineStrong = const Color(0xFF6E7079);
+  static Color ink = const Color(0xFFE2E3E8);
+  static Color ink2 = const Color(0xFFC9CAD0); // строки второго уровня в дереве
+  static Color body = const Color(0xFFD4D5DA); // текст заметки
+  static Color muted = const Color(0xFF9A9CA6);
+  static Color dim = const Color(0xFF7A7C86);
+  static Color accent = const Color(0xFFF0A04B);
+  static Color accentInk = const Color(0xFFFFD29C);
+  static Color accentWash = const Color(0xFF2E2722);
+  static Color accentLine = const Color(0xFF6A5238);
+  static Color onAccent = const Color(0xFF2A1A0A);
 
-  static const blue = Color(0xFF6FA2F2);
-  static const violet = Color(0xFFB48CF0);
-  static const green = Color(0xFF7FD18C);
-  static const gold = Color(0xFFE8C65A);
-  static const grey = Color(0xFFA3A5AE);
-  static const red = Color(0xFFF0785F);
+  static Color blue = const Color(0xFF6FA2F2);
+  static Color violet = const Color(0xFFB48CF0);
+  static Color green = const Color(0xFF7FD18C);
+  static Color gold = const Color(0xFFE8C65A);
+  static Color grey = const Color(0xFFA3A5AE);
+  static Color red = const Color(0xFFF0785F);
 
   /// Цветные шапки нод (тёмный оттенок цвета сферы), главная нода — [headMain].
-  static const headOrange = Color(0xFF8A5320);
-  static const headBlue = Color(0xFF2F4F86);
-  static const headViolet = Color(0xFF5E3F92);
-  static const headGreen = Color(0xFF2E6B3E);
-  static const headGold = Color(0xFF7A6620);
-  static const headGrey = Color(0xFF3D3E45);
-  static const headRed = Color(0xFF8A3A2E);
-  static const headMain = Color(0xFF9A5A22);
+  static Color headOrange = const Color(0xFF8A5320);
+  static Color headBlue = const Color(0xFF2F4F86);
+  static Color headViolet = const Color(0xFF5E3F92);
+  static Color headGreen = const Color(0xFF2E6B3E);
+  static Color headGold = const Color(0xFF7A6620);
+  static Color headGrey = const Color(0xFF3D3E45);
+  static Color headRed = const Color(0xFF8A3A2E);
+  static Color headMain = const Color(0xFF9A5A22);
 
   /// Цвета папок «Знаний» по порядку (как сферы).
-  static const hues = [grey, accent, violet, blue, green, gold, red];
+  static List<Color> get hues => [grey, accent, violet, blue, green, gold, red];
 
   /// Тёмные шапки тех же цветов, по тому же порядку, что [hues].
-  static const heads = [headGrey, headOrange, headViolet, headBlue, headGreen, headGold, headRed];
+  static List<Color> get heads => [headGrey, headOrange, headViolet, headBlue, headGreen, headGold, headRed];
 
-  /// Точки холста: 1 px через 24 px, белый 7 %.
-  static const dot = Color(0x12FFFFFF);
+  /// Точки холста: 1 px через 24 px.
+  static Color dot = const Color(0x12FFFFFF);
+
+  /// Наборы акцента: id → (цвет, шапка главной ноды).
+  static const accents = <String, (String, Color, Color)>{
+    'orange': ('Янтарь', Color(0xFFF0A04B), Color(0xFF9A5A22)),
+    'clay': ('Глина', Color(0xFFD9774F), Color(0xFF8A4228)),
+    'gold': ('Золото', Color(0xFFE0B24A), Color(0xFF7A6020)),
+    'green': ('Мята', Color(0xFF6FCF97), Color(0xFF2E6B48)),
+    'blue': ('Небо', Color(0xFF6FA2F2), Color(0xFF2F4F86)),
+    'violet': ('Сирень', Color(0xFFB48CF0), Color(0xFF5E3F92)),
+    'rose': ('Роза', Color(0xFFEC7FA9), Color(0xFF8A3A5E)),
+  };
+
+  /// Применить тему (`dark` | `light`) и акцент (id из [accents]). После вызова приложение перестраивается.
+  static void apply({String theme = 'dark', String accentId = 'orange'}) {
+    light = theme == 'light';
+    final a = accents[accentId] ?? accents['orange']!;
+    if (!light) {
+      ground = const Color(0xFF191A1E);
+      bg = const Color(0xFF1C1D21);
+      node = const Color(0xFF25262B);
+      nodeHover = const Color(0xFF2C2D33);
+      line = const Color(0xFF3A3B42);
+      lineSoft = const Color(0xFF303137);
+      lineStrong = const Color(0xFF6E7079);
+      ink = const Color(0xFFE2E3E8);
+      ink2 = const Color(0xFFC9CAD0);
+      body = const Color(0xFFD4D5DA);
+      muted = const Color(0xFF9A9CA6);
+      dim = const Color(0xFF7A7C86);
+      dot = const Color(0x12FFFFFF);
+      blue = const Color(0xFF6FA2F2);
+      violet = const Color(0xFFB48CF0);
+      green = const Color(0xFF7FD18C);
+      gold = const Color(0xFFE8C65A);
+      grey = const Color(0xFFA3A5AE);
+      red = const Color(0xFFF0785F);
+      headGrey = const Color(0xFF3D3E45);
+    } else {
+      ground = const Color(0xFFEDEBE6);
+      bg = const Color(0xFFF6F5F2);
+      node = const Color(0xFFFFFFFF);
+      nodeHover = const Color(0xFFF1EFEB);
+      line = const Color(0xFFDCD9D2);
+      lineSoft = const Color(0xFFE7E4DE);
+      lineStrong = const Color(0xFFA9A6A0);
+      ink = const Color(0xFF1E1F24);
+      ink2 = const Color(0xFF34353B);
+      body = const Color(0xFF2A2B30);
+      muted = const Color(0xFF6B6D76);
+      dim = const Color(0xFF8D8F98);
+      dot = const Color(0x1A000000);
+      blue = const Color(0xFF2F6BD0);
+      violet = const Color(0xFF7A4FC8);
+      green = const Color(0xFF2E8A4A);
+      gold = const Color(0xFFA07A10);
+      grey = const Color(0xFF6E7079);
+      red = const Color(0xFFC8442C);
+      headGrey = const Color(0xFF55565E);
+    }
+    final hsl = HSLColor.fromColor(a.$2);
+    accent = light ? hsl.withLightness((hsl.lightness - .14).clamp(.3, .6)).toColor() : a.$2;
+    headMain = a.$3;
+    accentInk = light ? hsl.withLightness(.32).toColor() : hsl.withLightness(.8).toColor();
+    accentWash = light ? hsl.withLightness(.94).withSaturation(.5).toColor() : Color.alphaBlend(a.$2.withValues(alpha: .1), bg);
+    accentLine = light ? hsl.withLightness(.7).toColor() : Color.alphaBlend(a.$2.withValues(alpha: .4), bg);
+    onAccent = light ? const Color(0xFFFFFFFF) : hsl.withLightness(.1).toColor();
+  }
 }
 
 abstract final class SpType {
@@ -55,13 +124,13 @@ abstract final class SpType {
   static const mono = 'JetBrains Mono';
   static const monoFallback = ['Cascadia Mono', 'Consolas', 'monospace'];
 
-  static TextStyle text(double size, {FontWeight w = FontWeight.w400, Color color = SpColors.ink, double? height}) =>
+  static TextStyle text(double size, {FontWeight w = FontWeight.w400, Color? color, double? height}) =>
       TextStyle(
         fontFamily: sans,
         fontFamilyFallback: sansFallback,
         fontSize: size,
         fontWeight: w,
-        color: color,
+        color: color ?? SpColors.ink,
         height: height == null ? null : height / size,
       );
 
@@ -69,14 +138,14 @@ abstract final class SpType {
   static TextStyle label(
     double size, {
     FontWeight w = FontWeight.w400,
-    Color color = SpColors.muted,
+    Color? color,
     double spacing = .12,
   }) => TextStyle(
     fontFamily: mono,
     fontFamilyFallback: monoFallback,
     fontSize: size,
     fontWeight: w,
-    color: color,
+    color: color ?? SpColors.muted,
     letterSpacing: size * spacing,
   );
 }
@@ -125,12 +194,12 @@ abstract final class SpMotion {
 }
 
 ThemeData spTheme() => ThemeData(
-  brightness: Brightness.dark,
+  brightness: SpColors.light ? Brightness.light : Brightness.dark,
   useMaterial3: true,
   scaffoldBackgroundColor: SpColors.bg,
   fontFamily: SpType.sans,
   fontFamilyFallback: SpType.sansFallback,
-  colorScheme: const ColorScheme.dark(
+  colorScheme: (SpColors.light ? ColorScheme.light : ColorScheme.dark)(
     primary: SpColors.accent,
     onPrimary: SpColors.onAccent,
     surface: SpColors.node,
@@ -138,8 +207,8 @@ ThemeData spTheme() => ThemeData(
     outline: SpColors.line,
     error: SpColors.red,
   ),
-  textSelectionTheme: const TextSelectionThemeData(cursorColor: SpColors.accent, selectionColor: Color(0x556A5238)),
-  tooltipTheme: const TooltipThemeData(
+  textSelectionTheme: TextSelectionThemeData(cursorColor: SpColors.accent, selectionColor: SpColors.accentLine.withValues(alpha: .5)),
+  tooltipTheme: TooltipThemeData(
     decoration: BoxDecoration(color: SpColors.node, borderRadius: BorderRadius.all(Radius.circular(SpRadius.button))),
     textStyle: TextStyle(color: SpColors.ink, fontSize: 12),
   ),

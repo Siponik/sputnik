@@ -23,15 +23,33 @@ void main() {
     ..load();
   state.notes = notes;
   if (Platform.isWindows) updater.start();
-  runApp(
-    MaterialApp(
-      title: 'Спутник',
-      debugShowCheckedModeBanner: false,
-      theme: spTheme(),
-      locale: const Locale('ru'),
-      supportedLocales: const [Locale('ru'), Locale('en')],
-      localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      home: AppShell(state: state, notes: notes),
-    ),
+  runApp(SpRoot(state: state, notes: notes));
+}
+
+/// Корень: тема и акцент из Настройки → Вид (`settings.theme`, `settings.accent`). Смена — перестройка всего окна.
+class SpRoot extends StatelessWidget {
+  const SpRoot({super.key, required this.state, required this.notes});
+  final AppState state;
+  final NotesState notes;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: state,
+    builder: (context, _) {
+      final st = (state.layer['settings'] as Map?) ?? const {};
+      final theme = ((st['theme'] as Map?)?['v'] ?? 'dark') as String;
+      final accent = ((st['accent'] as Map?)?['v'] ?? 'orange') as String;
+      SpColors.apply(theme: theme, accentId: accent);
+      return MaterialApp(
+        key: ValueKey('$theme/$accent'),
+        title: 'Спутник',
+        debugShowCheckedModeBanner: false,
+        theme: spTheme(),
+        locale: const Locale('ru'),
+        supportedLocales: const [Locale('ru'), Locale('en')],
+        localizationsDelegates: GlobalMaterialLocalizations.delegates,
+        home: AppShell(state: state, notes: notes, initialTab: lastTab),
+      );
+    },
   );
 }

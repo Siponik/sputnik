@@ -99,7 +99,7 @@ class MdView extends StatelessWidget {
       }
       if (RegExp(r'^\s*(-{3,}|\*{3,}|_{3,})\s*$').hasMatch(l)) {
         flush();
-        out.add(_gap(const Divider(height: 1, color: SpColors.line)));
+        out.add(_gap(Divider(height: 1, color: SpColors.line)));
         continue;
       }
       // Картинка одной строкой.
@@ -269,14 +269,14 @@ class MdView extends StatelessWidget {
         kids.add(
           TextSpan(
             text: t.substring(1, t.indexOf('](')),
-            style: const TextStyle(color: SpColors.blue),
+            style: TextStyle(color: SpColors.blue),
           ),
         );
       } else if (m[3] != null) {
         kids.add(
           TextSpan(
             children: [_inline(t.substring(2, t.length - 2))],
-            style: const TextStyle(fontWeight: FontWeight.w600, color: SpColors.ink),
+            style: TextStyle(fontWeight: FontWeight.w600, color: SpColors.ink),
           ),
         );
       } else if (m[4] != null) {
@@ -304,7 +304,7 @@ class MdView extends StatelessWidget {
         kids.add(
           TextSpan(
             text: t,
-            style: const TextStyle(color: SpColors.blue),
+            style: TextStyle(color: SpColors.blue),
           ),
         );
       }

@@ -222,7 +222,7 @@ class _PickerState extends State<_Picker> {
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 border: Border(top: BorderSide(color: SpColors.line)),
               ),
               child: Row(
@@ -265,11 +265,11 @@ class _PickerState extends State<_Picker> {
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: SpColors.line),
+              borderSide: BorderSide(color: SpColors.line),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: SpColors.accent, width: 1.3),
+              borderSide: BorderSide(color: SpColors.accent, width: 1.3),
             ),
           ),
           onChanged: _words,
@@ -469,11 +469,11 @@ class _PickerState extends State<_Picker> {
                   contentPadding: const EdgeInsets.symmetric(vertical: 8),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: SpColors.line),
+                    borderSide: BorderSide(color: SpColors.line),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6),
-                    borderSide: const BorderSide(color: SpColors.accent),
+                    borderSide: BorderSide(color: SpColors.accent),
                   ),
                 ),
                 onChanged: (v) {

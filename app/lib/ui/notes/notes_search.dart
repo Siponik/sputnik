@@ -123,7 +123,7 @@ class _SearchState extends State<_Search> {
           Container(
             height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: const BoxDecoration(color: SpColors.headMain, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.hub - 1))),
+            decoration: BoxDecoration(color: SpColors.headMain, borderRadius: BorderRadius.vertical(top: Radius.circular(SpRadius.hub - 1))),
             child: Row(children: [
               Text('ПОИСК · CTRL K', style: SpType.label(10.5, w: FontWeight.w500, color: Colors.white, spacing: .14)),
               const Spacer(),
@@ -156,7 +156,7 @@ class _SearchState extends State<_Search> {
                 decoration: InputDecoration(
                   hintText: 'Заметка, задача…',
                   hintStyle: SpType.text(16, color: SpColors.dim),
-                  prefixIcon: const Icon(Icons.search, size: 18, color: SpColors.muted),
+                  prefixIcon: Icon(Icons.search, size: 18, color: SpColors.muted),
                   suffixIcon: Padding(
                     padding: const EdgeInsets.all(10),
                     child: Container(
@@ -167,8 +167,8 @@ class _SearchState extends State<_Search> {
                   ),
                   filled: true,
                   fillColor: SpColors.bg,
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.lineStrong)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: SpColors.accent)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.lineStrong)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: SpColors.accent)),
                 ),
               ),
             ),
@@ -201,7 +201,7 @@ class _SearchState extends State<_Search> {
           },
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: on ? const BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
+            decoration: on ? BoxDecoration(border: Border(left: BorderSide(color: SpColors.accent, width: 2))) : null,
             child: Row(children: [
               SizedBox(width: 18, child: Icon(icon, size: 14, color: SpColors.dim)),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [title, ?sub])),
@@ -228,7 +228,7 @@ class _SearchState extends State<_Search> {
     var at = 0;
     for (final (a, b) in rs) {
       if (a > at) kids.add(TextSpan(text: text.substring(at, a)));
-      kids.add(TextSpan(text: text.substring(a, b), style: const TextStyle(color: SpColors.accentInk, backgroundColor: Color(0x336A5238))));
+      kids.add(TextSpan(text: text.substring(a, b), style: TextStyle(color: SpColors.accentInk, backgroundColor: Color(0x336A5238))));
       at = b;
     }
     if (at < text.length) kids.add(TextSpan(text: text.substring(at)));

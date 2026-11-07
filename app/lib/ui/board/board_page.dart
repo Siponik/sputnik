@@ -166,7 +166,7 @@ class _BoardPageState extends State<BoardPage> {
             ),
           Container(
             height: 40,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               border: Border(top: BorderSide(color: SpColors.line)),
             ),
             child: Row(
@@ -232,7 +232,7 @@ class _BoardPageState extends State<BoardPage> {
         padding: const EdgeInsets.fromLTRB(14, 14, 12, 6),
         child: Row(
           children: [
-            const GDot(SpColors.grey),
+            GDot(SpColors.grey),
             const SizedBox(width: 8),
             Text('БЕЗ СФЕРЫ', style: gLbl(size: 10, c: SpColors.muted)),
           ],
@@ -549,8 +549,8 @@ class _BoardPageState extends State<BoardPage> {
                       ),
                     if (hub && items.length < limit && items.isNotEmpty)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
+                        margin: EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: SpColors.accentLine),
@@ -562,8 +562,8 @@ class _BoardPageState extends State<BoardPage> {
                       ),
                     if (hub && items.length > limit)
                       Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(10),
+                        margin: EdgeInsets.only(bottom: 8),
+                        padding: EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(color: SpColors.red),
@@ -575,10 +575,10 @@ class _BoardPageState extends State<BoardPage> {
                       ),
                     if (items.isEmpty && !first)
                       Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: EdgeInsets.symmetric(vertical: 20),
                         child: Column(
                           children: [
-                            const GCoon('sleep', size: 42),
+                            GCoon('sleep', size: 42),
                             const SizedBox(height: 10),
                             Text('ТУТ ПОКА ПУСТОВАТО', style: gMicro()),
                           ],

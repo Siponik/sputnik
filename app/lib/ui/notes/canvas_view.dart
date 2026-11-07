@@ -1019,7 +1019,7 @@ class _CanvasViewState extends State<CanvasView> with SingleTickerProviderStateM
       backgroundColor: SpColors.node,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(SpRadius.hub),
-        side: const BorderSide(color: SpColors.line),
+        side: BorderSide(color: SpColors.line),
       ),
       title: Text('Управление холстом', style: SpType.text(17, w: FontWeight.w600)),
       content: SizedBox(
@@ -1225,7 +1225,7 @@ class _CanvasViewState extends State<CanvasView> with SingleTickerProviderStateM
     return Container(
       height: 44,
       padding: const EdgeInsets.only(left: 16, right: 8),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(bottom: BorderSide(color: SpColors.line)),
       ),
       child: Row(
@@ -1267,7 +1267,7 @@ class _CanvasViewState extends State<CanvasView> with SingleTickerProviderStateM
     shadowColor: Colors.black54,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(SpRadius.hub),
-      side: const BorderSide(color: SpColors.line),
+      side: BorderSide(color: SpColors.line),
     ),
     child: Padding(
       padding: const EdgeInsets.all(3),
@@ -1376,7 +1376,7 @@ class _CanvasViewState extends State<CanvasView> with SingleTickerProviderStateM
                         width: c == cur ? 2 : 1,
                       ),
                     ),
-                    child: c == null ? const Icon(Icons.block, size: 12, color: SpColors.dim) : null,
+                    child: c == null ? Icon(Icons.block, size: 12, color: SpColors.dim) : null,
                   ),
                 ),
               ),
