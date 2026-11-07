@@ -3,6 +3,7 @@
 // `код`, ссылки `[[…]]` подписью и #теги. Без пакетов: разбор построчный, строки не обрезаются.
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/notes/parse.dart' show frontSpan;
@@ -11,7 +12,10 @@ import '../theme/tokens.dart';
 bool _isImage(String p) => RegExp(r'\.(png|jpe?g|gif|webp|bmp)$', caseSensitive: false).hasMatch(p);
 
 class MdView extends StatelessWidget {
-  const MdView({super.key, required this.text, this.resolve, this.fileOf, this.size = 13});
+  const MdView({super.key, required this.text, this.resolve, this.fileOf, this.size = 13, this.onLink});
+
+  /// Клик по ссылке `[[…]]` на существующую заметку: путь файла.
+  final void Function(String path)? onLink;
 
   final String text;
 
@@ -255,10 +259,13 @@ class MdView extends StatelessWidget {
         final bar = inner.indexOf('|');
         final target = (bar < 0 ? inner : inner.substring(0, bar)).split('#').first;
         final label = bar < 0 ? inner.split('#').first.split('/').last : inner.substring(bar + 1);
-        final found = resolve?.call(target) != null;
+        final to = resolve?.call(target);
+        final found = to != null;
         kids.add(
           TextSpan(
             text: label,
+            recognizer: found && onLink != null ? (TapGestureRecognizer()..onTap = () => onLink!(to)) : null,
+            mouseCursor: found && onLink != null ? SystemMouseCursors.click : null,
             style: TextStyle(
               color: found ? SpColors.accentInk : SpColors.muted,
               decoration: found ? null : TextDecoration.underline,

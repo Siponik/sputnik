@@ -668,6 +668,7 @@ class _GraphViewState extends State<GraphView> with SingleTickerProviderStateMix
                   text: text.length > 4000 ? '${text.substring(0, 4000)}…' : text,
                   size: 13.5,
                   resolve: (t) => resolveLink(t, n.id, all),
+                  onLink: _goTo,
                 ),
               if (near.isNotEmpty) ...[
                 const SizedBox(height: 16),
