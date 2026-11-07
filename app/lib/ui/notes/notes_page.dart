@@ -85,14 +85,28 @@ class _NotesPageState extends State<NotesPage> {
         } else if (st.view == 'graph') {
           body = GraphView(st: st);
         } else if (st.wide && st.view == 'note' && st.active != null && isCanvasPath(st.active!)) {
-          body = Padding(padding: const EdgeInsets.all(10), child: _Main(st: st));
+          body = Padding(
+            padding: const EdgeInsets.all(10),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              NotesModeSwitch(st: st),
+              const SizedBox(height: 8),
+              Expanded(child: _Main(st: st)),
+            ]),
+          );
         } else {
           body = Padding(
             padding: const EdgeInsets.fromLTRB(16, 18, 16, 16),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SizedBox(width: 264, child: _Side(st: st)),
+                SizedBox(
+                  width: 264,
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+                    NotesModeSwitch(st: st),
+                    const SizedBox(height: 10),
+                    Expanded(child: _Side(st: st)),
+                  ]),
+                ),
                 const SizedBox(width: 16),
                 Expanded(child: st.view == 'folder' && st.folder != null ? FolderView(st: st, folder: st.folder!) : _Main(st: st)),
               ],
@@ -297,7 +311,7 @@ class _SideState extends State<_Side> {
       }
     }
     return _Node(
-      head: 'ЗАМЕТКИ',
+      head: dirName(st.config.folder ?? '').toUpperCase(),
       count: '${st.index.length}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -468,7 +482,7 @@ class _Main extends StatefulWidget {
 }
 
 class _MainState extends State<_Main> {
-  bool _read = false;
+  bool get _read => widget.st.reading;
   bool _links = false;
   NotesState get st => widget.st;
 
@@ -505,7 +519,7 @@ class _MainState extends State<_Main> {
                 else if (isCanvasPath(path))
                   Expanded(child: CanvasView(key: ValueKey(path), st: st, path: path))
                 else ...[
-                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => _read = r), links: _links, onLinks: () => setState(() => _links = !_links)),
+                  _Toolbar(st: st, path: path, read: _read, onMode: (r) => setState(() => st.reading = r), links: _links, onLinks: () => setState(() => _links = !_links)),
                   if (st.conflicts.containsKey(path)) _ConflictBar(st: st, path: path),
                   Expanded(child: _NoteBody(key: ValueKey(path), st: st, path: path, read: _read, onAllLinks: () => setState(() => _links = true))),
                   _Footer(st: st, path: path),
@@ -661,13 +675,14 @@ class _Toolbar extends StatelessWidget {
         const SizedBox(width: 4),
         TextButton(
           onPressed: () => st.show('graph'),
+          // «◉ На графе»: эта заметка в центре графа.
           style: TextButton.styleFrom(
             minimumSize: const Size(0, 28),
             padding: const EdgeInsets.symmetric(horizontal: 12),
             foregroundColor: SpColors.muted,
             textStyle: SpType.text(12.5, w: FontWeight.w500),
           ),
-          child: const Text('Граф'),
+          child: const Text('◉ На графе'),
         ),
         const SizedBox(width: 6),
         PopupMenuButton<String>(
@@ -1108,7 +1123,68 @@ Future<void> renameDialog(BuildContext context, NotesState st, String path) asyn
 Map<ShortcutActivator, VoidCallback> notesKeys(BuildContext context, NotesState st) => {
       const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => newNoteDialog(context, st),
       const SingleActivator(LogicalKeyboardKey.keyG, control: true): () => st.show(st.view == 'graph' ? 'note' : 'graph'),
+      const SingleActivator(LogicalKeyboardKey.keyE, control: true): st.toggleReading,
       const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
         if (st.active != null) st.closeTab(st.active!);
       },
     };
+
+/// Главный переключатель раздела «Заметки · Граф · Холст» (слева сверху на всех экранах «Знаний»).
+class NotesModeSwitch extends StatelessWidget {
+  const NotesModeSwitch({super.key, required this.st});
+  final NotesState st;
+
+  String get _cur {
+    if (st.view == 'graph') return 'graph';
+    final a = st.active;
+    return st.view == 'note' && a != null && isCanvasPath(a) ? 'canvas' : 'notes';
+  }
+
+  void _go(BuildContext context, String m) {
+    switch (m) {
+      case 'graph':
+        st.show('graph');
+      case 'canvas':
+        final c = st.lastCanvas;
+        if (c == null) {
+          newCanvasDialog(context, st);
+        } else {
+          st.openNote(c);
+          st.show('note');
+        }
+      default:
+        final a = st.active;
+        if (a != null && isCanvasPath(a)) {
+          final n = [...st.config.tabs, ...st.config.recent].where((p) => !isCanvasPath(p) && st.index.doc(p) != null).firstOrNull;
+          if (n != null) st.openNote(n);
+        }
+        st.show('note');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cur = _cur;
+    return Container(
+      height: 32,
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(color: SpColors.bg, borderRadius: BorderRadius.circular(7), border: Border.all(color: SpColors.lineStrong)),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        for (final (id, label, tip) in const [('notes', 'ЗАМЕТКИ', 'Заметки'), ('graph', 'ГРАФ', 'Граф · Ctrl+G'), ('canvas', 'ХОЛСТ', 'Холст')])
+          Tooltip(
+            message: tip,
+            child: InkWell(
+              onTap: () => _go(context, id),
+              borderRadius: BorderRadius.circular(5),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(color: cur == id ? SpColors.ink : Colors.transparent, borderRadius: BorderRadius.circular(5)),
+                child: Text(label, style: SpType.label(10.5, w: FontWeight.w500, color: cur == id ? SpColors.bg : SpColors.muted)),
+              ),
+            ),
+          ),
+      ]),
+    );
+  }
+}

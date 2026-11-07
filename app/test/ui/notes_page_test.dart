@@ -122,12 +122,14 @@ void main() {
     await t.runAsync(() => st.open(vault.path, watch: false));
     st.openNote('3D/Техники/Запекание нормалей.md');
     await pump(t);
-    await t.tap(find.text('Граф'));
+    await t.tap(find.text('◉ На графе'));
     await t.pumpAndSettle();
-    expect(find.text('02 · ГРАФ ЗНАНИЙ'), findsOneWidget);
+    expect(find.text('ФИЛЬТРЫ'), findsOneWidget); // граф открыт
     expect(find.text('ФИЛЬТРЫ'), findsOneWidget);
     expect(find.text('3 ЗАМЕТКИ · 2 СВЯЗИ · ВЫБРАНО: 2 СОСЕДА'), findsOneWidget);
-    expect(find.text('ЗАПЕКАНИЕ НОРМАЛЕЙ'), findsOneWidget); // карточка выбранной
+    expect(find.text('ЗАПЕКАНИЕ НОРМАЛЕЙ'), findsOneWidget); // панель чтения выбранной
+    expect(find.text('Открыть в заметках'), findsOneWidget);
+    expect(find.text('Локальный граф'), findsOneWidget);
 
     await t.tap(find.text('Ещё не созданные'));
     await t.pumpAndSettle();
@@ -148,10 +150,17 @@ void main() {
     await t.tap(find.byTooltip('Весь граф'));
     await t.pumpAndSettle();
     expect(find.text('МАСШТАБ ×1'), findsOneWidget);
-    await t.tap(find.text('Открыть'));
+    await t.tap(find.text('Открыть в заметках'));
     await t.pumpAndSettle();
     expect(st.view, 'note');
-    expect(find.text('02 · ГРАФ ЗНАНИЙ'), findsNothing);
+    expect(find.text('ФИЛЬТРЫ'), findsNothing);
+    // Переключатель раздела: «Граф» и обратно «Заметки».
+    await t.tap(find.text('ГРАФ'));
+    await t.pumpAndSettle();
+    expect(st.view, 'graph');
+    await t.tap(find.text('ЗАМЕТКИ'));
+    await t.pumpAndSettle();
+    expect(st.view, 'note');
   });
 
   testWidgets('поиск Ctrl K: заметки с подсветкой, задачи, «Новая заметка», стрелки и Enter', (t) async {
@@ -242,7 +251,7 @@ void main() {
     await t.tap(find.text('Доска идей'));
     await t.pump();
     await t.pump();
-    expect(find.text('ХОЛСТ'), findsOneWidget);
+    expect(find.text('ХОЛСТ'), findsNWidgets(2)); // переключатель раздела и шапка холста
     expect(find.text('Идея щита'), findsOneWidget);
     expect(find.text('ВЕДЁТ'), findsOneWidget);
 

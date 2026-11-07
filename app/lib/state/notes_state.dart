@@ -278,6 +278,21 @@ class NotesState extends ChangeNotifier {
 
   /// Что показано справа: заметка или граф знаний.
   String view = 'note';
+
+  /// Заметка открыта для чтения (без полей правки); Ctrl+E переключает.
+  bool reading = false;
+  void toggleReading() {
+    reading = !reading;
+    notifyListeners();
+  }
+
+  /// Холст: последний открытый `.canvas` (из вкладок или недавних), иначе null.
+  String? get lastCanvas {
+    for (final p in [if (active != null) active!, ...config.tabs, ...config.recent]) {
+      if (p.toLowerCase().endsWith('.canvas') && index.doc(p) != null) return p;
+    }
+    return null;
+  }
   void show(String v) {
     if (view == v) return;
     view = v;
