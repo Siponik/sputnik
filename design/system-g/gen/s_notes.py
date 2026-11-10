@@ -16,7 +16,7 @@ def header5(active='ЗНАНИЯ', right='ЧТ 05.11 · 22:40', hx=''):
         else:
             tabs += f'<a href="#" style="text-decoration: none; color: {MUT}">{t}</a>'
     a = h.index('<nav'); b = h.index('</nav>')
-    return h[:a] + f'<nav aria-label="Разделы" style="display: flex; gap: 20px; flex-wrap: wrap">{tabs}' + h[b:]
+    return h[:a] + f'<nav aria-label="Разделы" style="display: flex; gap: 18px; margin-left: 14px; flex-wrap: wrap">{tabs}' + h[b:]
 
 
 kit.header = header5
