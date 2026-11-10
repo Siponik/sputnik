@@ -679,6 +679,15 @@
    "title": "Знания · как переключаться: заметки, чтение, граф",
    "expand": "fill",
    "page": "kb"
+  },
+  "G_Window.dc.html": {
+   "x": 0,
+   "y": 17860,
+   "w": 1280,
+   "h": 820,
+   "title": "Окно без рамки Windows: кнопки, логотип, настройки",
+   "expand": "fill",
+   "page": "r4"
   }
  },
  "order": [
@@ -753,7 +762,8 @@
   "G_CreateFrom.dc.html",
   "G_Motion.dc.html",
   "G_NotesRead.dc.html",
-  "G_NotesNav.dc.html"
+  "G_NotesNav.dc.html",
+  "G_Window.dc.html"
  ],
  "notes": {
   "head": {

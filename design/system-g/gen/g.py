@@ -1,3 +1,5 @@
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from kit import LOGO, winctl, SANS, GEAR
 OR='#F0A04B'; BG='#1C1D21'; NODE='#25262B'; LINE='#3A3B42'; INK='#E2E3E8'; MUT='#8A8C96'; DIM='#62646E'
 MONO="'JetBrains Mono', monospace"
 def sock(side, top, fill, ring=False):
@@ -127,7 +129,7 @@ a{{color:{OR}}}a:hover{{color:#FFD29C}}
 <div style="min-height: 820px; box-sizing: border-box; background: {BG}; color: {INK}; font-family: 'Onest', 'Segoe UI', sans-serif; font-size: 13px; display: flex; flex-direction: column">
 
   <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding: 14px 20px; border-bottom: 1px solid {LINE}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 10px; color: {INK}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-28 12 12)" stroke="{INK}" stroke-width="1"></ellipse><path d="M15.5 8.2a5 5 0 1 0 0 7.6" stroke="{INK}" stroke-width="1.5"></path><rect x="18" y="6" width="3" height="3" fill="{OR}"></rect></svg>СПУТНИК</span>
+    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
     <nav aria-label="Разделы" style="display: flex; gap: 20px; flex-wrap: wrap">
       <a href="#" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">СЕГОДНЯ</a>
       <a href="#" style="text-decoration: none; color: {MUT}">КАЛЕНДАРЬ</a>
@@ -137,7 +139,9 @@ a{{color:{OR}}}a:hover{{color:#FFD29C}}
     <span style="flex: 1"></span>
     <span style="color: {MUT}">ЧТ 05.11 · 14:52</span>
     <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}; min-width: 150px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>НАЙТИ<span style="margin-left: auto; font-size: 10px; color: {DIM}">CTRL K</span></span>
+    {GEAR}
     <button type="button" style="height: 32px; padding: 0 14px; border-radius: 8px; border: 0; background: {INK}; color: {BG}; font: 600 13px 'Onest', sans-serif">＋ Создать</button>
+    {winctl()}
   </header>
 
   <main aria-label="Сегодня: списки, привычки и входящие сходятся в одну ноду" style="flex: 1; overflow: auto; background-color: #191A1E; background-image: radial-gradient(rgba(255,255,255,.07) 1px, transparent 1.3px); background-size: 24px 24px; padding: 18px 16px 16px">
@@ -165,7 +169,7 @@ class Component extends DCLogic {{
 </body>
 </html>
 '''
-P=__import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '..', 'screens') + '/'
+P = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'screens') + '/'
 open(P+'NodesStrict.dc.html','w').write(html)
 import json
 c=json.load(open(P+'canvas.json'))
