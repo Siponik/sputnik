@@ -18,6 +18,7 @@ pub mod route;
 pub mod rx;
 pub mod search;
 pub mod sharedbot;
+pub mod sharedcore;
 pub mod shell;
 pub mod small;
 pub mod spheres;
