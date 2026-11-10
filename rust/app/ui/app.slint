@@ -1,0 +1,324 @@
+// Главное окно Спутника (проба Rust + Slint): шапка, «Сегодня» схемой нод на холсте с точками.
+import { G, Hues } from "theme.slint";
+import { Node, Socket, Mono, Brackets, Button } from "kit.slint";
+import { LineEdit, ScrollView } from "std-widgets.slint";
+
+export struct TaskRow {
+    id: string,
+    list-id: string,
+    title: string,
+    list: string,
+    hue: int,
+    when: string,
+    overdue: bool,
+    done: bool,
+}
+
+export struct ListRow {
+    name: string,
+    count: int,
+    hue: int,
+}
+
+component Tab inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    in property <string> key;
+    callback clicked;
+    width: t.preferred-width + 28px;
+    background: ta.has-hover && !active ? G.node : transparent;
+    t := Text {
+        text: root.text;
+        font-family: G.mono;
+        font-size: 12px;
+        font-weight: active ? 600 : 500;
+        letter-spacing: 1.4px;
+        color: active ? G.ink : G.muted;
+        vertical-alignment: center;
+    }
+    Rectangle { y: parent.height - 2px; height: 2px; background: active ? G.accent : transparent; }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+// Отметка «сделано»: круглая, сразу меняется по клику (Google обновляется фоном).
+component Check inherits Rectangle {
+    in property <bool> done;
+    in property <color> hue;
+    callback toggled;
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+    border-width: 1.5px;
+    border-color: done ? G.accent : (ta.has-hover ? G.ink : G.line-strong);
+    background: done ? G.accent : transparent;
+    animate background, border-color { duration: G.fast; }
+    Text { text: "✓"; visible: done; color: G.on-accent; font-size: 12px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { clicked => { root.toggled(); } mouse-cursor: pointer; }
+}
+
+component TaskLine inherits Rectangle {
+    in property <TaskRow> row;
+    in property <int> n;
+    callback toggled;
+    height: 44px;
+    background: ta.has-hover ? G.node-hover : transparent;
+    animate background { duration: G.fast; }
+    ta := TouchArea { }
+    HorizontalLayout {
+        padding-left: 14px;
+        padding-right: 14px;
+        spacing: 12px;
+        alignment: stretch;
+        Mono { text: n < 10 ? "0" + n : n; color: G.dim; vertical-alignment: center; width: 20px; }
+        Check { done: row.done; y: (parent.height - self.height) / 2; toggled => { root.toggled(); } }
+        Text {
+            text: row.title;
+            font-family: G.sans;
+            font-size: 15px;
+            color: row.done ? G.dim : G.ink;
+            stroke: transparent;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        Rectangle {
+            width: lt.preferred-width + 16px;
+            height: 22px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 4px;
+            background: Hues.head[row.hue].transparentize(0.55);
+            lt := Text { text: row.list; font-family: G.sans; font-size: 12px; color: Hues.hue[row.hue]; horizontal-alignment: center; vertical-alignment: center; }
+        }
+        Mono {
+            text: row.when;
+            width: 92px;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            color: row.overdue ? G.red : G.muted;
+        }
+    }
+    // Зачёркивание выполненной — линия поверх названия.
+    Rectangle { visible: row.done; x: 80px; y: parent.height / 2; height: 1px; width: parent.width * 0.45; background: G.dim; }
+    Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+}
+
+export component AppWindow inherits Window {
+    title: "Спутник";
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    min-width: 900px;
+    min-height: 560px;
+    background: G.ground;
+    default-font-family: G.sans;
+
+    in property <bool> signed-in;
+    in property <string> status;
+    in property <bool> busy;
+    in property <string> today-label;
+    in property <[TaskRow]> tasks;
+    in property <[ListRow]> lists;
+    in property <int> done-count;
+    in property <int> total-count;
+    in property <string> next-title;
+    in-out property <int> tab: 0;
+
+    callback login();
+    callback refresh();
+    callback toggle(int);
+    callback add(string);
+
+    forward-focus: quick;
+
+    // Холст: точки 1 px через 24 px.
+    Image {
+        width: 100%;
+        height: 100%;
+        source: @image-url("dot.svg");
+        horizontal-tiling: repeat;
+        vertical-tiling: repeat;
+    }
+
+    VerticalLayout {
+        // Шапка
+        Rectangle {
+            height: 48px;
+            background: G.bg;
+            HorizontalLayout {
+                padding-left: 18px;
+                padding-right: 14px;
+                spacing: 4px;
+                Text { text: "СПУТНИК"; font-family: G.mono; font-weight: 600; font-size: 13px; letter-spacing: 3px; color: G.accent; vertical-alignment: center; width: self.preferred-width + 24px; }
+                Tab { text: "СЕГОДНЯ"; active: tab == 0; clicked => { tab = 0; } }
+                Tab { text: "КАЛЕНДАРЬ"; active: tab == 1; clicked => { tab = 1; } }
+                Tab { text: "ДОСКА"; active: tab == 2; clicked => { tab = 2; } }
+                Tab { text: "ПРИВЫЧКИ"; active: tab == 3; clicked => { tab = 3; } }
+                Tab { text: "ЗНАНИЯ"; active: tab == 4; clicked => { tab = 4; } }
+                Rectangle { }
+                Mono { text: busy ? "● синхронизация…" : status; vertical-alignment: center; color: busy ? G.accent : G.dim; }
+                Rectangle { width: 10px; }
+                Button { text: "Обновить"; y: 7px; visible: signed-in; clicked => { root.refresh(); } }
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+        }
+
+        // Тело
+        Rectangle {
+            vertical-stretch: 1;
+
+            // Вход
+            if !signed-in: Node {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 420px;
+                height: 230px;
+                num: "01";
+                title: "ВХОД";
+                head: G.head-main;
+                main: true;
+                VerticalLayout {
+                    padding: 22px;
+                    spacing: 14px;
+                    Text { text: "Спутник работает поверх твоих Google Задач и Календаря. Своего сервера нет: данные остаются в Google и на этом компьютере."; wrap: word-wrap; color: G.muted; font-size: 14px; }
+                    Text { text: status; color: G.red; font-size: 13px; wrap: word-wrap; visible: status != ""; }
+                    HorizontalLayout { alignment: start; Button { text: "Войти в Google"; primary: true; clicked => { root.login(); } } }
+                }
+            }
+
+            if signed-in && tab == 0: Rectangle {
+                // Источники слева
+                src := Node {
+                    x: 32px;
+                    y: 32px;
+                    width: 240px;
+                    height: min(parent.height - 64px, 30px + 16px + lists.length * 34px);
+                    num: "01";
+                    title: "СПИСКИ";
+                    aside: lists.length;
+                    VerticalLayout {
+                        padding-top: 8px;
+                        for l in lists: Rectangle {
+                            height: 34px;
+                            HorizontalLayout {
+                                padding-left: 14px;
+                                padding-right: 14px;
+                                spacing: 10px;
+                                Rectangle { width: 8px; height: 8px; y: 13px; border-radius: 2px; background: Hues.hue[l.hue]; }
+                                Text { text: l.name; color: G.ink; font-size: 14px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                                Mono { text: l.count; vertical-alignment: center; }
+                            }
+                        }
+                    }
+                }
+                Socket { x: src.x + src.width - 5px; y: src.y + 50px; hue: G.accent; }
+
+                // Главная нода «Сегодня»
+                main := Node {
+                    x: 320px;
+                    y: 32px;
+                    width: parent.width - 320px - 300px;
+                    height: parent.height - 64px;
+                    num: "02";
+                    title: "СЕГОДНЯ";
+                    aside: today-label;
+                    head: G.head-main;
+                    main: true;
+                    VerticalLayout {
+                        Rectangle {
+                            height: 58px;
+                            HorizontalLayout {
+                                padding: 12px;
+                                spacing: 10px;
+                                quick := LineEdit {
+                                    placeholder-text: "Что нужно сделать? Например: «скетч завтра 17:00»";
+                                    font-size: 14px;
+                                    accepted(t) => { if (t != "") { root.add(t); self.text = ""; } }
+                                }
+                            }
+                            Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+                        }
+                        if tasks.length == 0: Text {
+                            text: busy ? "Загружаю задачи…" : "На сегодня всё сделано";
+                            color: G.muted;
+                            font-size: 15px;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                            vertical-stretch: 1;
+                        }
+                        if tasks.length > 0: ScrollView {
+                            vertical-stretch: 1;
+                            VerticalLayout {
+                                for t[i] in tasks: TaskLine { row: t; n: i + 1; toggled => { root.toggle(i); } }
+                            }
+                        }
+                    }
+                }
+                Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
+                // Провод от списков к «Сегодня»
+                Path {
+                    x: src.x + src.width;
+                    y: src.y + 55px;
+                    width: main.x - src.x - src.width;
+                    height: 1px;
+                    commands: "M 0 0 C 30 0 20 0 48 0";
+                    viewbox-width: 48;
+                    viewbox-height: 1;
+                    stroke: G.accent;
+                    stroke-width: 1.5px;
+                }
+                Socket { x: main.x - 5px; y: src.y + 50px; hue: G.accent; }
+
+                // Вывод справа
+                sum := Node {
+                    x: parent.width - 268px;
+                    y: 32px;
+                    width: 236px;
+                    height: 150px;
+                    num: "03";
+                    title: "ИТОГ ДНЯ";
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 6px;
+                        HorizontalLayout {
+                            spacing: 6px;
+                            alignment: start;
+                            Text { text: done-count; font-size: 44px; font-weight: 200; color: G.ink; }
+                            Text { text: "/ " + total-count; font-size: 20px; font-weight: 200; color: G.muted; vertical-alignment: bottom; }
+                        }
+                        Rectangle {
+                            height: 4px;
+                            border-radius: 2px;
+                            background: G.line-soft;
+                            Rectangle {
+                                x: 0;
+                                width: total-count == 0 ? 0 : parent.width * done-count / total-count;
+                                border-radius: 2px;
+                                background: G.accent;
+                                animate width { duration: G.mid; easing: ease-out; }
+                            }
+                        }
+                    }
+                }
+                Node {
+                    x: sum.x;
+                    y: sum.y + sum.height + 24px;
+                    width: 236px;
+                    height: 110px;
+                    num: "04";
+                    title: "ДАЛЬШЕ";
+                    VerticalLayout {
+                        padding: 14px;
+                        Text { text: next-title == "" ? "Пусто — можно отдохнуть" : next-title; color: next-title == "" ? G.muted : G.accent-ink; font-size: 15px; wrap: word-wrap; }
+                    }
+                }
+            }
+
+            if signed-in && tab != 0: Text {
+                text: "Этот раздел переносится следующим";
+                color: G.muted;
+                font-size: 15px;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}

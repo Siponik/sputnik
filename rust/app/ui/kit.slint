@@ -1,0 +1,96 @@
+// Общие детали «Системы G»: нода с цветной шапкой, сокет, кнопка, моно-подпись.
+import { G } from "theme.slint";
+
+export component Mono inherits Text {
+    font-family: G.mono;
+    font-size: 11px;
+    letter-spacing: 1.2px;
+    color: G.muted;
+}
+
+// Квадрат 10px на краю ноды — сюда приходит провод.
+export component Socket inherits Rectangle {
+    in property <color> hue: G.line-strong;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: G.node;
+    border-width: 1.5px;
+    border-color: hue;
+}
+
+// Нода: шапка «NN · НАЗВАНИЕ» на заливке, тело — содержимое. main — главная нода (крупнее, скобки по углам).
+export component Node inherits Rectangle {
+    in property <string> num;
+    in property <string> title;
+    in property <string> aside;
+    in property <color> head: #3D3E45;
+    in property <bool> main;
+    background: G.node;
+    border-radius: main ? G.r-main : G.r-node;
+    border-width: 1px;
+    border-color: main ? G.accent-line : G.line;
+    clip: true;
+    VerticalLayout {
+        Rectangle {
+            height: main ? 38px : 30px;
+            background: head;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                spacing: 8px;
+                Text {
+                    text: num + " · " + title;
+                    font-family: G.mono;
+                    font-size: main ? 13px : 11px;
+                    font-weight: 600;
+                    letter-spacing: 1.4px;
+                    color: #ffffff;
+                    vertical-alignment: center;
+                }
+                Rectangle { }
+                Text {
+                    text: aside;
+                    font-family: G.mono;
+                    font-size: 11px;
+                    color: #ffffffb0;
+                    vertical-alignment: center;
+                }
+            }
+        }
+        @children
+    }
+}
+
+// Уголки-скобки главной ноды.
+export component Brackets inherits Rectangle {
+    in property <color> c: G.accent;
+    out property <length> k: 14px;
+    Path { x: -6px; y: -6px; width: root.k; height: root.k; commands: "M 0 14 L 0 0 L 14 0"; stroke: c; stroke-width: 1.5px; viewbox-width: 14; viewbox-height: 14; }
+    Path { x: root.width - root.k + 6px; y: -6px; width: root.k; height: root.k; commands: "M 0 0 L 14 0 L 14 14"; stroke: c; stroke-width: 1.5px; viewbox-width: 14; viewbox-height: 14; }
+    Path { x: -6px; y: root.height - root.k + 6px; width: root.k; height: root.k; commands: "M 0 0 L 0 14 L 14 14"; stroke: c; stroke-width: 1.5px; viewbox-width: 14; viewbox-height: 14; }
+    Path { x: root.width - root.k + 6px; y: root.height - root.k + 6px; width: root.k; height: root.k; commands: "M 14 0 L 14 14 L 0 14"; stroke: c; stroke-width: 1.5px; viewbox-width: 14; viewbox-height: 14; }
+}
+
+export component Button inherits Rectangle {
+    in property <string> text;
+    in property <bool> primary;
+    callback clicked;
+    height: 34px;
+    min-width: label.preferred-width + 28px;
+    border-radius: G.r-btn;
+    background: primary ? (ta.has-hover ? G.accent-ink : G.accent) : (ta.has-hover ? G.node-hover : G.node);
+    border-width: primary ? 0 : 1px;
+    border-color: G.line;
+    animate background { duration: G.fast; }
+    label := Text {
+        text: root.text;
+        font-family: G.sans;
+        font-size: 14px;
+        font-weight: 500;
+        color: primary ? G.on-accent : G.ink;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
