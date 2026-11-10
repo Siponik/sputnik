@@ -2,8 +2,8 @@
 //! Порт tracker/src-tauri/src/google.rs без Tauri: те же файлы token.json и client_secret.json в папке
 //! настроек, тот же встроенный ключ (переменная сборки SPUTNIK_GOOGLE_CLIENT), те же доступы (scopes.rs).
 //! Всё блокирующее — зовётся из фоновых потоков, не из потока окна.
-use crate::scopes;
-use crate::store::config_dir;
+use super::scopes;
+use super::store::{config_dir, own};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
@@ -68,27 +68,52 @@ fn parse_secret(text: &str) -> Option<Secret> {
 }
 
 fn read_secret() -> Result<Secret, String> {
-    std::fs::read_to_string(config_dir().join("client_secret.json"))
-        .ok()
-        .and_then(|t| parse_secret(&t))
+    [own("client_secret.json"), config_dir().join("client_secret.json")]
+        .iter()
+        .find_map(|p| std::fs::read_to_string(p).ok().and_then(|t| parse_secret(&t)))
         .or_else(|| BUILT_IN_SECRET.and_then(parse_secret))
         .ok_or_else(|| "Нет ключа приложения (client_secret.json)".to_string())
 }
 
+/// Вход: свой rust\token.json, иначе токен прежнего приложения (только чтение).
 fn load_token() -> Option<Token> {
-    serde_json::from_str(&std::fs::read_to_string(config_dir().join("token.json")).ok()?).ok()
+    if FORGOT.load(std::sync::atomic::Ordering::Relaxed) {
+        return serde_json::from_str(&std::fs::read_to_string(own("token.json")).ok()?).ok();
+    }
+    [own("token.json"), config_dir().join("token.json")]
+        .iter()
+        .find_map(|p| serde_json::from_str(&std::fs::read_to_string(p).ok()?).ok())
 }
 
 fn store_token(t: &Token) {
-    let _ = std::fs::create_dir_all(config_dir());
-    if let Ok(s) = serde_json::to_string(t) {
-        let _ = std::fs::write(config_dir().join("token.json"), s);
+    let p = own("token.json");
+    if let Some(d) = p.parent() {
+        let _ = std::fs::create_dir_all(d);
     }
+    if let Ok(s) = serde_json::to_string(t) {
+        let _ = std::fs::write(p, s);
+    }
+    FORGOT.store(false, std::sync::atomic::Ordering::Relaxed);
 }
 
+/// Забыть вход: свой файл удаляется, чужой (прежнего приложения) больше не читается до нового входа.
 fn drop_token() {
     *TOKEN.lock().unwrap() = None;
-    let _ = std::fs::remove_file(config_dir().join("token.json"));
+    let _ = std::fs::remove_file(own("token.json"));
+    FORGOT.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+static FORGOT: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+static CANCEL: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Остановить ожидание входа (кнопка «Отмена»).
+pub fn cancel_login() {
+    CANCEL.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// Выйти из Google в этом приложении.
+pub fn sign_out() {
+    drop_token();
 }
 
 /// Есть ли действующий вход со всеми доступами.
@@ -123,6 +148,7 @@ fn error_text(e: ureq::Error) -> String {
 
 /// Вход через браузер. Ждёт до 5 минут.
 pub fn login() -> Result<(), String> {
+    CANCEL.store(false, std::sync::atomic::Ordering::Relaxed);
     let secret = read_secret()?;
     let verifier = random_b64(32);
     let challenge = URL_SAFE_NO_PAD.encode(Sha256::digest(verifier.as_bytes()));
@@ -180,6 +206,9 @@ fn wait_for_code(listener: &TcpListener, state: &str) -> Result<String, String> 
         let (mut sock, _) = match listener.accept() {
             Ok(s) => s,
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                if CANCEL.load(std::sync::atomic::Ordering::Relaxed) {
+                    return Err("Вход отменён".into());
+                }
                 if Instant::now() > until {
                     return Err("Вход не завершён за 5 минут, попробуй ещё раз".into());
                 }
@@ -264,43 +293,89 @@ fn access_token(force: bool) -> Result<String, String> {
     Ok(a)
 }
 
+/// Почему запрос не прошёл: отказ Google (код), нет связи, нужен вход.
+#[derive(Debug, Clone)]
+pub enum Fail {
+    Status(u16, String),
+    Net(String),
+    Auth(String),
+}
+
+impl std::fmt::Display for Fail {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Fail::Status(_, m) | Fail::Net(m) | Fail::Auth(m) => f.write_str(m),
+        }
+    }
+}
+
+impl Fail {
+    /// Стоит ли повторить позже (сеть, «занят», сбой Google).
+    pub fn later(&self) -> bool {
+        match self {
+            Fail::Status(c, _) => *c == 429 || *c >= 500,
+            Fail::Net(_) | Fail::Auth(_) => true,
+        }
+    }
+    pub fn need_login(&self) -> bool {
+        matches!(self, Fail::Auth(m) if m.starts_with(SIGN_IN_AGAIN))
+    }
+    pub fn status(&self) -> u16 {
+        if let Fail::Status(c, _) = self { *c } else { 0 }
+    }
+}
+
+fn auth_fail(m: String) -> Fail {
+    if m.starts_with("Нет связи") { Fail::Net(m) } else { Fail::Auth(m) }
+}
+
 /// Запрос к Google API (только https://*.googleapis.com). Повтор при 401 (новый токен) и при «занят» (кроме POST).
-pub fn api(method: &str, url: &str, body: Option<&Value>) -> Result<Value, String> {
-    let u = url::Url::parse(url).map_err(|e| e.to_string())?;
+pub fn api(method: &str, url: &str, body: Option<&Value>) -> Result<Value, Fail> {
+    api_raw(method, url, body.map(|b| (b.to_string().into_bytes(), "application/json")))
+}
+
+/// То же с любым телом (загрузка файлов на Drive).
+pub fn api_raw(method: &str, url: &str, body: Option<(Vec<u8>, &str)>) -> Result<Value, Fail> {
+    let u = url::Url::parse(url).map_err(|e| Fail::Status(400, e.to_string()))?;
     if u.scheme() != "https" || !u.host_str().is_some_and(|h| h.ends_with(".googleapis.com")) {
-        return Err("Разрешены только запросы к googleapis.com".into());
+        return Err(Fail::Status(400, "Разрешены только запросы к googleapis.com".into()));
     }
     let repeatable = method != "POST";
     let mut waits = [1u64, 3].into_iter();
     let mut refreshed = false;
     loop {
-        let token = access_token(refreshed)?;
+        let token = access_token(refreshed).map_err(auth_fail)?;
         let req = agent().request(method, url).set("Authorization", &format!("Bearer {token}"));
-        let res = match body {
-            Some(b) => req.send_json(b.clone()),
+        let res = match &body {
+            Some((b, ct)) => req.set("Content-Type", ct).send_bytes(b),
             None => req.call(),
         };
         match res {
             Ok(r) => {
-                let text = r.into_string().map_err(|e| e.to_string())?;
-                return if text.trim().is_empty() { Ok(Value::Null) } else { serde_json::from_str(&text).map_err(|e| e.to_string()) };
+                let text = r.into_string().map_err(|e| Fail::Net(e.to_string()))?;
+                return if text.trim().is_empty() {
+                    Ok(Value::Null)
+                } else {
+                    serde_json::from_str(&text).map_err(|e| Fail::Status(500, e.to_string()))
+                };
             }
             Err(ureq::Error::Status(401, _)) if !refreshed => refreshed = true,
             Err(ureq::Error::Status(c, r)) if (c == 429 || c >= 500) && repeatable => match waits.next() {
                 Some(w) => std::thread::sleep(Duration::from_secs(w)),
-                None => return Err(error_text(ureq::Error::Status(c, r))),
+                None => return Err(Fail::Status(c, error_text(ureq::Error::Status(c, r)))),
             },
             Err(ureq::Error::Transport(t)) if repeatable => match waits.next() {
                 Some(w) => std::thread::sleep(Duration::from_secs(w)),
-                None => return Err(format!("Нет связи с Google: {t}")),
+                None => return Err(Fail::Net(format!("Нет связи с Google: {t}"))),
             },
-            Err(e) => {
-                let msg = error_text(e);
-                if msg.contains(" 403:") && scopes::is_insufficient(&msg) {
+            Err(ureq::Error::Transport(t)) => return Err(Fail::Net(format!("Нет связи с Google: {t}"))),
+            Err(ureq::Error::Status(c, r)) => {
+                let msg = error_text(ureq::Error::Status(c, r));
+                if c == 403 && scopes::is_insufficient(&msg) {
                     drop_token();
-                    return Err(scopes::missing_text(&[]));
+                    return Err(Fail::Auth(scopes::missing_text(&[])));
                 }
-                return Err(msg);
+                return Err(Fail::Status(c, msg));
             }
         }
     }
