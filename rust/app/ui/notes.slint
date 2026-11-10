@@ -1,0 +1,94 @@
+// «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
+// справа — ссылки [[…]] из неё и обратные ссылки.
+import { G } from "theme.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link } from "kit.slint";
+import { S, NoteRow } from "store.slint";
+import { ScrollView, TextEdit } from "std-widgets.slint";
+
+component NoteList inherits VerticalLayout {
+    in property <[NoteRow]> rows;
+    in property <string> cur;
+    for r in rows: Rectangle {
+        height: 40px;
+        background: r.path == cur ? G.accent-wash : (na.has-hover ? G.node-hover : transparent);
+        VerticalLayout {
+            padding-left: 14px;
+            padding-right: 10px;
+            alignment: center;
+            Text { text: r.title; color: G.ink; font-size: 13px; overflow: elide; }
+            Text { text: r.sub; color: G.dim; font-size: 10px; overflow: elide; }
+        }
+        na := TouchArea { clicked => { S.note-open(r.path); } mouse-cursor: pointer; }
+    }
+}
+
+export component NotesPage inherits Rectangle {
+    property <string> body: S.note-body;
+    HorizontalLayout {
+        Rectangle {
+            width: 260px;
+            background: G.bg;
+            Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
+            VerticalLayout {
+                padding-top: 10px;
+                spacing: 6px;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    Field { placeholder: "Найти в заметках…"; font-size: 13px; edited(t) => { S.note-search(t); } }
+                }
+                ScrollView { vertical-stretch: 1; NoteList { rows: S.notes; cur: S.note-path; } }
+                HorizontalLayout {
+                    padding: 10px;
+                    Field { placeholder: "＋ Новая заметка · Enter"; font-size: 13px; accepted(t) => { if (t != "") { S.note-new(t); self.clear(); } } }
+                }
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            if S.note-path == "": Empty { text: S.notes.length == 0 ? "Заметок пока нет. Укажи папку в Настройки → Синхронизация или создай первую слева." : "Выбери заметку слева"; pose: "think"; }
+            if S.note-path != "": Node {
+                x: 24px;
+                y: 20px;
+                width: parent.width - 48px;
+                height: parent.height - 40px;
+                num: "MD";
+                title: S.note-title.to-uppercase();
+                aside: S.note-dirty ? "● не сохранено" : "";
+                head: G.head-main;
+                main: true;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    ed := TextEdit {
+                        vertical-stretch: 1;
+                        text: S.note-body;
+                        font-size: 14px;
+                        wrap: word-wrap;
+                        edited(t) => { root.body = t; S.note-edited(); }
+                    }
+                    HorizontalLayout {
+                        alignment: end;
+                        spacing: 8px;
+                        Button { text: "Сохранить"; primary: true; clicked => { S.note-save(ed.text); } }
+                    }
+                }
+            }
+        }
+        Rectangle {
+            width: 240px;
+            background: G.bg;
+            Rectangle { x: 0; width: 1px; background: G.line; }
+            VerticalLayout {
+                padding: 14px;
+                spacing: 6px;
+                alignment: start;
+                Mono { text: "ССЫЛКИ ОТСЮДА"; }
+                for l in S.note-links: Link { text: "[[" + l.title + "]]" + (l.path == "" ? " ＋" : ""); clicked => { S.note-link(l.title); } }
+                Rectangle { height: 12px; }
+                Mono { text: "ССЫЛАЮТСЯ СЮДА"; }
+                for l in S.note-back: Link { text: l.title; clicked => { S.note-open(l.path); } }
+            }
+        }
+    }
+}

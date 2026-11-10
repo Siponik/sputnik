@@ -1,0 +1,180 @@
+// «Привычки»: карточки (серия крупно, точки за 7 дней, отметка одним касанием) или таблица месяца.
+import { G } from "theme.slint";
+import { Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg } from "kit.slint";
+import { S, HabitCard } from "store.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component Card inherits Rectangle {
+    in property <HabitCard> h;
+    in property <int> n;
+    height: 176px;
+    border-radius: G.r-node;
+    background: G.node;
+    border-width: 1px;
+    border-color: h.done ? h.hue : G.line;
+    clip: true;
+    VerticalLayout {
+        Rectangle {
+            height: 30px;
+            background: h.hue.transparentize(0.55);
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 6px;
+                spacing: 8px;
+                Mono { text: (n < 10 ? "0" : "") + n + " · " + h.name.to-uppercase(); color: #fff; font-weight: 600; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                IconBtn { icon: "✕"; y: 1px; width: 26px; height: 26px; clicked => { S.habit-remove(h.id); } }
+            }
+        }
+        HorizontalLayout {
+            padding: 14px;
+            spacing: 14px;
+            VerticalLayout {
+                spacing: 2px;
+                alignment: start;
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: start;
+                    Rectangle {
+                        width: 30px; height: 30px; y: 10px; border-radius: 15px; background: h.hue.transparentize(0.6);
+                        Text { text: h.icon; color: G.ink; font-size: 14px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    Text { text: h.streak; font-size: 40px; font-weight: 200; color: G.ink; }
+                    Text { text: h.streak-label; font-size: 13px; color: G.muted; vertical-alignment: bottom; }
+                }
+                Text { text: h.line; color: G.muted; font-size: 12px; overflow: elide; }
+                Text { text: h.sched; color: G.dim; font-size: 11px; overflow: elide; }
+            }
+            Rectangle { }
+            // отметка
+            Rectangle {
+                width: 56px;
+                height: 56px;
+                y: 4px;
+                border-radius: 28px;
+                background: h.done ? h.hue : (ta.has-hover ? G.node-hover : transparent);
+                border-width: 2px;
+                border-color: h.off ? G.line : h.hue;
+                animate background { duration: G.fast; }
+                Text {
+                    text: h.done ? "✓" : (h.goal > 1 ? h.count + "/" + h.goal : "");
+                    color: h.done ? G.on-accent : G.ink;
+                    font-size: h.done ? 22px : 14px;
+                    font-weight: 600;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
+                ta := TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
+            }
+        }
+        // 7 дней: 0 нет · 1 сделано · 2 частично · 3 не по расписанию · 4 сегодня · 5 пропуск
+        HorizontalLayout {
+            padding-left: 14px;
+            padding-right: 14px;
+            spacing: 6px;
+            height: 22px;
+            for st in h.week: Rectangle {
+                width: 14px;
+                height: 14px;
+                y: 4px;
+                border-radius: 7px;
+                background: st == 1 ? G.gold : st == 2 ? G.gold.transparentize(0.6) : transparent;
+                border-width: st == 3 ? 1px : 1.5px;
+                border-color: st == 4 ? G.accent : st == 3 ? G.line-soft : st == 1 ? G.gold : G.line;
+            }
+            Rectangle { }
+        }
+    }
+}
+
+export component HabitsPage inherits Rectangle {
+    property <int> per-row: self.width > 1180px ? 3 : 2;
+    VerticalLayout {
+        Rectangle {
+            height: 52px;
+            HorizontalLayout {
+                padding-left: 18px;
+                padding-right: 14px;
+                spacing: 8px;
+                Text { text: "Привычки"; font-size: 20px; font-weight: 500; color: G.ink; vertical-alignment: center; }
+                Rectangle { width: 14px; }
+                for p in S.parts: Pill { y: 13px; text: p.label; on: p.on; clicked => { S.habit-part(p.id); } }
+                Rectangle { }
+                Seg { y: 12px; items: ["СЕГОДНЯ", "МЕСЯЦ"]; current: S.habit-mode == "month" ? 1 : 0; picked(i) => { S.habit-mode-set(i == 1 ? "month" : "today"); } }
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+        }
+        if S.habit-tip != "": Rectangle {
+            height: 40px;
+            HorizontalLayout {
+                padding-left: 18px;
+                spacing: 8px;
+                Image { source: @image-url("../../../app/assets/coon/coon-flag.svg"); width: 28px; image-fit: contain; }
+                Text { text: S.habit-tip; color: G.accent-ink; font-size: 13px; vertical-alignment: center; overflow: elide; }
+            }
+        }
+        if S.habit-mode != "month": ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                padding: 18px;
+                spacing: 16px;
+                if S.habits.length == 0: Empty { height: 260px; pose: "flag"; text: "Привычек пока нет — заведи первую строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"; }
+                for row in ceil(S.habits.length / root.per-row): HorizontalLayout {
+                    spacing: 16px;
+                    for k in root.per-row: Rectangle {
+                        horizontal-stretch: 1;
+                        height: 176px;
+                        if row * root.per-row + k < S.habits.length: Card {
+                            width: parent.width;
+                            h: S.habits[row * root.per-row + k];
+                            n: row * root.per-row + k + 1;
+                        }
+                    }
+                }
+                Field {
+                    placeholder: "＋ Новая привычка · «чтение 20 минут вечером» · Enter";
+                    accepted(t) => { if (t != "") { S.habit-add(t); self.clear(); } }
+                }
+            }
+        }
+        if S.habit-mode == "month": ScrollView {
+            vertical-stretch: 1;
+            content-width: max(self.width, 220px + S.month-days.length * 26px + 30px);
+            VerticalLayout {
+                padding: 18px;
+                spacing: 2px;
+                HorizontalLayout {
+                    height: 22px;
+                    Rectangle { width: 220px; }
+                    for d in S.month-days: Mono { text: d; width: 26px; horizontal-alignment: center; font-size: 9px; }
+                    Rectangle { }
+                }
+                for r in S.habit-month: HorizontalLayout {
+                    height: 28px;
+                    HorizontalLayout {
+                        width: 220px;
+                        spacing: 6px;
+                        Rectangle { width: 18px; height: 18px; y: 5px; border-radius: 9px; background: r.hue.transparentize(0.6); Text { text: r.icon; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; } }
+                        Text { text: r.name; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; }
+                    }
+                    for st[i] in r.cells: Rectangle {
+                        width: 26px;
+                        Rectangle {
+                            width: 18px;
+                            height: 18px;
+                            x: 4px;
+                            y: 5px;
+                            border-radius: 4px;
+                            background: st == 1 ? r.hue : st == 2 ? r.hue.transparentize(0.6) : (ca.has-hover ? G.node-hover : transparent);
+                            border-width: 1px;
+                            border-color: st == 4 ? G.accent : st == 3 ? G.line-soft : st == 5 ? G.blue : G.line;
+                            Text { text: st == 5 ? "–" : ""; color: G.blue; horizontal-alignment: center; vertical-alignment: center; font-size: 10px; }
+                            ca := TouchArea { clicked => { S.habit-cell(r.id, i + 1); } mouse-cursor: pointer; }
+                        }
+                    }
+                    Rectangle { }
+                }
+                Text { text: "Клик по клетке: сделано → «не считать» → пусто"; color: G.dim; font-size: 11px; }
+            }
+        }
+    }
+}

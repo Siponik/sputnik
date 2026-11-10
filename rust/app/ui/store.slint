@@ -1,0 +1,225 @@
+// Связь окна с Rust: модели экранов (их собирает src/view/*) и действия (их ловит src/view/wire.rs).
+// Окно ничего не считает само — только показывает и сообщает, что нажали. Так отклик мгновенный:
+// Rust меняет память, перерисовывает модели, а Google обновляется фоном.
+
+export struct TaskRow { list-id: string, id: string, title: string, list: string, hue: color, when: string, overdue: bool, done: bool, prio: int, sub: string }
+export struct Chip { title: string, hue: color, done: bool, kind: int, list-id: string, id: string, time: string }
+export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool }
+export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
+export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool }
+export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
+export struct InboxRow { list-id: string, id: string, title: string, list: string, when: string }
+export struct HabitChip { id: string, name: string, icon: string, hue: color, done: bool, count: int, goal: int }
+export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool }
+export struct MonthRow { id: string, name: string, icon: string, hue: color, cells: [int] }
+export struct Block { title: string, sub: string, y: float, h: float, x: float, w: float, hue: color, done: bool, kind: int, list-id: string, id: string }
+export struct Label { text: string, y: float, small: bool }
+export struct Band { y: float, h: float, text: string, a: int }
+export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool }
+export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
+export struct Sub { id: string, title: string, done: bool }
+export struct Found { kind: string, title: string, sub: string, list-id: string, id: string }
+export struct NoteRow { path: string, title: string, sub: string }
+
+export global S {
+    // ---------- оболочка ----------
+    in-out property <int> tab: 0;              // 0 Сегодня · 1 Календарь · 2 Доска · 3 Привычки · 4 Знания · 5 Настройки
+    in property <bool> signed-in;
+    in property <bool> logging-in;
+    in property <bool> busy;
+    in property <bool> offline;
+    in property <string> status;               // «синхр. 14:02», ошибка
+    in property <string> error;
+    in property <int> inbox-count;
+    in property <int> today-count;
+    in property <string> toast;
+    in property <string> toast-label;
+    in property <int> toast-id;
+    in property <string> version;
+    callback go(int);
+    callback login();
+    callback cancel-login();
+    callback refresh();
+    callback toast-act();
+    in property <string> confirm;              // вопрос «Удалить…?»; пусто — окна нет
+    in property <string> confirm-yes-label;
+    callback confirm-yes();
+    callback confirm-no();
+
+    // ---------- Сегодня ----------
+    in property <string> today-label;
+    in property <[TaskRow]> today;
+    in property <[TaskRow]> overdue;
+    in property <[Chip]> today-events;
+    in property <[HabitChip]> today-habits;
+    in property <[InboxRow]> inbox;
+    in property <int> done-count;
+    in property <int> total-count;
+    in property <string> next-title;
+    in property <string> next-why;
+    in property <[string]> understood;         // «Понял: завтра · 17:00 · → Работа»
+    in property <string> dest;                 // куда ляжет задача из строки
+    callback quick-changed(string);
+    callback quick-add(string);
+    callback quick-full(string);
+    callback toggle(string, string);
+    callback open-task(string, string);
+    callback habit-tap(string);
+    callback accept(string, string);
+    callback reject(string, string);
+    callback accept-all();
+
+    // ---------- Доска ----------
+    in property <[SideRow]> side;
+    in property <string> board-id;
+    in property <string> board-title;
+    in property <string> board-view;           // kanban | pipe | stickers | list
+    in property <[Column]> columns;
+    in property <[string]> stages;
+    in property <[PipeRow]> pipe;
+    in property <int> archived;
+    callback pick-list(string);
+    callback set-view(string);
+    callback move-card(string, string, int);   // список, задача, номер колонки
+    callback next-stage(string, string);
+    callback add-card(string, string, string); // список, колонка, текст
+    callback new-list(string);
+    callback rename-list(string, string);
+    callback delete-list(string);
+    callback pin-card(string, string);
+    callback card-menu(string, string, string); // список, задача, действие: dup | del | prio1..3 | today | tomorrow
+
+    // ---------- Календарь ----------
+    in property <string> cal-title;
+    in property <string> cal-mode;             // week | month
+    in property <[Day]> days;
+    in property <[Label]> hours;
+    in property <[Band]> bands;
+    in property <float> grid-h;
+    in property <float> now-y;
+    in property <int> now-col;
+    in property <string> day-title;
+    in property <[Chip]> day-items;
+    in property <[Opt]> cal-filters;
+    in property <string> free-hint;
+    callback cal-shift(int);
+    callback cal-today();
+    callback cal-mode-set(string);
+    callback cal-pick(string);
+    callback cal-filter(string);
+    callback cal-add(string, string, string, bool); // день, время, название, событие?
+    callback cal-drop(string, string, string, float); // список, задача, день, y в сетке (−1 — весь день)
+    callback cal-grid-click(string, float);   // день, y в сетке → форма с временем
+    in property <string> add-time;
+    callback cal-band(int);
+    callback open-event(string);
+
+    // ---------- Привычки ----------
+    in property <[HabitCard]> habits;
+    in property <[MonthRow]> habit-month;
+    in property <[string]> month-days;
+    in property <string> habit-mode;           // today | month
+    in property <string> habit-tip;
+    in property <[Opt]> parts;
+    callback habit-mode-set(string);
+    callback habit-part(string);
+    callback habit-cell(string, int);          // привычка, день месяца
+    callback habit-add(string);
+    callback habit-remove(string);
+
+    // ---------- Окно задачи ----------
+    in property <bool> task-open;
+    in property <string> t-list;
+    in property <string> t-id;
+    in property <string> t-title;
+    in property <string> t-notes;
+    in property <string> t-list-name;
+    in property <string> t-due;
+    in property <string> t-due-label;
+    in property <int> t-prio;
+    in property <[Opt]> t-cols;
+    in property <[Sub]> t-subs;
+    in property <[Opt]> t-reminds;
+    in property <[Opt]> t-repeats;
+    in property <[Opt]> t-lists;
+    in property <string> t-saved;
+    callback t-close();
+    callback t-title-set(string);
+    callback t-notes-set(string);
+    callback t-col(string);
+    callback t-prio-set(int);
+    callback t-due-set(string);
+    callback t-sub-add(string);
+    callback t-sub-toggle(string);
+    callback t-remind(string);
+    callback t-repeat(string);
+    callback t-move(string);
+    callback t-delete();
+    callback t-dup();
+
+    // ---------- Создать ----------
+    in property <bool> create-open;
+    in-out property <int> c-kind;              // 0 задача · 1 событие · 2 привычка · 3 день рождения
+    in property <string> c-text;
+    in property <[string]> c-understood;
+    in property <string> c-dest;
+    in property <string> c-dest-why;
+    in property <[Opt]> c-lists;
+    in property <[Opt]> c-cals;
+    in property <[Opt]> c-durs;
+    in property <[Opt]> c-reminds;
+    in property <string> c-hint;
+    in property <string> c-free;
+    callback create(string);
+    callback c-close();
+    callback c-changed(string);
+    callback c-submit(string, bool);           // текст, «и ещё»
+    callback c-kind-set(int);
+    callback c-dest-set(string);
+    callback c-cal-set(string);
+    callback c-dur-set(string);
+    callback c-remind(string);
+
+    // ---------- Поиск ----------
+    in property <bool> search-open;
+    in property <[Found]> found;
+    callback search(string);
+    callback search-open-set(bool);
+    callback search-go(int);
+
+    // ---------- Настройки ----------
+    in-out property <int> set-tab;
+    in property <[Opt]> set-lists;
+    in property <[Opt]> set-cals;
+    in property <[Opt]> set-remind-task;
+    in property <[Opt]> set-remind-hour;
+    in property <[Opt]> set-start;
+    in property <[Opt]> set-flags;
+    in property <string> bot-name;
+    in property <string> bot-status;
+    in property <string> sync-info;
+    in property <string> backup-info;
+    in property <string> notes-root;
+    callback set-toggle(string, string);       // раздел, id
+    callback bot-link(string);
+    callback bot-test();
+    callback bot-unlink();
+    callback sign-out();
+    callback open-backups();
+    callback notes-root-set(string);
+
+    // ---------- Знания ----------
+    in property <[NoteRow]> notes;
+    in property <string> note-path;
+    in property <string> note-title;
+    in property <string> note-body;
+    in property <[NoteRow]> note-links;
+    in property <[NoteRow]> note-back;
+    in property <bool> note-dirty;
+    callback note-search(string);
+    callback note-open(string);
+    callback note-save(string);
+    callback note-new(string);
+    callback note-link(string);
+    callback note-edited();
+}

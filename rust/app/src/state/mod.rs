@@ -1,6 +1,7 @@
 //! Состояние приложения «сначала локально»: экран читает память; действие меняет память, пишет файл и кладёт
 //! операцию в очередь исходящих; Google обновляется в фоне (sync.rs). Порт app/lib/state/app_state.dart.
 pub mod bg;
+pub mod demo;
 pub mod shared;
 pub mod sync;
 
@@ -41,6 +42,7 @@ pub struct Flags {
     pub cloud_at: Option<f64>,
     pub cloud_err: Option<String>,
     pub load_ms: u128,
+    pub demo: bool,
 }
 
 pub struct App {
@@ -116,20 +118,30 @@ impl App {
         let hour = app.layer["settings"]["remindHour"]["v"].as_str().map(String::from);
         rem::set_default_time(hour.as_deref());
         app.flags.need_login = !crate::data::google::signed_in();
+        if demo::on() {
+            demo::fill(&mut app);
+        }
         app.flags.started = true;
         app.flags.load_ms = t0.elapsed().as_millis();
         app
     }
 
+    /// Запись файла фоном (в демо — никуда).
+    fn put(&self, name: &str, v: Value) {
+        if !self.flags.demo {
+            self.writer.write(name, v);
+        }
+    }
+
     pub fn save_cache(&self) {
-        self.writer.write("cache.json", json!({"lists": self.lists, "tasks": self.tasks, "calendars": self.calendars,
+        self.put("cache.json", json!({"lists": self.lists, "tasks": self.tasks, "calendars": self.calendars,
             "events": self.events, "inbox": self.inbox_st}));
     }
     pub fn save_outbox(&self) {
-        self.writer.write("outbox.json", Value::Array(self.outbox.ops.clone()));
+        self.put("outbox.json", Value::Array(self.outbox.ops.clone()));
     }
     pub fn save_shared(&self) {
-        self.writer.write("shared.json", self.shared.to_json());
+        self.put("shared.json", self.shared.to_json());
     }
 
     // ---------- плашка ----------
@@ -189,7 +201,7 @@ impl App {
 
     pub fn save_layer(&mut self) {
         self.layer_dirty = true;
-        self.writer.write("layer.json", self.layer.clone());
+        self.put("layer.json", self.layer.clone());
         let t = slint::Timer::default();
         t.start(slint::TimerMode::SingleShot, std::time::Duration::from_secs(4), || { with(|a| a.sync_layer_soon()); });
         self.timers.layer = Some(t);
@@ -199,7 +211,7 @@ impl App {
     }
 
     fn writer_layer(&self) {
-        self.writer.write("layer.json", self.layer.clone());
+        self.put("layer.json", self.layer.clone());
     }
     fn layer_dirty_again(&mut self) {
         self.layer_dirty = true;

@@ -101,7 +101,10 @@ impl App {
     }
 
     pub fn flush(&mut self, force: bool) {
-        if self.outbox.busy.is_some() || self.outbox.ops.is_empty() || self.flags.need_login {
+        if self.outbox.busy.is_some() || self.outbox.ops.is_empty() || self.flags.need_login || self.flags.demo {
+            if self.flags.demo {
+                self.demo_ack();
+            }
             return;
         }
         if !force && Instant::now() < self.outbox.next {
@@ -120,6 +123,23 @@ impl App {
                 let r = send(&op, None);
                 (op, r)
             }, |app, (op, r)| app.sent(op, r));
+        }
+    }
+
+    /// Демо: «Google» сразу принимает операции (временный id → постоянный).
+    fn demo_ack(&mut self) {
+        let ops = std::mem::take(&mut self.outbox.ops);
+        for op in ops {
+            if op["op"] == "create" {
+                let tmp = text(&op["tmp"]);
+                let mut real = op["body"].clone();
+                real["id"] = json!(format!("d{}", &tmp[4..]));
+                real["status"] = json!(real["status"].as_str().unwrap_or("needsAction"));
+                if !op["parent"].is_null() {
+                    real["parent"] = op["parent"].clone();
+                }
+                self.created(&tmp, real);
+            }
         }
     }
 
@@ -224,7 +244,10 @@ impl App {
     /// Забрать всё из Google: списки, задачи, календари, события, «Входящие», слой, общие сферы.
     /// Идёт в очереди общих сфер — так их копия не перетирается.
     pub fn refresh(&mut self) {
-        if self.flags.syncing || self.flags.need_login {
+        if self.flags.syncing || self.flags.need_login || self.flags.demo {
+            if self.flags.demo {
+                self.flags.synced_at = Some(now_ms());
+            }
             return;
         }
         self.flags.syncing = true;
@@ -332,6 +355,9 @@ impl App {
 
     /// Слой ↔ Drive (через 4 с после правки).
     pub fn sync_layer(&mut self) {
+        if self.flags.demo {
+            return;
+        }
         let id = self.layer_id.clone();
         run(move || -> Result<(Option<String>, Value), Fail> {
             let id = match id {
@@ -407,7 +433,7 @@ impl App {
 
     pub fn bot_sync(&mut self) {
         let key = self.bot_key();
-        if key.is_empty() {
+        if key.is_empty() || self.flags.demo {
             return;
         }
         let live: Vec<Value> = self.board_lists().into_iter().filter(|l| !t(&self.ll(s(&l["id"]))["quiet"])).collect();

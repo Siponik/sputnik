@@ -1,0 +1,46 @@
+# Проверка Rust-версии (rust/): тесты логики и сборка окна. Ничего не публикует.
+name: Проверка Rust-приложения
+
+on:
+  pull_request:
+    paths:
+      - 'rust/**'
+      - 'tools/golden/**'
+      - '.github/workflows/rust-check.yml'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: rust
+    env:
+      TZ: Europe/Moscow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: sudo apt-get update && sudo apt-get install -y libfontconfig1-dev libxkbcommon-dev
+      - run: cargo test --workspace
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: rust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - run: cargo build --release -p sputnik-app
+      - run: Compress-Archive -Path target/release/sputnik.exe -DestinationPath sputnik-rust.zip
+        shell: pwsh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sputnik-rust-windows
+          path: rust/sputnik-rust.zip

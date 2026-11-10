@@ -1,0 +1,444 @@
+// «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
+// канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
+import { G } from "theme.slint";
+import { Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link } from "kit.slint";
+import { S, Card, Column, PipeRow, SideRow } from "store.slint";
+import { ScrollView } from "std-widgets.slint";
+
+component SideCol inherits Rectangle {
+    width: 232px;
+    background: G.bg;
+    Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
+    VerticalLayout {
+        padding-top: 12px;
+        padding-bottom: 10px;
+        Mono { text: "  СПИСКИ"; height: 24px; vertical-alignment: center; x: 8px; }
+        ScrollView {
+            vertical-stretch: 1;
+            VerticalLayout {
+                for r in S.side: Rectangle {
+                    height: r.header ? 30px : 32px;
+                    background: r.active ? G.accent-wash : (sa.has-hover && !r.header ? G.node-hover : transparent);
+                    Rectangle { x: 0; visible: r.active; width: 2px; background: G.accent; }
+                    HorizontalLayout {
+                        padding-left: r.header ? 14px : 22px;
+                        padding-right: 12px;
+                        spacing: 8px;
+                        Rectangle { width: r.header ? 8px : 6px; height: self.width; y: (parent.height - self.height) / 2; border-radius: 2px; background: r.hue; }
+                        Text {
+                            text: r.header ? r.name.to-uppercase() : r.name;
+                            font-family: r.header ? G.mono : G.sans;
+                            font-size: r.header ? 11px : 13px;
+                            letter-spacing: r.header ? 1.2px : 0;
+                            color: r.header ? G.muted : (r.active ? G.ink : G.ink.transparentize(0.1));
+                            vertical-alignment: center;
+                            overflow: elide;
+                            horizontal-stretch: 1;
+                        }
+                        Text { text: r.view == "pipe" ? "≡" : r.view == "stickers" ? "▦" : r.view == "list" ? "☰" : ""; color: G.dim; font-size: 11px; vertical-alignment: center; }
+                        Mono { text: r.header ? "" : r.count; vertical-alignment: center; color: G.dim; }
+                    }
+                    sa := TouchArea { enabled: !r.header; clicked => { S.pick-list(r.id); } mouse-cursor: pointer; }
+                }
+            }
+        }
+        Rectangle {
+            height: 44px;
+            nl := Field {
+                x: 10px;
+                width: parent.width - 20px;
+                y: 6px;
+                height: 32px;
+                font-size: 13px;
+                placeholder: "＋ Новый список";
+                accepted(t) => { if (t != "") { S.new-list(t); self.clear(); } }
+            }
+        }
+    }
+}
+
+// Канбан: колонки фиксированной ширины, карточку тянут мышью в другую колонку.
+component Kanban inherits Rectangle {
+    property <length> colw: 276px;
+    property <bool> dragging;
+    property <bool> dropped;
+    property <string> drag-id;
+    property <string> drag-title;
+    property <length> gx;
+    property <length> gy;
+    property <string> adding: "";
+    fl := Flickable {
+        content-width: max(self.width, S.columns.length * root.colw + 24px);
+        cols := HorizontalLayout {
+            padding: 12px;
+            spacing: 0px;
+            alignment: start;
+            for col[ci] in S.columns: Rectangle {
+                width: root.colw;
+                VerticalLayout {
+                    padding-left: 6px;
+                    padding-right: 6px;
+                    spacing: 8px;
+                    // шапка колонки
+                    Rectangle {
+                        height: 30px;
+                        border-radius: G.r-node;
+                        background: root.dragging && floor(root.gx / root.colw) == ci ? G.accent-wash : col.hue.transparentize(0.75);
+                        border-width: 1px;
+                        border-color: root.dragging && floor(root.gx / root.colw) == ci ? G.accent : col.hue.transparentize(0.4);
+                        HorizontalLayout {
+                            padding-left: 10px;
+                            padding-right: 10px;
+                            Mono { text: (ci < 9 ? "0" : "") + (ci + 1) + " · " + col.name.to-uppercase(); color: #fff; font-weight: 600; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                            Mono { text: col.limit > 0 ? col.count + "/" + col.limit : col.count; color: col.over ? G.red : #ffffffb0; vertical-alignment: center; }
+                        }
+                    }
+                    if col.over: Text { text: "Больше лимита — сначала доделай начатое"; color: G.red; font-size: 11px; }
+                    ScrollView {
+                        vertical-stretch: 1;
+                        VerticalLayout {
+                            spacing: 8px;
+                            for c in col.cards: Rectangle {
+                                height: max(54px, ct.preferred-height + 34px);
+                                border-radius: G.r-node;
+                                background: ca.has-hover ? G.node-hover : G.node;
+                                border-width: 1px;
+                                border-color: root.dragging && root.drag-id == c.id ? G.accent : G.line;
+                                opacity: root.dragging && root.drag-id == c.id ? 0.4 : (c.done ? 0.6 : 1);
+                                Rectangle { x: 0; width: 3px; height: parent.height - 16px; y: 8px; border-radius: 1.5px; background: c.prio == 1 ? G.red : c.prio == 3 ? G.line : c.hue; }
+                                ct := Text {
+                                    x: 12px;
+                                    y: 9px;
+                                    width: parent.width - 40px;
+                                    text: c.title;
+                                    wrap: word-wrap;
+                                    font-size: 14px;
+                                    color: c.done ? G.dim : G.ink;
+                                }
+                                HorizontalLayout {
+                                    x: 12px;
+                                    y: parent.height - 22px;
+                                    width: parent.width - 24px;
+                                    height: 16px;
+                                    spacing: 10px;
+                                    if c.due != "": Mono { text: c.due; color: c.overdue ? G.red : G.muted; font-size: 10px; }
+                                    if c.subs != "": Mono { text: "☐ " + c.subs; font-size: 10px; }
+                                    if c.note: Mono { text: "¶"; font-size: 10px; }
+                                    if c.who != "": Mono { text: "● " + c.who; font-size: 10px; color: G.accent; }
+                                    Rectangle { }
+                                }
+                                ca := TouchArea {
+                                    mouse-cursor: pointer;
+                                    pointer-event(e) => {
+                                        if (e.kind == PointerEventKind.down) { root.dropped = false; }
+                                        if (e.kind == PointerEventKind.up && root.dragging) {
+                                            root.dragging = false;
+                                            root.dropped = true;
+                                            S.move-card(S.board-id, c.id, floor(root.gx / root.colw));
+                                        }
+                                    }
+                                    moved => {
+                                        if (!root.dragging && (abs(self.mouse-x - self.pressed-x) > 6px || abs(self.mouse-y - self.pressed-y) > 6px)) {
+                                            root.dragging = true;
+                                            root.drag-id = c.id;
+                                            root.drag-title = c.title;
+                                        }
+                                        if (root.dragging) {
+                                            root.gx = self.absolute-position.x - cols.absolute-position.x + self.mouse-x - 12px;
+                                            root.gy = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
+                                        }
+                                    }
+                                    clicked => { if (!root.dropped) { S.open-task(S.board-id, c.id); } }
+                                }
+                                // стрелка «на следующий этап»
+                                if !c.done && ci < S.columns.length - 1: IconBtn {
+                                    x: parent.width - 30px;
+                                    y: 6px;
+                                    width: 24px;
+                                    height: 24px;
+                                    icon: "→";
+                                    visible: ca.has-hover || self.hover;
+                                    clicked => { S.next-stage(S.board-id, c.id); }
+                                }
+                            }
+                            // добавить в колонку
+                            if root.adding == col.id: Field {
+                                placeholder: "Название · Enter — добавить, Esc — отмена";
+                                font-size: 13px;
+                                init => { self.grab(); }
+                                accepted(t) => { if (t != "") { S.add-card(S.board-id, col.id, t); self.clear(); } }
+                                escape => { root.adding = ""; }
+                            }
+                            if root.adding != col.id && !col.done: Rectangle {
+                                height: 30px;
+                                border-radius: G.r-node;
+                                border-width: 1px;
+                                border-color: aa.has-hover ? G.line-strong : G.line-soft;
+                                Text { text: "+ Добавить задачу"; color: aa.has-hover ? G.ink : G.dim; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                                aa := TouchArea { clicked => { root.adding = col.id; } mouse-cursor: pointer; }
+                            }
+                            if col.cards.length == 0: Empty { height: 140px; text: col.done ? "Сюда — готовое" : "Пусто"; }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    // «призрак» перетаскиваемой карточки
+    if root.dragging: Rectangle {
+        x: root.gx - fl.content-x + 12px - 110px;
+        y: root.gy - 18px;
+        width: 220px;
+        height: 36px;
+        border-radius: G.r-node;
+        background: G.node-hover;
+        border-width: 1px;
+        border-color: G.accent;
+        drop-shadow-blur: 12px;
+        drop-shadow-color: #0008;
+        Text { x: 10px; width: parent.width - 20px; text: root.drag-title; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; height: parent.height; }
+    }
+}
+
+// Конвейер: строка — ассет, дорожка этапов; клик по этапу переносит, «→» — следующий.
+component Pipe inherits Rectangle {
+    property <string> adding;
+    ScrollView {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 6px;
+            // шапка дорожки
+            HorizontalLayout {
+                height: 24px;
+                spacing: 0;
+                Mono { text: "АССЕТ"; width: 300px; vertical-alignment: center; }
+                for st[i] in S.stages: Mono { text: (i + 1) + " " + st.to-uppercase(); width: 96px; horizontal-alignment: center; vertical-alignment: center; overflow: elide; font-size: 10px; }
+                Rectangle { }
+            }
+            for r in S.pipe: Rectangle {
+                height: 46px;
+                border-radius: G.r-node;
+                background: ra.has-hover ? G.node-hover : G.node;
+                border-width: 1px;
+                border-color: G.line;
+                opacity: r.done ? 0.6 : 1;
+                ra := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; }
+                HorizontalLayout {
+                    padding-left: 12px;
+                    spacing: 0;
+                    VerticalLayout {
+                        width: 288px;
+                        alignment: center;
+                        Text { text: r.title; color: G.ink; font-size: 14px; overflow: elide; }
+                        HorizontalLayout {
+                            spacing: 8px;
+                            alignment: start;
+                            if r.project != "": Text { text: r.project; color: G.violet; font-size: 11px; }
+                            if r.due != "": Mono { text: r.due; font-size: 10px; color: r.overdue ? G.red : G.muted; }
+                        }
+                    }
+                    for st[i] in S.stages: Rectangle {
+                        width: 96px;
+                        Rectangle {
+                            x: 0;
+                            y: parent.height / 2;
+                            height: 2px;
+                            width: parent.width;
+                            background: i < r.stage ? G.accent : G.line;
+                        }
+                        Rectangle {
+                            width: i == r.stage ? 22px : 14px;
+                            height: self.width;
+                            x: (parent.width - self.width) / 2;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: self.width / 2;
+                            background: i < r.stage ? G.accent : (i == r.stage ? G.accent-wash : G.node);
+                            border-width: 1.5px;
+                            border-color: i <= r.stage ? G.accent : (da.has-hover ? G.ink : G.line-strong);
+                            Text { text: i < r.stage ? "✓" : ""; color: G.on-accent; font-size: 9px; horizontal-alignment: center; vertical-alignment: center; }
+                            da := TouchArea { clicked => { S.move-card(r.list-id, r.id, i); } mouse-cursor: pointer; }
+                        }
+                    }
+                    Rectangle { }
+                    IconBtn { icon: "→"; y: 9px; visible: !r.done; clicked => { S.next-stage(r.list-id, r.id); } }
+                    Rectangle { width: 8px; }
+                }
+            }
+            if S.pipe.length == 0: Empty { height: 220px; text: "Ассетов пока нет — добавь первый строкой ниже"; }
+            Field {
+                placeholder: "＋ Новый ассет · Enter";
+                accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } }
+            }
+        }
+    }
+}
+
+// Стикеры: темы — колонки, дела — квадратные листочки; галочка — сделано (уходит в баночку).
+component Stickers inherits Rectangle {
+    ScrollView {
+        HorizontalLayout {
+            padding: 16px;
+            spacing: 18px;
+            alignment: start;
+            for lane in S.columns: VerticalLayout {
+                width: 236px;
+                spacing: 10px;
+                alignment: start;
+                HorizontalLayout {
+                    height: 24px;
+                    spacing: 8px;
+                    Rectangle { width: 8px; height: 8px; y: 8px; border-radius: 4px; background: lane.hue; }
+                    Mono { text: lane.name.to-uppercase(); vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
+                    Mono { text: lane.count; vertical-alignment: center; color: G.dim; }
+                }
+                for c in lane.cards: Rectangle {
+                    height: max(96px, st.preferred-height + 48px);
+                    border-radius: 6px;
+                    background: lane.hue.transparentize(0.86);
+                    border-width: 1px;
+                    border-color: c.pin ? G.gold : lane.hue.transparentize(0.6);
+                    st := Text { x: 12px; y: 12px; width: parent.width - 24px; text: c.title; wrap: word-wrap; font-size: 15px; color: G.ink; }
+                    sa := TouchArea { clicked => { S.open-task(S.board-id, c.id); } mouse-cursor: pointer; }
+                    HorizontalLayout {
+                        x: 10px;
+                        y: parent.height - 30px;
+                        width: parent.width - 20px;
+                        height: 22px;
+                        spacing: 8px;
+                        Check { done: c.done; hue: lane.hue; y: 2px; toggled => { S.toggle(S.board-id, c.id); } }
+                        Mono { text: c.due; vertical-alignment: center; color: c.overdue ? G.red : G.muted; font-size: 10px; }
+                        Rectangle { }
+                        IconBtn { icon: c.pin ? "★" : "☆"; width: 22px; height: 22px; on: c.pin; clicked => { S.pin-card(S.board-id, c.id); } }
+                    }
+                }
+                Field {
+                    height: 30px;
+                    font-size: 13px;
+                    placeholder: "＋ стикер";
+                    accepted(t) => { if (t != "") { S.add-card(S.board-id, lane.id, t); self.clear(); } }
+                }
+            }
+        }
+    }
+}
+
+// Список: разделы по колонкам, строки с отметкой.
+component ListView inherits Rectangle {
+    ScrollView {
+        VerticalLayout {
+            padding: 16px;
+            spacing: 4px;
+            Field {
+                placeholder: "＋ Новая задача · Enter";
+                accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } }
+            }
+            for col in S.columns: VerticalLayout {
+                spacing: 0;
+                Rectangle {
+                    height: 34px;
+                    Mono { text: col.name.to-uppercase() + " · " + col.count; vertical-alignment: center; x: 4px; color: col.hue; }
+                }
+                for c in col.cards: Rectangle {
+                    height: 38px;
+                    background: la.has-hover ? G.node-hover : transparent;
+                    la := TouchArea { clicked => { S.open-task(S.board-id, c.id); } mouse-cursor: pointer; }
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        spacing: 12px;
+                        Check { done: c.done; y: 10px; toggled => { S.toggle(S.board-id, c.id); } }
+                        Text { text: (c.prio == 1 ? "!!! " : "") + c.title; color: c.done ? G.dim : G.ink; font-size: 14px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                        if c.subs != "": Mono { text: c.subs; vertical-alignment: center; }
+                        Mono { text: c.due; vertical-alignment: center; color: c.overdue ? G.red : G.muted; width: 140px; horizontal-alignment: right; }
+                    }
+                    Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+                }
+            }
+        }
+    }
+}
+
+export component BoardPage inherits Rectangle {
+    property <bool> menu;
+    property <bool> renaming;
+    HorizontalLayout {
+        SideCol { }
+        VerticalLayout {
+            horizontal-stretch: 1;
+            // шапка доски
+            Rectangle {
+                height: 52px;
+                HorizontalLayout {
+                    padding-left: 18px;
+                    padding-right: 14px;
+                    spacing: 12px;
+                    if !root.renaming: Text {
+                        text: S.board-title;
+                        font-size: 20px;
+                        font-weight: 500;
+                        color: G.ink;
+                        vertical-alignment: center;
+                        overflow: elide;
+                        TouchArea { double-clicked => { root.renaming = true; } }
+                    }
+                    if root.renaming: Field {
+                        y: 9px;
+                        width: 320px;
+                        text: S.board-title;
+                        init => { self.grab(); }
+                        accepted(t) => { S.rename-list(S.board-id, t); root.renaming = false; }
+                        escape => { root.renaming = false; }
+                    }
+                    IconBtn { icon: "⋯"; y: 12px; clicked => { root.menu = !root.menu; } }
+                    Rectangle { }
+                    if S.archived > 0: Mono { text: "В АРХИВЕ · " + S.archived; vertical-alignment: center; color: G.dim; }
+                    Seg {
+                        y: 12px;
+                        items: ["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ", "СПИСОК"];
+                        current: S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0;
+                        picked(i) => { S.set-view(i == 1 ? "pipe" : i == 2 ? "stickers" : i == 3 ? "list" : "kanban"); }
+                    }
+                }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+            }
+            Rectangle {
+                vertical-stretch: 1;
+                if S.board-id == "": Empty { text: "Выбери список слева или создай новый"; pose: "think"; }
+                if S.board-id != "" && S.board-view == "kanban": Kanban { }
+                if S.board-id != "" && S.board-view == "pipe": Pipe { }
+                if S.board-id != "" && S.board-view == "stickers": Stickers { }
+                if S.board-id != "" && S.board-view == "list": ListView { }
+            }
+        }
+    }
+    if root.menu: Rectangle {
+        TouchArea { clicked => { root.menu = false; } }
+        Rectangle {
+            x: 250px;
+            y: 46px;
+            width: 220px;
+            height: mv.preferred-height;
+            border-radius: G.r-node;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.line;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #0009;
+            mv := VerticalLayout {
+                padding: 6px;
+                for m[i] in ["Переименовать", "Удалить список…"]: Rectangle {
+                    height: 32px;
+                    border-radius: 4px;
+                    background: ma.has-hover ? G.node-hover : transparent;
+                    Text { x: 10px; text: m; color: i == 1 ? G.red : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                    ma := TouchArea {
+                        clicked => {
+                            root.menu = false;
+                            if (i == 0) { root.renaming = true; } else { S.delete-list(S.board-id); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
