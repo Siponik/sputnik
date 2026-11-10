@@ -242,6 +242,23 @@ export async function giftEvents() {
   return all.flat().filter((e) => e.status !== 'cancelled' && e.extendedProperties?.private?.sputnikGift);
 }
 
+/** Дни рождения без своих напоминаний: контакты Google и созданные Спутником, где «Напомнить: Нет».
+ *  Им действуют напоминания по умолчанию (settings.remind.birthday) — проставляет App при загрузке. */
+export async function birthdayEvents() {
+  const now = Date.now();
+  const base = { timeMin: new Date(now - 864e5).toISOString(), timeMax: new Date(now + 32 * 864e5).toISOString(), singleEvents: 'true', maxResults: '250' };
+  const cals = await calendarList().catch(() => []);
+  const contacts = cals.filter((c) => calKind(c) === 'birthday' && c.selected !== false);
+  const own = ['primary', ...cals.filter((c) => ['owner', 'writer'].includes(c.accessRole) && !c.primary && !isService(c) && calKind(c) === 'event').map((c) => c.id)];
+  const grab = (id, extra = '') => gapi('GET', `${CAL}/calendars/${encodeURIComponent(id)}/events?${new URLSearchParams(base)}${extra}`)
+    .then((r) => r?.items ?? []).catch(() => []);
+  const fromContacts = await Promise.all(contacts.map((c) => grab(c.id)));
+  // Свои «🎂 …» находим по метке Спутника — у контактов её нет, дублей не будет.
+  const fromOwn = await Promise.all(own.map((id) => grab(id, '&privateExtendedProperty=sputnik%3Dbirthday')));
+  return [...fromContacts.flat(), ...fromOwn.flat()]
+    .filter((e) => e.status !== 'cancelled' && !e.extendedProperties?.private?.sputnikRemind);
+}
+
 const isBirthday = (e) => e.eventType === 'birthday' || e.extendedProperties?.private?.sputnik === 'birthday';
 
 // ---------- даты ----------

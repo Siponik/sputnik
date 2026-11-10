@@ -1104,7 +1104,8 @@ impl App {
     pub fn remind_items(&self) -> Vec<Value> {
         let hour = self.layer["settings"]["remindHour"]["v"].as_str().map(String::from);
         rem::set_default_time(hour.as_deref());
-        let evs: Vec<Value> = self.events.iter().filter(|e| e["extendedProperties"]["private"]["sputnikR"] == "1").cloned().collect();
+        // свои напоминания событий + дни рождения без них (контакты Google) — по умолчанию из настроек
+        let evs = rem::with_bday_defaults(&self.events, &self.layer["settings"]);
         let ls = self.board_lists();
         let hl = self.habit_list().unwrap_or(Value::Null);
         let mut items = rem::collect(&ls, &self.tasks, &self.layer["tasks"], &hl, &[], &evs);

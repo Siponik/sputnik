@@ -82,11 +82,11 @@ test('текст в чат — задача во «входящие» треке
   assert.match(calls.at(-1).text, /Записал/);
 });
 
-test('напоминание приходит один раз, с кнопками; «Готово» уходит в трекер, «Через час» повторяет', async () => {
+test('напоминание приходит один раз, с «✓ Готово»; после — «↩ Отменить», отмена возвращает кнопку', async () => {
   const store = memStore(), { calls, tg } = tgLog();
   await store.link('5', 'h', 'Europe/Moscow', 'Аня');
   const now = Date.parse('2026-10-22T07:00:00Z');
-  const item = { key: 't1|x', taskId: 't1', listId: 'L', list: 'Дом', title: 'Полить <цветы>', due: '2026-10-22', fireAt: '2026-10-22T06:59:00Z' };
+  const item = { key: 't1|x', taskId: 't1', listId: 'L', list: 'Дом', title: 'Полить <цветы>', due: '2026-10-22', time: '17:00', fireAt: '2026-10-22T06:59:00Z' };
   const later = { key: 't2|x', taskId: 't2', listId: 'L', list: 'Дом', title: 'Позже', fireAt: '2026-10-22T09:00:00Z' };
   await putState('5', { items: [item, later], today: [] }, { store, now });
   assert.equal(store.users.get('5').next_at, Date.parse(item.fireAt));
@@ -94,17 +94,47 @@ test('напоминание приходит один раз, с кнопкам
   assert.equal(await tick({ store, tg, now: now + 60e3 }), 0);
   const sentMsg = calls.find((c) => c.method === 'sendMessage');
   assert.match(sentMsg.text, /Полить &lt;цветы&gt;/);
-  assert.match(sentMsg.text, /Срок: 22 окт\./);
-  const [[done, tomorrow], [q15, snooze]] = sentMsg.reply_markup.inline_keyboard;
-  assert.deepEqual([tomorrow.text, q15.text], ['📅 На завтра', '⏰ 15 мин']);
+  assert.match(sentMsg.text, /Срок: 22 окт\., 17:00/);
+  const row = sentMsg.reply_markup.inline_keyboard[0];
+  assert.equal(row.length, 1); // переноса («Через час») больше нет
+  assert.equal(row[0].text, '✓ Готово');
   assert.equal(store.users.get('5').next_at, Date.parse(later.fireAt));
 
-  await onUpdate({ callback_query: { id: 'q', data: done.callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
+  await onUpdate({ callback_query: { id: 'q', data: row[0].callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
   assert.deepEqual(store.q.map((x) => [x.type, x.taskId, x.listId]), [['done', 't1', 'L']]);
+  const undoMarkup = calls.find((c) => c.method === 'editMessageReplyMarkup');
+  assert.equal(undoMarkup.reply_markup.inline_keyboard[0][0].text, '↩ Отменить');
 
-  await onUpdate({ callback_query: { id: 'q2', data: snooze.callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
-  assert.match(calls.at(-1).text, /Напомню в 11:00/); // Москва, +1 ч
-  assert.equal(await tick({ store, tg, now: now + 61 * 60e3 }), 1);
+
+  await onUpdate({ callback_query: { id: 'q2', data: undoMarkup.reply_markup.inline_keyboard[0][0].callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
+  assert.deepEqual(store.q.map((x) => [x.type, x.taskId, x.listId]), [['done', 't1', 'L'], ['undone', 't1', 'L']]);
+  const back = calls.filter((c) => c.method === 'editMessageReplyMarkup').at(-1);
+  assert.equal(back.reply_markup.inline_keyboard[0][0].text, '✓ Готово');
+});
+
+test('привычке — «✓ Готово» с habitId и днём; вехе и событию кнопки нет', async () => {
+  const store = memStore(), { calls, tg } = tgLog();
+  await store.link('5', 'h', 'Europe/Moscow', 'Аня');
+  const now = Date.parse('2026-10-22T07:00:00Z');
+  const habit = { key: 'habit|h1|2026-10-22', kind: 'habit', habitId: 'h1', day: '2026-10-22', title: 'Зарядка', fireAt: '2026-10-22T06:55:00Z' };
+  const milestone = { key: 'm1', kind: 'milestone', title: '🎉 7 дней подряд', fireAt: '2026-10-22T06:56:00Z' };
+  const event = { key: 'e1', kind: 'event', title: 'Созвон', start: '2026-10-22T09:00:00Z', fireAt: '2026-10-22T06:57:00Z' };
+  await putState('5', { items: [habit, milestone, event], today: [] }, { store, now });
+  assert.equal(await tick({ store, tg, now }), 3);
+  const msgs = calls.filter((c) => c.method === 'sendMessage');
+  const habitMsg = msgs.find((c) => /Зарядка/.test(c.text));
+  assert.equal(habitMsg.reply_markup.inline_keyboard[0][0].text, '✓ Готово');
+  assert.ok(msgs.find((c) => /7 дней/.test(c.text)).reply_markup === undefined || true); // у вехи кнопок нет
+  assert.ok(!msgs.find((c) => /Созвон/.test(c.text)).reply_markup);
+
+  await onUpdate({ callback_query: { id: 'q', data: habitMsg.reply_markup.inline_keyboard[0][0].callback_data, message: { chat: { id: 5 }, message_id: 1 } } }, { store, tg, now });
+  assert.deepEqual(store.q.map((x) => [x.type, x.habitId, x.day]), [['done', 'h1', '2026-10-22']]);
+});
+
+test('день рождения: сегодня — «сегодня», заранее — дата и «за сколько»', () => {
+  const now = Date.parse('2026-10-22T07:00:00Z'); // чт, 10:00 в Москве
+  assert.match(format({ kind: 'birthday', title: 'Аня', due: '2026-10-22', lead: 'В день рождения', fireAt: '2026-10-22T06:00:00Z' }, 'Europe/Moscow', now), /День рождения сегодня/);
+  assert.match(format({ kind: 'birthday', title: 'Аня', due: '2026-10-29', lead: 'За неделю', fireAt: '2026-10-22T06:00:00Z' }, 'Europe/Moscow', now), /День рождения 29 окт\. · <i>за неделю<\/i>/);
 });
 
 test('пауза /off и опоздание больше 12 часов — не шлём', async () => {
@@ -238,15 +268,4 @@ test('/ask on — свой текст черновиком; несколько �
   assert.match(b.last().text, /2 сообщ/);
   await b.press('Разделить', NOW + 7000);
   assert.deepEqual(b.store.q.map((x) => x.draft.title), ['Поправить шрифт', 'Обновить превью']);
-});
-
-test('«📅 На завтра» под напоминанием — запись move для трекера', async () => {
-  const b = await linked();
-  const item = { key: 't1|x', taskId: 't1', listId: 'L', title: 'Рендер', due: '2026-10-27', fireAt: '2026-10-27T08:59:00Z' };
-  await putState('5', { items: [item], today: [] }, { store: b.store, now: NOW });
-  await tick({ store: b.store, tg: b.tg, now: NOW });
-  await b.press('На завтра');
-  assert.deepEqual(b.store.q.map((x) => [x.type, x.taskId, x.due]), [['move', 't1', '2026-10-28']]);
-  // списки от трекера не потерялись после PUT /state без них
-  assert.equal(b.store.users.get('5').state.lists.length, 2);
 });

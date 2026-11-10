@@ -1,12 +1,12 @@
-// Золотые данные для порта на Dart: прогоняет настоящие функции трекера (tracker/src/lib/*.js) на наборе входов
-// и пишет входы и ответы в app/test/golden/*.json. Dart-тесты (app/test/core/*_test.dart) читают эти файлы и
+// Золотые данные для порта на Rust: прогоняет настоящие функции трекера (tracker/src/lib/*.js) на наборе входов
+// и пишет входы и ответы в rust/core/tests/golden/*.json. Rust-тесты (rust/core/tests/*.rs) читают эти файлы и
 // требуют те же ответы — так порт не расходится со старым кодом.
 // Запуск: node tools/golden/gen.mjs   (из корня репозитория). Файлы коммитим.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { parseWhen, whenText } from '../../tracker/src/lib/when.js';
 import { merge } from '../../tracker/src/lib/layer.js';
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 // Один случай — одна строка: файл остаётся небольшим и читаемым в diff.
 const write = (name, data) => writeFileSync(new URL(name, OUT), Array.isArray(data) ? '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n' : JSON.stringify(data) + '\n');

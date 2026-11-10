@@ -139,7 +139,17 @@
   }
   // События и дни рождения с напоминаниями Спутника — читаем при каждой синхронизации.
   let remindEvents = $state([]);
-  const loadRemindEvents = async () => { remindEvents = await api.remindEvents().catch(() => remindEvents); };
+  const loadRemindEvents = async () => {
+    remindEvents = await api.remindEvents().catch(() => remindEvents);
+    // Дни рождения без своих напоминаний (контакты Google, «🎂» без «Напомнить») — по умолчанию из настроек.
+    const mins = reminders.defaultMins(lay.settings, 'birthday');
+    if (!mins.length) return;
+    const bdays = await api.birthdayEvents().catch(() => []);
+    if (bdays.length) remindEvents = [...remindEvents, ...bdays.map((e) => ({
+      ...e,
+      extendedProperties: { ...e.extendedProperties, private: { ...e.extendedProperties?.private, sputnik: 'birthday', sputnikRemind: mins.join(',') } },
+    }))];
+  };
 
   function setRemind(r) {
     touch('tasks', openRef.id, { remind: r });
@@ -1361,7 +1371,7 @@
   }
   // ---------- общий Telegram-бот (lib/sharedbot.js) ----------
   let tgStat = $state({ at: null, err: '', unlinked: false });
-  /** Что человек написал боту: новые задачи и «✓ Готово» под напоминаниями. Не вышло — останется до следующего раза. */
+  /** Что человек написал боту: новые задачи и кнопки «✓ Готово» / «↩ Отменить» под напоминаниями. Не вышло — останется до следующего раза. */
   async function pullTg() {
     const key = lay.settings?.tgbot?.key;
     if (!key) return;
@@ -1375,12 +1385,20 @@
           const t = x.draft ? sharedbot.fromDraft(x.draft, { lists: boardLists, layer: lay, tasks }) : sharedbot.fromText(x.text, { lists: boardLists, layer: lay, tasks });
           if (t) { if (!(await quickCreate(t, true))) continue; added++; }
         } else if (x.type === 'move') {
-          // «📅 На завтра» под напоминанием: срок меняется, время в слое остаётся.
+          // «📅 На завтра» под старым напоминанием: срок меняется, время в слое остаётся.
           const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
           if (task && task.status !== 'completed' && !(await schedule(task, x.listId, x.due, lay.tasks?.[task.id]?.slot ?? null))) continue;
-        } else if (x.type === 'done') {
-          const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
-          if (task && task.status !== 'completed' && !(await toggle(task, true, x.listId, true))) continue;
+        } else if (x.type === 'done' || x.type === 'undone') {
+          const done = x.type === 'done';
+          if (x.habitId) {
+            // Привычка: отметка дня в слое (log["id|ГГГГ-ММ-ДД"].done), задача в Google не трогается.
+            touch('log', logKey(x.habitId, x.day ?? api.ymd(new Date())), { done });
+            saveLayer();
+          } else if (x.taskId) {
+            const task = (tasks[x.listId] ?? []).find((y) => y.id === x.taskId);
+            if (task && (task.status === 'completed') !== done && !(await toggle(task, done, x.listId, true))) continue;
+          }
+
         }
         ok.push(x.id);
       }

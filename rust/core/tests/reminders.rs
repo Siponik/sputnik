@@ -26,7 +26,29 @@ fn reminders() {
             "assignedItems" => json!(r::assigned_items(a(&x["lists"]), &x["tasks"], &x["lay"], n(&x["now"]))),
             "habitItems" => json!(r::habit_items(a(&x["habits"]), &x["log"], at(&x["now"]))),
             "habitWinDue" => json!(r::habit_win_due(a(&x["habits"]), &x["log"], a(&x["sent"]), at(&x["now"])).iter().map(|h| h["id"].clone()).collect::<Vec<_>>()),
+            "bdayName" => json!(r::bday_name(&x["x"])),
             _ => return None,
         })
     });
+}
+
+#[test]
+fn birthdays_get_default_reminders() {
+    let evs = vec![
+        json!({"id": "c1", "calId": "addressbook#contacts@group.v.calendar.google.com", "summary": "День рождения: Аня", "start": {"date": "2026-10-25"}}),
+        json!({"id": "s1", "summary": "🎂 Петя", "extendedProperties": {"private": {"sputnik": "birthday"}}, "start": {"date": "2026-10-26"}}),
+        json!({"id": "s2", "summary": "🎂 Оля", "extendedProperties": {"private": {"sputnik": "birthday", "sputnikR": "1", "sputnikRemind": "0"}}, "start": {"date": "2026-10-27"}}),
+        json!({"id": "e1", "summary": "Созвон", "start": {"dateTime": "2026-10-25T10:00:00+03:00"}}),
+    ];
+    let got = r::with_bday_defaults(&evs, &json!({}));
+    let ids: Vec<&str> = got.iter().map(|e| s(&e["id"])).collect();
+    assert_eq!(ids, ["c1", "s1", "s2"]);
+    assert_eq!(got[0]["extendedProperties"]["private"]["sputnikRemind"], "1440,0");
+    assert_eq!(got[2]["extendedProperties"]["private"]["sputnikRemind"], "0"); // своё не трогаем
+    // «за день и в день» по умолчанию выключены — контакты молчат
+    assert_eq!(r::with_bday_defaults(&evs, &json!({"remind": {"birthday": []}})).len(), 1);
+    sputnik_core::habits::set_clock(chrono::NaiveDate::from_ymd_opt(2026, 10, 24).unwrap().and_hms_opt(9, 0, 0));
+    r::set_default_time(Some("10:00"));
+    let items = r::collect(&[], &json!({}), &json!({}), &Value::Null, &[], &got);
+    assert!(items.iter().any(|x| x["title"] == "Аня" && x["kind"] == "birthday"));
 }
