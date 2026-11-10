@@ -10,6 +10,7 @@ pub mod habits;
 pub mod j;
 pub mod layer;
 pub mod repeat;
+pub mod route;
 pub mod rx;
 pub mod search;
 pub mod small;
