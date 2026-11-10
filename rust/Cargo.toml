@@ -1,0 +1,10 @@
+# Спутник на Rust + Slint (третье поколение приложения, docs/rust-architecture.md).
+[workspace]
+resolver = "2"
+members = ["core", "app"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = 3
+strip = true

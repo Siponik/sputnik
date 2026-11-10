@@ -1,0 +1,287 @@
+// Главное окно Спутника: шапка с вкладками, разделы, плашка внизу и окна поверх.
+// Вся логика — в Rust (src/view, src/state); окно только показывает модели из глобала S.
+import { G } from "theme.slint";
+import { Mono, Button, Node, Brackets, Empty, IconBtn } from "kit.slint";
+import { S } from "store.slint";
+import { TodayPage } from "today.slint";
+import { BoardPage } from "board.slint";
+import { CalendarPage } from "calendar.slint";
+import { HabitsPage } from "habits.slint";
+import { SettingsPage } from "settings.slint";
+import { NotesPage } from "notes.slint";
+import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
+export { S }
+
+component Tab inherits Rectangle {
+    in property <string> text;
+    in property <bool> active;
+    in property <int> count;
+    callback clicked;
+    width: tt.preferred-width;
+    tt := Text {
+        text: root.text + (count > 0 ? " · " + count : "");
+        font-family: G.mono;
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 1.5px;
+        color: active || ta.has-hover ? G.ink : #8A8C96;
+        vertical-alignment: center;
+    }
+    Rectangle { y: parent.height / 2 + 10px; height: 1px; background: active ? G.accent : transparent; animate background { duration: G.fast; } }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+export component AppWindow inherits Window {
+    title: "Спутник";
+    preferred-width: 1360px;
+    preferred-height: 860px;
+    min-width: 980px;
+    min-height: 600px;
+    background: G.ground;
+    default-font-family: G.sans;
+    icon: @image-url("../../../app/assets/coon/coon-face.svg");
+
+    // Холст: точки 1 px через 24 px.
+    Image { width: 100%; height: 100%; source: @image-url("dot.svg"); horizontal-tiling: repeat; vertical-tiling: repeat; }
+
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (S.task-open || S.create-open || S.search-open || S.confirm != "") {
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); return accept; }
+                return reject;
+            }
+            if (e.modifiers.control) {
+                if (e.text == "k" || e.text == "л") { S.search-open-set(true); return accept; }
+                if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
+                if (e.text == "," || e.text == "б") { S.go(5); return accept; }
+                return reject;
+            }
+            if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
+            if (e.text == "/" || e.text == ".") { S.search-open-set(true); return accept; }
+            if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
+            if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(e.text.to-float() - 1); return accept; }
+            if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }
+            if (e.text == "e" || e.text == "у") { S.go(S.tab >= 4 ? 0 : S.tab + 1); return accept; }
+            if (S.tab == 1) {
+                if (e.text == Key.LeftArrow) { S.cal-shift(-1); return accept; }
+                if (e.text == Key.RightArrow) { S.cal-shift(1); return accept; }
+                if (e.text == "t" || e.text == "е") { S.cal-today(); return accept; }
+                if (e.text == "w" || e.text == "ц") { S.cal-mode-set("week"); return accept; }
+                if (e.text == "m" || e.text == "ь") { S.cal-mode-set("month"); return accept; }
+            }
+            if (S.tab == 2) {
+                if (e.text == "[" || e.text == "х") { S.pick-list("<"); return accept; }
+                if (e.text == "]" || e.text == "ъ") { S.pick-list(">"); return accept; }
+            }
+            // Shift+1…9 — привычки (символы над цифрами в обеих раскладках)
+            if (e.modifiers.shift) {
+                if (e.text == "!") { S.habit-tap("#1"); return accept; }
+                if (e.text == "@" || e.text == "\"") { S.habit-tap("#2"); return accept; }
+                if (e.text == "#" || e.text == "№") { S.habit-tap("#3"); return accept; }
+                if (e.text == "$" || e.text == ";") { S.habit-tap("#4"); return accept; }
+                if (e.text == "%") { S.habit-tap("#5"); return accept; }
+            }
+            reject
+        }
+
+        VerticalLayout {
+            // Шапка (макет G_*: знак-орбита, разделы моно-шрифтом, дата, «Найти · CTRL K», светлая «＋ Создать»)
+            Rectangle {
+                height: 60px;
+                background: G.bg;
+                HorizontalLayout {
+                    padding-left: 20px;
+                    padding-right: 20px;
+                    spacing: 26px;
+                    HorizontalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 10px;
+                        Path {
+                            width: 20px; height: 20px; y: 20px;
+                            viewbox-width: 24; viewbox-height: 24;
+                            stroke: G.ink; stroke-width: 1.5px;
+                            commands: "M 15.5 8.2 A 5 5 0 1 0 15.5 15.8";
+                        }
+                        Rectangle {
+                            width: 0px;
+                            Path { x: -30px; y: 20px; width: 20px; height: 20px; viewbox-width: 24; viewbox-height: 24; stroke: G.ink; stroke-width: 1px; commands: "M 20.83 7.31 L 21.02 7.99 L 20.94 8.80 L 20.59 9.70 L 19.97 10.67 L 19.11 11.69 L 18.04 12.71 L 16.78 13.71 L 15.38 14.66 L 13.88 15.53 L 12.32 16.29 L 10.74 16.92 L 9.21 17.41 L 7.76 17.72 L 6.44 17.87 L 5.29 17.83 L 4.35 17.62 L 3.63 17.24 L 3.17 16.69 L 2.98 16.01 L 3.06 15.20 L 3.41 14.30 L 4.03 13.33 L 4.89 12.31 L 5.96 11.29 L 7.22 10.29 L 8.62 9.34 L 10.12 8.47 L 11.68 7.71 L 13.26 7.08 L 14.79 6.59 L 16.24 6.28 L 17.56 6.13 L 18.71 6.17 L 19.65 6.38 L 20.37 6.76 L 20.83 7.31"; }
+                            Rectangle { x: -30px + 18px * 20 / 24; y: 20px + 6px * 20 / 24; width: 3px; height: 3px; background: G.accent; }
+                        }
+                        Text { text: "СПУТНИК"; font-family: G.mono; font-weight: 500; font-size: 11px; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; }
+                    }
+                    HorizontalLayout {
+                        horizontal-stretch: 0;
+                        spacing: 20px;
+                        Tab { text: "СЕГОДНЯ"; count: S.today-count; active: S.tab == 0; clicked => { S.go(0); } }
+                        Tab { text: "КАЛЕНДАРЬ"; active: S.tab == 1; clicked => { S.go(1); } }
+                        Tab { text: "ДОСКА"; active: S.tab == 2; clicked => { S.go(2); } }
+                        Tab { text: "ПРИВЫЧКИ"; active: S.tab == 3; clicked => { S.go(3); } }
+                        Tab { text: "ЗНАНИЯ"; active: S.tab == 4; clicked => { S.go(4); } }
+                    }
+                    Rectangle { horizontal-stretch: 1; }
+                    if S.upd-version != "": Rectangle {
+                        width: ut.preferred-width + 24px;
+                        height: 32px;
+                        y: 14px;
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: G.accent-line;
+                        background: ua.has-hover ? G.accent-wash : transparent;
+                        ut := Text { text: "✦ ВЕРСИЯ " + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
+                        ua := TouchArea { clicked => { upd.visible = !upd.visible; } mouse-cursor: pointer; }
+                    }
+                    Rectangle {
+                        width: st.preferred-width + 16px;
+                        st := Text {
+                            text: S.busy ? "СИНХРОНИЗАЦИЯ…" : S.now-label;
+                            font-family: G.mono; font-size: 11px; letter-spacing: 1.4px;
+                            color: S.offline ? G.red : S.error != "" ? G.gold : #8A8C96;
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                        sa := TouchArea { clicked => { S.refresh(); } mouse-cursor: pointer; }
+                    }
+                    Rectangle {
+                        width: 172px;
+                        height: 32px;
+                        y: 14px;
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: fa.has-hover ? G.line-strong : G.line;
+                        Path { x: 10px; y: 9px; width: 13px; height: 13px; viewbox-width: 24; viewbox-height: 24; stroke: #8A8C96; stroke-width: 1.6px; commands: "M 18 11 A 7 7 0 1 1 4 11 A 7 7 0 1 1 18 11 M 20 20 L 16 16"; }
+                        Text { x: 31px; text: "НАЙТИ"; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; }
+                        Text { x: parent.width - self.preferred-width - 10px; text: "CTRL K"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #62646E; vertical-alignment: center; }
+                        fa := TouchArea { clicked => { S.search-open-set(true); } mouse-cursor: pointer; }
+                    }
+                    // «Состояние»: три точки — связь, синхронизация, очередь; клик — Настройки
+                    Rectangle {
+                        width: 46px;
+                        height: 32px;
+                        y: 14px;
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: S.tab == 5 ? G.accent-line : (pa.has-hover ? G.line-strong : G.line);
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 5px;
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.offline ? G.red : G.green; }
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.busy ? G.accent : S.error != "" ? G.gold : G.green; }
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.status-ok ? G.green : G.gold; }
+                        }
+                        pa := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
+                    }
+                    Rectangle {
+                        width: ct.preferred-width + 28px;
+                        height: 32px;
+                        y: 14px;
+                        border-radius: 8px;
+                        background: ca.has-hover ? #FFFFFF : G.ink;
+                        ct := Text { text: "＋ Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
+                        ca := TouchArea { clicked => { S.create(""); } mouse-cursor: pointer; }
+                    }
+                }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+            }
+            if S.offline && S.signed-in: Rectangle {
+                height: 26px;
+                background: #3A2020;
+                Text { text: "Нет связи с Google — правки сохранены здесь и уйдут сами, когда связь вернётся"; color: G.red; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+            }
+            // Тело
+            Rectangle {
+                vertical-stretch: 1;
+                // клик по пустому месту возвращает клавиши окну (1–5, N, R…)
+                TouchArea { clicked => { keys.focus(); } }
+                if !S.signed-in: Rectangle {
+                    Node {
+                        x: (parent.width - self.width) / 2;
+                        y: (parent.height - self.height) / 2;
+                        width: 460px;
+                        height: 300px;
+                        num: "01";
+                        title: "ВХОД";
+                        head: G.head-main;
+                        main: true;
+                        VerticalLayout {
+                            padding: 22px;
+                            spacing: 12px;
+                            Text { text: "Спутник работает поверх твоих Google Задач и Календаря. Своего сервера нет: данные остаются в Google и на этом компьютере."; wrap: word-wrap; color: G.ink; font-size: 14px; }
+                            Text { text: "Google спросит доступ к Задачам, Календарю и скрытой папке приложения на Drive (для синхронизации между компьютерами). Оставь все галочки."; wrap: word-wrap; color: G.muted; font-size: 12px; }
+                            Text { text: S.error; color: G.red; font-size: 13px; wrap: word-wrap; visible: S.error != ""; }
+                            HorizontalLayout {
+                                alignment: start;
+                                spacing: 8px;
+                                Button { text: S.logging-in ? "Жду ответа в браузере…" : "Войти в Google"; primary: !S.logging-in; clicked => { if (!S.logging-in) { S.login(); } } }
+                                if S.logging-in: Button { text: "Отмена"; clicked => { S.cancel-login(); } }
+                            }
+                        }
+                    }
+                }
+                if S.signed-in && S.tab == 0: TodayPage { }
+                if S.signed-in && S.tab == 1: CalendarPage { }
+                if S.signed-in && S.tab == 2: BoardPage { }
+                if S.signed-in && S.tab == 3: HabitsPage { }
+                if S.signed-in && S.tab == 4: NotesPage { }
+                if S.tab == 5: SettingsPage { }
+            }
+        }
+
+        // Плашка
+        if S.toast != "": Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - 64px;
+            width: tr.preferred-width + 32px;
+            height: 40px;
+            border-radius: G.r-node;
+            background: G.node-hover;
+            border-width: 1px;
+            border-color: G.line;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #0009;
+            tr := HorizontalLayout {
+                x: 16px;
+                spacing: 14px;
+                Text { text: S.toast; color: G.ink; font-size: 13px; vertical-alignment: center; }
+                if S.toast-label != "": Text {
+                    text: S.toast-label;
+                    color: G.accent;
+                    font-size: 13px;
+                    font-weight: 600;
+                    vertical-alignment: center;
+                    TouchArea { clicked => { S.toast-act(); } mouse-cursor: pointer; }
+                }
+            }
+        }
+
+        if S.task-open: TaskDialog { }
+        if S.create-open: CreateDialog { }
+        if S.search-open: SearchDialog { }
+        upd := Rectangle {
+            visible: false;
+            x: parent.width - 520px;
+            y: 52px;
+            width: 380px;
+            height: ul.preferred-height;
+            background: G.node;
+            border-radius: G.r-node;
+            border-width: 1px;
+            border-color: G.accent-line;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #00000080;
+            TouchArea { }
+            ul := VerticalLayout {
+                padding: 14px;
+                spacing: 10px;
+                Mono { text: "ЧТО НОВОГО · " + S.upd-version; color: G.accent-ink; }
+                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+                    Button { text: "Позже"; clicked => { upd.visible = false; S.upd-later(); } }
+                    Button { text: S.upd-busy ? "Скачиваю…" : "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                }
+            }
+        }
+        if S.confirm != "": Confirm { }
+    }
+    init => { keys.focus(); }
+}

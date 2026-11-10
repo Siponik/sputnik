@@ -1,0 +1,176 @@
+// «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
+// справа — ссылки [[…]] из неё и обратные ссылки.
+import { G } from "theme.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg } from "kit.slint";
+import { S, NoteRow, GDot, GLine } from "store.slint";
+import { ScrollView, TextEdit } from "std-widgets.slint";
+
+component NoteList inherits VerticalLayout {
+    in property <[NoteRow]> rows;
+    in property <string> cur;
+    for r in rows: Rectangle {
+        height: 40px;
+        background: r.path == cur ? G.accent-wash : (na.has-hover ? G.node-hover : transparent);
+        VerticalLayout {
+            padding-left: 14px;
+            padding-right: 10px;
+            alignment: center;
+            Text { text: r.title; color: G.ink; font-size: 13px; overflow: elide; }
+            Text { text: r.sub; color: G.dim; font-size: 10px; overflow: elide; }
+        }
+        na := TouchArea { clicked => { S.note-open(r.path); } mouse-cursor: pointer; }
+    }
+}
+
+
+// Граф: точки — заметки, линии — [[ссылки]]. Колесо — масштаб, тянуть — двигать, клик — открыть.
+// С ×1.8 у точек видны названия, у выбранной заметки соседи подсвечены.
+component Graph inherits Rectangle {
+    in-out property <float> k: 1;
+    in-out property <length> ox;
+    in-out property <length> oy;
+    property <length> base: min(self.width, self.height) / 1000 * 0.92;
+    property <length> lx;
+    property <length> ly;
+    property <bool> moved-far;
+    clip: true;
+    background: G.bg;
+    pan := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down) { root.lx = self.mouse-x; root.ly = self.mouse-y; root.moved-far = false; }
+        }
+        moved => {
+            if (self.pressed) {
+                root.ox += self.mouse-x - root.lx;
+                root.oy += self.mouse-y - root.ly;
+                root.lx = self.mouse-x;
+                root.ly = self.mouse-y;
+            }
+        }
+        scroll-event(e) => {
+            if (e.delta-y != 0) {
+                root.k = max(0.3, min(8, root.k * (e.delta-y > 0 ? 1.15 : 1 / 1.15)));
+                return accept;
+            }
+            reject
+        }
+        mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
+    }
+    for l in S.graph-lines: Path {
+        x: 0; y: 0;
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
+        stroke: l.near ? G.accent : G.line-strong;
+        stroke-width: l.near ? 1.5px : 1px;
+        opacity: l.near ? 1 : 0.6;
+        MoveTo { x: (root.width / 2 + (l.x1 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y1 - 500) * root.base * root.k + root.oy) / 1px; }
+        LineTo { x: (root.width / 2 + (l.x2 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y2 - 500) * root.base * root.k + root.oy) / 1px; }
+    }
+    for d in S.graph-dots: Rectangle {
+        property <length> cx: root.width / 2 + (d.x - 500) * root.base * root.k + root.ox;
+        property <length> cy: root.height / 2 + (d.y - 500) * root.base * root.k + root.oy;
+        property <length> rr: d.r * 1px * min(2, max(1, root.k * 0.7)) + (da.has-hover ? 2px : 0);
+        x: cx - rr;
+        y: cy - rr;
+        width: rr * 2;
+        height: rr * 2;
+        border-radius: rr;
+        background: d.cur ? G.accent : (d.missing ? transparent : (d.near ? G.accent-ink : G.ink.with-alpha(0.75)));
+        border-width: d.missing ? 1px : 0;
+        border-color: G.dim;
+        da := TouchArea { clicked => { S.graph-open(d.path, d.title); } mouse-cursor: pointer; }
+        if root.k >= 1.8 || d.cur || d.near || da.has-hover: Text {
+            x: (parent.width - self.preferred-width) / 2;
+            y: parent.height + 3px;
+            text: d.title;
+            font-size: 11px;
+            color: d.cur ? G.accent-ink : (d.missing ? G.dim : G.ink);
+        }
+    }
+    HorizontalLayout {
+        x: parent.width - 150px;
+        width: 138px;
+        height: 30px;
+        y: parent.height - 42px;
+        spacing: 6px;
+        Button { text: "−"; clicked => { root.k = max(0.3, root.k / 1.3); } }
+        Button { text: "＋"; clicked => { root.k = min(8, root.k * 1.3); } }
+        Button { text: "⤢"; clicked => { root.k = 1; root.ox = 0; root.oy = 0; } }
+    }
+    Mono { x: 14px; y: parent.height - 30px; text: S.graph-dots.length + " ЗАМЕТОК · " + S.graph-lines.length + " СВЯЗЕЙ"; }
+}
+
+export component NotesPage inherits Rectangle {
+    property <string> body: S.note-body;
+    HorizontalLayout {
+        Rectangle {
+            width: 260px;
+            background: G.bg;
+            Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
+            VerticalLayout {
+                padding-top: 10px;
+                spacing: 6px;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 10px;
+                    Field { placeholder: "Найти в заметках…"; font-size: 13px; edited(t) => { S.note-search(t); } }
+                }
+                ScrollView { vertical-stretch: 1; NoteList { rows: S.notes; cur: S.note-path; } }
+                HorizontalLayout {
+                    padding: 10px;
+                    Field { placeholder: "＋ Новая заметка · Enter"; font-size: 13px; accepted(t) => { if (t != "") { S.note-new(t); self.clear(); } } }
+                }
+            }
+        }
+        Rectangle {
+            horizontal-stretch: 1;
+            Seg { x: parent.width - 200px; width: 176px; y: 4px; z: 2; items: ["ЗАМЕТКА", "ГРАФ"]; current: S.note-graph ? 1 : 0; picked(i) => { S.note-graph-set(i == 1); } }
+            if S.note-graph: Graph { y: 36px; height: parent.height - 36px; }
+            if !S.note-graph && S.note-path == "": Empty { text: S.notes.length == 0 ? "Заметок пока нет. Укажи папку в Настройки → Синхронизация или создай первую слева." : "Выбери заметку слева"; pose: "think"; }
+            if !S.note-graph && S.note-path != "": Node {
+                x: 24px;
+                y: 36px;
+                width: parent.width - 48px;
+                height: parent.height - 56px;
+                num: "MD";
+                title: S.note-title.to-uppercase();
+                aside: S.note-dirty ? "● не сохранено" : "";
+                head: G.head-main;
+                main: true;
+                VerticalLayout {
+                    padding: 12px;
+                    spacing: 8px;
+                    ed := TextEdit {
+                        vertical-stretch: 1;
+                        text: S.note-body;
+                        font-size: 14px;
+                        wrap: word-wrap;
+                        edited(t) => { root.body = t; S.note-edited(); }
+                    }
+                    HorizontalLayout {
+                        alignment: end;
+                        spacing: 8px;
+                        Button { text: "Сохранить"; primary: true; clicked => { S.note-save(ed.text); } }
+                    }
+                }
+            }
+        }
+        Rectangle {
+            width: 240px;
+            background: G.bg;
+            Rectangle { x: 0; width: 1px; background: G.line; }
+            VerticalLayout {
+                padding: 14px;
+                spacing: 6px;
+                alignment: start;
+                Mono { text: "ССЫЛКИ ОТСЮДА"; }
+                for l in S.note-links: Link { text: "[[" + l.title + "]]" + (l.path == "" ? " ＋" : ""); clicked => { S.note-link(l.title); } }
+                Rectangle { height: 12px; }
+                Mono { text: "ССЫЛАЮТСЯ СЮДА"; }
+                for l in S.note-back: Link { text: l.title; clicked => { S.note-open(l.path); } }
+            }
+        }
+    }
+}

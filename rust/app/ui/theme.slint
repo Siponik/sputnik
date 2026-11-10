@@ -1,0 +1,50 @@
+// Токены «Системы G» (docs/design-g.md, утверждена 05.11; те же значения, что app/lib/ui/theme/tokens.dart).
+// Тёмная тема — основная. Шрифты Onest и JetBrains Mono вшиты в сборку (app/assets/fonts).
+import "../../../app/assets/fonts/Onest-400.ttf";
+import "../../../app/assets/fonts/Onest-500.ttf";
+import "../../../app/assets/fonts/Onest-600.ttf";
+import "../../../app/assets/fonts/Onest-200.ttf";
+import "../../../app/assets/fonts/JetBrainsMono-400.ttf";
+import "../../../app/assets/fonts/JetBrainsMono-500.ttf";
+import "../../../app/assets/fonts/JetBrainsMono-600.ttf";
+
+export global G {
+    out property <color> ground: #191A1E;
+    out property <color> bg: #1C1D21;
+    out property <color> node: #25262B;
+    out property <color> node-hover: #2C2D33;
+    out property <color> line: #3A3B42;
+    out property <color> line-soft: #303137;
+    out property <color> line-strong: #6E7079;
+    out property <color> ink: #E2E3E8;
+    out property <color> muted: #9A9CA6;
+    out property <color> dim: #7A7C86;
+    out property <color> accent: #F0A04B;
+    out property <color> accent-ink: #FFD29C;
+    out property <color> accent-wash: #2E2722;
+    out property <color> accent-line: #6A5238;
+    out property <color> on-accent: #2A1A0A;
+    out property <color> blue: #6FA2F2;
+    out property <color> violet: #B48CF0;
+    out property <color> green: #7FD18C;
+    out property <color> gold: #E8C65A;
+    out property <color> grey: #A3A5AE;
+    out property <color> red: #F0785F;
+    out property <color> head-main: #9A5A22;
+    out property <color> dot: #ffffff12;
+    out property <string> sans: "Onest";
+    out property <string> mono: "JetBrains Mono";
+    // Скругления: нода 8, главная нода 12, кнопки 6, сокеты 3.
+    out property <length> r-node: 8px;
+    out property <length> r-main: 12px;
+    out property <length> r-btn: 6px;
+    // Движение (мс): быстрые отклики короткие, чтобы интерфейс не казался вязким.
+    out property <duration> fast: 120ms;
+    out property <duration> mid: 200ms;
+}
+
+// Цвета сфер по порядку и их тёмные шапки.
+export global Hues {
+    out property <[color]> hue: [#A3A5AE, #F0A04B, #B48CF0, #6FA2F2, #7FD18C, #E8C65A, #F0785F];
+    out property <[color]> head: [#3D3E45, #8A5320, #5E3F92, #2F4F86, #2E6B3E, #7A6620, #8A3A2E];
+}

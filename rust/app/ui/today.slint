@@ -1,0 +1,413 @@
+// «Сегодня» по макету G_Today (design/system-g/screens): холст 1220 px по центру.
+// Слева «01 · Источники» — ноды списков, «От Claude» и привычек; провода к строкам «Сборки дня» в середине;
+// справа «03 · Вывод» — «Дальше» и «Итог дня». Координаты проводов считает Rust (view/today.rs).
+import { G } from "theme.slint";
+import { Mono, Brackets, Button, Field, Empty } from "kit.slint";
+import { S, TaskRow, SrcNode, Wire } from "store.slint";
+
+component SecLabel inherits HorizontalLayout {
+    in property <string> text;
+    spacing: 8px;
+    Text { text: root.text; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.6px; color: #62646E; vertical-alignment: center; }
+    Rectangle { height: 1px; y: (parent.height - 1px) / 2; background: G.line; }
+}
+
+component Sock inherits Rectangle {
+    in property <color> fill;
+    in property <bool> hollow;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: hollow ? G.bg : fill;
+    border-width: 1.5px;
+    border-color: hollow ? fill : G.bg;
+}
+
+// Нода-источник: шапка цвета сферы (тёмный тон), строки по 28 px, сокет справа у каждой строки.
+component Source inherits Rectangle {
+    in property <SrcNode> n;
+    in property <int> num;
+    width: 230px;
+    height: n.h * 1px;
+    border-radius: 8px;
+    background: G.node;
+    border-width: 1px;
+    border-color: n.dashed ? #55575F : G.line;
+    Rectangle {
+        x: 0; y: 0;
+        height: 30px;
+        border-radius: 7px;
+        background: n.dashed ? #3D3E45 : n.hue.mix(#1a1a1a, 0.5);
+        Rectangle { y: parent.height - 7px; height: 7px; background: parent.background; }
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 10px;
+            spacing: 8px;
+            Text { text: (num < 10 ? "0" + num : num) + "  " + n.title; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            Text { text: n.label; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffb8; vertical-alignment: center; }
+        }
+    }
+    for r[j] in n.rows: Rectangle {
+        x: 0;
+        y: 30px + j * 28px;
+        height: 28px;
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 16px;
+            spacing: 8px;
+            Text { text: r.title; font-size: 13px; color: r.done ? G.dim : (r.accent ? G.accent-ink : G.ink); vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            Text { text: r.right; font-family: G.mono; font-size: 11px; color: r.accent ? G.accent : #8A8C96; vertical-alignment: center; }
+        }
+        if r.done: Rectangle { x: 12px; y: 14px; height: 1px; width: min(parent.width - 80px, 140px); background: G.dim; }
+        Sock { x: parent.width - 6px; y: 9px; fill: n.dashed ? #A3A5AE : (r.done ? #7C7E88 : n.hue); hollow: n.dashed; }
+    }
+}
+
+component Check2 inherits Rectangle {
+    in property <bool> done;
+    in property <bool> hot;
+    callback toggled;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    background: done ? #45464D : transparent;
+    border-width: done ? 0 : 1px;
+    border-color: hot ? G.accent : #8A8C96;
+    if done: Text { text: "✓"; font-size: 9px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+    TouchArea { clicked => { root.toggled(); } mouse-cursor: pointer; }
+}
+
+component DayRow inherits Rectangle {
+    in property <TaskRow> item;
+    in property <int> n;
+    in property <bool> next;
+    height: next ? 86px : 40px;
+    border-radius: next ? 8px : 0;
+    background: next ? #2E2722 : (ta.has-hover ? G.node-hover : transparent);
+    border-width: next ? 1px : 0;
+    border-color: G.accent;
+    ta := TouchArea { clicked => { S.open-task(item.list-id, item.id); } mouse-cursor: pointer; }
+    HorizontalLayout {
+        y: 0;
+        height: 40px;
+        padding-left: 10px;
+        padding-right: 10px;
+        spacing: 12px;
+        Text { text: n < 10 ? "0" + n : n; font-family: G.mono; font-size: 10.5px; color: next ? G.accent : #62646E; width: 16px; vertical-alignment: center; }
+        Check2 { done: item.done; hot: next; y: 13px; toggled => { S.toggle(item.list-id, item.id); } }
+        Text { text: item.when == "" ? "ДЕНЬ" : item.when; font-family: G.mono; font-size: 11.5px; width: 42px; color: item.overdue ? G.red : (next ? G.accent-ink : #8A8C96); vertical-alignment: center; overflow: elide; }
+        Text {
+            text: (item.prio == 1 ? "!!! " : "") + item.title;
+            font-size: 14px;
+            font-weight: next ? 600 : 400;
+            color: item.done ? #62646E : G.ink;
+            vertical-alignment: center;
+            overflow: elide;
+            horizontal-stretch: 1;
+        }
+        if next: Text { text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent; vertical-alignment: center; }
+        if !next: Rectangle { width: 6px; height: 6px; y: 17px; border-radius: 2px; background: item.done ? transparent : item.hue; }
+    }
+    if item.done: Rectangle { x: 136px; y: 20px; height: 1px; width: min(parent.width - 180px, 120px); background: #62646E; }
+    if next: HorizontalLayout {
+        x: 96px;
+        y: 44px;
+        height: 30px;
+        width: 220px;
+        spacing: 8px;
+        Button { text: "Открыть"; primary: true; height: 30px; clicked => { S.open-task(item.list-id, item.id); } }
+        Button { text: "На завтра"; height: 30px; clicked => { S.card-menu(item.list-id, item.id, "tomorrow"); } }
+    }
+    if !next: Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+}
+
+export component TodayPage inherits Rectangle {
+    public function focus-quick() { quick.grab(); }
+    cv := Rectangle {
+        x: max(0px, (parent.width - 1220px) / 2);
+        y: 24px;
+        width: 1220px;
+        height: parent.height - 24px;
+
+        SecLabel { x: 20px; y: 0; width: 230px; height: 12px; text: "01 · ИСТОЧНИКИ"; }
+        SecLabel { x: 380px; y: 0; width: 470px; height: 12px; text: "02 · СБОРКА ДНЯ"; }
+        SecLabel { x: 920px; y: 0; width: 280px; height: 12px; text: "03 · ВЫВОД"; }
+
+        // провода: источник → строка дня
+        for w in S.today-wires: Path {
+            x: 0; y: 0;
+            width: 1220px;
+            height: cv.height;
+            viewbox-width: 1220;
+            viewbox-height: cv.height / 1px;
+            stroke: w.hue;
+            stroke-width: w.dashed ? 2px : 1.5px;
+            opacity: w.dashed ? 0.9 : 0.85;
+            commands: "M 250 " + w.y1 + " C 310 " + w.y1 + " 320 " + w.y2 + " 380 " + w.y2;
+        }
+        // провода справа: «Дальше» и привычки → вывод
+        if S.next-at >= 0: Path {
+            x: 0; y: 0; width: 1220px; height: cv.height; viewbox-width: 1220; viewbox-height: cv.height / 1px;
+            stroke: G.accent; stroke-width: 2px;
+            commands: "M 850 " + (20 + S.rows-top + S.next-at * 46 + 20) + " C 890 " + (20 + S.rows-top + S.next-at * 46 + 20) + " 880 70 920 70";
+        }
+        if S.today-habits.length > 0: Path {
+            x: 0; y: 0; width: 1220px; height: cv.height; viewbox-width: 1220; viewbox-height: cv.height / 1px;
+            stroke: G.ink; stroke-width: 1.5px;
+            commands: "M 850 " + (20 + S.habits-y) + " C 890 " + (20 + S.habits-y) + " 880 196 920 196";
+        }
+
+        for n[i] in S.today-src: Source { x: 20px; y: n.y * 1px; n: n; num: i + 1; }
+
+        // 02 · сборка дня
+        main := Rectangle {
+            x: 380px;
+            y: 20px;
+            width: 470px;
+            height: max(200px, S.center-h * 1px);
+            border-radius: 12px;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.accent-line;
+            drop-shadow-blur: 40px;
+            drop-shadow-offset-y: 18px;
+            drop-shadow-color: #00000059;
+            Rectangle {
+                x: 0; y: 0; height: 34px;
+                border-radius: 11px;
+                background: #8A5320;
+                Rectangle { y: parent.height - 11px; height: 11px; background: parent.background; }
+                HorizontalLayout {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    spacing: 10px;
+                    Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; }
+                    Text { text: S.today-label; font-family: G.mono; font-size: 11px; letter-spacing: 1.6px; color: #ffffffb8; vertical-alignment: center; }
+                    Rectangle { }
+                    Text { text: S.today-count + " ЗАДАЧИ · " + S.today-habits.length + " ПРИВЫЧКИ"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb8; vertical-alignment: center; }
+                }
+            }
+            Rectangle {
+                x: 12px; y: 46px; width: parent.width - 24px; height: 36px;
+                border-radius: 8px;
+                background: G.bg;
+                border-width: 1px;
+                border-color: G.line;
+                Text { x: 10px; text: "+"; color: G.accent; font-size: 15px; vertical-alignment: center; }
+                quick := Field {
+                    x: 26px;
+                    width: parent.width - 100px;
+                    height: 34px;
+                    y: 1px;
+                    bare: true;
+                    placeholder: "Добавить: «завтра 17:00 рендер щита»";
+                    font-size: 13.5px;
+                    edited(t) => { S.quick-changed(t); }
+                    accepted(t) => { if (t != "") { S.quick-add(t); self.clear(); S.quick-changed(""); } }
+                    shift-enter(t) => { S.quick-full(t); self.clear(); }
+                    escape => { self.clear(); S.quick-changed(""); }
+                }
+                Text { x: parent.width - self.preferred-width - 10px; text: "SHIFT A"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #62646E; vertical-alignment: center; }
+            }
+            if S.understood.length > 0: HorizontalLayout {
+                x: 14px; y: 86px; height: 20px;
+                spacing: 6px;
+                alignment: start;
+                Mono { text: "ПОНЯЛ:"; vertical-alignment: center; font-size: 10px; }
+                for u in S.understood: Rectangle {
+                    width: ut.preferred-width + 12px;
+                    border-radius: 4px;
+                    background: G.node-hover;
+                    ut := Text { text: u; font-size: 11.5px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                }
+                Rectangle {
+                    width: dt.preferred-width + 12px;
+                    border-radius: 4px;
+                    background: G.accent-wash;
+                    dt := Text { text: "→ " + S.dest; font-size: 11.5px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
+                }
+            }
+            if S.day-rows.length == 0: Empty {
+                x: 0; y: S.rows-top * 1px; width: parent.width; height: 160px;
+                pose: S.done-count > 0 ? "cheer" : "hi";
+                text: S.busy ? "Загружаю задачи…" : S.done-count > 0 ? "Всё на сегодня сделано" : "На сегодня ничего — добавь первое дело сверху";
+            }
+            for t[i] in S.day-rows: DayRow {
+                x: 12px;
+                width: parent.width - 24px;
+                y: (S.rows-top + i * 46 + (S.next-at >= 0 && i > S.next-at ? 46 : 0)) * 1px;
+                item: t;
+                n: i + 1;
+                next: i == S.next-at;
+            }
+            for t[i] in S.day-rows: Sock {
+                x: -6px;
+                y: (S.rows-top + i * 46 + (S.next-at >= 0 && i > S.next-at ? 46 : 0) + 15) * 1px;
+                fill: t.done ? #7C7E88 : t.hue;
+            }
+            if S.next-at >= 0: Sock { x: parent.width - 4px; y: (S.rows-top + S.next-at * 46 + 15) * 1px; fill: G.accent; }
+            if S.inbox.length > 0: Rectangle {
+                x: 12px; y: (S.claude-y - 19) * 1px; width: parent.width - 24px; height: 38px;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: #55575F;
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 6px;
+                    spacing: 10px;
+                    Text { text: "+" + S.inbox.length; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; }
+                    Text { text: "От Claude ждут " + S.inbox.length + (S.inbox.length == 1 ? " задача" : S.inbox.length < 5 ? " задачи" : " задач") + ": взять в день?"; font-size: 13px; color: #A3A5AE; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                    Button { text: "Принять"; height: 26px; y: 6px; clicked => { S.accept-all(); } }
+                }
+                Sock { x: -18px; y: 14px; fill: #A3A5AE; hollow: true; }
+            }
+            if S.today-habits.length > 0: Rectangle {
+                x: 12px; y: S.habits-top * 1px; width: parent.width - 24px; height: 92px;
+                Rectangle { x: 0; y: 0; height: 1px; background: #8A7424; }
+                Text { x: 10px; y: 14px; text: "ПРИВЫЧКИ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.6px; color: G.gold; }
+                Text { x: parent.width - self.preferred-width - 10px; y: 14px; text: S.habits-done + " / " + S.today-habits.length; font-family: G.mono; font-size: 10.5px; color: #8A8C96; }
+                HorizontalLayout {
+                    x: 10px; y: 40px; height: 32px;
+                    spacing: 8px;
+                    alignment: start;
+                    for h in S.today-habits: Rectangle {
+                        width: ht.preferred-width + 24px;
+                        border-radius: 16px;
+                        background: h.done ? G.gold : (hp.has-hover ? G.node-hover : transparent);
+                        border-width: h.done ? 0 : 1px;
+                        border-color: #8A7424;
+                        ht := Text {
+                            text: (h.done ? "✓ " : "") + h.name + (h.goal > 1 ? " " + h.count + "/" + h.goal : "");
+                            font-size: 12.5px;
+                            font-weight: 500;
+                            color: h.done ? #1C1D21 : G.ink;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        hp := TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
+                    }
+                }
+                Sock { x: -18px; y: 33px; fill: G.gold; }
+                Sock { x: parent.width + 6px; y: 33px; fill: G.ink; }
+            }
+        }
+        Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
+        Text {
+            x: 380px; y: main.y + main.height + 14px; width: 470px;
+            text: "|  —  " + S.today-label + " · ЗАДАЧ " + S.total-count + " · СДЕЛАНО " + S.done-count + "  —  |";
+            font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #62646E; horizontal-alignment: center;
+        }
+
+        // 03 · вывод
+        Rectangle {
+            x: 920px; y: 20px; width: 280px; height: 110px;
+            border-radius: 8px;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.line;
+            Rectangle {
+                x: 0; y: 0; height: 30px; border-radius: 7px; background: #8A5320;
+                Rectangle { y: 23px; height: 7px; background: parent.background; }
+                HorizontalLayout {
+                    padding-left: 12px; padding-right: 10px;
+                    Text { text: "B1  ДАЛЬШЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+                    Rectangle { }
+                    Text { text: S.next-time; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffb8; vertical-alignment: center; }
+                }
+            }
+            Text { x: 12px; y: 44px; width: parent.width - 24px; text: S.next-title == "" ? "Пусто — можно отдохнуть" : S.next-title; font-size: 15px; font-weight: 600; color: S.next-title == "" ? G.muted : G.ink; overflow: elide; }
+            Text { x: 12px; y: 72px; width: parent.width - 24px; text: S.next-meta != "" && S.next-title != "" ? S.next-meta : S.next-why; font-family: G.mono; font-size: 10.5px; letter-spacing: 1px; color: #8A8C96; overflow: elide; }
+            Sock { x: -6px; y: 45px; fill: G.accent; }
+        }
+        Rectangle {
+            x: 920px; y: 150px; width: 280px; height: 172px;
+            border-radius: 8px;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.line;
+            Rectangle {
+                x: 0; y: 0; height: 30px; border-radius: 7px; background: #3D3E45;
+                Rectangle { y: 23px; height: 7px; background: parent.background; }
+                Text { x: 12px; text: "B2  ИТОГ ДНЯ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+            }
+            VerticalLayout {
+                y: 30px;
+                height: parent.height - 30px;
+                padding: 12px;
+                spacing: 8px;
+                HorizontalLayout {
+                    Text { text: "Задачи"; font-size: 13px; color: G.ink; }
+                    Rectangle { }
+                    Text { text: S.done-count + " / " + S.total-count; font-family: G.mono; font-size: 12px; color: G.ink; }
+                }
+                Rectangle { height: 1px; background: G.line-soft; }
+                HorizontalLayout {
+                    Text { text: "Привычки"; font-size: 13px; color: G.ink; }
+                    Rectangle { }
+                    Text { text: S.habits-done + " / " + S.today-habits.length; font-family: G.mono; font-size: 12px; color: G.ink; }
+                }
+                Rectangle { height: 1px; background: G.line-soft; }
+                HorizontalLayout {
+                    spacing: 6px;
+                    Rectangle { width: 1px; height: 8px; background: #55575F; }
+                    Rectangle { height: 1px; y: 4px; background: #55575F; }
+                    Text { text: "12 Ч"; font-family: G.mono; font-size: 9px; color: #62646E; }
+                    Rectangle { height: 1px; y: 4px; background: #55575F; }
+                    Rectangle { width: 1px; height: 8px; background: #55575F; }
+                }
+                HorizontalLayout {
+                    height: 14px;
+                    spacing: 4px;
+                    for c in S.hour-cells: Rectangle { border-radius: 2px; background: c.alpha > 0 ? c.mix(#1C1D21, 0.7) : #36373D; }
+                }
+                HorizontalLayout {
+                    Text { text: "09"; font-family: G.mono; font-size: 9px; color: #62646E; }
+                    Rectangle { }
+                    Text { text: "15"; font-family: G.mono; font-size: 9px; color: #62646E; }
+                    Rectangle { }
+                    Text { text: "21"; font-family: G.mono; font-size: 9px; color: #62646E; }
+                }
+            }
+            Sock { x: -6px; y: 41px; fill: G.ink; }
+        }
+        if S.today-events.length > 0: Rectangle {
+            x: 920px; y: 342px; width: 280px; height: 30px + 12px + min(S.today-events.length, 5) * 26px;
+            border-radius: 8px;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.line;
+            Rectangle {
+                x: 0; y: 0; height: 30px; border-radius: 7px; background: #2F4F86;
+                Rectangle { y: 23px; height: 7px; background: parent.background; }
+                Text { x: 12px; text: "B3  ВСТРЕЧИ · " + S.today-events.length; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+            }
+            VerticalLayout {
+                y: 36px; height: parent.height - 36px;
+                padding-left: 12px; padding-right: 12px;
+                for e in S.today-events: HorizontalLayout {
+                    height: 26px;
+                    spacing: 10px;
+                    Text { text: e.time; font-family: G.mono; font-size: 11px; width: 44px; vertical-alignment: center; color: #8A8C96; }
+                    Text { text: e.title; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                }
+            }
+        }
+        // штамп листа
+        Rectangle {
+            x: 920px; y: main.y + main.height - 52px; width: 280px; height: 52px;
+            border-radius: 6px;
+            border-width: 1px;
+            border-color: G.line;
+            Text { x: 8px; y: 6px; text: "ЛИСТ · СЕГОДНЯ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
+            Rectangle { x: 0; y: 24px; height: 1px; background: G.line; }
+            HorizontalLayout {
+                y: 24px; height: 28px;
+                Text { text: S.now-label; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+                Rectangle { width: 1px; background: G.line; }
+                Text { text: "ЗАДАЧ " + S.total-count; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+                Rectangle { width: 1px; background: G.line; }
+                Text { text: "ВЕРСИЯ " + S.version; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+    }
+}
