@@ -10,7 +10,7 @@ class FakeDate extends RealDate {
 globalThis.Date = FakeDate;
 const R = await import('../../tracker/src/lib/reminders.js');
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 const write = (name, data) => writeFileSync(new URL(name, OUT), '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n');
 const out = [];

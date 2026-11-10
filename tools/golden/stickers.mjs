@@ -3,7 +3,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import * as TD from '../../tracker/src/lib/today.js';
 import * as S from '../../tracker/src/lib/stickers.js';
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 const write = (name, data) => writeFileSync(new URL(name, OUT), '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n');
 

@@ -3,7 +3,7 @@
 use serde_json::Value;
 
 pub fn load(name: &str) -> Vec<Value> {
-    let p = format!("{}/../../app/test/golden/{name}", env!("CARGO_MANIFEST_DIR"));
+    let p = format!("{}/tests/golden/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_str(&std::fs::read_to_string(&p).expect(&p)).unwrap()
 }
 

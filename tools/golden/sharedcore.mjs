@@ -2,7 +2,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import * as sh from '../../tracker/src/lib/sharedcore.js';
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 const write = (name, data) => writeFileSync(new URL(name, OUT), '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n');
 const out = [];

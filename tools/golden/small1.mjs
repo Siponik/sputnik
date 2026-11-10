@@ -5,7 +5,7 @@ import { norm, score, findTasks, findPlaces } from '../../tracker/src/lib/search
 import { spentMin, runningId, toggle, stopPatch, fmtMin, clock } from '../../tracker/src/lib/timer.js';
 import { keepLocal } from '../../tracker/src/lib/fresh.js';
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 const write = (name, data) => writeFileSync(new URL(name, OUT), '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n');
 
