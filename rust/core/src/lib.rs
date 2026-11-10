@@ -12,6 +12,7 @@ pub mod rx;
 pub mod search;
 pub mod small;
 pub mod spheres;
+pub mod stickers;
 pub mod templates;
 pub mod today;
 pub mod when;
