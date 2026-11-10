@@ -50,12 +50,12 @@ def header(active='СЕГОДНЯ', right='ЧТ 05.11 · 14:52', hx=''):
     tabs = ''
     for t in ['СЕГОДНЯ', 'КАЛЕНДАРЬ', 'ДОСКА', 'ПРИВЫЧКИ']:
         if t == active:
-            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">{t}</a>'
+            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding: 4px 0 3px; border-bottom: 1px solid {OR}">{t}</a>'
         else:
-            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}">{t}</a>'
+            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">{t}</a>'
     return f'''<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 16px 14px 20px; border-bottom: 1px solid {LINE}; background: {BG}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
-    <nav aria-label="Разделы" style="display: flex; gap: 18px; margin-left: 14px; flex-wrap: wrap">{tabs}</nav>
+    <span title="Спутник" style="display: flex; align-items: center">{LOGO}</span>
+    <nav aria-label="Разделы" style="display: flex; align-items: center; gap: 18px; margin-left: 6px; flex-wrap: wrap">{tabs}</nav>
     <span style="flex: 1"></span>
     {hx}<span style="color: {MUT}; margin-right: 6px">{right}</span>
     <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}; min-width: 150px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>НАЙТИ<span style="margin-left: auto; font-size: 10px; color: {DIM}">CTRL K</span></span>
