@@ -322,6 +322,10 @@ export global S {
     in property <[NoteRow]> note-links;
     in property <[NoteRow]> note-back;
     in property <bool> note-dirty;
+    in property <int> notes-count;
+    in property <string> note-file;
+    in property <string> note-crumb;
+    in property <int> note-words;
     callback note-search(string);
     callback note-open(string);
     callback note-save(string);
