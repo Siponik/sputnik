@@ -7,6 +7,7 @@ pub mod authcheck;
 pub mod create;
 pub mod dates;
 pub mod dropdown;
+pub mod graph;
 pub mod habits;
 pub mod inbox;
 pub mod j;

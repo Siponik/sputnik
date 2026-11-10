@@ -90,4 +90,12 @@ pub fn fill(app: &mut App) {
     log.insert(format!("hb1|{}", day(0)), json!({"n": 3, "t": t}));
     app.layer["log"] = Value::Object(log);
     app.inbox_st = json!({"processed": [{"created": [{"listId": "work", "taskId": "w5"}], "at": format!("{}T08:00:00Z", day(0))}]});
+    // заметки — только в памяти (root = None: сохранять некуда, папка не трогается)
+    let ns = [("Идеи/Сундук.md", "Сундук", "Для [[Иконки RPG]]. Дерево, [[Металл]]."), ("Идеи/Меч.md", "Меч", "[[Иконки RPG]], [[Металл]], [[Ковка]]."),
+        ("Иконки RPG.md", "Иконки RPG", "Набор для клиента. [[Палитра]], [[Сундук]], [[Меч]]."), ("Палитра.md", "Палитра", "Тёплые тона, акцент [[Металл]]."),
+        ("Металл.md", "Металл", "Блики, [[Палитра]]."), ("Blender/Скульптинг.md", "Скульптинг", "Урок 12. [[Ретопология]] дальше."),
+        ("Blender/Ретопология.md", "Ретопология", "После [[Скульптинг]]."), ("Входящие.md", "Входящие", "Разобрать.")];
+    app.notes.root = None;
+    app.notes.notes = ns.iter().map(|(p, t, b)| crate::notes::Note { path: p.to_string(), title: t.to_string(), body: b.to_string(), links: crate::notes::links_of(b) }).collect();
+    app.notes.relayout();
 }

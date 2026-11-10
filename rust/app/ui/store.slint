@@ -20,6 +20,8 @@ export struct Opt { id: string, label: string, hint: string, hue: color, on: boo
 export struct Sub { id: string, title: string, done: bool }
 export struct Found { kind: string, title: string, sub: string, list-id: string, id: string }
 export struct NoteRow { path: string, title: string, sub: string }
+export struct GDot { x: float, y: float, r: float, title: string, path: string, missing: bool, near: bool, cur: bool }
+export struct GLine { x1: float, y1: float, x2: float, y2: float, near: bool }
 
 export global S {
     // ---------- оболочка ----------
@@ -222,4 +224,9 @@ export global S {
     callback note-new(string);
     callback note-link(string);
     callback note-edited();
+    in property <bool> note-graph;
+    in property <[GDot]> graph-dots;
+    in property <[GLine]> graph-lines;
+    callback note-graph-set(bool);
+    callback graph-open(string, string);
 }

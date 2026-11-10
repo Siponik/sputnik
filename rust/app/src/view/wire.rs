@@ -494,6 +494,11 @@ pub fn wire(w: &AppWindow) {
         u.note_path = str_(&p);
         u.note_dirty = false;
     }));
+    g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
+    g.on_graph_open(|p, t| act(|app, u| {
+        u.note_graph = false;
+        if p.is_empty() { new_note(app, u, &t) } else { u.note_path = str_(&p); u.note_dirty = false; }
+    }));
     g.on_note_edited(|| act(|_, u| u.note_dirty = true));
     g.on_note_save(|b| act(|app, u| {
         let p = u.note_path.clone();

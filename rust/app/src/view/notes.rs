@@ -1,6 +1,7 @@
 //! Модели «Знаний».
 use super::*;
-use crate::NoteRow;
+use crate::{GDot, GLine, NoteRow};
+use sputnik_core::graph as gr;
 
 pub fn render(app: &App, u: &Ui, g: &S) {
     let n0 = &app.notes;
@@ -11,6 +12,21 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_notes(model(list));
     g.set_note_path(ss(u.note_path.clone()));
     g.set_note_dirty(u.note_dirty);
+    g.set_note_graph(u.note_graph);
+    if u.note_graph {
+        let (ns, es) = &n0.graph;
+        let cur = ns.iter().position(|x| x.id == u.note_path);
+        let near: Vec<usize> = cur.map(|c| gr::neighbors(es, c)).unwrap_or_default();
+        g.set_graph_dots(model(ns.iter().enumerate().map(|(i, x)| GDot {
+            x: x.x as f32, y: x.y as f32, r: gr::radius(x.degree) as f32, title: ss(x.label.clone()),
+            path: ss(if x.missing { String::new() } else { x.id.clone() }), missing: x.missing,
+            near: near.contains(&i), cur: Some(i) == cur,
+        }).collect()));
+        g.set_graph_lines(model(es.iter().map(|&(a, b)| GLine {
+            x1: ns[a].x as f32, y1: ns[a].y as f32, x2: ns[b].x as f32, y2: ns[b].y as f32,
+            near: cur.is_some_and(|c| a == c || b == c),
+        }).collect()));
+    }
     match n0.notes.iter().find(|x| x.path == u.note_path) {
         Some(x) => {
             g.set_note_title(ss(x.title.clone()));

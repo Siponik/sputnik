@@ -14,6 +14,8 @@ pub struct Note {
 pub struct Notes {
     pub root: Option<PathBuf>,
     pub notes: Vec<Note>,
+    /// Раскладка графа — считается при перечитывании папки, не на каждый кадр.
+    pub graph: (Vec<sputnik_core::graph::GNode>, Vec<(usize, usize)>),
 }
 
 pub fn links_of(body: &str) -> Vec<String> {
@@ -37,7 +39,7 @@ impl Notes {
         let root = crate::data::store::read("notes.json")
             .and_then(|v| v["root"].as_str().map(PathBuf::from))
             .or_else(|| Some(crate::data::store::own("notes")));
-        let mut n = Notes { root, notes: vec![] };
+        let mut n = Notes { root, notes: vec![], graph: Default::default() };
         n.rescan();
         n
     }
@@ -64,6 +66,12 @@ impl Notes {
             }
         }
         self.notes.sort_by(|a, b| a.path.cmp(&b.path));
+        self.relayout();
+    }
+
+    pub fn relayout(&mut self) {
+        let src: Vec<_> = self.notes.iter().map(|n| (n.path.clone(), n.title.clone(), n.links.clone())).collect();
+        self.graph = sputnik_core::graph::build(&src, true);
     }
 
     pub fn find(&self, title: &str) -> Option<&Note> {

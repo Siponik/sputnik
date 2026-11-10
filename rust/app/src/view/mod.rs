@@ -39,6 +39,7 @@ pub struct Ui {
     pub note_q: String,
     pub note_path: String,
     pub note_dirty: bool,
+    pub note_graph: bool,
 }
 pub use crate::Found;
 
@@ -85,6 +86,7 @@ pub fn start(app: App) -> AppWindow {
                 u.found = wire::find(&app, q);
             }
             ["note", p] => u.note_path = p.to_string(),
+            ["graph", p] => { u.note_graph = true; u.note_path = p.to_string(); }
             _ => {}
         }
     });
