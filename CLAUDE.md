@@ -9,7 +9,7 @@
 | Папка | Что | Статус |
 |---|---|---|
 | `rust/` | **Приложение Спутник** (Rust + Slint). `core/` — логика без окна и сети, с тестами; `app/` — окно. Устройство — `docs/rust-architecture.md` | основное, все новые фичи сюда |
-| `tracker/` | Старое приложение (Svelte + Tauri), его ставят из `main` | только исправления ошибок; удалить, когда Rust уйдёт в `main` |
+| `tracker/` | Старое приложение (Svelte + Tauri) | не развиваем и не чиним; удалить, когда Rust уйдёт в `main` |
 | `app/` | Flutter-версия — только образец для «Знаний» | удалить, когда «Знания» готовы в Rust |
 | `bot/` | Общий Telegram-бот @SputnikTasksBot (Cloudflare Workers + D1). Выкладка — `npx wrangler deploy` из `bot/` на компьютере пользователя, см. `bot/README.md` | работает |
 | `reminders/` | Личный бот и обработчик «Входящих от Claude» (Google Apps Script). После слияния в `main` сам выкладывается `apps-script.yml`. Руками в script.google.com не вставлять | работает |
