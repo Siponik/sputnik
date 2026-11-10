@@ -12,144 +12,260 @@ component Row inherits HorizontalLayout {
     @children
 }
 
-// Окно задачи: «Куда» сверху, название крупно, главные поля в серой плашке, подзадачи и заметка.
+// Окно задачи по макету G_TaskPanel: «Куда» сверху, название крупно, главные поля в серой плашке,
+// подзадачи, заметка, «▸ Ещё» и строка «Сохранено» внизу.
+component MChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> x-mark;
+    in property <color> hue: G.accent;
+    callback clicked;
+    height: 28px;
+    width: mt.preferred-width + (x-mark ? 36px : 22px);
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: on ? hue : G.line;
+    background: on ? hue.transparentize(0.9) : (ma.has-hover ? G.node-hover : transparent);
+    mt := Text { x: 11px; text: root.text; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: on ? (hue == G.accent ? G.accent-ink : G.ink) : #A3A5AE; vertical-alignment: center; height: parent.height; }
+    if x-mark: Text { x: parent.width - 17px; text: "×"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+    ma := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component TRow inherits Rectangle {
+    in property <string> label;
+    Text { x: 0; y: 0; height: 28px; text: root.label; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+    @children
+}
+
 export component TaskDialog inherits Overlay {
     property <bool> lists-open;
+    property <bool> menu;
+    property <bool> more;
+    property <bool> due-edit;
+    property <bool> rem-all;
+    property <length> W: min(464px, self.width - 32px);
+    property <length> fw: root.W - 36px - 24px - 112px;
     close => { S.t-close(); }
     fs := FocusScope {
         key-pressed(e) => {
             if (e.text == Key.Escape) { S.t-close(); return accept; }
             reject
         }
-        Rectangle {
-            x: parent.width - self.width - 16px;
-            y: 16px;
-            width: min(560px, parent.width - 32px);
-            height: parent.height - 32px;
-            border-radius: G.r-main;
+        win := Rectangle {
+            x: parent.width - root.W - 8px;
+            y: 80px;
+            width: root.W;
+            height: parent.height - 100px;
+            border-radius: 12px;
             background: G.node;
             border-width: 1px;
-            border-color: G.line;
-            drop-shadow-blur: 24px;
-            drop-shadow-color: #000a;
+            border-color: G.accent-line;
+            drop-shadow-blur: 28px;
+            drop-shadow-color: #000b;
+            clip: true;
             TouchArea { }
-            VerticalLayout {
-                padding: 18px;
-                spacing: 12px;
-                HorizontalLayout {
-                    spacing: 8px;
-                    Mono { text: "КУДА"; vertical-alignment: center; }
-                    Rectangle {
-                        width: lt.preferred-width + 24px;
-                        height: 26px;
-                        border-radius: 13px;
-                        background: G.accent-wash;
-                        border-width: 1px;
-                        border-color: G.accent-line;
-                        lt := Text { text: S.t-list-name + " ▾"; color: G.accent-ink; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-                        TouchArea { clicked => { root.lists-open = !root.lists-open; } mouse-cursor: pointer; }
-                    }
-                    Rectangle { }
-                    Button { text: "Копия"; height: 28px; clicked => { S.t-dup(); } }
-                    Button { text: "Удалить"; height: 28px; clicked => { S.t-delete(); } }
-                    IconBtn { icon: "✕"; clicked => { S.t-close(); } }
-                }
-                if root.lists-open: Rectangle {
-                    height: min(220px, S.t-lists.length * 28px + 8px);
-                    border-radius: G.r-node;
-                    background: G.bg;
+            // «Куда»
+            Rectangle {
+                y: 0; height: 46px;
+                Text { x: 13px; text: "КУДА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+                Rectangle {
+                    x: 52px; y: 8px; height: 30px;
+                    width: lt.preferred-width + 48px;
+                    border-radius: 5px;
                     border-width: 1px;
                     border-color: G.line;
-                    ScrollView {
-                        VerticalLayout {
-                            padding: 4px;
-                            for l in S.t-lists: Rectangle {
-                                height: 28px;
-                                background: la.has-hover ? G.node-hover : transparent;
-                                HorizontalLayout {
-                                    padding-left: 8px;
-                                    spacing: 8px;
-                                    Rectangle { width: 6px; height: 6px; y: 11px; border-radius: 3px; background: l.hue; }
-                                    Text { text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; }
-                                    Text { text: l.hint; color: G.dim; font-size: 11px; vertical-alignment: center; }
+                    background: la0.has-hover ? G.node-hover : G.bg;
+                    Rectangle { x: 11px; y: 12px; width: 6px; height: 6px; border-radius: 3px; background: G.blue; }
+                    lt := Text { x: 24px; text: S.t-list-name; color: G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                    Text { x: parent.width - 17px; text: "▾"; color: #A3A5AE; font-size: 10px; vertical-alignment: center; height: parent.height; }
+                    la0 := TouchArea { clicked => { root.lists-open = !root.lists-open; } mouse-cursor: pointer; }
+                }
+                Text { x: root.W - 76px; text: "···"; font-size: 15px; color: #A3A5AE; vertical-alignment: center; height: parent.height; TouchArea { clicked => { root.menu = !root.menu; } mouse-cursor: pointer; } }
+                Text { x: root.W - 34px; text: "✕"; font-size: 14px; color: #A3A5AE; vertical-alignment: center; height: parent.height; TouchArea { clicked => { S.t-close(); } mouse-cursor: pointer; } }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+            }
+            ScrollView {
+                y: 46px; height: parent.height - 46px - 42px;
+                VerticalLayout {
+                    padding-left: 18px;
+                    padding-right: 18px;
+                    padding-top: 16px;
+                    padding-bottom: 16px;
+                    spacing: 14px;
+                    alignment: start;
+                    TextInput {
+                        text: S.t-title;
+                        font-size: 22px;
+                        font-weight: 600;
+                        color: G.ink;
+                        single-line: false;
+                        wrap: word-wrap;
+                        selection-background-color: G.accent-line;
+                        edited => { S.t-title-set(self.text); }
+                    }
+                    // серая плашка
+                    Rectangle {
+                        border-radius: 8px;
+                        background: #2A2B30;
+                        height: pl.preferred-height;
+                        pl := VerticalLayout {
+                            padding: 12px;
+                            spacing: 12px;
+                            if S.t-cols.length > 0: TRow {
+                                label: "КОЛОНКА";
+                                height: ceil(S.t-cols.length / 2) * 34px - 6px;
+                                for c[i] in S.t-cols: MChip {
+                                    x: 106px + mod(i, 2) * (root.fw / 2 + 4px); y: floor(i / 2) * 34px; width: root.fw / 2 - 2px;
+                                    text: c.label.to-uppercase() + (c.hint != "" ? " · " + c.hint : "");
+                                    on: c.on; hue: G.accent;
+                                    clicked => { S.t-col(c.id); }
                                 }
-                                la := TouchArea { clicked => { root.lists-open = false; S.t-move(l.id); } }
+                            }
+                            TRow {
+                                label: "ПРИОРИТЕТ";
+                                height: 28px;
+                                for p[i] in ["!!!", "!!", "!", "—"]: MChip {
+                                    x: 106px + i * 42px; width: 36px;
+                                    text: p; on: (i < 3 && S.t-prio == i + 1) || (i == 3 && S.t-prio == 0);
+                                    clicked => { S.t-prio-set(i == 3 ? 0 : i + 1); }
+                                }
+                            }
+                            TRow {
+                                label: "СРОК";
+                                height: srow.preferred-height;
+                                srow := VerticalLayout {
+                                    x: 106px; width: parent.width - 106px;
+                                    spacing: 6px;
+                                    HorizontalLayout {
+                                        spacing: 6px;
+                                        alignment: start;
+                                        MChip { text: S.t-due-label == "" ? "БЕЗ СРОКА" : S.t-due-label.to-uppercase(); on: S.t-due-label != ""; clicked => { root.due-edit = !root.due-edit; } }
+                                    }
+                                    if root.due-edit: Field {
+                                        height: 30px; font-size: 13px; text: S.t-due; placeholder: "завтра 17:00 · пт · 25.11 · Enter";
+                                        init => { self.grab(); }
+                                        accepted(t) => { S.t-due-set(t); root.due-edit = false; }
+                                        escape => { root.due-edit = false; }
+                                    }
+                                    if root.due-edit: HorizontalLayout {
+                                        spacing: 6px;
+                                        alignment: start;
+                                        MChip { text: "СЕГОДНЯ"; clicked => { S.t-due-set("сегодня"); root.due-edit = false; } }
+                                        MChip { text: "ЗАВТРА"; clicked => { S.t-due-set("завтра"); root.due-edit = false; } }
+                                        MChip { text: "БЕЗ СРОКА"; clicked => { S.t-due-set(""); root.due-edit = false; } }
+                                    }
+                                }
+                            }
+                            TRow {
+                                label: "НАПОМНИТЬ";
+                                height: ceil(S.t-reminds.length / 3) * 34px - 6px;
+                                for r[i] in S.t-reminds: MChip {
+                                    x: 106px + mod(i, 3) * (root.fw / 3 + 2px); y: floor(i / 3) * 34px;
+                                    width: root.fw / 3 - 4px;
+                                    text: r.label.to-uppercase(); on: r.on; x-mark: r.on;
+                                    clicked => { S.t-remind(r.id); }
+                                }
                             }
                         }
                     }
-                }
-                title := TextInput {
-                    text: S.t-title;
-                    font-size: 22px;
-                    font-weight: 500;
-                    color: G.ink;
-                    single-line: false;
-                    wrap: word-wrap;
-                    selection-background-color: G.accent-line;
-                    edited => { S.t-title-set(self.text); }
-                }
-                // серая плашка
-                Rectangle {
-                    border-radius: G.r-node;
-                    background: G.bg;
-                    height: pl.preferred-height;
-                    pl := VerticalLayout {
-                        padding: 12px;
-                        spacing: 8px;
-                        if S.t-cols.length > 0: Row {
-                            label: "КОЛОНКА";
-                            for c in S.t-cols: Pill { y: 2px; text: c.label + (c.hint != "" ? " " + c.hint : ""); on: c.on; hue: c.hue; clicked => { S.t-col(c.id); } }
-                            Rectangle { }
+                    // подзадачи
+                    Text { text: "ПОДЗАДАЧИ" + (S.t-subs.length > 0 ? " · " + S.t-subs.length : ""); font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px; color: #A3A5AE; }
+                    VerticalLayout {
+                        spacing: 0;
+                        for sb in S.t-subs: Rectangle {
+                            height: 31px;
+                            Rectangle {
+                                x: 0; y: 8px; width: 14px; height: 14px; border-radius: 3px;
+                                border-width: 1px; border-color: #7C7E88;
+                                background: sb.done ? #3D3E45 : transparent;
+                                Text { text: "✓"; visible: sb.done; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+                                TouchArea { clicked => { S.t-sub-toggle(sb.id); } mouse-cursor: pointer; }
+                            }
+                            st := Text {
+                                x: 24px; width: parent.width - 24px; text: sb.title; color: sb.done ? G.dim : G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; overflow: elide;
+                                Rectangle { visible: sb.done; y: parent.height / 2 + 1px; height: 1px; width: min(parent.width, st.preferred-width); background: G.dim; }
+                            }
+                            Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                         }
-                        Row {
-                            label: "ПРИОРИТЕТ";
-                            for p[i] in ["Высокий", "Обычный", "Низкий"]: Pill { y: 2px; text: p; on: S.t-prio == i + 1; hue: i == 0 ? G.red : i == 2 ? G.grey : G.accent; clicked => { S.t-prio-set(S.t-prio == i + 1 ? 0 : i + 1); } }
-                            Rectangle { }
-                        }
-                        Row {
-                            label: "СРОК";
-                            due := Field { width: 200px; height: 30px; font-size: 13px; text: S.t-due; placeholder: "завтра 17:00 · пт · 25.11"; accepted(t) => { S.t-due-set(t); } }
-                            Text { text: S.t-due-label; color: G.muted; font-size: 12px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                        }
-                        Row {
-                            label: "";
-                            Pill { text: "Сегодня"; clicked => { S.t-due-set("сегодня"); } }
-                            Pill { text: "Завтра"; clicked => { S.t-due-set("завтра"); } }
-                            Pill { text: "Без срока"; clicked => { S.t-due-set(""); } }
-                            Rectangle { }
-                        }
-                        Row {
-                            label: "НАПОМНИТЬ";
-                            for r in S.t-reminds: Pill { y: 2px; text: r.label; on: r.on; clicked => { S.t-remind(r.id); } }
-                            Rectangle { }
-                        }
-                        Row {
-                            label: "ПОВТОР";
-                            for r in S.t-repeats: Pill { y: 2px; text: r.label; on: r.on; clicked => { S.t-repeat(r.id); } }
-                            Rectangle { }
+                        Field { height: 32px; bare: true; font-size: 13px; placeholder: "＋ Подзадача"; accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
+                    }
+                    Text { text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px; color: #A3A5AE; }
+                    TextEdit {
+                        height: 96px;
+                        text: S.t-notes;
+                        font-size: 13.5px;
+                        wrap: word-wrap;
+                        edited(t) => { S.t-notes-set(t); }
+                    }
+                    HorizontalLayout {
+                        height: 24px;
+                        spacing: 14px;
+                        alignment: start;
+                        Text { text: (root.more ? "▾" : "▸") + " ЕЩЁ"; font-family: G.mono; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; TouchArea { clicked => { root.more = !root.more; } mouse-cursor: pointer; } }
+                        Text { text: "ПОВТОР · ЦВЕТ · КАРТИНКА"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
+                    }
+                    if root.more: TRow {
+                        label: "ПОВТОР";
+                        height: ceil(S.t-repeats.length / 3) * 34px - 6px;
+                        for r[i] in S.t-repeats: MChip {
+                            x: 106px + mod(i, 3) * (root.fw / 3 + 2px); y: floor(i / 3) * 34px;
+                            width: root.fw / 3 - 4px;
+                            text: r.label.to-uppercase(); on: r.on;
+                            clicked => { S.t-repeat(r.id); }
                         }
                     }
                 }
-                Mono { text: "ПОДЗАДАЧИ"; }
-                for sb in S.t-subs: HorizontalLayout {
-                    height: 28px;
-                    spacing: 10px;
-                    Check { done: sb.done; y: 5px; toggled => { S.t-sub-toggle(sb.id); } }
-                    Text { text: sb.title; color: sb.done ? G.dim : G.ink; font-size: 13px; vertical-alignment: center; }
+            }
+            // низ
+            Rectangle {
+                y: parent.height - 42px; height: 42px;
+                Rectangle { y: 0; height: 1px; background: G.line; }
+                Rectangle { x: 16px; y: 18px; width: 6px; height: 6px; border-radius: 3px; background: G.green; }
+                Text { x: 30px; text: S.t-saved.to-uppercase(); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+            }
+            // меню ···
+            if root.menu: Rectangle {
+                x: root.W - 190px; y: 40px; width: 176px; height: 84px;
+                border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+                drop-shadow-blur: 16px; drop-shadow-color: #0009;
+                VerticalLayout {
+                    padding: 5px;
+                    for it[i] in ["Дублировать", "Удалить"]: Rectangle {
+                        height: 36px; border-radius: 5px;
+                        background: ia.has-hover ? G.node-hover : transparent;
+                        Text { x: 10px; text: it; font-size: 13px; color: i == 1 ? G.red : G.ink; vertical-alignment: center; height: parent.height; }
+                        ia := TouchArea { clicked => { root.menu = false; if (i == 0) { S.t-dup(); } else { S.t-delete(); } } mouse-cursor: pointer; }
+                    }
                 }
-                Field { height: 30px; font-size: 13px; placeholder: "＋ подзадача · Enter"; accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
-                Mono { text: "ЗАМЕТКА"; }
-                TextEdit {
-                    vertical-stretch: 1;
-                    min-height: 80px;
-                    text: S.t-notes;
-                    font-size: 13px;
-                    wrap: word-wrap;
-                    edited(t) => { S.t-notes-set(t); }
+            }
+            // выбор списка
+            if root.lists-open: Rectangle {
+                x: 52px; y: 42px;
+                width: 300px;
+                height: min(260px, S.t-lists.length * 30px + 10px);
+                border-radius: 8px;
+                background: G.node;
+                border-width: 1px;
+                border-color: G.line;
+                drop-shadow-blur: 16px;
+                drop-shadow-color: #0009;
+                ScrollView {
+                    VerticalLayout {
+                        padding: 5px;
+                        for l in S.t-lists: Rectangle {
+                            height: 30px;
+                            border-radius: 5px;
+                            background: la.has-hover ? G.node-hover : transparent;
+                            Rectangle { x: 10px; y: 12px; width: 7px; height: 7px; border-radius: 1.5px; background: l.hue; }
+                            Text { x: 26px; text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - self.preferred-width - 10px; text: l.hint; color: #7A7C86; font-size: 11px; vertical-alignment: center; height: parent.height; }
+                            la := TouchArea { clicked => { root.lists-open = false; S.t-move(l.id); } }
+                        }
+                    }
                 }
-                Mono { text: S.t-saved; color: G.dim; }
             }
         }
+        Brackets { x: win.x; y: win.y; width: win.width; height: win.height; }
     }
     init => { fs.focus(); }
 }
@@ -412,45 +528,82 @@ export component CreateDialog inherits Overlay {
 // Поиск Ctrl+K: задачи, списки, разделы.
 export component SearchDialog inherits Overlay {
     property <int> cur;
+    property <string> q-text;
+    background: #0004;
     close => { S.search-open-set(false); }
+    property <length> right: self.width - 222px;
+    // поле — на месте «Найти» в шапке
     Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: parent.height * 0.12;
-        width: min(640px, parent.width - 32px);
-        height: 64px + min(10, S.found.length) * 40px;
-        border-radius: G.r-main;
+        x: root.right - 400px; y: 15px; width: 400px; height: 32px;
+        border-radius: 6px;
+        background: G.bg;
+        border-width: 1px;
+        border-color: G.accent;
+        Text { x: 12px; text: "⌕"; font-size: 13px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+        q := Field {
+            x: 30px; width: parent.width - 120px; height: parent.height;
+            bare: true;
+            font-size: 13.5px;
+            placeholder: "Найти задачу, заметку, раздел…";
+            edited(t) => { root.cur = 0; root.q-text = t; S.search(t); }
+            accepted => { S.search-go(root.cur); }
+            escape => { S.search-open-set(false); }
+        }
+        Text { x: parent.width - self.preferred-width - 10px; text: root.q-text == "" ? "CTRL K" : S.found.length + " найдено"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+    }
+    if root.q-text != "": Rectangle {
+        x: root.right - 562px; y: 52px; width: 562px;
+        height: min(12, S.found.length) * 38px + (S.found.length == 0 ? 52px : 0) + 30px + 40px + 30px;
+        border-radius: 8px;
         background: G.node;
         border-width: 1px;
-        border-color: G.line;
+        border-color: G.accent;
         drop-shadow-blur: 24px;
-        drop-shadow-color: #000a;
+        drop-shadow-color: #000b;
+        clip: true;
         TouchArea { }
         VerticalLayout {
-            padding: 12px;
-            spacing: 4px;
-            q := Field {
-                height: 40px;
-                font-size: 16px;
-                placeholder: "Найти задачу, список или раздел…";
-                edited(t) => { root.cur = 0; S.search(t); }
-                accepted => { S.search-go(root.cur); }
-                escape => { S.search-open-set(false); }
-            }
-            for f[i] in S.found: Rectangle {
-                height: 38px;
-                visible: i < 10;
-                border-radius: 4px;
-                background: i == root.cur || fa.has-hover ? G.node-hover : transparent;
-                HorizontalLayout {
-                    padding-left: 10px;
-                    padding-right: 10px;
-                    spacing: 10px;
-                    Mono { text: f.kind; width: 70px; vertical-alignment: center; }
-                    Text { text: f.title; color: G.ink; font-size: 14px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                    Text { text: f.sub; color: G.dim; font-size: 12px; vertical-alignment: center; }
+            y: 0; height: parent.height - 40px;
+            padding: 6px;
+            padding-top: 4px;
+            alignment: start;
+            if S.found.length == 0: Text { height: 52px; x: 10px; text: "Ничего не нашлось — попробуй другое слово"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
+            for f[i] in S.found: VerticalLayout {
+                visible: i < 12;
+                if i == 0 || S.found[max(0, i - 1)].kind != f.kind: Text {
+                    height: 30px; x: 10px;
+                    text: f.kind == "задача" ? "Задачи" : (f.kind == "заметка" ? "В заметках" : "Разделы и списки");
+                    font-size: 12px; color: #A3A5AE; vertical-alignment: center;
                 }
-                fa := TouchArea { clicked => { S.search-go(i); } }
+                Rectangle {
+                    height: 38px;
+                    border-radius: 5px;
+                    background: i == root.cur || fa.has-hover ? G.node-hover : transparent;
+                    if f.kind == "задача": Rectangle { x: 12px; y: 12px; width: 13px; height: 13px; border-radius: 3px; border-width: 1px; border-color: #8A8C96; }
+                    if f.kind != "задача": Rectangle { x: 14px; y: 16px; width: 6px; height: 6px; border-radius: 3px; background: G.accent; }
+                    Text { x: 36px; width: parent.width - 200px; text: f.title; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; overflow: elide; }
+                    Text { x: parent.width - self.preferred-width - 12px; text: f.sub; color: #A3A5AE; font-size: 12px; vertical-alignment: center; height: parent.height; }
+                    fa := TouchArea { clicked => { S.search-go(i); } mouse-cursor: pointer; }
+                }
             }
+        }
+        Rectangle {
+            y: parent.height - 40px; height: 40px;
+            Rectangle { y: 0; height: 1px; background: G.line; }
+            HorizontalLayout {
+                x: 14px; spacing: 6px; alignment: start;
+                for k[i] in ["↑ ↓", "ENTER", "ESC"]: HorizontalLayout {
+                    spacing: 6px;
+                    Rectangle {
+                        y: 11px; height: 18px; width: kt.preferred-width + 10px;
+                        border-radius: 3px; border-width: 1px; border-color: G.line;
+                        kt := Text { text: k; font-family: G.mono; font-size: 8.5px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    Text { text: ["выбрать", "открыть", "закрыть"][i]; font-size: 12px; color: #A3A5AE; vertical-alignment: center; }
+                    Rectangle { width: 8px; }
+                }
+            }
+            Text { x: parent.width - self.preferred-width - 14px; text: "ё = е"; font-size: 12px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
         }
     }
     init => { q.grab(); }

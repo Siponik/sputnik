@@ -230,17 +230,31 @@ export component Overlay inherits Rectangle {
     @children
 }
 
-// Пустое место с енотом-подписью.
+// Знак спутника вместо енота: ядро на орбите в круглой плашке; цвет — по состоянию.
+export component Sat inherits Rectangle {
+    in property <color> c: G.accent;
+    width: 46px; height: 46px;
+    border-radius: self.width / 2;
+    background: #1C1D21;
+    border-width: 1px; border-color: #3A3B42;
+    property <float> k: self.width / 46px;
+    property <angle> a: animation-tick() / 8s * 360deg;
+    Rectangle { x: (parent.width - 28px * k) / 2; y: self.x; width: 28px * k; height: self.width; border-radius: self.width / 2; border-width: 1px; border-color: #55575F; }
+    Rectangle { x: (parent.width - 8px * k) / 2; y: self.x; width: 8px * k; height: self.width; border-radius: self.width / 2; background: G.ink; }
+    Rectangle {
+        width: 7px * k; height: self.width; border-radius: self.width / 2; background: root.c;
+        x: parent.width / 2 + 14px * k * cos(root.a) - self.width / 2;
+        y: parent.height / 2 + 14px * k * sin(root.a) - self.height / 2;
+    }
+}
+
+// Пустое место со знаком спутника.
 export component Empty inherits VerticalLayout {
     in property <string> text;
     in property <string> pose: "sleep";
     alignment: center;
     spacing: 10px;
-    Image {
-        height: 96px;
-        source: pose == "cheer" ? @image-url("../../../app/assets/coon/coon-cheer.svg") : pose == "think" ? @image-url("../../../app/assets/coon/coon-think.svg") : pose == "hi" ? @image-url("../../../app/assets/coon/coon-hi.svg") : pose == "flag" ? @image-url("../../../app/assets/coon/coon-flag.svg") : pose == "oops" ? @image-url("../../../app/assets/coon/coon-oops.svg") : @image-url("../../../app/assets/coon/coon-sleep.svg");
-        image-fit: contain;
-    }
+    HorizontalLayout { alignment: center; Sat { width: 50px; height: 50px; c: pose == "cheer" ? G.green : pose == "oops" ? G.red : pose == "think" || pose == "flag" ? G.gold : pose == "sleep" ? #7C7E88 : G.accent; } }
     Text { text: root.text; color: G.muted; font-size: 14px; horizontal-alignment: center; wrap: word-wrap; }
 }
 

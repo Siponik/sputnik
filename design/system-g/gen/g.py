@@ -1,5 +1,5 @@
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kit import LOGO, winctl, SANS, GEAR
+from kit import LOGO, winctl, SANS, GEAR, coon
 OR='#F0A04B'; BG='#1C1D21'; NODE='#25262B'; LINE='#3A3B42'; INK='#E2E3E8'; MUT='#8A8C96'; DIM='#62646E'
 MONO="'JetBrains Mono', monospace"
 def sock(side, top, fill, ring=False):
@@ -100,7 +100,7 @@ out2 = onode(270,'В2','ИТОГ ДНЯ','',DIM, f'''<div style="padding: 10px 1
 </div>''', 25)
 
 coon = f'''<div style="position: absolute; left: 920px; top: 470px; width: 280px; box-sizing: border-box; border-radius: 8px; border: 1px dashed #55575F; padding: 12px; display: flex; gap: 12px; align-items: center">
-  <span style="width: 50px; height: 50px; flex: none; border-radius: 50%; border: 1px dashed {MUT}; display: grid; place-items: center; font: 400 9px {MONO}; letter-spacing: .1em; color: {MUT}">ЕНОТ</span>
+  {coon(50)}
   <span style="font-size: 12.5px; color: #B5B7C0">С 17 до 19 свободно. Подключить туда «Рендер щита»? <a href="#">Подключить</a></span>
 </div>'''
 
@@ -128,13 +128,13 @@ a{{color:{OR}}}a:hover{{color:#FFD29C}}
 </helmet>
 <div style="min-height: 820px; box-sizing: border-box; background: {BG}; color: {INK}; font-family: 'Onest', 'Segoe UI', sans-serif; font-size: 13px; display: flex; flex-direction: column">
 
-  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding: 14px 20px; border-bottom: 1px solid {LINE}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
-    <nav aria-label="Разделы" style="display: flex; gap: 20px; flex-wrap: wrap">
-      <a href="#" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">СЕГОДНЯ</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">КАЛЕНДАРЬ</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">ДОСКА</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">ПРИВЫЧКИ</a>
+  <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 16px 14px 20px; border-bottom: 1px solid {LINE}; font: 500 11px {MONO}; letter-spacing: .14em">
+    <span title="Спутник" style="display: flex; align-items: center">{LOGO}</span>
+    <nav aria-label="Разделы" style="display: flex; align-items: center; gap: 18px; margin-left: 6px; flex-wrap: wrap">
+      <a href="#" style="text-decoration: none; color: {INK}; padding: 4px 0 3px; border-bottom: 1px solid {OR}">СЕГОДНЯ</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">КАЛЕНДАРЬ</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">ДОСКА</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">ПРИВЫЧКИ</a>
     </nav>
     <span style="flex: 1"></span>
     <span style="color: {MUT}">ЧТ 05.11 · 14:52</span>

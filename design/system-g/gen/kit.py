@@ -50,14 +50,14 @@ def header(active='СЕГОДНЯ', right='ЧТ 05.11 · 14:52', hx=''):
     tabs = ''
     for t in ['СЕГОДНЯ', 'КАЛЕНДАРЬ', 'ДОСКА', 'ПРИВЫЧКИ']:
         if t == active:
-            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">{t}</a>'
+            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding: 4px 0 3px; border-bottom: 1px solid {OR}">{t}</a>'
         else:
-            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}">{t}</a>'
-    return f'''<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding: 14px 20px; border-bottom: 1px solid {LINE}; background: {BG}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
-    <nav aria-label="Разделы" style="display: flex; gap: 20px; flex-wrap: wrap">{tabs}</nav>
+            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">{t}</a>'
+    return f'''<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 16px 14px 20px; border-bottom: 1px solid {LINE}; background: {BG}; font: 500 11px {MONO}; letter-spacing: .14em">
+    <span title="Спутник" style="display: flex; align-items: center">{LOGO}</span>
+    <nav aria-label="Разделы" style="display: flex; align-items: center; gap: 18px; margin-left: 6px; flex-wrap: wrap">{tabs}</nav>
     <span style="flex: 1"></span>
-    {hx}<span style="color: {MUT}">{right}</span>
+    {hx}<span style="color: {MUT}; margin-right: 6px">{right}</span>
     <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}; min-width: 150px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>НАЙТИ<span style="margin-left: auto; font-size: 10px; color: {DIM}">CTRL K</span></span>
     <span style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}" aria-label="Состояние: всё в порядке"><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span></span>
     {GEAR}
@@ -213,8 +213,12 @@ def stages(n_ok, n_now, total, h=4):
     return f'<span style="display: flex; gap: 3px">{s}</span>'
 
 
-def coon(size=50, label='ЕНОТ'):
-    return f'<span style="width: {size}px; height: {size}px; flex: none; border-radius: 50%; border: 1px dashed {MUT}; display: grid; place-items: center; font: 400 9px {MONO}; letter-spacing: .1em; color: {MUT}">{label}</span>'
+def coon(size=50, label=''):
+    """Знак-спутник вместо енота: ядро на орбите, цвет по состоянию."""
+    c = {'ОЙ': RED, 'СПИТ': DIM, 'ДУМАЕТ': GOLD, 'УРА': GREEN}.get(label, OR)
+    return (f'<span aria-hidden="true" style="width: {size}px; height: {size}px; flex: none; border-radius: 50%; background: {DARK}; border: 1px solid {LINE}; display: grid; place-items: center">'
+            f'<svg width="{int(size*.72)}" height="{int(size*.72)}" viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="17" ry="7" transform="rotate(-28 20 20)" fill="none" stroke="{c}" stroke-opacity=".55" stroke-width="1.4"/>'
+            f'<circle cx="20" cy="20" r="6" fill="{INK}"/><circle cx="34" cy="12.5" r="3.2" fill="{c}"/></svg></span>')
 
 
 def stamp(x, y, sheet, a, b, w=280):

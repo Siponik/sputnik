@@ -37,6 +37,28 @@ pub fn wire(w: &AppWindow) {
     let g = w.global::<S>();
 
     // ---------- оболочка ----------
+    // своя рамка окна (no-frame): перетаскивание, свернуть, развернуть, закрыть
+    let ww = w.as_weak();
+    g.on_win_drag(move || {
+        if let Some(w) = ww.upgrade() {
+            use slint::winit_030::WinitWindowAccessor;
+            w.window().with_winit_window(|ww| { let _ = ww.drag_window(); });
+        }
+    });
+    let ww = w.as_weak();
+    g.on_win_resize(move |k| {
+        if let Some(w) = ww.upgrade() {
+            use slint::winit_030::{winit::window::ResizeDirection as R, WinitWindowAccessor};
+            let d = match k { 1 => R::East, 2 => R::South, 3 => R::West, _ => R::SouthEast };
+            w.window().with_winit_window(|ww| { let _ = ww.drag_resize_window(d); });
+        }
+    });
+    let ww = w.as_weak();
+    g.on_win_min(move || { if let Some(w) = ww.upgrade() { w.window().set_minimized(true); } });
+    let ww = w.as_weak();
+    g.on_win_max(move || { if let Some(w) = ww.upgrade() { let m = w.window().is_maximized(); w.window().set_maximized(!m); w.global::<S>().set_win_maxed(!m); } });
+    let ww = w.as_weak();
+    g.on_win_close(move || { if let Some(w) = ww.upgrade() { let _ = w.hide(); } let _ = slint::quit_event_loop(); });
     g.on_go(|i| act(|app, u| {
         u.tab = i;
         if i == 4 {
@@ -698,13 +720,13 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
     let nq = search::norm(q);
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("РАЗДЕЛ"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
         }
     }
     for l in app.board_lists() {
         if search::norm(s(&l["title"])).contains(&nq) {
             let id = text(&l["id"]);
-            out.push((Found { kind: ss("СПИСОК"), title: ss(text(&l["title"])), sub: ss(""), list_id: ss(id.clone()), id: ss("") },
+            out.push((Found { kind: ss("раздел"), title: ss(text(&l["title"])), sub: ss(""), list_id: ss(id.clone()), id: ss("") },
                 Box::new(move |_, u| { u.tab = 2; u.board = id.clone(); })));
         }
     }
@@ -712,12 +734,12 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
         let t0 = f.parent.clone().unwrap_or(f.task.clone());
         let (l, id) = (text(&f.list["id"]), text(&t0["id"]));
         let done = App::is_done(&f.task);
-        out.push((Found { kind: ss(if done { "СДЕЛАНО" } else { "ЗАДАЧА" }), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()) },
+        out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()) },
             Box::new(move |_, u| u.task = Some((l.clone(), id.clone())))));
     }
     for n0 in app.notes.search(q).into_iter().take(4) {
         let p = n0.path.clone();
-        out.push((Found { kind: ss("ЗАМЕТКА"), title: ss(n0.title.clone()), sub: ss(""), list_id: ss(""), id: ss("") },
+        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(""), list_id: ss(""), id: ss("") },
             Box::new(move |_, u| { u.tab = 4; u.note_path = p.clone(); u.note_dirty = false; })));
     }
     out
