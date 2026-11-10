@@ -129,12 +129,12 @@ a{{color:{OR}}}a:hover{{color:#FFD29C}}
 <div style="min-height: 820px; box-sizing: border-box; background: {BG}; color: {INK}; font-family: 'Onest', 'Segoe UI', sans-serif; font-size: 13px; display: flex; flex-direction: column">
 
   <header style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 14px 16px 14px 20px; border-bottom: 1px solid {LINE}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
-    <nav aria-label="Разделы" style="display: flex; gap: 18px; margin-left: 14px; flex-wrap: wrap">
-      <a href="#" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">СЕГОДНЯ</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">КАЛЕНДАРЬ</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">ДОСКА</a>
-      <a href="#" style="text-decoration: none; color: {MUT}">ПРИВЫЧКИ</a>
+    <span title="Спутник" style="display: flex; align-items: center">{LOGO}</span>
+    <nav aria-label="Разделы" style="display: flex; align-items: center; gap: 18px; margin-left: 6px; flex-wrap: wrap">
+      <a href="#" style="text-decoration: none; color: {INK}; padding: 4px 0 3px; border-bottom: 1px solid {OR}">СЕГОДНЯ</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">КАЛЕНДАРЬ</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">ДОСКА</a>
+      <a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">ПРИВЫЧКИ</a>
     </nav>
     <span style="flex: 1"></span>
     <span style="color: {MUT}">ЧТ 05.11 · 14:52</span>

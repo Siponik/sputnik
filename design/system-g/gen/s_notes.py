@@ -12,11 +12,11 @@ def header5(active='ЗНАНИЯ', right='ЧТ 05.11 · 22:40', hx=''):
     tabs = ''
     for t in TABS:
         if t == active:
-            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding-bottom: 3px; border-bottom: 1px solid {OR}">{t}</a>'
+            tabs += f'<a href="#" aria-current="page" style="text-decoration: none; color: {INK}; padding: 4px 0 3px; border-bottom: 1px solid {OR}">{t}</a>'
         else:
-            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}">{t}</a>'
+            tabs += f'<a href="#" style="text-decoration: none; color: {MUT}; padding: 4px 0 3px; border-bottom: 1px solid transparent">{t}</a>'
     a = h.index('<nav'); b = h.index('</nav>')
-    return h[:a] + f'<nav aria-label="Разделы" style="display: flex; gap: 18px; margin-left: 14px; flex-wrap: wrap">{tabs}' + h[b:]
+    return h[:a] + f'<nav aria-label="Разделы" style="display: flex; align-items: center; gap: 18px; margin-left: 6px; flex-wrap: wrap">{tabs}' + h[b:]
 
 
 kit.header = header5
