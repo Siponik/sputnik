@@ -96,6 +96,6 @@ pub fn fill(app: &mut App) {
         ("Металл.md", "Металл", "Блики, [[Палитра]]."), ("Blender/Скульптинг.md", "Скульптинг", "Урок 12. [[Ретопология]] дальше."),
         ("Blender/Ретопология.md", "Ретопология", "После [[Скульптинг]]."), ("Входящие.md", "Входящие", "Разобрать.")];
     app.notes.root = None;
-    app.notes.notes = ns.iter().map(|(p, t, b)| crate::notes::Note { path: p.to_string(), title: t.to_string(), body: b.to_string(), links: crate::notes::links_of(b) }).collect();
+    app.notes.notes = ns.iter().map(|(p, t, b)| crate::notes::Note { path: p.to_string(), title: t.to_string(), body: b.to_string(), links: crate::notes::links_of(b), tags: vec![] }).collect();
     app.notes.relayout();
 }

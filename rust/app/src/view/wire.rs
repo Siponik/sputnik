@@ -485,6 +485,7 @@ pub fn wire(w: &AppWindow) {
         app.notes.root = if p.is_empty() { None } else { Some(std::path::PathBuf::from(&p)) };
         let _ = crate::data::store::write_json("notes.json", &json!({"root": p}));
         app.notes.rescan();
+        app.notes.watch();
         app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
     }));
 
@@ -530,6 +531,8 @@ fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     let path = format!("{}.md", name.trim());
     if app.notes.root.is_none() {
         app.notes.root = Some(crate::data::store::own("notes"));
+        let _ = std::fs::create_dir_all(crate::data::store::own("notes"));
+        app.notes.watch();
     }
     match app.notes.save(&path, &format!("# {}\n\n", title.trim())) {
         Ok(()) => {
