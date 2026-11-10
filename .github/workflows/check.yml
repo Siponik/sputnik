@@ -1,10 +1,21 @@
-# Проверка каждого PR: автотесты логики трекера и бота, сборка интерфейса.
+# Проверка PR, который трогает старый трекер, боты или инструменты: автотесты логики трекера и ботов, сборка интерфейса.
 # Ничего не публикует и не трогает main — только ставит зелёную или красную галочку у PR.
 name: Проверка PR
 
 on:
   pull_request:
+    paths:
+      - 'tracker/**'
+      - 'bot/**'
+      - 'reminders/**'
+      - 'tools/**'
+      - '.github/workflows/check.yml'
   workflow_dispatch:
+
+# Новый пуш в тот же PR отменяет недоделанную проверку.
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:

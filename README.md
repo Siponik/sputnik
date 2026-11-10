@@ -7,7 +7,7 @@
 
 <p align="center"><a href="https://github.com/Siponik/sputnik/releases/latest"><b>⬇ Скачать для Windows</b></a></p>
 
-![Сегодня](design/screens/ref/today-0.6.png)
+![Сегодня](archive/design-v2/screens/ref/today-0.6.png)
 
 ## Что умеет
 
@@ -18,7 +18,7 @@
 - **Напоминания в Telegram** — через бота [@SputnikTasksBot](https://t.me/SputnikTasksBot): кнопки «✓ Готово» и «⏰ Через час», задачи можно писать боту текстом, `/today` и `/week`.
 - Учёт времени, повторяющиеся задачи, поиск (Ctrl K), горячие клавиши, тёмная и светлая тема, обновление прямо из приложения.
 
-<p align="center"><img src="design/screens/ref/conveyor.png" width="49%" alt="Конвейер"> <img src="design/screens/ref/create-3D.png" width="49%" alt="Окно «Создать»"></p>
+<p align="center"><img src="archive/design-v2/screens/ref/conveyor.png" width="49%" alt="Конвейер"> <img src="archive/design-v2/screens/ref/create-3D.png" width="49%" alt="Окно «Создать»"></p>
 
 ## Как начать
 
