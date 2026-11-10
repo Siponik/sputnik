@@ -86,3 +86,57 @@ fn close(a: Option<f64>, b: Option<f64>) -> bool {
         _ => a == b,
     }
 }
+
+/// Наложить поля b на a (как `{...a, ...b}` в JS: существующие ключи остаются на своих местах).
+pub fn extend(a: &mut Json, b: &Json) {
+    for (k, v) in b {
+        a.insert(k.clone(), v.clone());
+    }
+}
+
+/// `{...a, ...b}` для значений-объектов.
+pub fn spread(parts: &[&Value]) -> Value {
+    let mut m = Json::new();
+    for p in parts {
+        extend(&mut m, o(p));
+    }
+    Value::Object(m)
+}
+
+/// Число как i64, если целое.
+pub fn int(v: &Value) -> Option<i64> {
+    v.as_i64().or_else(|| v.as_f64().filter(|x| x.fract() == 0.0).map(|x| x as i64))
+}
+
+/// Текст значения, как `String(v)` в JS (null → "").
+pub fn text(v: &Value) -> String {
+    match v {
+        Value::Null => String::new(),
+        Value::String(x) => x.clone(),
+        Value::Number(x) => {
+            let f = x.as_f64().unwrap_or(0.0);
+            if f.fract() == 0.0 && f.abs() < 1e15 { format!("{}", f as i64) } else { format!("{f}") }
+        }
+        x => x.to_string(),
+    }
+}
+
+/// Миллисекунды с эпохи из ISO-строки (как Date.parse).
+pub fn parse_ms(iso: &str) -> Option<f64> {
+    chrono::DateTime::parse_from_rfc3339(iso).ok().map(|d| d.timestamp_millis() as f64)
+}
+
+/// Число → строка в системе 36 (как toString(36) в JS для целых).
+pub fn radix36(mut x: u64) -> String {
+    if x == 0 {
+        return "0".into();
+    }
+    let d = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let mut out = vec![];
+    while x > 0 {
+        out.push(d[(x % 36) as usize]);
+        x /= 36;
+    }
+    out.reverse();
+    String::from_utf8(out).unwrap()
+}

@@ -139,3 +139,14 @@ fn repeat_() {
         _ => return None,
     }));
 }
+
+#[test]
+fn layer_merge() {
+    let cases = common::load("layer_merge.json");
+    for (i, c) in cases.iter().enumerate() {
+        let m = sputnik_core::layer::merge(&c["local"], &c["remote"]);
+        assert_eq!(json!(m.local_changed), c["out"]["localChanged"], "#{i}");
+        assert_eq!(json!(m.remote_changed), c["out"]["remoteChanged"], "#{i}");
+        assert!(same_u(&m.merged, &c["out"]["merged"]), "#{i}: {} ≠ {}", m.merged, c["out"]["merged"]);
+    }
+}
