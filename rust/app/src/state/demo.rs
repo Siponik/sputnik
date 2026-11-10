@@ -53,6 +53,11 @@ pub fn fill(app: &mut App) {
         "hab": [task("hb1", "Вода", None, false), task("hb2", "Зарядка", None, false), task("hb3", "Чтение", None, false)],
     });
     app.tasks["work"].as_array_mut().unwrap().push(json!({"id": "w1a", "title": "Список вопросов", "parent": "w1", "status": "needsAction", "position": "1"}));
+    for (l, id, title, k) in [("work", "wa1", "Иконки v1", -4), ("home", "ha1", "Вынести коробки", -4), ("icons", "ia1", "Ретопология меча", -5), ("study", "sa1", "Урок 11: сетка", -6), ("work", "wa2", "Квитанция за газ", -21)] {
+        let mut t = task(id, title, Some(k - 1), true);
+        t["completed"] = json!(format!("{}T10:00:00.000Z", day(k)));
+        app.tasks[l].as_array_mut().unwrap().push(t);
+    }
     app.calendars = vec![json!({"id": "primary", "summary": "Основной", "primary": true, "accessRole": "owner", "selected": true, "backgroundColor": "#6FA2F2"})];
     app.events = vec![ev("e1", "Планёрка", 0, "10:00", "10:30"), ev("e2", "Обед с Олей", 1, "13:00", "14:00"), ev("e3", "Ревью ассетов", 2, "16:00", "17:30"),
         ev("e4", "Тренировка", 3, "19:00", "20:00")];

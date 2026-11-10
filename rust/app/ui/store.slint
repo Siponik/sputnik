@@ -6,11 +6,12 @@ export struct TaskRow { list-id: string, id: string, title: string, list: string
 export struct Chip { title: string, hue: color, done: bool, kind: int, list-id: string, id: string, time: string }
 export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool, sub-done: int, sub-total: int, tag: string }
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
-export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool }
+export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool, thumb: image, has-thumb: bool, size: string }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
 export struct SrcRow { title: string, right: string, done: bool, accent: bool }
 export struct SrcNode { title: string, label: string, hue: color, y: float, h: float, rows: [SrcRow], dashed: bool }
 export struct Wire { y1: float, y2: float, hue: color, dashed: bool }
+export struct ArchRow { list-id: string, id: string, title: string, list: string, hue: color, date: string, group: string, first: bool }
 export struct InboxRow { list-id: string, id: string, title: string, list: string, when: string }
 export struct HabitChip { id: string, name: string, icon: string, hue: color, done: bool, count: int, goal: int }
 export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool }
@@ -94,6 +95,8 @@ export global S {
     in property <string> board-id;
     in property <string> board-title;
     in property <string> board-tpl;
+    in property <color> board-hue;
+    in property <int> board-open;
     in property <string> board-tip;
     in property <string> board-flow;
     in property <int> side-spheres;
@@ -102,6 +105,22 @@ export global S {
     in property <[string]> stages;
     in property <[PipeRow]> pipe;
     in property <string> pipe-open;
+    in property <bool> pipe-gallery;
+    in property <int> pipe-stage: -1;
+    callback pipe-gallery-set(bool);
+    callback pipe-stage-set(int);
+    in property <string> stk-by;               // topic | due
+    in property <int> stk-jar;
+    in property <string> stk-last;
+    callback stk-by-set(string);
+    callback open-archive();
+    in property <bool> arch-open;
+    in property <[ArchRow]> arch-rows;
+    in property <[Opt]> arch-spheres;
+    in property <string> arch-info;
+    callback arch-close();
+    callback arch-q-set(string);
+    callback arch-sphere-set(string);
     in property <string> pipe-by;              // project | stage
     in property <string> pipe-info;
     in property <[Sub]> pipe-subs;

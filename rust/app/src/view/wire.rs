@@ -102,6 +102,7 @@ pub fn wire(w: &AppWindow) {
 
     // ---------- Доска ----------
     g.on_pick_list(|id| act(|app, u| {
+        u.arch = false;
         let ls = app.board_lists();
         let id = str_(&id);
         let i = ls.iter().position(|l| l["id"] == u.board.as_str()).unwrap_or(0);
@@ -191,6 +192,13 @@ pub fn wire(w: &AppWindow) {
         app.set_task(&id, json!({"pin": !pin}));
     }));
     g.on_pipe_toggle(|id| act(|_, u| { let id = str_(&id); u.pipe_open = if u.pipe_open == id { String::new() } else { id }; }));
+    g.on_stk_by_set(|v| act(|_, u| u.stk_by = str_(&v)));
+    g.on_open_archive(|| act(|_, u| { u.tab = 2; u.arch = true; }));
+    g.on_arch_close(|| act(|_, u| u.arch = false));
+    g.on_arch_q_set(|q| act(|_, u| u.arch_q = str_(&q)));
+    g.on_arch_sphere_set(|v| act(|_, u| u.arch_sphere = str_(&v)));
+    g.on_pipe_gallery_set(|v| act(|_, u| u.pipe_gallery = v));
+    g.on_pipe_stage_set(|v| act(|_, u| u.pipe_stage = v + 1));
     g.on_pipe_by_set(|v| act(|_, u| u.pipe_by = str_(&v)));
     g.on_pipe_sub_add(|l, id, t| act(|app, _| app.add_subtask(&l, &id, &t)));
     g.on_pipe_prio_set(|_, id, p| act(|app, _| app.set_priority(&id, Some(p as i64))));

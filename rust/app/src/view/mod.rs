@@ -42,6 +42,12 @@ pub struct Ui {
     pub note_graph: bool,
     pub pipe_open: String,
     pub pipe_by: String,
+    pub stk_by: String,
+    pub arch: bool,
+    pub pipe_gallery: bool,
+    pub pipe_stage: i32,
+    pub arch_q: String,
+    pub arch_sphere: String,
 }
 pub use crate::Found;
 
@@ -89,6 +95,8 @@ pub fn start(app: App) -> AppWindow {
             }
             ["note", p] => u.note_path = p.to_string(),
             ["pipe", p] => u.pipe_open = p.to_string(),
+            ["archive"] => u.arch = true,
+            ["gallery"] => u.pipe_gallery = true,
             ["graph", p] => { u.note_graph = true; u.note_path = p.to_string(); }
             _ => {}
         }
@@ -231,4 +239,25 @@ pub fn due_text(t: &Value, slot: &Value) -> (String, bool) {
 /// Время «ЧЧ:ММ» по местным часам из мс.
 pub fn hm(ms: f64) -> String {
     chrono::DateTime::from_timestamp_millis(ms as i64).map(|d| d.with_timezone(&chrono::Local).format("%H:%M").to_string()).unwrap_or_default()
+}
+
+thread_local! {
+    static THUMBS: RefCell<std::collections::HashMap<String, slint::Image>> = RefCell::new(Default::default());
+}
+
+/// Превью задачи из слоя (`tasks[id].preview.thumb` — JPEG/PNG data URL) → картинка окна; раскодированные кешируются.
+pub fn thumb(p: &Value) -> Option<slint::Image> {
+    use base64::Engine;
+    let url = p["thumb"].as_str()?;
+    let key = format!("{}|{}", url.len(), &url[url.len().saturating_sub(40)..]);
+    if let Some(i) = THUMBS.with(|t| t.borrow().get(&key).cloned()) {
+        return Some(i);
+    }
+    let b64 = url.split_once(",")?.1;
+    let bytes = base64::engine::general_purpose::STANDARD.decode(b64).ok()?;
+    let img = image::load_from_memory(&bytes).ok()?.to_rgba8();
+    let buf = slint::SharedPixelBuffer::<slint::Rgba8Pixel>::clone_from_slice(img.as_raw(), img.width(), img.height());
+    let im = slint::Image::from_rgba8(buf);
+    THUMBS.with(|t| t.borrow_mut().insert(key, im.clone()));
+    Some(im)
 }
