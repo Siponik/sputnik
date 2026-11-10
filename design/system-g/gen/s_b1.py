@@ -125,6 +125,6 @@ st += toast(364, 446, 520, 'Готово · «Ретопология меча»'
 st += toast(364, 500, 520, 'Создано в «3D-ассеты»', 'Открыть', OR)
 st += toast(364, 554, 520, 'Оля сделала «Купить корм коту»', 'Вернуть', VIO)
 st += toast(364, 608, 520, 'Тебе отдали задачу «Бриф: броня»', 'Открыть', BLUE)
-st += ab(920, 446, f'<div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 10px; border: 1px dashed #55575F; background: {NODE}">{coon(44, "ОЙ")}<span style="font-size: 12.5px; line-height: 19px; color: #C9CAD0">Енот «ой» появляется, когда пропала связь с Google. Колонки и задачи остаются на месте.</span></div>', w=300)
+st += ab(920, 446, f'<div style="display: flex; gap: 12px; align-items: flex-start; padding: 12px; border-radius: 10px; border: 1px dashed #55575F; background: {NODE}">{coon(44, "ОЙ")}<span style="font-size: 12.5px; line-height: 19px; color: #C9CAD0">Знак спутника краснеет, когда пропала связь с Google. Колонки и задачи остаются на месте.</span></div>', w=300)
 save2('G_Feedback.dc.html', page('Плашки и подтверждения', 'КАЛЕНДАРЬ', st), 'Удаление, плашки, «нет связи»')
 print('ok')

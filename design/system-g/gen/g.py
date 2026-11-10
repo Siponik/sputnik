@@ -1,5 +1,5 @@
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from kit import LOGO, winctl, SANS, GEAR
+from kit import LOGO, winctl, SANS, GEAR, coon
 OR='#F0A04B'; BG='#1C1D21'; NODE='#25262B'; LINE='#3A3B42'; INK='#E2E3E8'; MUT='#8A8C96'; DIM='#62646E'
 MONO="'JetBrains Mono', monospace"
 def sock(side, top, fill, ring=False):
@@ -100,7 +100,7 @@ out2 = onode(270,'В2','ИТОГ ДНЯ','',DIM, f'''<div style="padding: 10px 1
 </div>''', 25)
 
 coon = f'''<div style="position: absolute; left: 920px; top: 470px; width: 280px; box-sizing: border-box; border-radius: 8px; border: 1px dashed #55575F; padding: 12px; display: flex; gap: 12px; align-items: center">
-  <span style="width: 50px; height: 50px; flex: none; border-radius: 50%; border: 1px dashed {MUT}; display: grid; place-items: center; font: 400 9px {MONO}; letter-spacing: .1em; color: {MUT}">ЕНОТ</span>
+  {coon(50)}
   <span style="font-size: 12.5px; color: #B5B7C0">С 17 до 19 свободно. Подключить туда «Рендер щита»? <a href="#">Подключить</a></span>
 </div>'''
 
