@@ -345,7 +345,7 @@ component MonthTable inherits Rectangle {
 }
 
 export component HabitsPage inherits Rectangle {
-    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
+    property <length> mx: max(12px, min(20px, (self.width - 1000px) / 8));
     property <length> pw: 380px;
     property <length> aw: self.width - 2 * root.mx - root.pw - 24px;
     property <length> cw: (root.aw - 2 * 18px) / 3;

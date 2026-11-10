@@ -113,7 +113,7 @@ component Note inherits Text {
 }
 
 export component SettingsPage inherits Rectangle {
-    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
+    property <length> mx: max(12px, min(20px, (self.width - 1000px) / 8));
     property <length> cx: root.mx + 264px;
     property <length> rw: 260px;
     property <length> cw: self.width - root.cx - root.rw - 24px - root.mx;

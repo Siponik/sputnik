@@ -343,7 +343,7 @@ export component CalendarPage inherits Rectangle {
     property <bool> adding;
     property <bool> add-event;
     property <length> pw: 324px;
-    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
+    property <length> mx: max(12px, min(20px, (self.width - 1000px) / 8));
     property <length> mw: self.width - 2 * root.mx - root.pw - 24px;
     property <length> mh: max(420px, self.height - 84px - 130px);
     property <bool> form: root.adding || S.add-time != "";

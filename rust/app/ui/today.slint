@@ -124,46 +124,54 @@ component DayRow inherits Rectangle {
 export component TodayPage inherits Rectangle {
     public function focus-quick() { quick.grab(); }
     cv := Rectangle {
-        x: max(0px, (parent.width - 1220px) / 2);
+        x: max(0px, (parent.width - self.width) / 2);
         y: 24px;
-        width: 1220px;
+        width: max(1080px, min(1700px, parent.width - 16px));
+        // источники 20…250, провода по 56 px, вывод 280 — середина забирает остальное
+        property <length> m0: 306px;
+        property <length> m1: self.width - 356px;
+        property <length> r0: self.width - 300px;
+        property <float> M0: m0 / 1px;
+        property <float> M1: m1 / 1px;
+        property <float> R0: r0 / 1px;
+        property <float> VW: self.width / 1px;
         height: parent.height - 24px;
 
         SecLabel { x: 20px; y: 0; width: 230px; height: 12px; text: "01 · ИСТОЧНИКИ"; }
-        SecLabel { x: 380px; y: 0; width: 470px; height: 12px; text: "02 · СБОРКА ДНЯ"; }
-        SecLabel { x: 920px; y: 0; width: 280px; height: 12px; text: "03 · ВЫВОД"; }
+        SecLabel { x: cv.m0; y: 0; width: cv.m1 - cv.m0; height: 12px; text: "02 · СБОРКА ДНЯ"; }
+        SecLabel { x: cv.r0; y: 0; width: 280px; height: 12px; text: "03 · ВЫВОД"; }
 
         // провода: источник → строка дня
         for w in S.today-wires: Path {
             x: 0; y: 0;
-            width: 1220px;
+            width: cv.width;
             height: cv.height;
-            viewbox-width: 1220;
+            viewbox-width: cv.VW;
             viewbox-height: cv.height / 1px;
             stroke: w.hue;
             stroke-width: w.dashed ? 2px : 1.5px;
             opacity: w.dashed ? 0.9 : 0.85;
-            commands: "M 250 " + w.y1 + " C 310 " + w.y1 + " 320 " + w.y2 + " 380 " + w.y2;
+            commands: "M 250 " + w.y1 + " C 280 " + w.y1 + " " + (cv.M0 - 30) + " " + w.y2 + " " + cv.M0 + " " + w.y2;
         }
         // провода справа: «Дальше» и привычки → вывод
         if S.next-at >= 0: Path {
-            x: 0; y: 0; width: 1220px; height: cv.height; viewbox-width: 1220; viewbox-height: cv.height / 1px;
+            x: 0; y: 0; width: cv.width; height: cv.height; viewbox-width: cv.VW; viewbox-height: cv.height / 1px;
             stroke: G.accent; stroke-width: 2px;
-            commands: "M 850 " + (20 + S.rows-top + S.next-at * 46 + 20) + " C 890 " + (20 + S.rows-top + S.next-at * 46 + 20) + " 880 70 920 70";
+            commands: "M " + cv.M1 + " " + (20 + S.rows-top + S.next-at * 46 + 20) + " C " + (cv.M1 + 30) + " " + (20 + S.rows-top + S.next-at * 46 + 20) + " " + (cv.R0 - 30) + " 70 " + cv.R0 + " 70";
         }
         if S.today-habits.length > 0: Path {
-            x: 0; y: 0; width: 1220px; height: cv.height; viewbox-width: 1220; viewbox-height: cv.height / 1px;
+            x: 0; y: 0; width: cv.width; height: cv.height; viewbox-width: cv.VW; viewbox-height: cv.height / 1px;
             stroke: G.ink; stroke-width: 1.5px;
-            commands: "M 850 " + (20 + S.habits-y) + " C 890 " + (20 + S.habits-y) + " 880 196 920 196";
+            commands: "M " + cv.M1 + " " + (20 + S.habits-y) + " C " + (cv.M1 + 30) + " " + (20 + S.habits-y) + " " + (cv.R0 - 30) + " 196 " + cv.R0 + " 196";
         }
 
         for n[i] in S.today-src: Source { x: 20px; y: n.y * 1px; n: n; num: i + 1; }
 
         // 02 · сборка дня
         main := Rectangle {
-            x: 380px;
+            x: cv.m0;
             y: 20px;
-            width: 470px;
+            width: cv.m1 - cv.m0;
             height: max(200px, S.center-h * 1px);
             border-radius: 12px;
             background: G.node;
@@ -293,14 +301,14 @@ export component TodayPage inherits Rectangle {
         }
         Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
         Text {
-            x: 380px; y: main.y + main.height + 14px; width: 470px;
+            x: main.x; y: main.y + main.height + 14px; width: main.width;
             text: "|  —  " + S.today-label + " · ЗАДАЧ " + S.total-count + " · СДЕЛАНО " + S.done-count + "  —  |";
             font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #62646E; horizontal-alignment: center;
         }
 
         // 03 · вывод
         Rectangle {
-            x: 920px; y: 20px; width: 280px; height: 110px;
+            x: cv.r0; y: 20px; width: 280px; height: 110px;
             border-radius: 8px;
             background: G.node;
             border-width: 1px;
@@ -320,7 +328,7 @@ export component TodayPage inherits Rectangle {
             Sock { x: -6px; y: 45px; fill: G.accent; }
         }
         Rectangle {
-            x: 920px; y: 150px; width: 280px; height: 172px;
+            x: cv.r0; y: 150px; width: 280px; height: 172px;
             border-radius: 8px;
             background: G.node;
             border-width: 1px;
@@ -371,7 +379,7 @@ export component TodayPage inherits Rectangle {
             Sock { x: -6px; y: 41px; fill: G.ink; }
         }
         if S.today-events.length > 0: Rectangle {
-            x: 920px; y: 342px; width: 280px; height: 30px + 12px + min(S.today-events.length, 5) * 26px;
+            x: cv.r0; y: 342px; width: 280px; height: 30px + 12px + min(S.today-events.length, 5) * 26px;
             border-radius: 8px;
             background: G.node;
             border-width: 1px;
@@ -394,7 +402,7 @@ export component TodayPage inherits Rectangle {
         }
         // штамп листа
         Rectangle {
-            x: 920px; y: main.y + main.height - 52px; width: 280px; height: 52px;
+            x: cv.r0; y: main.y + main.height - 52px; width: 280px; height: 52px;
             border-radius: 6px;
             border-width: 1px;
             border-color: G.line;
