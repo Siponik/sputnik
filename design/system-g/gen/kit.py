@@ -9,7 +9,7 @@ MONO = "'JetBrains Mono', monospace"
 SANS = "'Onest', 'Segoe UI', sans-serif"
 P = __import__('os').path.join(__import__('os').path.dirname(__import__('os').path.abspath(__file__)), '..', 'screens') + '/'
 
-LOGO = f'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><ellipse cx="12" cy="12" rx="10" ry="4" transform="rotate(-28 12 12)" stroke="{INK}" stroke-width="1"></ellipse><path d="M15.5 8.2a5 5 0 1 0 0 7.6" stroke="{INK}" stroke-width="1.5"></path><rect x="18" y="6" width="3" height="3" fill="{OR}"></rect></svg>'
+LOGO = f'<svg width="22" height="22" viewBox="0 0 512 512" aria-hidden="true"><path d="M370.9 159.6 A150 150 0 1 0 370.9 352.4" fill="none" stroke="{OR}" stroke-width="46" stroke-linecap="round"/><circle cx="256" cy="256" r="62" fill="{INK}"/><circle cx="370.9" cy="159.6" r="42" fill="{INK}" stroke="{BG}" stroke-width="22"/></svg>'
 
 
 def lbl(t, c=MUT, size=10.5, extra=''):
@@ -20,6 +20,32 @@ def micro(t, c=DIM, extra=''):
     return f'<span style="font: 400 9.5px {MONO}; letter-spacing: .12em; color: {c}{extra}">{t}</span>'
 
 
+WIN_ICONS = {
+    'min': '<path d="M1 5.5h9" stroke="currentColor" stroke-width="1.2"/>',
+    'max': '<rect x="1.5" y="1.5" width="8" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+    'restore': '<rect x="1.5" y="3.5" width="6" height="6" rx="1.2" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M3.5 3.5V2.6c0-.6.5-1.1 1.1-1.1h4.3c.6 0 1.1.5 1.1 1.1v4.3c0 .6-.5 1.1-1.1 1.1H7.5" fill="none" stroke="currentColor" stroke-width="1.2"/>',
+    'close': '<path d="M1.5 1.5l8 8M9.5 1.5l-8 8" stroke="currentColor" stroke-width="1.2"/>',
+}
+
+
+def winbtn(kind, state=''):
+    bg = {'hover': HOVER, 'close': '#E5484D', 'press': SOFT}.get(state, 'transparent')
+    col = '#FFFFFF' if state == 'close' else (INK if state else MUT)
+    lab = {'min': 'Свернуть', 'max': 'Развернуть', 'restore': 'Восстановить', 'close': 'Закрыть'}[kind]
+    return (f'<button type="button" aria-label="{lab}" style="width: 34px; height: 32px; border: 0; border-radius: 8px; background: {bg}; color: {col}; display: grid; place-items: center; padding: 0">'
+            f'<svg width="11" height="11" viewBox="0 0 11 11" aria-hidden="true">{WIN_ICONS[kind]}</svg></button>')
+
+
+def winctl(states=None, maxed=False):
+    st = states or {}
+    return (f'<span style="display: flex; align-items: center; gap: 2px; margin-left: 4px; padding-left: 10px; border-left: 1px solid {LINE}">'
+            + winbtn('min', st.get('min', '')) + winbtn('restore' if maxed else 'max', st.get('max', '')) + winbtn('close', st.get('close', '')) + '</span>')
+
+
+GEAR = (f'<button type="button" aria-label="Настройки · Ctrl ," style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {LINE}; background: transparent; color: {MUT}; display: grid; place-items: center; padding: 0">'
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>')
+
+
 def header(active='СЕГОДНЯ', right='ЧТ 05.11 · 14:52', hx=''):
     tabs = ''
     for t in ['СЕГОДНЯ', 'КАЛЕНДАРЬ', 'ДОСКА', 'ПРИВЫЧКИ']:
@@ -28,13 +54,15 @@ def header(active='СЕГОДНЯ', right='ЧТ 05.11 · 14:52', hx=''):
         else:
             tabs += f'<a href="#" style="text-decoration: none; color: {MUT}">{t}</a>'
     return f'''<header style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px 26px; padding: 14px 20px; border-bottom: 1px solid {LINE}; background: {BG}; font: 500 11px {MONO}; letter-spacing: .14em">
-    <span style="display: flex; align-items: center; gap: 10px; color: {INK}">{LOGO}СПУТНИК</span>
+    <span style="display: flex; align-items: center; gap: 8px; color: {INK}; font: 600 15px {SANS}; letter-spacing: 0">{LOGO}Спутник</span>
     <nav aria-label="Разделы" style="display: flex; gap: 20px; flex-wrap: wrap">{tabs}</nav>
     <span style="flex: 1"></span>
     {hx}<span style="color: {MUT}">{right}</span>
     <span style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}; min-width: 150px"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>НАЙТИ<span style="margin-left: auto; font-size: 10px; color: {DIM}">CTRL K</span></span>
     <span style="display: flex; align-items: center; gap: 6px; height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid {LINE}; color: {MUT}" aria-label="Состояние: всё в порядке"><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span><span style="width: 6px; height: 6px; border-radius: 2px; background: {GREEN}"></span></span>
+    {GEAR}
     <button type="button" style="height: 32px; padding: 0 14px; border-radius: 8px; border: 0; background: {INK}; color: {BG}; font: 600 13px {SANS}; letter-spacing: 0">＋ Создать</button>
+    {winctl()}
   </header>'''
 
 
