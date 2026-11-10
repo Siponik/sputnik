@@ -37,6 +37,7 @@ pub struct Ui {
     pub confirm: Option<(String, String, Box<dyn FnOnce(&mut App, &mut Ui)>)>,
     pub habit_mode: String,
     pub habit_part: String,
+    pub habit_sel: String,
     pub note_q: String,
     pub note_path: String,
     pub note_dirty: bool,
@@ -98,6 +99,7 @@ pub fn start(app: App) -> AppWindow {
             ["pipe", p] => u.pipe_open = p.to_string(),
             ["archive"] => u.arch = true,
             ["gallery"] => u.pipe_gallery = true,
+            ["hmonth"] => u.habit_mode = "month".into(),
             ["graph", p] => { u.note_graph = true; u.note_path = p.to_string(); }
             _ => {}
         }

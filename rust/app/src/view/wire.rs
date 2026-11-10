@@ -302,6 +302,16 @@ pub fn wire(w: &AppWindow) {
     }));
 
     // ---------- Привычки ----------
+    g.on_habit_pick(|id| act(|_, u| u.habit_sel = str_(&id)));
+    g.on_habit_new(|| act(|_, u| u.create = Some(Create { kind: 2, ..Default::default() })));
+    g.on_habit_all(|| act(|app, _| {
+        let d = today_s();
+        for h in app.habits() {
+            if hb::scheduled_on(&h, app.habit_log(), &d) && !hb::is_done(app.habit_log(), &h["id"], &d) && hb::goal_n(&h) <= 1 {
+                app.toggle_habit(&h);
+            }
+        }
+    }));
     g.on_habit_mode_set(|m| act(|_, u| u.habit_mode = str_(&m)));
     g.on_habit_part(|p| act(|_, u| u.habit_part = str_(&p)));
     g.on_habit_cell(|id, day| act(|app, _| {
@@ -314,6 +324,15 @@ pub fn wire(w: &AppWindow) {
         let st = hb::day_state(&h, app.habit_log(), &d, None);
         let next = match st { "d" => "skip", "k" => "none", _ => "done" };
         app.set_habit_day(&h, &d, next);
+    }));
+    g.on_habit_day_set(|id, day, st| act(|app, _| {
+        let Some(h) = habit_by(app, &id) else { return };
+        let nd = hb::now().date();
+        let d = format!("{}{:02}", &sputnik_core::dates::ymd(nd)[..8], day);
+        if d > today_s() {
+            return;
+        }
+        app.set_habit_day(&h, &d, &str_(&st));
     }));
     g.on_habit_add(|t| act(|app, _| add_habit(app, &t)));
     g.on_habit_remove(|id| act(|app, u| {

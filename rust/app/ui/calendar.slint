@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя: сутки 0–24, пустые часы сжаты штрихованными полосами; задачи со временем тянутся мышью.
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Link, DashBox, Hatch } from "kit.slint";
+import { Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg } from "kit.slint";
 import { S, Day, Block, Chip, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -30,27 +30,6 @@ component Filter inherits Rectangle {
     Rectangle { x: 11px; y: (parent.height - 6px) / 2; width: 6px; height: 6px; border-radius: 1.5px; background: f.hue; opacity: f.on ? 1 : 0.6; }
     fl := Text { x: 23px; text: f.label; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: f.on ? G.ink : G.dim; vertical-alignment: center; height: parent.height; }
     fa := TouchArea { clicked => { S.cal-filter(f.id); } mouse-cursor: pointer; }
-}
-
-component CSeg inherits Rectangle {
-    in property <[string]> items;
-    in property <int> current;
-    callback picked(int);
-    height: 32px;
-    width: 128px;
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: G.line;
-    for it[i] in items: Rectangle {
-        x: 3px + i * (root.width - 6px) / items.length;
-        y: 3px;
-        width: (root.width - 6px) / items.length;
-        height: root.height - 6px;
-        border-radius: 4px;
-        background: i == current ? G.ink : (sa.has-hover ? G.node-hover : transparent);
-        Text { text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center; }
-        sa := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
-    }
 }
 
 // Точки привычек дня: 1 — сделано (золото), 2 — сегодня, ещё нет (обводка clay), 0 — пропущено, 3 — впереди.

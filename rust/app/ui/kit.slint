@@ -263,3 +263,26 @@ export component Hatch inherits Rectangle {
     clip: true;
     for i in floor(self.width / 6px): Rectangle { x: i * 6px; y: 0; width: 2px; height: root.height; background: root.c; }
 }
+
+// Сегмент G: выбранное — светлая заливка с тёмным текстом.
+export component CSeg inherits Rectangle {
+    in property <[string]> items;
+    in property <int> current;
+    callback picked(int);
+    height: 32px;
+    width: 128px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: G.line;
+    for it[i] in items: Rectangle {
+        x: 3px + i * (root.width - 6px) / items.length;
+        y: 3px;
+        width: (root.width - 6px) / items.length;
+        height: root.height - 6px;
+        border-radius: 4px;
+        background: i == current ? G.ink : (sa.has-hover ? G.node-hover : transparent);
+        Text { text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center; }
+        sa := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
+    }
+}
+

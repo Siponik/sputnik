@@ -14,7 +14,7 @@ export struct Wire { y1: float, y2: float, hue: color, dashed: bool }
 export struct ArchRow { list-id: string, id: string, title: string, list: string, hue: color, date: string, group: string, first: bool }
 export struct InboxRow { list-id: string, id: string, title: string, list: string, when: string }
 export struct HabitChip { id: string, name: string, icon: string, hue: color, done: bool, count: int, goal: int }
-export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool }
+export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool, sched-up: string, unit-up: string, foot: string, foot-hi: bool, now-i: int, letter: string }
 export struct MonthRow { id: string, name: string, icon: string, hue: color, cells: [int] }
 export struct Block { title: string, sub: string, y: float, h: float, x: float, w: float, hue: color, done: bool, kind: int, list-id: string, id: string }
 export struct Label { text: string, y: float, small: bool }
@@ -201,6 +201,30 @@ export global S {
     callback habit-cell(string, int);          // привычка, день месяца
     callback habit-add(string);
     callback habit-remove(string);
+    callback habit-pick(string);
+    callback habit-day-set(string, int, string); // done | skip | none
+    callback habit-all();
+    callback habit-new();
+    in property <string> habit-meta;           // «6 ПРИВЫЧЕК · СЕГОДНЯ 1 / 5»
+    in property <string> hp-id;
+    in property <string> hp-name;
+    in property <color> hp-hue;
+    in property <string> hp-sched;
+    in property <int> hp-streak;
+    in property <string> hp-label;
+    in property <float> hp-ms;                 // 0..1 по дорожке вех 7·21·50·100
+    in property <string> hp-month;
+    in property <[Opt]> hp-cells;              // id — число, hint — состояние: done/today/miss/fut/off/blank
+    in property <[string]> hp-stats;           // лучшая, всего, % за месяц
+    in property <string> hp-win;
+    in property <string> hp-part;
+    in property <bool> hp-tg;
+    in property <bool> hp-winrem;
+    in property <string> hm-title;
+    in property <[string]> hm-wd;              // дни недели над числами месяца
+    in property <[string]> hm-pct;
+    in property <[string]> hm-sum;             // три карточки итога: заголовок|текст
+    in property <int> hm-today;
 
     // ---------- Окно задачи ----------
     in property <bool> task-open;
