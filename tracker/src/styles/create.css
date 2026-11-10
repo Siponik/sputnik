@@ -5,16 +5,26 @@
   width: min(920px, calc(100% - 32px)); height: min(660px, calc(100% - 48px)); display: grid; grid-template-columns: minmax(0, 1fr) 300px;
   border-radius: 20px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; }
 .cr-win svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-/* --kc — цвет вида: задача clay, событие бирюза, привычка и день рождения золото */
+/* --kc — цвет вида: задача clay, событие бирюза, привычка и день рождения золото. Зарегистрирован как цвет,
+   поэтому при смене вида рамка строки, курсор и главная кнопка перетекают в новый цвет, а не мигают. */
+@property --kc { syntax: '<color>'; inherits: true; initial-value: #D9774F; }
+@property --on-kc { syntax: '<color>'; inherits: true; initial-value: #1B1A17; }
+.cr-win { transition: --kc var(--dur-3) var(--ease-out), --on-kc var(--dur-3) var(--ease-out); }
+.cr-kind { display: flex; flex-direction: column; gap: 14px; }
 .cr-main { display: flex; flex-direction: column; min-height: 0; }
 .cr-head { display: flex; flex-direction: column; gap: 10px; padding: 18px 24px 0; }
 .cr-body { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 14px 24px 16px; }
 
 .cr-top { display: flex; align-items: center; gap: 8px; }
-.cr-kinds { flex: 1; display: grid; grid-template-columns: repeat(4, auto); padding: 3px; border-radius: 12px; background: var(--wash); gap: 2px; }
+.cr-kinds { position: relative; flex: 1; display: grid; grid-template-columns: repeat(4, auto); padding: 3px; border-radius: 12px; background: var(--wash); gap: 2px; }
 .cr-kinds button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 10px; border: 0; border-radius: 9px; background: none; color: var(--ink-soft); font: 500 13px/1 var(--font-sans); cursor: pointer; white-space: nowrap; }
+.cr-kinds button { position: relative; z-index: 1; transition: color var(--dur-2) var(--ease-out); }
+.cr-kinds button svg, .cr-kinds kbd { transition: color var(--dur-2) var(--ease-out), background-color var(--dur-2) var(--ease-out), opacity var(--dur-2); }
 .cr-kinds button:hover { color: var(--ink); }
-.cr-kinds button[aria-pressed="true"] { background: var(--raised); color: var(--ink); box-shadow: 0 0 0 1px var(--edge); }
+.cr-kinds button[aria-pressed="true"] { color: var(--ink); }
+/* подложка выбранного вида — одна на сегмент, переезжает (место и ширина — из Create.svelte) */
+.cr-ink { position: absolute; top: 3px; bottom: 3px; left: 0; border-radius: 9px; background: var(--raised); box-shadow: 0 0 0 1px var(--edge);
+  transition: transform var(--dur-3) var(--ease-out), width var(--dur-3) var(--ease-out); pointer-events: none; }
 .cr-kinds button[aria-pressed="true"] svg { color: var(--kc); }
 /* подсказка клавиши — квадратик с цифрой (Alt+N в title) */
 .cr-kinds kbd { display: inline-grid; place-items: center; width: 16px; height: 16px; margin-left: 4px; border-radius: 5px; background: color-mix(in srgb, var(--ink) 7%, transparent); font: 600 10px/1 var(--font-mono); color: var(--ink-faint); }

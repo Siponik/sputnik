@@ -13,6 +13,6 @@
 
 «Знания» (`app/src/notes.rs`): разбор — `pulldown-cmark` (MIT, ссылки `[[…]]`, теги, заголовок), слежение за папкой — `notify` (CC0), граф — `core/src/graph.rs`, раскладка по алгоритму d3-force (ISC) с Барнсом–Хатом.
 
-Тесты: `cd rust; cargo test` (часовой пояс — Москва). CI — `.github/workflows/rust-check.yml`, там же собирается `sputnik.exe` для Windows (артефакт `sputnik-rust-windows`).
+Тесты: `cd rust; cargo test` (часовой пояс — Москва). CI на PR — `.github/workflows/rust-check.yml` (тесты и `cargo check` под Windows); сам `sputnik.exe` собирается после слияния (`rust-release.yml`, ниже).
 
 Обновление из приложения (`state/update.rs`): пуш в beta или main с изменениями в `rust/` → `.github/workflows/rust-release.yml` собирает `sputnik.exe` версии 0.1.<номер сборки>, подписывает ключом трекера и кладёт `latest.json` в служебный релиз `rust-latest` (релизы «не последние» — обновлению трекера не мешают). Приложение проверяет через 30 с после запуска и раз в 6 ч, чип «✦ Версия …» в шапке, «Обновить сейчас» — проверка подписи, замена файла (старый — `sputnik.old.exe`, удаляется при следующем запуске) и перезапуск.

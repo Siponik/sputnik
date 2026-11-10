@@ -1,4 +1,4 @@
-# Проверка Rust-версии (rust/): тесты логики и сборка окна. Ничего не публикует.
+# Проверка Rust-версии (rust/): тесты и проверка, что код собирается под Windows (cargo check, без .exe — сам .exe собирает rust-release.yml после слияния). Ничего не публикует.
 name: Проверка Rust-приложения
 
 on:
@@ -8,6 +8,11 @@ on:
       - 'tools/golden/**'
       - '.github/workflows/rust-check.yml'
   workflow_dispatch:
+
+# Новый пуш в тот же PR отменяет недоделанную проверку.
+concurrency:
+  group: rust-check-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check:
@@ -37,10 +42,4 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: rust
-      - run: cargo build --release -p sputnik
-      - run: Compress-Archive -Path target/release/sputnik.exe -DestinationPath sputnik-rust.zip
-        shell: pwsh
-      - uses: actions/upload-artifact@v4
-        with:
-          name: sputnik-rust-windows
-          path: rust/sputnik-rust.zip
+      - run: cargo check -p sputnik
