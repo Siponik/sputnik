@@ -13,7 +13,6 @@ import { senderOf, parseData } from './draft.js';
 export const CODE_TTL = 15 * 60e3; // код привязки живёт 15 минут
 export const LATE_LIMIT = 12 * 3600e3; // опоздавшее больше чем на 12 ч не шлём
 export const KEEP_SENT = 3 * 864e5;
-export const SNOOZE_MIN = 60;
 export const LINK_TRIES = 10; // неверных кодов с одного адреса за час — потом ждать
 export const MAX_STATE = 256 * 1024; // байт в PUT /state
 const MONTHS = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
@@ -44,15 +43,19 @@ export function parts(date, tz) {
 const dayText = (ymd) => { const [, m, d] = ymd.split('-').map(Number); return `${d} ${MONTHS[m - 1]}`; };
 
 /** Текст напоминания — как у личного бота (reminders/Code.gs, format_). */
-export function format(item, tz) {
-  if (item.kind === 'birthday') return `🎂 <b>${esc(item.title)}</b>\nДень рождения ${dayText(item.due)}${item.lead ? ` · <i>${esc(item.lead.toLowerCase())}</i>` : ''}`;
+export function format(item, tz, now = Date.now()) {
+  if (item.kind === 'birthday') {
+    const today = item.due && item.due === parts(new Date(now), tz).ymd;
+    const when = today ? 'сегодня' : `${dayText(item.due)}${item.lead ? ` · <i>${esc(item.lead.toLowerCase())}</i>` : ''}`;
+    return `🎂 <b>${esc(item.title)}</b>\nДень рождения ${when}`;
+  }
   if (item.kind === 'event') {
     const when = item.start ? (() => { const p = parts(new Date(item.start), tz); return `${dayText(p.ymd)}, ${p.hh}:${p.mm}`; })() : `${dayText(item.due)}, весь день`;
     return [`📅 <b>${esc(item.title)}</b>`, when, ...(item.note ? [esc(item.note)] : [])].join('\n');
   }
   if (item.kind === 'habit') { const p = parts(new Date(item.fireAt), tz); return `⏰ <b>${esc(item.title)}</b>\nПривычка · ${p.hh}:${p.mm}`; }
   const lines = [`${item.kind === 'milestone' || item.kind === 'test' ? '' : item.kind === 'assigned' ? '👤 ' : '🔔 '}<b>${esc(item.title)}</b>`];
-  if (item.due) lines.push(`Срок: ${dayText(item.due)}`);
+  if (item.due) lines.push(`Срок: ${dayText(item.due)}${item.time ? `, ${item.time}` : ''}`);
   if (item.note) lines.push(esc(item.note));
   if (item.list) lines.push(`<i>${esc(item.list)}</i>`);
   return lines.join('\n');
@@ -140,22 +143,18 @@ async function onButton(q, { store, tg, now }) {
   const sent = id ? await store.sentById(chat, +id) : null;
   if (!sent) return answer('Это напоминание уже не найти');
   const item = sent.item;
-  if (act === 'd' && item.taskId) {
-    await store.addInbox(chat, { type: 'done', taskId: item.taskId, listId: item.listId, title: item.title, at: now });
-    await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message?.message_id, reply_markup: { inline_keyboard: [] } }).catch(() => {});
+  const doneBtn = () => ({ text: '✓ Готово', callback_data: `d:${id}` });
+  const undoBtn = () => ({ text: '↩ Отменить', callback_data: `u:${id}` });
+  const setButtons = (btn) => tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message?.message_id, reply_markup: { inline_keyboard: [btn ? [btn] : []] } }).catch(() => {});
+  if (act === 'd') {
+    await store.addInbox(chat, { type: 'done', taskId: item.taskId, listId: item.listId, habitId: item.habitId, day: item.day, title: item.title, at: now });
+    await setButtons(undoBtn());
     return answer('✓ Отмечу в Спутнике');
   }
-  if (act === 'n' && item.taskId) { // «📅 На завтра»: срок задачи переносит трекер
-    const day = parts(new Date(now + 864e5), (await store.user(chat))?.tz).ymd;
-    await store.addInbox(chat, { type: 'move', taskId: item.taskId, listId: item.listId, title: item.title, due: day, at: now });
-    await tg('editMessageReplyMarkup', { chat_id: chat, message_id: q.message?.message_id, reply_markup: { inline_keyboard: [[{ text: '📅 Перенесено на завтра', callback_data: 'x:0' }]] } }).catch(() => {});
-    return answer('Перенесу на завтра');
-  }
-  if (act === 'z' || act === 'q') { // «⏰ Через час» / «⏰ 15 мин»
-    const at = new Date(now + (act === 'q' ? 15 : SNOOZE_MIN) * 60e3);
-    await store.addSnooze(chat, { ...item, key: `snooze|${id}|${at.getTime()}`, fireAt: at.toISOString() });
-    const p = parts(at, (await store.user(chat))?.tz);
-    return answer(`Напомню в ${p.hh}:${p.mm}`);
+  if (act === 'u') {
+    await store.addInbox(chat, { type: 'undone', taskId: item.taskId, listId: item.listId, habitId: item.habitId, day: item.day, title: item.title, at: now });
+    await setButtons(doneBtn());
+    return answer('Отменил — верну как было');
   }
   return answer('');
 }
@@ -199,9 +198,9 @@ export async function tick({ store, tg, now = Date.now() }) {
       if (!at || at > now || sentKeys.has(it.key)) continue;
       if (now - at <= LATE_LIMIT) {
         const id = await store.markSent(u.chat, it, now);
-        const rows = [];
-        if (it.taskId && it.listId && it.kind !== 'milestone' && it.kind !== 'habit') rows.push([{ text: '✓ Готово', callback_data: `d:${id}` }, { text: '📅 На завтра', callback_data: `n:${id}` }]);
-        if (it.kind !== 'milestone' && it.kind !== 'test' && it.kind !== 'assigned') rows.push([{ text: '⏰ 15 мин', callback_data: `q:${id}` }, { text: '⏰ Через час', callback_data: `z:${id}` }]);
+        // «✓ Готово» — задачам (закроет в Google Tasks) и привычкам (отметка дня в слое). После нажатия — «↩ Отменить».
+        const rows = (it.kind !== 'milestone' && it.kind !== 'test' && ((it.taskId && it.listId) || it.habitId))
+          ? [[{ text: '✓ Готово', callback_data: `d:${id}` }]] : [];
         try {
           await tg('sendMessage', { chat_id: u.chat, text: format(it, u.tz), parse_mode: 'HTML', disable_web_page_preview: true, ...(rows.length ? { reply_markup: { inline_keyboard: rows } } : {}) });
           n++;

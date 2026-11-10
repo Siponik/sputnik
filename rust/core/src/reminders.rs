@@ -194,6 +194,37 @@ fn first_line(v: &Value) -> String {
     s(v).split('\n').next().unwrap_or("").chars().take(200).collect()
 }
 
+/// Имя именинника из названия события: «🎂 Аня», «День рождения: Аня» (контакты Google).
+pub fn bday_name(v: &Value) -> String {
+    let x = rx::first(r"^🎂\s*", &text(v), "");
+    let x = rx::first(r"(?i)^(день рождения|birthday)[:\s–—-]*", &x, "");
+    let x = x.trim();
+    if x.is_empty() { "День рождения".into() } else { x.into() }
+}
+
+/// Дни рождения без своих напоминаний (контакты Google, «🎂» с «Напомнить: Нет») получают напоминания
+/// по умолчанию из settings.remind.birthday — как в трекере (App.loadRemindEvents). Остальные события — как есть.
+pub fn with_bday_defaults(events: &[Value], settings: &Value) -> Vec<Value> {
+    let mins: Vec<String> = a(&default_mins(settings, "birthday")).iter().map(text).collect();
+    let bday = |e: &Value| e["extendedProperties"]["private"]["sputnik"] == "birthday" || e["eventType"] == "birthday" || s(&e["calId"]).contains("#contacts@");
+    events
+        .iter()
+        .filter_map(|e| {
+            let pv = &e["extendedProperties"]["private"];
+            if t(&pv["sputnikRemind"]) {
+                return (pv["sputnikR"] == "1").then(|| e.clone());
+            }
+            if mins.is_empty() || !bday(e) {
+                return None;
+            }
+            let mut x = e.clone();
+            x["extendedProperties"]["private"]["sputnik"] = json!("birthday");
+            x["extendedProperties"]["private"]["sputnikRemind"] = json!(mins.join(","));
+            Some(x)
+        })
+        .collect()
+}
+
 fn ms(d: At) -> f64 {
     d.timestamp_millis() as f64
 }
@@ -220,7 +251,8 @@ pub fn collect(lists: &[Value], by_list: &Value, lay_tasks: &Value, habit_list: 
                 }
                 items.push(json!({"key": key, "taskId": tk["id"], "listId": l["id"], "list": l["title"],
                     "title": if t(&tk["title"]) { tk["title"].clone() } else { json!("Без названия") },
-                    "note": first_line(&tk["notes"]), "due": day10(&tk["due"]), "fireAt": iso(at)}));
+                    "note": first_line(&tk["notes"]), "due": day10(&tk["due"]),
+                    "time": if t(&lt["slot"]["s"]) { lt["slot"]["s"].clone() } else { json!("") }, "fireAt": iso(at)}));
             }
         }
     }
@@ -245,7 +277,7 @@ pub fn collect(lists: &[Value], by_list: &Value, lay_tasks: &Value, habit_list: 
                 continue;
             }
             let title = if birthday {
-                json!(rx::first(r"^🎂\s*", &text(&e["summary"]), ""))
+                json!(bday_name(&e["summary"]))
             } else if t(&e["summary"]) {
                 e["summary"].clone()
             } else {
@@ -317,7 +349,8 @@ pub fn habit_items(habits: &[Value], log: &Value, now: Option<NaiveDateTime>) ->
                 note.push(format!("Цель на день: {} {}", text(&goal["n"]), if t(&goal["unit"]) { text(&goal["unit"]) } else { "раз".into() }));
             }
             note.push(format!("Отметь до {}", text(&habit_win(h)["e"])));
-            items.push(json!({"key": format!("habit|{}|{day}", text(&h["id"])), "kind": "habit", "title": h["name"],
+            items.push(json!({"key": format!("habit|{}|{day}", text(&h["id"])), "kind": "habit",
+                "habitId": h["id"], "day": day, "title": h["name"],
                 "note": note.join(" · "), "list": "Привычки", "due": "", "fireAt": iso(local(at))}));
         }
     }

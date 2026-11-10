@@ -6,7 +6,7 @@ import * as D from '../../tracker/src/lib/dropdown.js';
 import * as M from '../../tracker/src/lib/meta.js';
 import * as S from '../../tracker/src/lib/spheres.js';
 
-const OUT = new URL('../../app/test/golden/', import.meta.url);
+const OUT = new URL('../../rust/core/tests/golden/', import.meta.url);
 mkdirSync(OUT, { recursive: true });
 const write = (name, data) => writeFileSync(new URL(name, OUT), '[\n' + data.map((x) => JSON.stringify(x)).join(',\n') + '\n]\n');
 

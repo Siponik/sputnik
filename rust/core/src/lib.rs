@@ -1,5 +1,5 @@
 //! Чистая логика Спутника: без окна, файлов и сети. Поведение берётся у старого кода (tracker/src/lib/*.js);
-//! совпадение проверяют золотые тесты (tests/*.rs читают app/test/golden/*.json — ответы настоящего JS).
+//! совпадение проверяют золотые тесты (tests/*.rs читают tests/golden/*.json — ответы настоящего JS).
 pub mod accent;
 pub mod boardedit;
 pub mod calendar;

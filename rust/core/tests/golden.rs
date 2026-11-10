@@ -1,10 +1,10 @@
-//! Золотые тесты: ответы взяты у настоящего JS (tools/golden/gen.mjs пишет app/test/golden/*.json).
+//! Золотые тесты: ответы взяты у настоящего JS (tools/golden/gen.mjs пишет rust/core/tests/golden/*.json).
 use chrono::NaiveDate;
 use serde_json::Value;
 use sputnik_core::when::{parse_when, when_text};
 
 fn load(name: &str) -> Vec<Value> {
-    let p = format!("{}/../../app/test/golden/{name}", env!("CARGO_MANIFEST_DIR"));
+    let p = format!("{}/tests/golden/{name}", env!("CARGO_MANIFEST_DIR"));
     serde_json::from_str(&std::fs::read_to_string(&p).expect(&p)).unwrap()
 }
 
