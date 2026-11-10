@@ -17,6 +17,7 @@ pub mod repeat;
 pub mod route;
 pub mod rx;
 pub mod search;
+pub mod shell;
 pub mod small;
 pub mod spheres;
 pub mod stickers;
