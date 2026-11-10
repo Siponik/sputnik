@@ -40,6 +40,8 @@ pub struct Ui {
     pub note_path: String,
     pub note_dirty: bool,
     pub note_graph: bool,
+    pub pipe_open: String,
+    pub pipe_by: String,
 }
 pub use crate::Found;
 
@@ -86,6 +88,7 @@ pub fn start(app: App) -> AppWindow {
                 u.found = wire::find(&app, q);
             }
             ["note", p] => u.note_path = p.to_string(),
+            ["pipe", p] => u.pipe_open = p.to_string(),
             ["graph", p] => { u.note_graph = true; u.note_path = p.to_string(); }
             _ => {}
         }
@@ -137,6 +140,7 @@ fn shell(app: &App, u: &Ui, g: &S) {
     let status = if !app.outbox.ops.is_empty() && f.synced_at.is_some() { format!("{status} · ждут {}", app.outbox.ops.len()) } else { status };
     g.set_status(status.into());
     g.set_inbox_count(app.inbox_items().len() as i32);
+    g.set_status_ok(app.outbox.ops.is_empty());
     g.set_version(crate::state::update::version().into());
     g.set_upd_version(ss(app.update.version.clone()));
     g.set_upd_notes(ss(app.update.notes.clone()));

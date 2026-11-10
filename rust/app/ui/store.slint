@@ -4,9 +4,9 @@
 
 export struct TaskRow { list-id: string, id: string, title: string, list: string, hue: color, when: string, overdue: bool, done: bool, prio: int, sub: string }
 export struct Chip { title: string, hue: color, done: bool, kind: int, list-id: string, id: string, time: string }
-export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool }
+export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool, sub-done: int, sub-total: int, tag: string }
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
-export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool }
+export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
 export struct SrcRow { title: string, right: string, done: bool, accent: bool }
 export struct SrcNode { title: string, label: string, hue: color, y: float, h: float, rows: [SrcRow], dashed: bool }
@@ -67,6 +67,7 @@ export global S {
     in property <float> claude-y;
     in property <int> habits-done;
     in property <string> now-label;
+    in property <bool> status-ok: true;
     in property <string> next-time;
     in property <string> next-meta;
     in property <[Chip]> today-events;
@@ -92,10 +93,28 @@ export global S {
     in property <[SideRow]> side;
     in property <string> board-id;
     in property <string> board-title;
+    in property <string> board-tpl;
+    in property <string> board-tip;
+    in property <string> board-flow;
+    in property <int> side-spheres;
     in property <string> board-view;           // kanban | pipe | stickers | list
     in property <[Column]> columns;
     in property <[string]> stages;
     in property <[PipeRow]> pipe;
+    in property <string> pipe-open;
+    in property <string> pipe-by;              // project | stage
+    in property <string> pipe-info;
+    in property <[Sub]> pipe-subs;
+    in property <string> pipe-note;
+    in property <string> pipe-client;
+    in property <string> pipe-due;
+    in property <int> pipe-prio;
+    in property <string> pipe-prev;
+    callback pipe-toggle(string);
+    callback pipe-by-set(string);
+    callback pipe-sub-add(string, string, string);
+    callback pipe-prio-set(string, string, int);
+    callback pipe-back(string, string);
     in property <int> archived;
     callback pick-list(string);
     callback set-view(string);

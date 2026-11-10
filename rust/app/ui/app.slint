@@ -94,6 +94,7 @@ export component AppWindow inherits Window {
                     padding-right: 20px;
                     spacing: 26px;
                     HorizontalLayout {
+                        horizontal-stretch: 0;
                         spacing: 10px;
                         Path {
                             width: 20px; height: 20px; y: 20px;
@@ -109,6 +110,7 @@ export component AppWindow inherits Window {
                         Text { text: "СПУТНИК"; font-family: G.mono; font-weight: 500; font-size: 11px; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; }
                     }
                     HorizontalLayout {
+                        horizontal-stretch: 0;
                         spacing: 20px;
                         Tab { text: "СЕГОДНЯ"; count: S.today-count; active: S.tab == 0; clicked => { S.go(0); } }
                         Tab { text: "КАЛЕНДАРЬ"; active: S.tab == 1; clicked => { S.go(1); } }
@@ -116,7 +118,7 @@ export component AppWindow inherits Window {
                         Tab { text: "ПРИВЫЧКИ"; active: S.tab == 3; clicked => { S.go(3); } }
                         Tab { text: "ЗНАНИЯ"; active: S.tab == 4; clicked => { S.go(4); } }
                     }
-                    Rectangle { }
+                    Rectangle { horizontal-stretch: 1; }
                     if S.upd-version != "": Rectangle {
                         width: ut.preferred-width + 24px;
                         height: 32px;
@@ -150,9 +152,22 @@ export component AppWindow inherits Window {
                         Text { x: parent.width - self.preferred-width - 10px; text: "CTRL K"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #62646E; vertical-alignment: center; }
                         fa := TouchArea { clicked => { S.search-open-set(true); } mouse-cursor: pointer; }
                     }
+                    // «Состояние»: три точки — связь, синхронизация, очередь; клик — Настройки
                     Rectangle {
-                        width: 36px;
-                        IconBtn { y: 14px; icon: "⚙"; on: S.tab == 5; clicked => { S.go(5); } }
+                        width: 46px;
+                        height: 32px;
+                        y: 14px;
+                        border-radius: 8px;
+                        border-width: 1px;
+                        border-color: S.tab == 5 ? G.accent-line : (pa.has-hover ? G.line-strong : G.line);
+                        HorizontalLayout {
+                            alignment: center;
+                            spacing: 5px;
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.offline ? G.red : G.green; }
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.busy ? G.accent : S.error != "" ? G.gold : G.green; }
+                            Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.status-ok ? G.green : G.gold; }
+                        }
+                        pa := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
                     }
                     Rectangle {
                         width: ct.preferred-width + 28px;

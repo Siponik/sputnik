@@ -1,6 +1,6 @@
 //! Модели «Доски»: колонка списков по сферам, доска в одном из четырёх видов.
 use super::*;
-use crate::{Card, Column, PipeRow, SideRow};
+use crate::{Card, Column, PipeRow, SideRow, Sub};
 use sputnik_core::{stickers as stk, templates as tpl};
 
 pub fn view_of(app: &App, list: &str) -> String {
@@ -23,7 +23,7 @@ fn card(app: &App, list: &str, t: &Value) -> Card {
         id: ss(id),
         title: ss(text(&t["title"])),
         hue: list_hue(app, list),
-        due: ss(due),
+        due: ss(if due.is_empty() { "БЕЗ СРОКА".to_string() } else { due.replace("просрочено · ", "").to_uppercase() }),
         overdue: late && !App::is_done(t),
         prio: n(&l["priority"]).unwrap_or(2.0) as i32,
         subs: ss(if subs.is_empty() { String::new() } else { format!("{}/{}", subs.iter().filter(|x| App::is_done(x)).count(), subs.len()) }),
@@ -32,6 +32,9 @@ fn card(app: &App, list: &str, t: &Value) -> Card {
         who: ss(who),
         topic: ss(text(&l["topic"])),
         pin: t_(&l["pin"]),
+        sub_done: subs.iter().filter(|x| App::is_done(x)).count() as i32,
+        sub_total: subs.len() as i32,
+        tag: ss({ let p = text(&l["project"]); if p.is_empty() { text(&l["client"]) } else { p } }.to_uppercase()),
     }
 }
 
@@ -82,28 +85,69 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         return;
     }
     g.set_board_title(ss(app.list_name(&id)));
+    let b = app.board(&id);
+    g.set_board_tpl(ss(if t_(&b["own"]) { "СВОЯ ДОСКА".to_string() } else { format!("ПО ШАБЛОНУ «{}»", text(&b["name"]).to_uppercase()) }));
+    g.set_side_spheres(side(app, &id).iter().filter(|r| r.header).count() as i32);
     let view = view_of(app, &id);
     g.set_board_view(ss(view.clone()));
     g.set_archived(app.archived(&id).len() as i32);
     let cols = app.columns(&id);
+    g.set_board_tip(ss("Стрелка на строке переводит задачу на следующий этап.".to_string()));
     match view.as_str() {
         "stickers" => g.set_columns(model(stickers(app, &id))),
         "pipe" => {
-            g.set_stages(strings(cols.iter().map(|c| text(&c.0["name"])).collect()));
+            let names: Vec<String> = cols.iter().map(|c| text(&c.0["name"])).collect();
+            g.set_stages(strings(names.clone()));
+            let tdy = today_s();
             let mut rows = vec![];
             for (ci, (c, ts)) in cols.iter().enumerate() {
                 for t in ts {
                     let l = app.lt(s(&t["id"]));
                     let (due, late) = due_text(t, &l["slot"]);
+                    let days = sputnik_core::dates::parse_ymd(&day10(&l["stageAt"])).zip(sputnik_core::dates::parse_ymd(&tdy)).map(|(a0, b0)| (b0 - a0).num_days()).unwrap_or(-1);
+                    let p = text(&l["project"]);
+                    let prio = n(&l["priority"]).unwrap_or(2.0) as i32;
+                    let mut meta = vec![];
+                    if !p.is_empty() { meta.push(p.clone()) }
+                    meta.push(if days >= 0 { format!("{} {} дн", text(&c["name"]).to_lowercase(), days) } else { text(&c["name"]).to_lowercase() });
+                    if prio == 1 { meta.push("!!!".into()) }
                     rows.push(PipeRow {
                         list_id: ss(id.clone()), id: ss(s(&t["id"])), title: ss(text(&t["title"])), stage: ci as i32,
-                        stage_name: ss(text(&c["name"])), project: ss(text(&l["project"])), due: ss(due), overdue: late && !App::is_done(t),
-                        prio: n(&l["priority"]).unwrap_or(2.0) as i32, done: App::is_done(t),
+                        stage_name: ss(text(&c["name"])), project: ss(p), due: ss(if due.starts_with("просрочено") { due.replace("просрочено · ", "") } else { due }), overdue: late && !App::is_done(t),
+                        prio, done: App::is_done(t), meta: ss(meta.join(" · ")),
+                        next_name: ss(names.get(ci + 1).cloned().unwrap_or_default()), group: ss(""), group_info: ss(""), first: false,
                     });
                 }
             }
-            // открытые выше, по проекту
-            rows.sort_by(|a0, b0| a0.done.cmp(&b0.done).then(a0.project.cmp(&b0.project)));
+            let by_stage = u.pipe_by == "stage";
+            rows.sort_by(|a0, b0| a0.done.cmp(&b0.done).then(if by_stage { a0.stage.cmp(&b0.stage) } else { a0.project.cmp(&b0.project) }));
+            let key = |r: &PipeRow| if r.done { "Готово".to_string() } else if by_stage { r.stage_name.to_string() } else if r.project.is_empty() { "Без проекта".to_string() } else { r.project.to_string() };
+            let projects = { let mut v: Vec<String> = rows.iter().map(|r| r.project.to_string()).filter(|x| !x.is_empty()).collect(); v.sort(); v.dedup(); v.len() };
+            for i in 0..rows.len() {
+                let k = key(&rows[i]);
+                let first = i == 0 || key(&rows[i - 1]) != k;
+                rows[i].group = ss(k.clone());
+                rows[i].first = first;
+                if first {
+                    let cnt = rows.iter().filter(|r| key(r) == k).count();
+                    rows[i].group_info = ss(format!("{cnt} {}", if cnt == 1 { "ассет" } else if cnt < 5 { "ассета" } else { "ассетов" }));
+                }
+            }
+            g.set_pipe_info(ss(format!("{} {} · {} {}", rows.len(), if rows.len() == 1 { "ассет" } else if rows.len() < 5 { "ассета" } else { "ассетов" }, projects, if projects == 1 { "проект" } else if projects < 5 { "проекта" } else { "проектов" })));
+            g.set_pipe_by(ss(if by_stage { "stage" } else { "project" }));
+            g.set_pipe_open(ss(u.pipe_open.clone()));
+            if let Some(t) = app.task(&id, &u.pipe_open).cloned() {
+                let tid = s(&t["id"]).to_string();
+                let l = app.lt(&tid);
+                g.set_pipe_subs(model(app.subtasks(&id, &tid).iter().map(|x| Sub { id: ss(text(&x["id"])), title: ss(text(&x["title"])), done: App::is_done(x) }).collect()));
+                g.set_pipe_note(ss(text(&t["notes"])));
+                g.set_pipe_client(ss(text(&l["client"])));
+                let d = day10(&t["due"]);
+                g.set_pipe_due(ss(if d.is_empty() { "без срока".to_string() } else { sputnik_core::create::day_month(&d) }));
+                g.set_pipe_prio(n(&l["priority"]).unwrap_or(2.0) as i32);
+                let ci = rows.iter().find(|r| r.id.as_str() == tid).map(|r| r.stage as usize).unwrap_or(0);
+                g.set_pipe_prev(ss(if ci > 0 { format!("{} назад к {}", names[ci], names[ci - 1]) } else { String::new() }));
+            }
             g.set_pipe(model(rows));
         }
         _ => {
@@ -120,6 +164,12 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                     over: limit > 0 && ts.len() as i32 > limit, done: done_col, hue: color(&tpl::col_color(c)), cards: model(cards),
                 }
             }).collect();
+            g.set_board_flow(ss(out.iter().map(|c| c.name.to_uppercase()).collect::<Vec<_>>().join(" → ") + " · СТРЕЛКА НА КАРТОЧКЕ — СЛЕДУЮЩИЙ ЭТАП"));
+            g.set_board_tip(ss(match out.iter().find(|c| c.limit > 0) {
+                Some(c) if c.count >= c.limit => format!("В «{}» уже {} из {}. Закончи одну до новой.", c.name, c.count, c.limit),
+                Some(c) => format!("В «{}» {} из {}. Можно взять ещё {}.", c.name, c.count, c.limit, c.limit - c.count),
+                None => "Стрелка на карточке переводит её на следующий этап.".into(),
+            }));
             g.set_columns(model(out));
         }
     }

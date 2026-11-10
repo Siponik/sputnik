@@ -190,12 +190,29 @@ pub fn wire(w: &AppWindow) {
         let _ = l;
         app.set_task(&id, json!({"pin": !pin}));
     }));
+    g.on_pipe_toggle(|id| act(|_, u| { let id = str_(&id); u.pipe_open = if u.pipe_open == id { String::new() } else { id }; }));
+    g.on_pipe_by_set(|v| act(|_, u| u.pipe_by = str_(&v)));
+    g.on_pipe_sub_add(|l, id, t| act(|app, _| app.add_subtask(&l, &id, &t)));
+    g.on_pipe_prio_set(|_, id, p| act(|app, _| app.set_priority(&id, Some(p as i64))));
+    g.on_pipe_back(|l, id| act(|app, _| {
+        let cols = app.columns(&l);
+        let Some(t) = task_of(app, &l, &id) else { return };
+        let ids: Vec<String> = cols.iter().map(|c| text(&c.0["id"])).collect();
+        let cur = app.col_of(&t, &cols.iter().map(|c| c.0.clone()).collect::<Vec<_>>());
+        if let Some(i) = ids.iter().position(|x| *x == cur).filter(|&i| i > 0) {
+            app.set_stage(&l, &t, &ids[i - 1]);
+        }
+    }));
     g.on_card_menu(|l, id, what| act(|app, _| {
         let Some(t) = task_of(app, &l, &id) else { return };
         match what.as_str() {
             "dup" => app.duplicate(&l, &t),
             "del" => app.remove(&l, &t),
             "today" => app.set_due(&l, &t, Some(&today_s())),
+            "tomorrow" => {
+                let d = sputnik_core::dates::ymd(sputnik_core::dates::add_days(sputnik_core::dates::parse_ymd(&today_s()).unwrap(), 1));
+                app.set_due(&l, &t, Some(&d));
+            }
             _ => {}
         }
     }));
