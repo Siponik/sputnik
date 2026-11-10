@@ -2,6 +2,7 @@
 //! совпадение проверяют золотые тесты (tests/*.rs читают app/test/golden/*.json — ответы настоящего JS).
 pub mod accent;
 pub mod boardedit;
+pub mod calendar;
 pub mod authcheck;
 pub mod dates;
 pub mod dropdown;
