@@ -134,7 +134,15 @@ fn shell(app: &App, u: &Ui, g: &S) {
     let status = if !app.outbox.ops.is_empty() && f.synced_at.is_some() { format!("{status} · ждут {}", app.outbox.ops.len()) } else { status };
     g.set_status(status.into());
     g.set_inbox_count(app.inbox_items().len() as i32);
-    g.set_version(env!("CARGO_PKG_VERSION").into());
+    g.set_version(crate::state::update::version().into());
+    g.set_upd_version(ss(app.update.version.clone()));
+    g.set_upd_notes(ss(app.update.notes.clone()));
+    g.set_upd_busy(app.update.busy);
+    g.set_upd_info(ss(match &app.update.checked {
+        Some(t) if app.update.version.is_empty() => format!("Проверено в {t} — стоит последняя."),
+        Some(t) => format!("Проверено в {t}."),
+        None => "Проверяется само через 30 секунд после запуска и раз в 6 часов.".into(),
+    }));
     match &app.toast {
         Some(t) => {
             g.set_toast(t.text.clone().into());

@@ -113,6 +113,17 @@ export component AppWindow inherits Window {
                         }
                         sa := TouchArea { clicked => { S.refresh(); } mouse-cursor: pointer; }
                     }
+                    if S.upd-version != "": Rectangle {
+                        width: ut.preferred-width + 24px;
+                        height: 28px;
+                        y: 10px;
+                        border-radius: G.r-btn;
+                        border-width: 1px;
+                        border-color: G.accent-line;
+                        background: ua.has-hover ? G.accent-wash : transparent;
+                        ut := Mono { text: "✦ ВЕРСИЯ " + S.upd-version; color: G.accent-ink; }
+                        ua := TouchArea { clicked => { upd.visible = !upd.visible; } mouse-cursor: pointer; }
+                    }
                     IconBtn { icon: "⌕"; y: 10px; clicked => { S.search-open-set(true); } }
                     IconBtn { icon: "⚙"; y: 10px; on: S.tab == 5; clicked => { S.go(5); } }
                     Rectangle { width: 6px; }
@@ -194,6 +205,32 @@ export component AppWindow inherits Window {
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
         if S.search-open: SearchDialog { }
+        upd := Rectangle {
+            visible: false;
+            x: parent.width - 520px;
+            y: 52px;
+            width: 380px;
+            height: ul.preferred-height;
+            background: G.node;
+            border-radius: G.r-node;
+            border-width: 1px;
+            border-color: G.accent-line;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #00000080;
+            TouchArea { }
+            ul := VerticalLayout {
+                padding: 14px;
+                spacing: 10px;
+                Mono { text: "ЧТО НОВОГО · " + S.upd-version; color: G.accent-ink; }
+                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                HorizontalLayout {
+                    spacing: 8px;
+                    alignment: end;
+                    Button { text: "Позже"; clicked => { upd.visible = false; S.upd-later(); } }
+                    Button { text: S.upd-busy ? "Скачиваю…" : "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                }
+            }
+        }
         if S.confirm != "": Confirm { }
     }
     init => { keys.focus(); }

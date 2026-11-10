@@ -228,5 +228,12 @@ export global S {
     in property <[GDot]> graph-dots;
     in property <[GLine]> graph-lines;
     callback note-graph-set(bool);
+    in property <string> upd-version;
+    in property <string> upd-notes;
+    in property <string> upd-info;
+    in property <bool> upd-busy;
+    callback upd-check();
+    callback upd-install();
+    callback upd-later();
     callback graph-open(string, string);
 }

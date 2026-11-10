@@ -1,0 +1,74 @@
+# Сборка Rust-версии для обновления из приложения: пуш в beta или main с изменениями в rust/ →
+# пререлиз rust-0.1.<N> (sputnik.exe + подпись + zip) и latest.json в служебном релизе rust-latest.
+# Релизы помечаются «не последними», чтобы не мешать обновлению трекера (он смотрит releases/latest).
+# Подпись — тем же ключом, что трекер (секрет TAURI_SIGNING_PRIVATE_KEY).
+name: Сборка Rust-версии
+
+on:
+  push:
+    branches: [beta, main]
+    paths:
+      - 'rust/**'
+      - '.github/workflows/rust-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rust-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: windows-latest
+    env:
+      SPUTNIK_VERSION: 0.1.${{ github.run_number }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: rust
+      - name: Сборка
+        working-directory: rust
+        run: cargo build --release -p sputnik
+      - name: Подпись
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ''
+        run: |
+          mkdir out
+          cp rust/target/release/sputnik.exe out/sputnik.exe
+          npx --yes @tauri-apps/cli@2 signer sign out/sputnik.exe
+          ls out
+      - name: Что нового
+        shell: bash
+        run: |
+          prev=$(git tag --list 'rust-0.*' --sort=-v:refname | head -1)
+          range=${prev:+$prev..}HEAD
+          git log $range --no-merges --format='- %s' -- rust | grep -v '^- Merge' | head -8 > notes.txt || true
+          cat notes.txt
+      - name: Релиз
+        shell: bash
+        run: |
+          v=$SPUTNIK_VERSION
+          cd out && 7z a ../sputnik-rust-$v.zip sputnik.exe >/dev/null && cd ..
+          gh release create "rust-$v" out/sputnik.exe out/sputnik.exe.sig "sputnik-rust-$v.zip" \
+            --prerelease --latest=false --target "$GITHUB_SHA" --title "Спутник (Rust) $v" --notes-file notes.txt
+          node -e '
+            const fs = require("fs");
+            const v = process.env.SPUTNIK_VERSION;
+            fs.writeFileSync("latest.json", JSON.stringify({
+              version: v,
+              notes: fs.readFileSync("notes.txt", "utf8").trim(),
+              url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/rust-${v}/sputnik.exe`,
+              signature: fs.readFileSync("out/sputnik.exe.sig", "utf8").trim(),
+              branch: process.env.GITHUB_REF_NAME,
+            }, null, 1));'
+          gh release view rust-latest >/dev/null 2>&1 || gh release create rust-latest --prerelease --latest=false --title "Спутник (Rust): служебный" --notes "Файл latest.json для обновления из приложения."
+          gh release upload rust-latest latest.json --clobber

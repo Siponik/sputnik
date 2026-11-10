@@ -2,6 +2,7 @@
 //! операцию в очередь исходящих; Google обновляется в фоне (sync.rs). Порт app/lib/state/app_state.dart.
 pub mod bg;
 pub mod demo;
+pub mod update;
 pub mod shared;
 pub mod sync;
 
@@ -69,6 +70,7 @@ pub struct App {
     layer_dirty: bool,
     shown: Vec<String>,
     pub timers: Timers,
+    pub update: update::Update,
     shared_q: std::collections::VecDeque<shared::Job>,
     shared_busy: bool,
 }
@@ -112,6 +114,7 @@ impl App {
             layer_dirty: false,
             shown: vec![],
             timers: Timers::default(),
+            update: Default::default(),
             shared_q: Default::default(),
             shared_busy: false,
         };

@@ -136,6 +136,11 @@ export component SettingsPage inherits Rectangle {
                     num: "09"; title: "О ПРОГРАММЕ";
                     Text { text: "Спутник " + S.version + " — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет."; color: G.ink; font-size: 13px; wrap: word-wrap; }
                     Text { text: S.sync-info; color: G.dim; font-size: 12px; wrap: word-wrap; }
+                    Text { text: S.upd-version != "" ? "Вышла версия " + S.upd-version + " — чип «✦ Версия» в шапке." : S.upd-info; color: G.dim; font-size: 12px; wrap: word-wrap; }
+                    HorizontalLayout { alignment: start; spacing: 8px;
+                        Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
+                        if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                    }
                 }
             }
         }

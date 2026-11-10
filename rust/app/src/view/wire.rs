@@ -494,6 +494,9 @@ pub fn wire(w: &AppWindow) {
         u.note_path = str_(&p);
         u.note_dirty = false;
     }));
+    g.on_upd_check(|| act(|app, _| app.update_check(true)));
+    g.on_upd_install(|| act(|app, _| app.update_install()));
+    g.on_upd_later(|| act(|app, _| app.update.version.clear()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
     g.on_graph_open(|p, t| act(|app, u| {
         u.note_graph = false;

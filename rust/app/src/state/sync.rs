@@ -561,6 +561,8 @@ impl App {
             mk(60, |a| a.tick_notify()),
             mk(3600, |a| a.gift_tasks()),
         ];
+        let u = self.update_timers();
+        self.timers.repeat.extend(u);
         if !self.flags.need_login {
             self.refresh();
         }
