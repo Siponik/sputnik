@@ -1,4 +1,4 @@
-import sys; sys.path.insert(0, '/tmp/claude-0/-home-user-sputnik/dd44854a-20bf-59ba-8acb-08028f2ab68c/scratchpad/gen')
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import *
 import s_board, s_cal
 K = dim(s_board.KANBAN); W = dim(s_cal.WEEK)
