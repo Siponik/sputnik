@@ -138,6 +138,7 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_hint(ss(hint));
     let (dest, why) = dest_of(app, c);
     g.set_c_dest(ss(app.list_name(&dest)));
+    g.set_c_dest_hue(list_hue(app, &dest));
     g.set_c_dest_why(ss(why));
     g.set_c_lists(model(list_opts(app, &dest)));
     let cal = cal_of(app, c);
@@ -147,7 +148,7 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_durs(model([(15, "15 мин"), (30, "30 мин"), (60, "1 час"), (120, "2 часа"), (-1, "весь день")].iter().map(|(m, l)| opt(m.to_string(), *l, *m == dur)).collect()));
     let leads = if c.kind == 3 { &rem::BDAY_LEADS[..] } else { &rem::LEADS[..] };
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
-    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).map(|(m, l)| opt(m.to_string(), l.replace("За ", "за "), mins.contains(m))).collect()));
+    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).take(4).collect()));
     // событие: свободно ли
     let free = if c.kind == 1 && t(&p["time"]) {
         let day = if p["day"].is_null() { tdy.clone() } else { text(&p["day"]) };

@@ -155,135 +155,257 @@ export component TaskDialog inherits Overlay {
 }
 
 // «Создать»: вид, умная строка, «Понял», «Куда», поля по виду.
+component CChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> x-mark;
+    callback clicked;
+    height: 32px;
+    width: ct.preferred-width + (x-mark ? 40px : 26px);
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: on ? G.accent : G.line;
+    background: on ? G.accent-wash : (ca.has-hover ? G.node-hover : transparent);
+    ct := Text { x: 13px; text: root.text; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
+    if x-mark: Text { x: parent.width - 18px; text: "×"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+    ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component FRow inherits Rectangle {
+    in property <string> label;
+    min-height: 42px;
+    Text { x: 0; y: 0; height: 32px; text: root.label; font-size: 13px; color: #A3A5AE; vertical-alignment: center; }
+    HorizontalLayout {
+        x: 116px; width: parent.width - 116px;
+        spacing: 6px;
+        alignment: start;
+        @children
+    }
+}
+
 export component CreateDialog inherits Overlay {
     property <bool> dests;
+    property <bool> more;
     close => { S.c-close(); }
-    Rectangle {
-        x: (parent.width - self.width) / 2;
-        y: max(24px, parent.height * 0.12);
-        width: min(720px, parent.width - 32px);
-        height: cv.preferred-height;
-        border-radius: G.r-main;
+    property <length> W: min(840px, self.width - 32px);
+    property <length> H: min(672px, self.height - 48px);
+    win := Rectangle {
+        x: (parent.width - root.W) / 2;
+        y: max(24px, (parent.height - root.H) / 2 - 10px);
+        width: root.W;
+        height: root.H;
+        border-radius: 12px;
         background: G.node;
         border-width: 1px;
         border-color: G.accent-line;
-        drop-shadow-blur: 24px;
-        drop-shadow-color: #000a;
+        drop-shadow-blur: 32px;
+        drop-shadow-color: #000c;
+        clip: true;
         TouchArea { }
-        cv := VerticalLayout {
-            Rectangle {
-                height: 38px;
-                background: G.head-main;
-                border-top-left-radius: G.r-main;
-                border-top-right-radius: G.r-main;
+        // вкладки видов
+        Rectangle {
+            height: 46px; y: 0;
+            background: G.head-main;
+            for k[i] in ["✓  Задача", "◷  Событие", "↻  Привычка", "✦  День рождения"]: Rectangle {
+                x: 12px + i * (root.W - 66px) / 4;
+                y: 7px;
+                width: (root.W - 66px) / 4 - 4px;
+                height: 32px;
+                border-radius: 6px;
+                background: S.c-kind == i ? G.ink : (ka.has-hover ? #0002 : transparent);
                 HorizontalLayout {
-                    padding-left: 14px;
-                    padding-right: 6px;
-                    spacing: 4px;
-                    Mono { text: "00 · СОЗДАТЬ"; color: #fff; font-weight: 600; vertical-alignment: center; }
-                    Rectangle { }
-                    for k[i] in ["ЗАДАЧА", "СОБЫТИЕ", "ПРИВЫЧКА", "ДЕНЬ РОЖДЕНИЯ"]: Rectangle {
-                        width: kt.preferred-width + 18px;
-                        height: 26px;
-                        y: 6px;
-                        border-radius: 4px;
-                        background: S.c-kind == i ? #0005 : (ka.has-hover ? #0003 : transparent);
-                        kt := Text { text: k; font-family: G.mono; font-size: 10px; letter-spacing: 1px; color: S.c-kind == i ? #fff : #ffffffa0; horizontal-alignment: center; vertical-alignment: center; }
-                        ka := TouchArea { clicked => { S.c-kind-set(i); line.grab(); } mouse-cursor: pointer; }
-                    }
-                    IconBtn { icon: "✕"; y: 5px; clicked => { S.c-close(); } }
+                    alignment: center;
+                    spacing: 8px;
+                    Text { text: k; font-size: 14px; font-weight: 500; color: S.c-kind == i ? #8A4A12 : #fff; vertical-alignment: center; }
+                    Text { text: "ALT " + (i + 1); font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: S.c-kind == i ? #B07A4A : #ffffff90; vertical-alignment: center; }
                 }
+                ka := TouchArea { clicked => { S.c-kind-set(i); line.grab(); } mouse-cursor: pointer; }
             }
-            VerticalLayout {
-                padding: 18px;
-                spacing: 12px;
-                line := Field {
-                    height: 44px;
-                    font-size: 17px;
-                    text: S.c-text;
-                    placeholder: S.c-kind == 0 ? "Сделать иконки для клиента завтра 15:00 @работа !!" : S.c-kind == 1 ? "Созвон с Олей в пт 14:00" : S.c-kind == 2 ? "Вода 8 стаканов каждый день" : "Мама 12 марта";
-                    edited(t) => { S.c-changed(t); }
-                    accepted(t) => { if (t != "") { S.c-submit(t, false); } }
-                    shift-enter(t) => { if (t != "") { S.c-submit(t, true); self.clear(); } }
-                    escape => { S.c-close(); }
-                }
-                Text { text: S.c-hint; color: G.dim; font-size: 12px; wrap: word-wrap; }
-                if S.c-understood.length > 0: HorizontalLayout {
-                    spacing: 6px;
-                    alignment: start;
-                    Mono { text: "ПОНЯЛ:"; vertical-alignment: center; }
-                    for u in S.c-understood: Rectangle {
-                        height: 22px;
-                        width: ut.preferred-width + 14px;
-                        border-radius: 4px;
-                        background: G.node-hover;
-                        ut := Text { text: u; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                    }
-                }
-                if S.c-kind == 0 || S.c-kind == 2: Row {
-                    label: "КУДА";
-                    Rectangle {
-                        width: dt.preferred-width + 24px;
-                        height: 26px;
-                        border-radius: 13px;
-                        background: G.accent-wash;
-                        border-width: 1px;
-                        border-color: G.accent-line;
-                        dt := Text { text: S.c-dest + " ▾"; color: G.accent-ink; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
-                        TouchArea { clicked => { root.dests = !root.dests; } mouse-cursor: pointer; }
-                    }
-                    Text { text: S.c-dest-why; color: G.dim; font-size: 11px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                }
-                if root.dests && (S.c-kind == 0 || S.c-kind == 2): Rectangle {
-                    height: min(200px, S.c-lists.length * 28px + 8px);
-                    border-radius: G.r-node;
-                    background: G.bg;
+            Text { x: root.W - 34px; text: "✕"; font-size: 15px; color: #fff; vertical-alignment: center; height: parent.height; TouchArea { clicked => { S.c-close(); } mouse-cursor: pointer; } }
+        }
+        // умная строка
+        Rectangle {
+            x: 22px; y: 64px; width: root.W - 44px; height: 52px;
+            border-radius: 8px;
+            border-width: 1px;
+            border-color: G.accent;
+            background: G.bg;
+            line := Field {
+                x: 16px; width: parent.width - 60px; height: parent.height;
+                bare: true;
+                font-size: 17px;
+                text: S.c-text;
+                placeholder: S.c-kind == 0 ? "Сделать иконки для клиента завтра 15:00 @работа !!" : S.c-kind == 1 ? "Созвон с Олей в пт 14:00" : S.c-kind == 2 ? "Вода 8 стаканов каждый день" : "Мама 12 марта";
+                edited(t) => { S.c-changed(t); }
+                accepted(t) => { if (t != "") { S.c-submit(t, false); } }
+                shift-enter(t) => { if (t != "") { S.c-submit(t, true); self.clear(); } }
+                escape => { S.c-close(); }
+            }
+            Rectangle {
+                x: parent.width - 36px; y: 13px; width: 26px; height: 26px; border-radius: 13px;
+                border-width: 1px; border-color: #6E7079;
+                Text { text: "?"; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+        // поля
+        VerticalLayout {
+            x: 22px; y: 132px; width: root.W - 44px - 270px - 22px;
+            spacing: 10px;
+            alignment: start;
+            if S.c-kind == 0 || S.c-kind == 2: FRow {
+                label: "Куда";
+                Rectangle {
+                    height: 34px;
+                    width: dl.preferred-width + dw.preferred-width + 62px;
+                    border-radius: 6px;
                     border-width: 1px;
                     border-color: G.line;
-                    ScrollView {
-                        VerticalLayout {
-                            padding: 4px;
-                            for l in S.c-lists: Rectangle {
-                                height: 28px;
-                                background: la.has-hover ? G.node-hover : transparent;
-                                HorizontalLayout {
-                                    padding-left: 8px;
-                                    spacing: 8px;
-                                    Rectangle { width: 6px; height: 6px; y: 11px; border-radius: 3px; background: l.hue; }
-                                    Text { text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; }
-                                    Text { text: l.hint; color: G.dim; font-size: 11px; vertical-alignment: center; }
-                                }
-                                la := TouchArea { clicked => { root.dests = false; S.c-dest-set(l.id); } }
-                            }
-                        }
+                    background: da.has-hover ? G.node-hover : G.bg;
+                    Rectangle { x: 13px; y: 14px; width: 7px; height: 7px; border-radius: 1.5px; background: S.c-dest-hue; }
+                    dl := Text { x: 28px; text: S.c-dest; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; }
+                    dw := Text { x: 34px + dl.preferred-width; text: S.c-dest-why; font-size: 11.5px; color: G.gold; vertical-alignment: center; height: parent.height; }
+                    Text { x: parent.width - 18px; text: "▾"; font-size: 11px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+                    da := TouchArea { clicked => { root.dests = !root.dests; } mouse-cursor: pointer; }
+                }
+                Text { height: 34px; text: "Alt L"; font-size: 12.5px; color: G.accent; vertical-alignment: center; }
+            }
+            if S.c-kind == 1 || S.c-kind == 3: FRow {
+                label: "Календарь";
+                for c in S.c-cals: CChip { text: c.label; on: c.on; clicked => { S.c-cal-set(c.id); } }
+            }
+            FRow {
+                label: "Когда";
+                for u[i] in S.c-understood: CChip { text: u; on: true; x-mark: true; visible: i < 3; }
+                if S.c-understood.length == 0: CChip { text: S.c-kind == 3 ? "Дата в строке: «12 марта»" : "Сегодня"; }
+                if S.c-kind == 0: CChip { text: "Без срока"; }
+            }
+            if S.c-kind == 1: FRow {
+                label: "Длится";
+                for d in S.c-durs: CChip { text: d.label; on: d.on; clicked => { S.c-dur-set(d.id); } }
+            }
+            if S.c-kind == 1 && S.c-free != "": FRow {
+                label: "";
+                Text { text: S.c-free; color: G.gold; font-size: 12.5px; vertical-alignment: center; height: 32px; }
+            }
+            if S.c-kind != 2: FRow {
+                label: "Напомнить";
+                for r[i] in S.c-reminds: CChip { text: r.label; on: r.on; x-mark: r.on; clicked => { S.c-remind(r.id); } }
+            }
+            Rectangle { height: 4px; }
+            Rectangle {
+                height: root.more ? 120px : 40px;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: G.line;
+                background: G.bg;
+                Text { x: 13px; y: 0; height: 40px; text: (root.more ? "▾" : "▸") + " Ещё параметры"; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; }
+                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "приоритет, подзадачи, повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                TouchArea { height: 40px; y: 0; clicked => { root.more = !root.more; } mouse-cursor: pointer; }
+                if root.more: Text {
+                    x: 13px; y: 44px; width: parent.width - 26px;
+                    text: "Приоритет — «!!!» в строке, повтор — «каждую неделю», заметка — вторая строка. Остальное — в окне задачи после создания.";
+                    font-size: 12.5px; color: #A3A5AE; wrap: word-wrap;
+                }
+            }
+        }
+        // выбор списка
+        if root.dests && (S.c-kind == 0 || S.c-kind == 2): Rectangle {
+            x: 22px + 116px; y: 132px + 38px;
+            width: 300px;
+            height: min(260px, S.c-lists.length * 30px + 10px);
+            border-radius: 8px;
+            background: G.node;
+            border-width: 1px;
+            border-color: G.line;
+            drop-shadow-blur: 16px;
+            drop-shadow-color: #0009;
+            ScrollView {
+                VerticalLayout {
+                    padding: 5px;
+                    for l in S.c-lists: Rectangle {
+                        height: 30px;
+                        border-radius: 5px;
+                        background: la.has-hover ? G.node-hover : transparent;
+                        Rectangle { x: 10px; y: 12px; width: 7px; height: 7px; border-radius: 1.5px; background: l.hue; }
+                        Text { x: 26px; text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                        Text { x: parent.width - self.preferred-width - 10px; text: l.hint; color: #7A7C86; font-size: 11px; vertical-alignment: center; height: parent.height; }
+                        la := TouchArea { clicked => { root.dests = false; S.c-dest-set(l.id); } }
                     }
                 }
-                if S.c-kind == 1 || S.c-kind == 3: Row {
-                    label: "КАЛЕНДАРЬ";
-                    for c in S.c-cals: Pill { y: 2px; text: c.label; on: c.on; hue: c.hue; clicked => { S.c-cal-set(c.id); } }
-                    Rectangle { }
+            }
+        }
+        // превью справа
+        VerticalLayout {
+            x: root.W - 22px - 248px; y: 132px; width: 248px;
+            spacing: 12px;
+            alignment: start;
+            Text { text: S.c-kind == 0 ? "Так появится на доске" : S.c-kind == 1 ? "Так появится в календаре" : S.c-kind == 2 ? "Так появится в «Привычках»" : "Так появится в календаре"; font-size: 12.5px; color: #A3A5AE; }
+            Rectangle {
+                height: 96px;
+                border-radius: 8px;
+                background: G.node;
+                border-width: 1px;
+                border-color: G.line;
+                clip: true;
+                Rectangle {
+                    y: 0; height: 28px;
+                    background: (S.c-kind == 0 || S.c-kind == 2 ? S.c-dest-hue : (S.c-kind == 3 ? G.violet : G.grey)).mix(#1C1D21, 0.55);
+                    Text { x: 10px; text: S.c-kind == 0 || S.c-kind == 2 ? S.c-dest.to-uppercase() : (S.c-kind == 3 ? "ДНИ РОЖДЕНИЯ" : "СОБЫТИЕ"); font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 20px; }
                 }
-                if S.c-kind == 1: Row {
-                    label: "ДЛИТСЯ";
-                    for d in S.c-durs: Pill { y: 2px; text: d.label; on: d.on; clicked => { S.c-dur-set(d.id); } }
-                    Rectangle { }
+                Rectangle {
+                    x: 12px; y: 40px; width: 40px; height: 40px; border-radius: 6px;
+                    background: S.c-dest-hue.mix(#1C1D21, 0.3);
+                    Text { text: S.c-kind == 3 ? "✦" : (S.c-kind == 2 ? "↻" : (S.c-kind == 1 ? "◷" : "✓")); font-size: 16px; color: #fff; horizontal-alignment: center; vertical-alignment: center; }
                 }
-                if S.c-kind == 1 && S.c-free != "": Text { text: S.c-free; color: G.muted; font-size: 12px; }
-                if S.c-kind != 2: Row {
-                    label: "НАПОМНИТЬ";
-                    for r in S.c-reminds: Pill { y: 2px; text: r.label; on: r.on; clicked => { S.c-remind(r.id); } }
-                    Rectangle { }
+                Text { x: 64px; y: 40px; width: parent.width - 74px; text: line.text == "" ? "Название" : line.text; font-size: 13.5px; font-weight: 600; color: line.text == "" ? #6E7079 : G.ink; overflow: elide; }
+                Text { x: 64px; y: 62px; width: parent.width - 74px; text: S.c-understood.length > 0 ? S.c-understood[0] : "сегодня"; font-size: 12px; color: #A3A5AE; overflow: elide; }
+            }
+            if S.c-dest-why != "" || S.c-free != "": Rectangle {
+                height: 80px;
+                border-radius: 8px;
+                background: #2E2A1E;
+                border-width: 1px;
+                border-color: #6A5A28;
+                Rectangle {
+                    x: 12px; y: 17px; width: 44px; height: 44px; border-radius: 22px; border-width: 1px; border-color: #8A8C96;
+                    Text { text: "ДУМАЕТ"; font-family: G.mono; font-size: 7.5px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                 }
-                HorizontalLayout {
-                    spacing: 10px;
-                    Mono { text: "ENTER — ДОБАВИТЬ · SHIFT+ENTER — И ЕЩЁ · ESC"; vertical-alignment: center; color: G.dim; }
-                    Rectangle { }
-                    Button { text: "Создать и ещё"; clicked => { if (line.text != "") { S.c-submit(line.text, true); line.clear(); } } }
-                    Button { text: "Добавить"; primary: true; clicked => { if (line.text != "") { S.c-submit(line.text, false); } } }
+                Text { x: 66px; width: parent.width - 76px; text: S.c-free != "" ? "Время: " + S.c-free + "." : "Список выбран " + S.c-dest-why + ". Не то — Alt L."; font-size: 12.5px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+            }
+            Rectangle {
+                height: ht.preferred-height + 24px;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: G.line;
+                ht := Text { x: 12px; width: parent.width - 24px; text: "? " + S.c-hint; font-size: 12px; color: #A3A5AE; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+            }
+        }
+        // низ
+        Rectangle {
+            y: root.H - 60px; height: 60px;
+            Rectangle { y: 0; height: 1px; background: G.line; }
+            Text { x: 22px; text: "Enter — добавить · Shift+Enter — и ещё · Esc — закрыть"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+            HorizontalLayout {
+                x: root.W - 22px - self.preferred-width; y: 11px; height: 38px;
+                spacing: 10px;
+                Rectangle {
+                    width: mt.preferred-width + 30px;
+                    border-radius: 6px; border-width: 1px; border-color: #8A8C96;
+                    background: ma.has-hover ? G.node-hover : transparent;
+                    mt := Text { text: "Добавить и ещё"; font-size: 13.5px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                    ma := TouchArea { clicked => { if (line.text != "") { S.c-submit(line.text, true); line.clear(); } } mouse-cursor: pointer; }
+                }
+                Rectangle {
+                    width: pt.preferred-width + 34px;
+                    border-radius: 6px;
+                    background: pa.has-hover ? G.accent-ink : G.accent;
+                    pt := Text { text: ["Добавить задачу", "Добавить событие", "Добавить привычку", "Добавить день рождения"][S.c-kind]; font-size: 13.5px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+                    pa := TouchArea { clicked => { if (line.text != "") { S.c-submit(line.text, false); } } mouse-cursor: pointer; }
                 }
             }
         }
     }
+    Brackets { x: win.x; y: win.y; width: win.width; height: win.height; }
     init => { line.grab(); }
 }
 
