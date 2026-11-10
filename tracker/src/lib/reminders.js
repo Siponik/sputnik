@@ -117,6 +117,9 @@ function wasPublished(key) {
   return published.has(key);
 }
 
+/** Имя именинника из названия события: «🎂 Аня», «День рождения: Аня» (контакты Google). */
+export const bdayName = (s) => String(s ?? '').replace(/^🎂\s*/, '').replace(/^(день рождения|birthday)[:\s–—-]*/i, '').trim() || 'День рождения';
+
 /** Список для облака: открытые задачи с напоминанием, которое ещё не прошло (или прошло меньше суток назад).
  *  cheers — свежие вехи серий привычек: бот поздравит сразу (fireAt = момент вехи). */
 export function collect(lists, tasksByList, layTasks, habitList = null, cheers = [], events = []) {
@@ -139,6 +142,7 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
           title: t.title || 'Без названия',
           note: (t.notes ?? '').split('\n')[0].slice(0, 200),
           due: dueToYmd(t.due),
+          time: layTasks?.[t.id]?.slot?.s ?? '',
           fireAt: at.toISOString(),
         });
       }
@@ -158,7 +162,7 @@ export function collect(lists, tasksByList, layTasks, habitList = null, cheers =
       items.push({
         key,
         kind: birthday ? 'birthday' : 'event',
-        title: birthday ? String(e.summary ?? '').replace(/^🎂\s*/, '') : e.summary || 'Событие',
+        title: birthday ? bdayName(e.summary) : e.summary || 'Событие',
         note: (e.description ?? '').split('\n')[0].slice(0, 200),
         list: birthday ? 'День рождения' : 'Google Календарь',
         due: allDay ? e.start.date : '',
@@ -212,8 +216,8 @@ export function assignedItems(lists, tasksByList, layTasks, now = Date.now()) {
 
 /** Напоминания о привычках — в начале окна (habits.habitWin: свои «с — до» или часть дня: утро 6–12, день 12–18, вечер 18–24)
  *  — на 7 дней вперёд, только по расписанию. habits[id].remind.tg === false — в Telegram не слать.
- *  Сегодняшнее, уже отмеченное в трекере, не шлём. Ссылки на задачу нет нарочно: кнопка «✓ Готово»
- *  в боте закрыла бы саму задачу-привычку в Google Tasks, а отметка привычки живёт в слое. */
+ *  Сегодняшнее, уже отмеченное в трекере, не шлём. habitId и day — чтобы кнопка «✓ Готово»
+ *  в боте ставила отметку дня в слое (сама задача-привычка в Google Tasks не закрывается). */
 export function habitItems(habits, log, now = new Date()) {
   const items = [];
   const today = ymd(now);
@@ -228,6 +232,8 @@ export function habitItems(habits, log, now = new Date()) {
       items.push({
         key: `habit|${h.id}|${day}`,
         kind: 'habit',
+        habitId: h.id,
+        day,
         title: h.name,
         note: [h.goal?.n > 1 ? `Цель на день: ${h.goal.n} ${h.goal.unit || 'раз'}` : '', `Отметь до ${habitWin(h).e}`].filter(Boolean).join(' · '),
         list: 'Привычки',
