@@ -37,6 +37,28 @@ pub fn wire(w: &AppWindow) {
     let g = w.global::<S>();
 
     // ---------- оболочка ----------
+    // своя рамка окна (no-frame): перетаскивание, свернуть, развернуть, закрыть
+    let ww = w.as_weak();
+    g.on_win_drag(move || {
+        if let Some(w) = ww.upgrade() {
+            use slint::winit_030::WinitWindowAccessor;
+            w.window().with_winit_window(|ww| { let _ = ww.drag_window(); });
+        }
+    });
+    let ww = w.as_weak();
+    g.on_win_resize(move |k| {
+        if let Some(w) = ww.upgrade() {
+            use slint::winit_030::{winit::window::ResizeDirection as R, WinitWindowAccessor};
+            let d = match k { 1 => R::East, 2 => R::South, 3 => R::West, _ => R::SouthEast };
+            w.window().with_winit_window(|ww| { let _ = ww.drag_resize_window(d); });
+        }
+    });
+    let ww = w.as_weak();
+    g.on_win_min(move || { if let Some(w) = ww.upgrade() { w.window().set_minimized(true); } });
+    let ww = w.as_weak();
+    g.on_win_max(move || { if let Some(w) = ww.upgrade() { let m = w.window().is_maximized(); w.window().set_maximized(!m); w.global::<S>().set_win_maxed(!m); } });
+    let ww = w.as_weak();
+    g.on_win_close(move || { if let Some(w) = ww.upgrade() { let _ = w.hide(); } let _ = slint::quit_event_loop(); });
     g.on_go(|i| act(|app, u| {
         u.tab = i;
         if i == 4 {

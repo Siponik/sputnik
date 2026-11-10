@@ -43,6 +43,12 @@ export global S {
     in property <int> toast-id;
     in property <string> version;
     callback go(int);
+    callback win-drag();
+    callback win-min();
+    callback win-max();
+    callback win-close();
+    in-out property <bool> win-maxed;
+    callback win-resize(int);              // 0 угол · 1 право · 2 низ · 3 лево
     callback login();
     callback cancel-login();
     callback refresh();
