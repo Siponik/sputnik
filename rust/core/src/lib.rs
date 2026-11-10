@@ -5,6 +5,7 @@ pub mod boardedit;
 pub mod authcheck;
 pub mod dates;
 pub mod dropdown;
+pub mod habits;
 pub mod j;
 pub mod layer;
 pub mod repeat;
