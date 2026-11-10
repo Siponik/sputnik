@@ -213,8 +213,12 @@ def stages(n_ok, n_now, total, h=4):
     return f'<span style="display: flex; gap: 3px">{s}</span>'
 
 
-def coon(size=50, label='ЕНОТ'):
-    return f'<span style="width: {size}px; height: {size}px; flex: none; border-radius: 50%; border: 1px dashed {MUT}; display: grid; place-items: center; font: 400 9px {MONO}; letter-spacing: .1em; color: {MUT}">{label}</span>'
+def coon(size=50, label=''):
+    """Знак-спутник вместо енота: ядро на орбите, цвет по состоянию."""
+    c = {'ОЙ': RED, 'СПИТ': DIM, 'ДУМАЕТ': GOLD, 'УРА': GREEN}.get(label, OR)
+    return (f'<span aria-hidden="true" style="width: {size}px; height: {size}px; flex: none; border-radius: 50%; background: {DARK}; border: 1px solid {LINE}; display: grid; place-items: center">'
+            f'<svg width="{int(size*.72)}" height="{int(size*.72)}" viewBox="0 0 40 40"><ellipse cx="20" cy="20" rx="17" ry="7" transform="rotate(-28 20 20)" fill="none" stroke="{c}" stroke-opacity=".55" stroke-width="1.4"/>'
+            f'<circle cx="20" cy="20" r="6" fill="{INK}"/><circle cx="34" cy="12.5" r="3.2" fill="{c}"/></svg></span>')
 
 
 def stamp(x, y, sheet, a, b, w=280):
