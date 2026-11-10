@@ -1,7 +1,7 @@
 //! Вид: собирает модели для окна из App (state) и состояния экрана (Ui) и ловит действия окна.
 //! Слои: data (сеть, файлы) → state (App, действия) → view (модели Slint) → ui/*.slint (разметка).
 //! Окно ничего не считает: после любого действия render() заново кладёт модели только активного раздела.
-mod board;
+pub(crate) mod board;
 mod calendar;
 mod dialogs;
 mod habits;
@@ -121,6 +121,9 @@ fn render(app: &App) {
 fn shell(app: &App, u: &Ui, g: &S) {
     let f = &app.flags;
     g.set_tab(u.tab);
+    let wd = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+    let now_l = chrono::Local::now();
+    g.set_now_label(ss(format!("{} {} · {}", wd[chrono::Datelike::weekday(&now_l).num_days_from_monday() as usize], now_l.format("%d.%m"), now_l.format("%H:%M"))));
     g.set_signed_in(!f.need_login);
     g.set_logging_in(f.logging_in);
     g.set_busy(f.syncing);

@@ -8,6 +8,9 @@ export struct Card { list-id: string, id: string, title: string, hue: color, due
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
 export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
+export struct SrcRow { title: string, right: string, done: bool, accent: bool }
+export struct SrcNode { title: string, label: string, hue: color, y: float, h: float, rows: [SrcRow], dashed: bool }
+export struct Wire { y1: float, y2: float, hue: color, dashed: bool }
 export struct InboxRow { list-id: string, id: string, title: string, list: string, when: string }
 export struct HabitChip { id: string, name: string, icon: string, hue: color, done: bool, count: int, goal: int }
 export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool }
@@ -52,6 +55,20 @@ export global S {
     in property <string> today-label;
     in property <[TaskRow]> today;
     in property <[TaskRow]> overdue;
+    in property <[SrcNode]> today-src;
+    in property <[Wire]> today-wires;
+    in property <[TaskRow]> day-rows;
+    in property <int> next-at: -1;
+    in property <float> rows-top;
+    in property <float> habits-y;
+    in property <float> habits-top;
+    in property <float> center-h;
+    in property <[color]> hour-cells;
+    in property <float> claude-y;
+    in property <int> habits-done;
+    in property <string> now-label;
+    in property <string> next-time;
+    in property <string> next-meta;
     in property <[Chip]> today-events;
     in property <[HabitChip]> today-habits;
     in property <[InboxRow]> inbox;

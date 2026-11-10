@@ -179,6 +179,7 @@ export component Field inherits Rectangle {
     in-out property <string> text <=> ti.text;
     in property <length> font-size: 14px;
     in property <bool> mono;
+    in property <bool> bare;
     callback accepted(string);
     callback edited(string);
     callback escape();
@@ -188,12 +189,12 @@ export component Field inherits Rectangle {
     public function clear() { ti.text = ""; }
     height: 34px;
     border-radius: G.r-btn;
-    background: G.bg;
-    border-width: 1px;
+    background: bare ? transparent : G.bg;
+    border-width: bare ? 0 : 1px;
     border-color: ti.has-focus ? G.accent-line : G.line;
     clip: true;
     Text {
-        x: 10px;
+        x: bare ? 0 : 10px;
         text: placeholder;
         visible: ti.text == "";
         color: G.dim;
@@ -203,8 +204,8 @@ export component Field inherits Rectangle {
         height: parent.height;
     }
     ti := TextInput {
-        x: 10px;
-        width: parent.width - 20px;
+        x: bare ? 0 : 10px;
+        width: parent.width - (bare ? 0 : 20px);
         height: parent.height;
         color: G.ink;
         font-size: root.font-size;
