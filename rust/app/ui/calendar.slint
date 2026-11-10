@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя: сутки 0–24, пустые часы сжаты штрихованными полосами; задачи со временем тянутся мышью.
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg } from "kit.slint";
 import { S, Day, Block, Chip, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -343,14 +343,14 @@ export component CalendarPage inherits Rectangle {
     property <bool> adding;
     property <bool> add-event;
     property <length> pw: 324px;
-    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
-    property <length> mw: self.width - 2 * root.mx - root.pw - 24px;
-    property <length> mh: max(420px, self.height - 84px - 130px);
+    property <length> mx: 8px;
+    property <length> mw: self.width - 2 * root.mx - root.pw - 8px;
+    property <length> mh: max(420px, self.height - 64px - 44px);
     property <bool> form: root.adding || S.add-time != "";
 
     // ---------- панель ----------
     Rectangle {
-        x: root.mx; y: 20px; width: parent.width - 2 * root.mx; height: 48px;
+        x: root.mx; y: 8px; width: parent.width - 2 * root.mx; height: 48px;
         border-radius: 8px;
         background: G.node;
         border-width: 1px;
@@ -380,7 +380,7 @@ export component CalendarPage inherits Rectangle {
 
     // ---------- главная нода ----------
     main := Rectangle {
-        x: root.mx; y: 84px; width: root.mw; height: root.mh;
+        x: root.mx; y: 64px; width: root.mw; height: root.mh;
         border-radius: 12px;
         background: G.node;
         border-width: 1px;
@@ -407,7 +407,7 @@ export component CalendarPage inherits Rectangle {
 
     // ---------- нода дня ----------
     panel := Rectangle {
-        x: root.width - root.mx - root.pw; y: 84px; width: root.pw; height: root.mh;
+        x: root.width - root.mx - root.pw; y: 64px; width: root.pw; height: root.mh;
         border-radius: 8px;
         background: G.node;
         border-width: 1px;
@@ -448,10 +448,7 @@ export component CalendarPage inherits Rectangle {
                 if S.free-hint != "": DashBox {
                     height: 76px;
                     c: #8A7430;
-                    Rectangle {
-                        x: 11px; y: 10px; width: 46px; height: 46px; border-radius: 23px; border-width: 1px; border-color: #6E7079;
-                        Text { text: "ЕНОТ"; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
-                    }
+                    Sat { x: 11px; y: 10px; c: G.gold; }
                     Text { x: 67px; y: 14px; width: parent.width - 78px; text: S.free-hint + ". Поставить туда задачу?"; font-size: 12.5px; color: G.ink; wrap: word-wrap; }
                     Link { x: 67px; y: 50px; text: "Поставить"; font-size: 12.5px; clicked => { S.cal-free-take(); } }
                 }

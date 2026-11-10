@@ -1,18 +1,14 @@
 // «Привычки» по макетам G_Habits и G_HabitsMonth: панель-нода сверху, ряд «Сегодня», карточки 3 в ряд,
 // справа — панель выбранной привычки; «Месяц» — таблица привычка × день с меню дня.
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, DashBox, CSeg } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg } from "kit.slint";
 import { S, HabitCard, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
-component Circ inherits Rectangle {
+component Circ inherits Sat {
     in property <string> text;
-    width: 32px;
-    height: 32px;
-    border-radius: 16px;
-    border-width: 1px;
-    border-color: #6E7079;
-    Text { text: root.text; font-family: G.mono; font-size: 7.5px; letter-spacing: 0.6px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+    width: 32px; height: 32px;
+    c: root.text == "УРА" ? G.green : G.gold;
 }
 
 component Letter inherits Rectangle {
@@ -345,17 +341,17 @@ component MonthTable inherits Rectangle {
 }
 
 export component HabitsPage inherits Rectangle {
-    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
+    property <length> mx: 8px;
     property <length> pw: 380px;
-    property <length> aw: self.width - 2 * root.mx - root.pw - 24px;
+    property <length> aw: self.width - 2 * root.mx - root.pw - 8px;
     property <length> cw: (root.aw - 2 * 18px) / 3;
     property <int> sel-i: 0;
-    Toolbar { x: root.mx; y: 20px; width: parent.width - 2 * root.mx; month: S.habit-mode == "month"; }
+    Toolbar { x: root.mx; y: 8px; width: parent.width - 2 * root.mx; month: S.habit-mode == "month"; }
 
     if S.habit-mode != "month": Rectangle {
         // ряд «Сегодня»
         HorizontalLayout {
-            x: root.mx; y: 84px; width: root.aw; height: 30px;
+            x: root.mx; y: 64px; width: root.aw; height: 30px;
             spacing: 10px;
             alignment: start;
             Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.gold; vertical-alignment: center; }
@@ -371,14 +367,14 @@ export component HabitsPage inherits Rectangle {
             }
         }
         Rectangle {
-            x: root.mx + root.aw - self.width; y: 84px; width: 108px; height: 30px;
+            x: root.mx + root.aw - self.width; y: 64px; width: 108px; height: 30px;
             border-radius: 6px; border-width: 1px; border-color: #6E7079;
             background: aa.has-hover ? G.node-hover : transparent;
             Text { text: "Отметить все"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
             aa := TouchArea { clicked => { S.habit-all(); } mouse-cursor: pointer; }
         }
         ScrollView {
-            x: root.mx - 8px; y: 128px; width: root.aw + 16px; height: parent.height - 128px;
+            x: root.mx - 8px; y: 108px; width: root.aw + 16px; height: parent.height - 108px;
             Rectangle {
                 x: 0; y: 0; width: root.aw + 16px;
                 height: 10px + ceil(S.habits.length / 3) * 222px + 140px;
@@ -410,15 +406,15 @@ export component HabitsPage inherits Rectangle {
                 }
             }
         }
-        if S.hp-id != "": Panel { x: parent.width - root.mx - root.pw; y: 128px; width: root.pw; height: min(parent.height - 148px, 590px); }
+        if S.hp-id != "": Panel { x: parent.width - root.mx - root.pw; y: 108px; width: root.pw; height: parent.height - 116px; }
     }
 
     if S.habit-mode == "month": Rectangle {
         MonthTable {
-            x: root.mx; y: 84px; width: parent.width - 2 * root.mx;
+            x: root.mx; y: 64px; width: parent.width - 2 * root.mx;
             height: 80px + S.habit-month.length * 47px + 44px;
         }
-        Brackets { x: root.mx; y: 84px; width: parent.width - 2 * root.mx; height: 80px + S.habit-month.length * 47px + 44px; }
+        Brackets { x: root.mx; y: 64px; width: parent.width - 2 * root.mx; height: 80px + S.habit-month.length * 47px + 44px; }
         for i in min(3, S.hm-sum.length / 2): Rectangle {
             property <length> w4: (parent.width - 2 * root.mx - 3 * 16px) / 4;
             x: root.mx + i * (self.w4 + 16px);
