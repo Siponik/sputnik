@@ -27,6 +27,7 @@ pub struct Ui {
     pub cal_off: Vec<String>,
     pub cal_bands: Vec<i64>,
     pub add_time: String,
+    pub cal_free: Option<(String, String)>,
     pub quick: String,
     pub task: Option<(String, String)>,
     pub saved: String,

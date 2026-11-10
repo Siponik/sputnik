@@ -243,3 +243,23 @@ export component Empty inherits VerticalLayout {
     }
     Text { text: root.text; color: G.muted; font-size: 14px; horizontal-alignment: center; wrap: word-wrap; }
 }
+
+// Пунктирная рамка (Slint не рисует пунктир сам): штрихи 4 px через 3 px.
+export component DashBox inherits Rectangle {
+    in property <color> c: G.line-strong;
+    in property <length> dash: 4px;
+    property <int> nx: floor(self.width / (root.dash + 3px));
+    property <int> ny: floor(self.height / (root.dash + 3px));
+    for i in root.nx: Rectangle { x: i * (root.dash + 3px) + 2px; y: 0; width: root.dash; height: 1px; background: root.c; }
+    for i in root.nx: Rectangle { x: i * (root.dash + 3px) + 2px; y: root.height - 1px; width: root.dash; height: 1px; background: root.c; }
+    for i in root.ny: Rectangle { y: i * (root.dash + 3px) + 2px; x: 0; height: root.dash; width: 1px; background: root.c; }
+    for i in root.ny: Rectangle { y: i * (root.dash + 3px) + 2px; x: root.width - 1px; height: root.dash; width: 1px; background: root.c; }
+    @children
+}
+
+// Штриховка сжатых часов: косые штрихи.
+export component Hatch inherits Rectangle {
+    in property <color> c: #ffffff10;
+    clip: true;
+    for i in floor(self.width / 6px): Rectangle { x: i * 6px; y: 0; width: 2px; height: root.height; background: root.c; }
+}

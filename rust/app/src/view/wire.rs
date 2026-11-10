@@ -241,6 +241,10 @@ pub fn wire(w: &AppWindow) {
         let f = str_(&f);
         if let Some(i) = u.cal_off.iter().position(|x| *x == f) { u.cal_off.remove(i); } else { u.cal_off.push(f); }
     }));
+    g.on_cal_free_take(|| act(|_, u| {
+        if let Some((d, t)) = u.cal_free.clone() { u.cal_sel = d; u.add_time = t; }
+    }));
+    g.on_cal_add_close(|| act(|_, u| u.add_time.clear()));
     g.on_cal_band(|a0| act(|_, u| u.cal_bands.push(a0 as i64)));
     g.on_cal_grid_click(|d, y| act(|app, u| {
         u.cal_sel = str_(&d);

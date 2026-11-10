@@ -1,30 +1,99 @@
-// «Календарь»: одна панель сверху (период, ‹ ›, «Сегодня», фильтры, «Неделя | Месяц»), справа — панель дня.
-// Неделя: сутки 0–24, пустые часы сжаты полосами; задачи со временем тянутся мышью на другой день и час.
+// «Календарь» по макету G_CalWeek / G_CalMonth / G_CalAdd: панель-нода сверху, главная нода недели или месяца,
+// справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
+// Неделя: сутки 0–24, пустые часы сжаты штрихованными полосами; задачи со временем тянутся мышью.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link } from "kit.slint";
-import { S, Day, Block, Chip } from "store.slint";
+import { Mono, Brackets, Button, Field, Link, DashBox, Hatch } from "kit.slint";
+import { S, Day, Block, Chip, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
-component ChipLine inherits Rectangle {
-    in property <Chip> c;
-    height: 22px;
-    border-radius: 4px;
-    background: c.kind == 0 ? G.node-hover : c.hue.transparentize(0.8);
-    opacity: c.done ? 0.55 : 1;
-    HorizontalLayout {
-        padding-left: 6px;
-        padding-right: 4px;
-        spacing: 4px;
-        if c.kind == 1: Text { text: c.done ? "●" : "○"; color: c.hue; font-size: 10px; vertical-alignment: center; }
-        if c.kind == 3: Text { text: "★"; color: G.gold; font-size: 10px; vertical-alignment: center; }
-        Text { text: c.title; color: G.ink; font-size: 11px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+component Sq inherits Rectangle {
+    in property <string> icon;
+    callback clicked;
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: G.line-strong.transparentize(0.4);
+    background: qa.has-hover ? G.node-hover : transparent;
+    Text { text: root.icon; color: G.ink; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+    qa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component Filter inherits Rectangle {
+    in property <Opt> f;
+    height: 28px;
+    width: fl.preferred-width + 34px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: f.on ? f.hue.transparentize(0.25) : G.line;
+    background: f.on ? f.hue.transparentize(0.92) : (fa.has-hover ? G.node-hover : transparent);
+    Rectangle { x: 11px; y: (parent.height - 6px) / 2; width: 6px; height: 6px; border-radius: 1.5px; background: f.hue; opacity: f.on ? 1 : 0.6; }
+    fl := Text { x: 23px; text: f.label; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: f.on ? G.ink : G.dim; vertical-alignment: center; height: parent.height; }
+    fa := TouchArea { clicked => { S.cal-filter(f.id); } mouse-cursor: pointer; }
+}
+
+component CSeg inherits Rectangle {
+    in property <[string]> items;
+    in property <int> current;
+    callback picked(int);
+    height: 32px;
+    width: 128px;
+    border-radius: 6px;
+    border-width: 1px;
+    border-color: G.line;
+    for it[i] in items: Rectangle {
+        x: 3px + i * (root.width - 6px) / items.length;
+        y: 3px;
+        width: (root.width - 6px) / items.length;
+        height: root.height - 6px;
+        border-radius: 4px;
+        background: i == current ? G.ink : (sa.has-hover ? G.node-hover : transparent);
+        Text { text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center; }
+        sa := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
     }
-    ca := TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
+}
+
+// Точки привычек дня: 1 — сделано (золото), 2 — сегодня, ещё нет (обводка clay), 0 — пропущено, 3 — впереди.
+component HDots inherits HorizontalLayout {
+    in property <[int]> dots;
+    in property <string> label;
+    spacing: 3px;
+    alignment: center;
+    for v in dots: Rectangle {
+        width: 7px;
+        height: 7px;
+        y: 4px;
+        border-radius: 3.5px;
+        background: v == 1 ? G.gold : transparent;
+        border-width: v == 1 ? 0 : 1px;
+        border-color: v == 2 ? G.accent : (v == 3 ? #55575F : #7A7C86);
+    }
+    Rectangle { width: 3px; }
+    Text { text: label; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; }
+}
+
+component DayChip inherits Rectangle {
+    in property <Chip> c;
+    in property <int> more;
+    height: 20px;
+    border-radius: 4px;
+    background: #1E1F23;
+    border-width: 1px;
+    border-color: G.line;
+    opacity: c.done ? 0.55 : 1;
+    Rectangle { x: 7px; y: 7px; width: 6px; height: 6px; border-radius: 3px; background: c.hue; }
+    Text {
+        x: 18px; width: parent.width - 22px;
+        text: (c.kind == 3 ? "★ " : "") + c.title + (more > 0 ? "  +" + more : "");
+        color: G.ink; font-size: 11.5px; vertical-alignment: center; height: parent.height; overflow: elide;
+    }
+    TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
 }
 
 component Week inherits Rectangle {
     property <length> gut: 52px;
-    property <length> colw: (self.width - root.gut - 14px) / max(1, S.days.length);
+    property <length> colw: (self.width - root.gut) / max(1, S.days.length);
+    property <length> top-h: 40px + 24px + 28px;
     property <bool> dragging;
     property <bool> dropped;
     property <string> d-list;
@@ -33,133 +102,173 @@ component Week inherits Rectangle {
     property <length> gx;
     property <length> gy;
     property <length> d-h;
-    VerticalLayout {
-        // шапки дней
-        Rectangle {
-            height: 46px;
+    // подсветка «сегодня» на всю высоту
+    if S.now-col >= 0: Rectangle { x: root.gut + S.now-col * root.colw; width: root.colw; background: #ffffff05; }
+    for d[i] in S.days: Rectangle { x: root.gut + i * root.colw; width: 1px; background: G.line-soft; }
+    // шапки дней
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: 0;
+        width: root.colw;
+        height: 40px;
+        background: d.today ? #2C2620 : (ha.has-hover ? G.node-hover : transparent);
+        HorizontalLayout {
+            alignment: center;
+            spacing: 6px;
+            Text { text: d.label; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: d.today ? G.accent : (d.sel ? G.ink : #B5B7C0); vertical-alignment: center; }
+            if d.today: Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: G.accent; vertical-alignment: center; }
+        }
+        if d.sel && !d.today: Rectangle { y: parent.height - 2px; height: 2px; x: 12px; width: parent.width - 24px; background: G.accent-line; }
+        ha := TouchArea { clicked => { S.cal-pick(d.ymd); } }
+    }
+    // привычки
+    Text { x: 8px; y: 40px; height: 24px; text: "ПРИВЫЧКИ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
+    for d[i] in S.days: HDots { x: root.gut + i * root.colw; y: 40px; width: root.colw; height: 24px; dots: d.hdots; label: d.habits; }
+    // весь день
+    Text { x: 8px; y: 64px; height: 28px; text: "ДЕНЬ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: 64px;
+        width: root.colw;
+        height: 28px;
+        background: root.dragging && root.gy < 0 && floor(root.gx / root.colw) == i ? G.accent-wash : transparent;
+        if d.all.length > 0: DayChip { x: 3px; y: 4px; width: parent.width - 6px; c: d.all[0]; more: d.all.length - 1; }
+    }
+    Rectangle { y: root.top-h - 1px; height: 1px; background: G.line; }
+    sv := ScrollView {
+        x: 0;
+        y: root.top-h;
+        width: root.width;
+        height: root.height - root.top-h;
+        content-height: S.grid-h * 1px + 4px;
+        grid := Rectangle {
+            width: sv.width;
+            height: S.grid-h * 1px;
+            for l in S.hours: Rectangle { visible: !l.small; x: 0; y: l.y * 1px; height: 1px; width: parent.width; background: G.line-soft; }
+            for b in S.bands: Rectangle {
+                y: b.y * 1px;
+                height: b.h * 1px;
+                width: parent.width;
+                background: #1A1B1F;
+                Hatch { x: root.gut; width: parent.width - root.gut; c: #ffffff0A; }
+                Rectangle { y: 0; height: 1px; background: G.line; }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+                Text { x: 8px; text: b.text; font-family: G.mono; font-size: 9.5px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+                TouchArea { clicked => { S.cal-band(b.a); } mouse-cursor: pointer; }
+            }
+            for l in S.hours: Text { visible: !l.small; x: 8px; y: l.y * 1px + 4px; text: l.text; font-family: G.mono; font-size: 10px; color: #8A8C96; }
             for d[i] in S.days: Rectangle {
                 x: root.gut + i * root.colw;
                 width: root.colw;
-                background: d.sel ? G.accent-wash : (ha.has-hover ? G.node-hover : transparent);
-                VerticalLayout {
-                    alignment: center;
-                    Mono { text: d.label; horizontal-alignment: center; color: d.today ? G.accent : G.muted; }
-                    Text { text: d.num; horizontal-alignment: center; font-size: 17px; font-weight: d.today ? 600 : 400; color: d.today ? G.accent-ink : G.ink; }
-                }
-                Mono { text: d.habits; y: parent.height - 13px; x: parent.width - self.preferred-width - 6px; font-size: 9px; color: G.gold; }
-                ha := TouchArea { clicked => { S.cal-pick(d.ymd); } }
-            }
-            Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
-        }
-        // «весь день»
-        Rectangle {
-            height: 80px;
-            Mono { x: 6px; y: 6px; text: "ВЕСЬ\nДЕНЬ"; font-size: 9px; color: G.dim; }
-            for d[i] in S.days: Rectangle {
-                x: root.gut + i * root.colw;
-                width: root.colw;
-                background: root.dragging && root.gy < 0 && floor((root.gx - root.gut) / root.colw) == i ? G.accent-wash : transparent;
-                VerticalLayout {
-                    padding: 3px;
-                    spacing: 2px;
-                    for c[k] in d.all: ChipLine { c: c; visible: k < 3; }
-                    if d.more > 0: Mono { text: "+ ещё " + d.more; font-size: 9px; }
-                }
-            }
-            Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
-        }
-        sv := ScrollView {
-            vertical-stretch: 1;
-            content-height: S.grid-h * 1px + 8px;
-            grid := Rectangle {
-                height: S.grid-h * 1px;
-                // полосы сжатых часов
-                for b in S.bands: Rectangle {
-                    y: b.y * 1px;
-                    height: b.h * 1px;
-                    x: root.gut;
-                    width: parent.width - root.gut;
-                    background: #ffffff05;
-                    Mono { text: b.h >= 30 ? b.text : ""; font-size: 9px; color: G.dim; x: 4px; vertical-alignment: center; height: parent.height; }
-                    TouchArea { clicked => { S.cal-band(b.a); } }
-                }
-                for l in S.hours: Mono { x: 6px; y: l.y * 1px; text: l.text; font-size: l.small ? 9px : 10px; color: G.dim; }
-                for l in S.hours: Rectangle { visible: !l.small; x: root.gut; y: l.y * 1px + 7px; height: 1px; width: parent.width - root.gut; background: G.line-soft; }
-                // колонки дней: клик по пустому месту — форма «добавить» с этим временем
-                for d[i] in S.days: Rectangle {
-                    x: root.gut + i * root.colw;
-                    width: root.colw;
-                    background: root.dragging && root.gy >= 0 && floor((root.gx - root.gut) / root.colw) == i ? #F0A04B10 : (d.today ? #ffffff04 : transparent);
-                    Rectangle { x: 0; width: 1px; background: G.line-soft; }
-                    TouchArea { clicked => { S.cal-grid-click(d.ymd, self.mouse-y / 1px); } }
-                    for b in d.blocks: Rectangle {
-                        x: b.x * root.colw + 2px;
-                        y: b.y * 1px;
-                        width: b.w * root.colw - 4px;
-                        height: max(16px, b.h * 1px - 2px);
-                        border-radius: 4px;
-                        background: b.kind == 0 ? G.node-hover : (b.kind == 2 ? b.hue.transparentize(b.done ? 0.6 : 0.85) : b.hue.transparentize(0.72));
-                        border-width: 1px;
-                        border-color: b.kind == 0 ? G.line : b.hue.transparentize(b.kind == 2 && !b.done ? 0.4 : 0.2);
-                        opacity: root.dragging && root.d-id == b.id ? 0.35 : (b.done && b.kind == 1 ? 0.55 : 1);
-                        clip: true;
-                        VerticalLayout {
-                            padding: 3px;
-                            padding-left: 5px;
-                            Text { text: (b.kind == 1 ? (b.done ? "● " : "○ ") : "") + b.title; color: G.ink; font-size: 11px; wrap: word-wrap; overflow: elide; }
-                            if b.h > 34: Mono { text: b.sub; font-size: 9px; }
+                background: root.dragging && root.gy >= 0 && floor((root.gx - root.gut) / root.colw) == i ? #F0A04B10 : transparent;
+                TouchArea { clicked => { S.cal-grid-click(d.ymd, self.mouse-y / 1px); } }
+                // свободный день — дремлющий енот
+                if S.free-free == i: VerticalLayout {
+                    y: parent.height * 0.32;
+                    height: 80px;
+                    spacing: 8px;
+                    alignment: start;
+                    HorizontalLayout {
+                        alignment: center;
+                        Rectangle {
+                            width: 48px; height: 48px; border-radius: 24px; border-width: 1px; border-color: #55575F;
+                            Text { text: "СОН"; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
                         }
-                        ba := TouchArea {
-                            mouse-cursor: pointer;
-                            pointer-event(e) => {
-                                if (e.kind == PointerEventKind.down) { root.dropped = false; }
-                                if (e.kind == PointerEventKind.up && root.dragging) {
-                                    root.dragging = false;
-                                    root.dropped = true;
-                                    S.cal-drop(root.d-list, root.d-id, S.days[floor((root.gx - root.gut) / root.colw)].ymd, root.gy < 0 ? -1 : root.gy / 1px);
-                                }
+                    }
+                    Text { text: "СВОБОДНЫЙ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; horizontal-alignment: center; }
+                }
+                // самое свободное окно недели
+                if S.free-col == i: DashBox {
+                    x: 3px; y: S.free-y * 1px + 2px; width: parent.width - 6px; height: max(24px, S.free-h * 1px - 4px);
+                    c: G.gold;
+                    background: #E8C65A0C;
+                    Text { text: "СВОБОДНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.gold; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                }
+                for b in d.blocks: Rectangle {
+                    x: b.x * root.colw + 3px;
+                    y: b.y * 1px + 1px;
+                    width: b.w * root.colw - 6px;
+                    height: max(18px, b.h * 1px - 3px);
+                    border-radius: 5px;
+                    background: b.kind == 0 ? #2C2D33 : (b.kind == 2 ? b.hue.transparentize(b.done ? 0.8 : 0.94) : b.hue.transparentize(0.93));
+                    border-width: b.kind == 2 && !b.done ? 0 : 1px;
+                    border-color: b.kind == 0 ? G.line : b.hue.transparentize(0.45);
+                    opacity: root.dragging && root.d-id == b.id ? 0.35 : (b.done ? 0.6 : 1);
+                    clip: true;
+                    if b.kind == 2 && !b.done: DashBox { c: b.hue.transparentize(0.4); }
+                    VerticalLayout {
+                        padding: 4px;
+                        padding-left: 7px;
+                        spacing: 1px;
+                        if b.kind != 0 && b.h > 30: HorizontalLayout {
+                            spacing: 5px;
+                            height: 14px;
+                            Rectangle {
+                                width: 9px; height: 9px; y: 2px; border-radius: 4.5px;
+                                border-width: 1.2px; border-color: b.hue; background: b.done ? b.hue : transparent;
                             }
-                            moved => {
-                                if (b.kind == 1 && !b.done && !root.dragging && abs(self.mouse-y - self.pressed-y) + abs(self.mouse-x - self.pressed-x) > 6px) {
-                                    root.dragging = true;
-                                    root.d-list = b.list-id;
-                                    root.d-id = b.id;
-                                    root.d-title = b.title;
-                                    root.d-h = b.h * 1px;
-                                }
-                                if (root.dragging) {
-                                    root.gx = self.absolute-position.x - grid.absolute-position.x + self.mouse-x;
-                                    root.gy = self.absolute-position.y - grid.absolute-position.y + self.mouse-y - self.pressed-y;
-                                }
+                            Text { text: b.sub; font-family: G.mono; font-size: 10px; letter-spacing: 0.8px; color: b.done ? G.dim : #B5B7C0; vertical-alignment: center; horizontal-stretch: 1; }
+                        }
+                        tt := Text {
+                            text: b.title;
+                            color: b.done ? G.dim : (b.kind == 0 ? #C9CAD0 : G.ink);
+                            font-size: 12px;
+                            wrap: word-wrap;
+                            overflow: elide;
+                            vertical-stretch: 1;
+                            Rectangle { visible: b.done; y: 8px; height: 1px; width: min(parent.width, tt.preferred-width); background: G.dim; }
+                        }
+                    }
+                    ba := TouchArea {
+                        mouse-cursor: pointer;
+                        pointer-event(e) => {
+                            if (e.kind == PointerEventKind.down) { root.dropped = false; }
+                            if (e.kind == PointerEventKind.up && root.dragging) {
+                                root.dragging = false;
+                                root.dropped = true;
+                                S.cal-drop(root.d-list, root.d-id, S.days[max(0, min(S.days.length - 1, floor((root.gx - root.gut) / root.colw)))].ymd, root.gy < 0 ? -1 : root.gy / 1px);
                             }
-                            clicked => {
-                                if (!root.dropped) {
-                                    if (b.kind == 1) { S.open-task(b.list-id, b.id); } else if (b.kind == 0) { S.open-event(b.id); } else { S.habit-tap(b.id); }
-                                }
+                        }
+                        moved => {
+                            if (b.kind == 1 && !b.done && !root.dragging && abs(self.mouse-y - self.pressed-y) + abs(self.mouse-x - self.pressed-x) > 6px) {
+                                root.dragging = true;
+                                root.d-list = b.list-id;
+                                root.d-id = b.id;
+                                root.d-title = b.title;
+                                root.d-h = b.h * 1px;
+                            }
+                            if (root.dragging) {
+                                root.gx = self.absolute-position.x - grid.absolute-position.x + self.mouse-x;
+                                root.gy = self.absolute-position.y - grid.absolute-position.y + self.mouse-y - self.pressed-y;
+                            }
+                        }
+                        clicked => {
+                            if (!root.dropped) {
+                                if (b.kind == 1) { S.open-task(b.list-id, b.id); } else if (b.kind == 0) { S.open-event(b.id); } else { S.habit-tap(b.id); }
                             }
                         }
                     }
                 }
-                // «сейчас»
-                if S.now-col >= 0: Rectangle {
-                    x: root.gut + S.now-col * root.colw;
-                    y: S.now-y * 1px;
-                    width: root.colw;
-                    height: 2px;
-                    background: G.red;
-                    Rectangle { x: -4px; y: -3px; width: 8px; height: 8px; border-radius: 4px; background: G.red; }
-                }
-                if root.dragging: Rectangle {
-                    x: root.gut + floor((root.gx - root.gut) / root.colw) * root.colw + 2px;
-                    y: max(0, root.gy);
-                    width: root.colw - 4px;
-                    height: max(18px, root.d-h);
-                    border-radius: 4px;
-                    border-width: 1.5px;
-                    border-color: G.accent;
-                    background: G.accent-wash;
-                    Text { x: 5px; y: 3px; text: root.d-title; font-size: 11px; color: G.accent-ink; overflow: elide; width: parent.width - 10px; }
-                }
+            }
+            // «сейчас» — провод с сокетом
+            if S.now-col >= 0: Rectangle {
+                x: root.gut + S.now-col * root.colw;
+                y: S.now-y * 1px;
+                width: root.colw;
+                height: 1.5px;
+                background: G.accent;
+                Rectangle { x: -4px; y: -3.5px; width: 8px; height: 8px; border-radius: 2px; background: G.accent; }
+            }
+            if root.dragging: Rectangle {
+                x: root.gut + floor((root.gx - root.gut) / root.colw) * root.colw + 3px;
+                y: max(0, root.gy);
+                width: root.colw - 6px;
+                height: max(18px, root.d-h);
+                border-radius: 5px;
+                border-width: 1.5px;
+                border-color: G.accent;
+                background: G.accent-wash;
+                Text { x: 6px; y: 4px; text: root.d-title; font-size: 12px; color: G.accent-ink; overflow: elide; width: parent.width - 12px; }
             }
         }
     }
@@ -167,125 +276,329 @@ component Week inherits Rectangle {
 
 component Month inherits Rectangle {
     property <length> cw: self.width / 7;
-    property <length> ch: (self.height - 24px) / max(1, ceil(S.days.length / 7));
-    for w[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Mono { x: i * root.cw + 8px; y: 4px; text: w; color: i >= 5 ? G.accent : G.muted; }
+    property <int> rows: max(1, ceil(S.days.length / 7));
+    property <length> ch: (self.height - 24px) / root.rows;
+    for w[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
+        x: i * root.cw + 10px; y: 0; height: 24px; text: w;
+        font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center;
+    }
+    Rectangle { y: 24px; height: 1px; background: G.line; }
     for d[i] in S.days: Rectangle {
         x: mod(i, 7) * root.cw;
         y: 24px + floor(i / 7) * root.ch;
         width: root.cw;
         height: root.ch;
-        background: d.sel ? G.accent-wash : (ma.has-hover ? G.node-hover : transparent);
-        border-width: 0.5px;
-        border-color: G.line-soft;
-        opacity: d.in-month ? 1 : 0.45;
-        ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
-        VerticalLayout {
-            padding: 4px;
-            spacing: 2px;
-            HorizontalLayout {
-                height: 20px;
-                Rectangle {
-                    width: 22px;
-                    height: 20px;
-                    border-radius: 10px;
-                    background: d.today ? G.accent : transparent;
-                    Text { text: d.num; font-size: 12px; color: d.today ? G.on-accent : G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                }
-                Rectangle { }
-                Mono { text: d.habits; font-size: 9px; color: G.gold; vertical-alignment: center; }
-            }
-            for c[k] in d.all: ChipLine { c: c; visible: k < max(1, floor((root.ch - 40px) / 24px)); }
-            if d.more > 0: Mono { text: "+ ещё " + d.more; font-size: 9px; }
-            Rectangle { }
+        Rectangle { x: parent.width - 1px; width: 1px; background: G.line-soft; }
+        Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+        Rectangle {
+            x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+            border-radius: d.today ? 6px : 0;
+            border-width: d.today ? 1px : 0;
+            border-color: G.accent;
+            background: d.today ? #2C2620 : (d.sel ? G.accent-wash : (ma.has-hover ? G.node-hover : transparent));
         }
-        // загрузка дня — полоска внизу
-        Rectangle { x: 4px; y: parent.height - 4px; height: 2px; width: (parent.width - 8px) * min(1, d.load); background: G.accent.transparentize(0.4); }
+        ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
+        Text { x: 10px; y: 8px; text: d.num; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: d.today ? G.accent : (d.in-month ? G.ink : #55575F); }
+        if d.today: Text { x: parent.width - self.preferred-width - 10px; y: 9px; text: "СЕГОДНЯ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.accent; }
+        VerticalLayout {
+            x: 8px; y: 26px; width: parent.width - 12px;
+            height: parent.height - 40px;
+            spacing: 2px;
+            alignment: start;
+            for c[k] in d.all: HorizontalLayout {
+                visible: k < max(1, floor((root.ch - 44px) / 18px));
+                height: k < max(1, floor((root.ch - 44px) / 18px)) ? 16px : 0;
+                spacing: 5px;
+                Rectangle { width: 6px; height: 6px; y: 5px; border-radius: 3px; background: c.hue; }
+                if c.kind == 3: Text { text: "★"; font-size: 9px; color: #8A8C96; vertical-alignment: center; }
+                if c.time != "": Text { text: c.time; font-family: G.mono; font-size: 9.5px; color: #8A8C96; vertical-alignment: center; }
+                Text { text: c.title; font-size: 11.5px; color: c.done ? G.dim : G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            }
+            if d.more > 0: Text { text: "+ ЕЩЁ " + d.more; font-family: G.mono; font-size: 9px; color: #7A7C86; }
+        }
+        // привычки — полоска внизу клетки: золото — сделано, пунктир — впереди
+        for v[k] in d.hdots: Rectangle {
+            x: 8px + k * (root.cw - 16px) / max(1, d.hdots.length);
+            y: parent.height - 9px;
+            width: (root.cw - 16px) / max(1, d.hdots.length) - 3px;
+            height: v == 3 ? 1px : 3px;
+            border-radius: 1.5px;
+            background: v == 1 ? G.gold : (v == 3 ? #4A4B52 : #3A3B42);
+            opacity: d.in-month ? 1 : 0.4;
+        }
     }
 }
 
+// Строка дня в панели — как в «Сегодня».
+component DayLine inherits Rectangle {
+    in property <Chip> c;
+    in property <bool> next;
+    height: 40px;
+    border-radius: next ? 6px : 0;
+    border-width: next ? 1px : 0;
+    border-color: G.accent;
+    background: next ? #2E2620 : (la.has-hover ? G.node-hover : transparent);
+    if next: Hatch { border-radius: 6px; c: #F0A04B0C; }
+    la := TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
+    Rectangle {
+        x: 10px; y: 13px; width: 14px; height: 14px; border-radius: 3px;
+        border-width: 1px; border-color: c.done ? #7C7E88 : (next ? G.accent : #7C7E88);
+        background: c.done ? #3D3E45 : transparent;
+        visible: c.kind == 1;
+        Text { text: "✓"; visible: c.done; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+        TouchArea { clicked => { S.toggle(c.list-id, c.id); } mouse-cursor: pointer; }
+    }
+    if c.kind != 1: Rectangle { x: 10px; y: 13px; width: 14px; height: 14px; border-radius: 3px; border-width: 1px; border-color: #55575F; }
+    Text { x: 34px; text: c.time; font-family: G.mono; font-size: 11px; color: next ? G.accent : #8A8C96; vertical-alignment: center; height: parent.height; }
+    tl := Text {
+        x: 84px; width: parent.width - 110px;
+        text: (c.kind == 3 ? "★ " : "") + c.title;
+        font-size: 13px; color: c.done ? G.dim : G.ink; vertical-alignment: center; height: parent.height; overflow: elide;
+        Rectangle { visible: c.done; y: parent.height / 2 + 1px; height: 1px; width: min(parent.width, tl.preferred-width); background: G.dim; }
+    }
+    Rectangle { x: parent.width - 16px; y: 17px; width: 6px; height: 6px; border-radius: 1.5px; background: c.hue; }
+    if !next: Rectangle { x: 0; y: parent.height - 1px; height: 1px; background: G.line-soft; }
+}
+
 export component CalendarPage inherits Rectangle {
+    property <bool> adding;
     property <bool> add-event;
-    HorizontalLayout {
-        VerticalLayout {
-            horizontal-stretch: 1;
-            // панель
-            Rectangle {
-                height: 52px;
-                HorizontalLayout {
-                    padding-left: 18px;
-                    padding-right: 14px;
-                    spacing: 10px;
-                    Text { text: S.cal-title; font-size: 19px; font-weight: 500; color: G.ink; vertical-alignment: center; min-width: 200px; }
-                    IconBtn { icon: "‹"; y: 12px; clicked => { S.cal-shift(-1); } }
-                    IconBtn { icon: "›"; y: 12px; clicked => { S.cal-shift(1); } }
-                    Button { text: "Сегодня"; y: 10px; height: 32px; clicked => { S.cal-today(); } }
-                    Rectangle { width: 10px; }
-                    for f in S.cal-filters: Pill { y: 13px; text: f.label; on: f.on; hue: f.hue; clicked => { S.cal-filter(f.id); } }
-                    Rectangle { }
-                    Seg { y: 12px; items: ["НЕДЕЛЯ", "МЕСЯЦ"]; current: S.cal-mode == "month" ? 1 : 0; picked(i) => { S.cal-mode-set(i == 1 ? "month" : "week"); } }
+    property <length> pw: 324px;
+    property <length> mx: max(16px, min(56px, (self.width - 1000px) / 4));
+    property <length> mw: self.width - 2 * root.mx - root.pw - 24px;
+    property <length> mh: max(420px, self.height - 84px - 130px);
+    property <bool> form: root.adding || S.add-time != "";
+
+    // ---------- панель ----------
+    Rectangle {
+        x: root.mx; y: 20px; width: parent.width - 2 * root.mx; height: 48px;
+        border-radius: 8px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.line;
+        HorizontalLayout {
+            padding-left: 13px;
+            padding-right: 9px;
+            spacing: 10px;
+            alignment: start;
+            Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; horizontal-stretch: 0; }
+            Text { text: S.cal-sub; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center; horizontal-stretch: 0; }
+            Rectangle { width: 2px; }
+            Sq { y: 9px; icon: "‹"; clicked => { S.cal-shift(-1); } }
+            Sq { y: 9px; icon: "›"; clicked => { S.cal-shift(1); } }
+            Rectangle { width: 2px; }
+            Button { y: 9px; height: 30px; text: "Сегодня"; clicked => { S.cal-today(); } }
+            Rectangle { width: 1px; height: 28px; y: 10px; background: G.line; }
+            for f in S.cal-filters: Filter { y: 10px; f: f; }
+        }
+        CSeg {
+            x: parent.width - self.width - 9px; y: 8px;
+            items: ["НЕДЕЛЯ", "МЕСЯЦ"];
+            current: S.cal-mode == "month" ? 1 : 0;
+            picked(i) => { S.cal-mode-set(i == 1 ? "month" : "week"); }
+        }
+    }
+
+    // ---------- главная нода ----------
+    main := Rectangle {
+        x: root.mx; y: 84px; width: root.mw; height: root.mh;
+        border-radius: 12px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.accent-line;
+        clip: true;
+        Rectangle {
+            height: 34px; y: 0;
+            background: G.head-main;
+            Text { x: 13px; text: S.cal-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: parent.width - self.preferred-width - 13px; text: S.cal-head-r; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        }
+        Rectangle {
+            y: 34px; height: parent.height - 34px;
+            if S.cal-mode == "week": Week { }
+            if S.cal-mode == "month": Month { }
+        }
+    }
+    Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
+
+    // провод «неделя → день»
+    Rectangle { x: main.x + main.width - 4px; y: main.y + 21px; width: 28px; height: 1.5px; background: G.accent; }
+    Rectangle { x: main.x + main.width - 4px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: #6A4A28; }
+    Rectangle { x: main.x + main.width + 20px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: #6A4A28; }
+
+    // ---------- нода дня ----------
+    panel := Rectangle {
+        x: root.width - root.mx - root.pw; y: 84px; width: root.pw; height: root.mh;
+        border-radius: 8px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.line;
+        clip: true;
+        Rectangle {
+            height: 34px; y: 0;
+            background: G.head-main;
+            Text { x: 13px; text: S.day-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: parent.width - self.preferred-width - 13px; text: S.day-count; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        }
+        ScrollView {
+            y: 34px; height: parent.height - 34px;
+            VerticalLayout {
+                padding: 12px;
+                padding-top: 10px;
+                spacing: 0;
+                for c[i] in S.day-items: DayLine { c: c; next: i == S.day-next; }
+                if S.day-items.length == 0: Text { height: 48px; text: "Свободный день — енот дремлет"; color: G.muted; font-size: 13px; vertical-alignment: center; }
+                Rectangle { height: 10px; }
+                Rectangle { height: 1px; background: G.accent-line; }
+                if S.day-habits.length > 0: Text { height: 34px; text: S.day-habits-sum; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; color: G.gold; vertical-alignment: center; }
+                for h in S.day-habits: Rectangle {
+                    height: 28px;
+                    Text { x: 0; width: parent.width - 60px; text: (h.on ? "✓ " : "") + h.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                    Text { x: parent.width - self.preferred-width; text: h.hint; font-family: G.mono; font-size: 10px; letter-spacing: 1px; color: h.on ? G.gold : #8A8C96; vertical-alignment: center; height: parent.height; }
+                    TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
                 }
-                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
-            }
-            Rectangle {
-                vertical-stretch: 1;
-                if S.cal-mode == "week": Week { }
-                if S.cal-mode == "month": Month { }
+                Rectangle { height: 14px; }
+                DashBox {
+                    height: 32px;
+                    c: #6E7079;
+                    background: ad.has-hover ? G.node-hover : transparent;
+                    Text { text: "＋ Добавить на этот день"; font-size: 13px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                    ad := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
+                }
+                Rectangle { height: 12px; }
+                if S.free-hint != "": DashBox {
+                    height: 76px;
+                    c: #8A7430;
+                    Rectangle {
+                        x: 11px; y: 10px; width: 46px; height: 46px; border-radius: 23px; border-width: 1px; border-color: #6E7079;
+                        Text { text: "ЕНОТ"; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+                    }
+                    Text { x: 67px; y: 14px; width: parent.width - 78px; text: S.free-hint + ". Поставить туда задачу?"; font-size: 12.5px; color: G.ink; wrap: word-wrap; }
+                    Link { x: 67px; y: 50px; text: "Поставить"; font-size: 12.5px; clicked => { S.cal-free-take(); } }
+                }
             }
         }
-        // панель дня
+    }
+
+    // ---------- форма «добавить на этот день» (G_CalAdd) ----------
+    if root.form: Rectangle {
+        x: panel.x - 24px; y: panel.y + 86px; width: root.pw + 24px; height: 400px;
+        border-radius: 12px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.accent-line;
+        drop-shadow-blur: 24px;
+        drop-shadow-color: #0008;
+        clip: true;
         Rectangle {
-            width: 300px;
-            background: G.bg;
-            Rectangle { x: 0; width: 1px; background: G.line; }
-            VerticalLayout {
-                padding: 16px;
-                spacing: 10px;
-                Mono { text: "ДЕНЬ"; }
-                Text { text: S.day-title; font-size: 18px; color: G.ink; font-weight: 500; wrap: word-wrap; }
-                if S.free-hint != "": Rectangle {
-                    height: fh.preferred-height + 16px;
-                    border-radius: G.r-node;
-                    background: G.accent-wash;
+            height: 34px; y: 0;
+            background: G.head-main;
+            Text { x: 13px; text: S.day-head + " · ДОБАВИТЬ НА ЭТОТ ДЕНЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: parent.width - self.preferred-width - 13px; text: "ENTER"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        }
+        VerticalLayout {
+            y: 34px; height: parent.height - 34px;
+            padding: 16px;
+            spacing: 8px;
+            Text { text: "Что добавить"; font-size: 12.5px; color: G.muted; }
+            nm := Field {
+                height: 40px;
+                placeholder: "Название";
+                init => { self.grab(); }
+                accepted(t) => { if (t != "") { S.cal-add("", tm.text, t, root.add-event); self.clear(); root.adding = false; } }
+                escape => { root.adding = false; S.cal-add-close(); }
+            }
+            Rectangle { height: 2px; }
+            Text { text: "Это"; font-size: 12.5px; color: G.muted; }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                for k[i] in ["Задача", "Событие"]: Rectangle {
+                    height: 30px;
+                    width: kt.preferred-width + 26px;
+                    border-radius: 6px;
                     border-width: 1px;
-                    border-color: G.accent-line;
-                    fh := Text { x: 10px; width: parent.width - 20px; text: "✦ " + S.free-hint; wrap: word-wrap; font-size: 12px; color: G.accent-ink; vertical-alignment: center; height: parent.height; }
-                }
-                ScrollView {
-                    vertical-stretch: 1;
-                    VerticalLayout {
-                        spacing: 4px;
-                        for c in S.day-items: Rectangle {
-                            height: 34px;
-                            border-radius: 4px;
-                            background: da.has-hover ? G.node-hover : transparent;
-                            da := TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else if (c.kind == 2) { S.habit-tap(c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
-                            HorizontalLayout {
-                                padding-left: 6px;
-                                spacing: 8px;
-                                Mono { text: c.time; width: 40px; vertical-alignment: center; }
-                                if c.kind == 1 || c.kind == 2: Check { done: c.done; hue: c.hue; y: 8px; toggled => { if (c.kind == 1) { S.toggle(c.list-id, c.id); } else { S.habit-tap(c.id); } } }
-                                if c.kind == 0 || c.kind == 3: Rectangle { width: 3px; height: 18px; y: 8px; background: c.hue; }
-                                Text { text: c.title; color: c.done ? G.dim : G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                            }
-                        }
-                        if S.day-items.length == 0: Empty { height: 180px; text: "Свободный день"; }
-                    }
-                }
-                Mono { text: "＋ ДОБАВИТЬ НА ЭТОТ ДЕНЬ"; }
-                HorizontalLayout {
-                    spacing: 6px;
-                    Pill { text: "Задача"; on: !root.add-event; clicked => { root.add-event = false; } }
-                    Pill { text: "Событие"; on: root.add-event; clicked => { root.add-event = true; } }
-                }
-                HorizontalLayout {
-                    spacing: 6px;
-                    tm := Field { width: 70px; mono: true; placeholder: "время"; text: S.add-time; }
-                    Field {
-                        placeholder: "Название · Enter";
-                        accepted(t) => { if (t != "") { S.cal-add("", tm.text, t, root.add-event); self.clear(); } }
-                    }
+                    border-color: (i == 1) == root.add-event ? G.accent : G.line;
+                    background: (i == 1) == root.add-event ? G.accent-wash : transparent;
+                    kt := Text { text: k; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.add-event = i == 1; } mouse-cursor: pointer; }
                 }
             }
+            Rectangle { height: 2px; }
+            Text { text: "Когда"; font-size: 12.5px; color: G.muted; }
+            HorizontalLayout {
+                spacing: 6px;
+                Rectangle {
+                    height: 32px;
+                    border-radius: 6px;
+                    border-width: 1px;
+                    border-color: G.accent;
+                    background: G.accent-wash;
+                    Text { x: 12px; text: S.day-title; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 20px; }
+                }
+                tm := Field { width: 86px; height: 32px; mono: true; placeholder: "весь день"; text: S.add-time; }
+            }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: end;
+                Rectangle {
+                    width: 72px; height: 30px;
+                    Text { text: "Отмена"; font-size: 13px; color: ca.has-hover ? G.ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
+                    ca := TouchArea { clicked => { root.adding = false; S.cal-add-close(); } mouse-cursor: pointer; }
+                }
+                Button {
+                    height: 30px;
+                    primary: true;
+                    text: "Добавить";
+                    clicked => { if (nm.text != "") { S.cal-add("", tm.text, nm.text, root.add-event); nm.clear(); root.adding = false; } }
+                }
+            }
+        }
+    }
+    if root.form: DashBox {
+        x: panel.x - 24px; y: panel.y + 86px + 400px + 18px; width: root.pw + 24px; height: 52px;
+        c: #8A7430;
+        Rectangle {
+            x: 10px; y: 6px; width: 40px; height: 40px; border-radius: 20px; border-width: 1px; border-color: #6E7079;
+            Text { text: "ДУМАЕТ"; font-family: G.mono; font-size: 7.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+        }
+        Text { x: 60px; width: parent.width - 70px; text: "Клик по пустому часу открывает эту форму. Esc — убрать черновик."; font-size: 12px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+    }
+
+    // ---------- обзор и штамп ----------
+    HorizontalLayout {
+        x: root.mx; y: main.y + main.height + 16px; width: root.mw; height: 16px;
+        spacing: 14px;
+        alignment: start;
+        Text { text: S.cal-mode == "week" ? "ОБЗОР НЕДЕЛИ ▾" : S.cal-foot; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: S.cal-mode == "week" ? G.ink : #8A8C96; }
+        if S.cal-mode == "week": Text { text: S.cal-foot; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
+        Text { text: S.cal-foot-hl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.gold; }
+        if S.cal-mode == "month": Text { text: "ПУНКТИР — ЕЩЁ ВПЕРЕДИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
+    }
+    // размерная линия
+    Rectangle {
+        x: root.mx; y: main.y + main.height + 42px; width: root.mw; height: 12px;
+        Rectangle { x: 0; width: 1px; height: 10px; y: 1px; background: #55575F; }
+        Rectangle { x: parent.width - 1px; width: 1px; height: 10px; y: 1px; background: #55575F; }
+        Rectangle { x: 12px; y: 6px; height: 1px; width: (parent.width - rl.preferred-width) / 2 - 24px; background: #3A3B42; }
+        Rectangle { x: (parent.width + rl.preferred-width) / 2 + 12px; y: 6px; height: 1px; width: (parent.width - rl.preferred-width) / 2 - 24px; background: #3A3B42; }
+        rl := Text { x: (parent.width - self.preferred-width) / 2; text: S.cal-rule; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+    }
+    if S.cal-stamp.length >= 4: Rectangle {
+        x: panel.x + panel.width - 280px; y: main.y + main.height + 16px; width: 280px; height: 52px;
+        border-radius: 6px;
+        border-width: 1px;
+        border-color: G.line;
+        Text { x: 8px; y: 6px; text: S.cal-stamp[0]; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
+        Rectangle { x: 0; y: 24px; height: 1px; background: G.line; }
+        HorizontalLayout {
+            y: 24px; height: 28px;
+            Text { text: S.cal-stamp[1]; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Rectangle { width: 1px; background: G.line; }
+            Text { text: S.cal-stamp[2]; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Rectangle { width: 1px; background: G.line; }
+            Text { text: S.cal-stamp[3]; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
     }
 }

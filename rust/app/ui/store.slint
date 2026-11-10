@@ -19,7 +19,7 @@ export struct MonthRow { id: string, name: string, icon: string, hue: color, cel
 export struct Block { title: string, sub: string, y: float, h: float, x: float, w: float, hue: color, done: bool, kind: int, list-id: string, id: string }
 export struct Label { text: string, y: float, small: bool }
 export struct Band { y: float, h: float, text: string, a: int }
-export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool }
+export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
 export struct Found { kind: string, title: string, sub: string, list-id: string, id: string }
@@ -159,6 +159,24 @@ export global S {
     in property <[Chip]> day-items;
     in property <[Opt]> cal-filters;
     in property <string> free-hint;
+    in property <string> cal-sub;              // «НЕДЕЛЯ 45» · «5 ИЗ 30»
+    in property <string> cal-head;             // «НЕДЕЛЯ · 02–08 НОЯБРЯ»
+    in property <string> cal-head-r;           // «ЗАНЯТО 31 Ч»
+    in property <int> free-col: -1;
+    in property <float> free-y;
+    in property <float> free-h;
+    in property <int> free-free: -1;           // свободный день — дремлющий енот
+    in property <string> day-head;             // «ЧТ 05 · СЕГОДНЯ»
+    in property <string> day-count;
+    in property <int> day-next: -1;
+    in property <[Opt]> day-habits;
+    in property <string> day-habits-sum;
+    in property <string> cal-foot;
+    in property <string> cal-foot-hl;
+    in property <string> cal-rule;
+    in property <[string]> cal-stamp;
+    callback cal-free-take();
+    callback cal-add-close();
     callback cal-shift(int);
     callback cal-today();
     callback cal-mode-set(string);
