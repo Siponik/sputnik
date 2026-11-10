@@ -8,6 +8,7 @@ pub mod create;
 pub mod dates;
 pub mod dropdown;
 pub mod habits;
+pub mod inbox;
 pub mod j;
 pub mod layer;
 pub mod reminders;
