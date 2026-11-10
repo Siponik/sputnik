@@ -126,7 +126,7 @@ export component TodayPage inherits Rectangle {
     cv := Rectangle {
         x: max(0px, (parent.width - self.width) / 2);
         y: 24px;
-        width: max(1080px, min(1700px, parent.width - 16px));
+        width: max(1080px, parent.width - 16px);
         // источники 20…250, провода по 56 px, вывод 280 — середина забирает остальное
         property <length> m0: 306px;
         property <length> m1: self.width - 356px;

@@ -223,7 +223,7 @@ export component AppWindow inherits Window {
                 // клик по пустому месту возвращает клавиши окну (1–5, N, R…)
                 TouchArea { clicked => { keys.focus(); } }
                 if !S.signed-in: Rectangle {
-                    property <length> mx: max(12px, min(20px, (self.width - 1000px) / 8));
+                    property <length> mx: 8px;
                     property <length> nw: (self.width - 2 * self.mx - 3 * 42px) / 4;
                     Text { x: parent.mx; y: 14px; text: "Первый запуск"; font-size: 60px; font-weight: 200; color: G.ink; }
                     Text { x: parent.mx; y: 90px; text: "ТРИ ШАГА · ОКОЛО МИНУТЫ · ВСЁ МОЖНО ПОМЕНЯТЬ В НАСТРОЙКАХ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #8A8C96; }
