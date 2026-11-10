@@ -88,5 +88,6 @@ for (const now of [new Date(NOW), new Date(2026, 9, 21, 7, 0), new Date(2026, 9,
   out.push({ fn: 'habitItems', habits, log, now: now.getTime(), out: R.habitItems(habits, log, now) });
   for (const sent of [[], ['h5|' + `2026-10-${now.getDate()}`]]) out.push({ fn: 'habitWinDue', habits, log, sent, now: now.getTime(), out: R.habitWinDue(habits, log, sent, now).map((h) => h.id) });
 }
+for (const x of ['🎂 Аня', 'День рождения: Аня', 'день рождения — Петя', 'Birthday - Bob', '🎂 ', '', null, 'Аня']) out.push({ fn: 'bdayName', x, out: R.bdayName(x) });
 write('reminders.json', out);
 console.log(out.length);

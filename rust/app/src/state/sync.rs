@@ -460,6 +460,14 @@ impl App {
         });
     }
 
+    /// «✓ Готово» / «↩ Отменить» под напоминанием о привычке.
+    fn bot_habit(&mut self, id: &str, day: &str, done: bool) {
+        let h = self.habits().into_iter().find(|h| s(&h["id"]) == id).unwrap_or_else(|| json!({"id": id}));
+        if sputnik_core::habits::is_done(self.habit_log(), &h["id"], day) != done {
+            self.set_habit_day(&h, day, if done { "done" } else { "none" });
+        }
+    }
+
     fn bot_items(&mut self, r: Value) {
         let today = sputnik_core::habits::now().date();
         let mut ok = vec![];
@@ -488,14 +496,26 @@ impl App {
                         added += 1;
                     }
                 }
-                ty @ ("move" | "done") => {
+                "move" => {
+                    // «📅 На завтра» под старым напоминанием: срок меняется, время в слое остаётся.
                     let list = text(&x["listId"]);
                     if let Some(tk) = self.task(&list, s(&x["taskId"])).cloned() {
                         if !Self::is_done(&tk) {
-                            if ty == "done" {
+                            self.set_due(&list, &tk, x["due"].as_str().map(|d| &d[..d.len().min(10)]));
+                        }
+                    }
+                }
+                ty @ ("done" | "undone") => {
+                    let done = ty == "done";
+                    if t(&x["habitId"]) {
+                        // Привычка: отметка дня в слое (log["id|ГГГГ-ММ-ДД"]), задача-привычка в Google не трогается.
+                        let day = if t(&x["day"]) { text(&x["day"]) } else { sputnik_core::dates::ymd(today) };
+                        self.bot_habit(s(&x["habitId"]), &day, done);
+                    } else {
+                        let list = text(&x["listId"]);
+                        if let Some(tk) = self.task(&list, s(&x["taskId"])).cloned() {
+                            if Self::is_done(&tk) != done {
                                 self.toggle_done(&list, &tk);
-                            } else {
-                                self.set_due(&list, &tk, x["due"].as_str().map(|d| &d[..d.len().min(10)]));
                             }
                         }
                     }
