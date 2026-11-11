@@ -4,7 +4,7 @@ use super::dialogs::opt;
 use crate::Opt;
 
 pub const STARTS: [(&str, &str); 4] = [("today", "Сегодня"), ("calendar", "Календарь"), ("board", "Доска"), ("habits", "Привычки")];
-pub const REMINDS: [(i64, &str); 5] = [(-1, "не напоминать"), (0, "в момент начала"), (15, "за 15 мин"), (60, "за час"), (1440, "за день")];
+pub const REMINDS: [(i64, &str); 5] = [(-1, "Не напоминать"), (0, "В момент начала"), (15, "За 15 минут"), (60, "За час"), (1440, "За день")];
 pub const HOURS: [&str; 5] = ["08:00", "09:00", "10:00", "12:00", "off"];
 
 /// Акценты «Вида»: название, акцент, акцент-светлый, подложка, линия, текст на акценте, шапка главной ноды.
@@ -102,13 +102,12 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         Opt { id: ss(text(&c["id"])), label: ss(text(&c["summary"])), hint: ss(if t(&c["primary"]) { "основной" } else { "" }), hue: color(s(&c["backgroundColor"])), on: app.cal_shown(c) }
     }).collect()));
     let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, "task")).iter().filter_map(|x| x.as_i64()).collect();
-    g.set_set_remind_task(model(REMINDS.iter().map(|(m, l)| opt(m.to_string(), *l, if *m < 0 { cur.is_empty() } else { cur.contains(m) })).collect()));
+    // галочки: «не напоминать» = ничего не отмечено, отдельным пунктом не показываем
+    g.set_set_remind_task(model(REMINDS.iter().filter(|(m, _)| *m >= 0).map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))).collect()));
     // умолчания напоминаний для событий и дней рождения — те же наборы, что в старом трекере (core::reminders::leads_for)
     let leads_model = |kind: &str| {
         let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, kind)).iter().filter_map(|x| x.as_i64()).collect();
-        let mut v = vec![opt("-1", "не напоминать", cur.is_empty())];
-        v.extend(sputnik_core::reminders::leads_for(kind).iter().map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))));
-        model(v)
+        model(sputnik_core::reminders::leads_for(kind).iter().map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))).collect())
     };
     g.set_set_remind_event(leads_model("event"));
     g.set_set_remind_bday(leads_model("birthday"));
