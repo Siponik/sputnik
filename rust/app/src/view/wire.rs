@@ -501,6 +501,15 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_ls_show(|| act(|_, u| u.ls = true));
+    g.on_tp_show(|| act(|app, u| u.tp = Some(super::tpl::open(app, &sputnik_core::j::text(&sputnik_core::templates::board_of(&u.board, &app.layer)["id"])))));
+    g.on_tp_close(|| act(|_, u| u.tp = None));
+    g.on_tp_pick(|id| act(|app, u| u.tp = Some(super::tpl::open(app, &id))));
+    g.on_tp_set(|k, v| act(|_, u| super::tpl::set(u, &k, &v)));
+    g.on_tp_col(|i, k, v| act(|_, u| super::tpl::col(u, i, &k, &v)));
+    g.on_tp_save(|| act(|app, u| super::tpl::save(app, u)));
+    g.on_tp_new(|| act(|_, u| super::tpl::new(u)));
+    g.on_tp_dup(|| act(|_, u| super::tpl::dup(u)));
+    g.on_tp_reset(|| act(|app, u| super::tpl::reset(app, u)));
     g.on_ls_close(|| act(|_, u| u.ls = false));
     g.on_menu_ctx(|k, id, x, y| act(|_, u| u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })));
     g.on_menu_close(|| act(|_, u| u.menu = None));
@@ -657,9 +666,13 @@ pub fn wire(w: &AppWindow) {
         let id = str_(&id);
         match sec.as_str() {
             "start" => app.set_setting("start", json!(id)),
-            "flag" if id == "notify" => {
-                let on = app.layer["settings"]["notify"]["v"] != false;
-                app.set_setting("notify", json!(!on));
+            // «Куда слать»: notify — Windows, tgRemind — Telegram
+            "flag" if id == "notify" || id == "tgRemind" => {
+                let on = app.layer["settings"][id.as_str()]["v"] != false;
+                app.set_setting(&id, json!(!on));
+                if id == "tgRemind" {
+                    app.bot_sync();
+                }
             }
             "list" => {
                 let hid = app.ll(&id)["hidden"] == true;
@@ -677,7 +690,8 @@ pub fn wire(w: &AppWindow) {
                 if !r.is_object() {
                     r = json!({});
                 }
-                r[kind] = if m < 0 { json!([]) } else { json!([m]) };
+                let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(&app.layer["settings"], kind)).iter().filter_map(|x| x.as_i64()).collect();
+                r[kind] = json!(sputnik_core::reminders::toggle_min(&cur, m));
                 r.as_object_mut().unwrap().shift_remove("t");
                 app.touch("settings", "remind", r);
             }
@@ -709,6 +723,7 @@ pub fn wire(w: &AppWindow) {
             app.set_setting("tabOrder", json!(v));
         }
     }));
+    g.on_set_find(|q| act(|_, u| u.set_q = str_(&q)));
     g.on_bot_link(|c| act(|app, _| app.bot_link(&c)));
     g.on_bot_test(|| act(|app, _| app.bot_test()));
     g.on_bot_unlink(|| act(|app, u| ask(u, "Отключить Telegram? Напоминания перестанут приходить.", "Отключить", |app, _| app.bot_unlink())));

@@ -555,11 +555,16 @@ pub fn board_tips(open: &[Value], cols: &[Value], col_of: &dyn Fn(&Value) -> Val
 
 /// Найти настройку: все слова запроса — в заголовке, пояснении или словах для поиска.
 pub fn search_settings(query: &str) -> Vec<Value> {
+    search_in(&settings_index(), query)
+}
+
+/// То же по своему перечню настроек: записи `{ title, hint, also, … }`.
+pub fn search_in(index: &Value, query: &str) -> Vec<Value> {
     let ws = words(query);
     if ws.is_empty() {
         return vec![];
     }
-    a(&settings_index())
+    a(index)
         .iter()
         .filter(|r| {
             let tx = norm(&json!(format!("{} {} {}", text(&r["title"]), s(&r["hint"]), s(&r["also"]))));

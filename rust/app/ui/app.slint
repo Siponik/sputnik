@@ -13,6 +13,7 @@ import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
 import { DatePicker } from "datetime.slint";
 import { ListSettings } from "listset.slint";
 import { CtxMenu } from "menu.slint";
+import { Templates } from "templates.slint";
 import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
@@ -75,13 +76,13 @@ export component AppWindow inherits Window {
 
     keys := FocusScope {
         key-pressed(e) => {
-            if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open) {
+            if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
                 if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
-                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); return accept; }
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); return accept; }
                 return reject;
             }
             if (e.modifiers.control) {
-                if (e.text == "k" || e.text == "л") { S.search-open-set(true); return accept; }
+                if (e.text == "k" || e.text == "л") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
                 if ((e.text == "." || e.text == "ю") && S.tab == 2) { S.ls-show(); return accept; }
@@ -89,7 +90,7 @@ export component AppWindow inherits Window {
                 return reject;
             }
             if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
-            if (e.text == "/" || e.text == ".") { S.search-open-set(true); return accept; }
+            if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
             if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
             if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }
@@ -399,6 +400,7 @@ export component AppWindow inherits Window {
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
+        if S.tp-open: Templates { }
         if S.ls-open: ListSettings { }
         if S.menu-open: CtxMenu { }
         if S.dp-open: Rectangle {

@@ -83,6 +83,23 @@ pub fn default_mins(settings: &Value, kind: &str) -> Value {
     json!(DEFAULTS.iter().find(|d| d.0 == kind).map(|d| d.1).unwrap_or(&[]))
 }
 
+/// Галочка в настройках напоминаний: отметить или снять вариант `m` (минуты).
+/// `m < 0` — «не напоминать»: снять всё. Порядок — от раннего к позднему, как в `mins_to_rule`.
+pub fn toggle_min(cur: &[i64], m: i64) -> Vec<i64> {
+    if m < 0 {
+        return vec![];
+    }
+    let mut v: Vec<i64> = cur.iter().copied().filter(|x| *x >= 0).collect();
+    if let Some(i) = v.iter().position(|x| *x == m) {
+        v.remove(i);
+    } else {
+        v.push(m);
+    }
+    v.sort_unstable_by(|a, b| b.cmp(a));
+    v.dedup();
+    v
+}
+
 pub fn default_rule(settings: &Value) -> Value {
     mins_to_rule(a(&default_mins(settings, "task")))
 }

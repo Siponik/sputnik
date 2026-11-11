@@ -323,6 +323,25 @@ export global S {
     callback ls-show();
     callback ls-set(string, string);
     callback ls-close();
+    // шаблоны досок (G_Templates)
+    in property <bool> tp-open;
+    in property <[Opt]> tp-list;
+    in property <string> tp-id;
+    in property <string> tp-name;
+    in property <bool> tp-builtin;
+    in property <string> tp-view;
+    in property <[Opt]> tp-cols;      // label — имя, hint — лимит, on — последняя (не удаляется)
+    in property <[Opt]> tp-fields;
+    in property <string> tp-used;
+    callback tp-show();
+    callback tp-close();
+    callback tp-pick(string);
+    callback tp-set(string, string);
+    callback tp-col(int, string, string);
+    callback tp-save();
+    callback tp-new();
+    callback tp-dup();
+    callback tp-reset();
     // меню по правому клику (G_ListMenu): строит Rust, рисует CtxMenu
     in property <bool> menu-open;
     in property <length> menu-x;
@@ -374,7 +393,10 @@ export global S {
     in property <[Opt]> set-remind-bday;
     in property <[Opt]> set-remind-hour;
     in property <[Opt]> set-start;
-    in property <[Opt]> set-flags;
+    in property <[Opt]> set-flags;           // «Куда слать»: Telegram, Windows
+    in property <[Opt]> set-found;           // «Найти настройку»: id — номер раздела
+    callback set-find(string);
+    in-out property <int> set-find-focus;   // +1 — поставить курсор в «Найти настройку» (Ctrl+K на экране настроек)
     in property <string> bot-name;
     in property <string> bot-status;
     in property <string> sync-info;

@@ -18,6 +18,35 @@ pub const ACCENTS: [(&str, u32, u32, u32, u32, u32, u32); 6] = [
 ];
 pub const ANIMS: [&str; 3] = ["Полные", "Минимум", "Выкл"];
 
+/// Разделы настроек — по порядку в левой колонке.
+pub const TABS: [&str; 7] = ["Вид", "Что показывать", "Напоминания", "Синхронизация", "Клавиши", "Обновления", "Знания"];
+
+/// Что ищет «Найти настройку»: раздел (номер в TABS), название, пояснение, слова для поиска.
+fn index() -> serde_json::Value {
+    let rows: [(i64, &str, &str, &str); 19] = [
+        (0, "Тема", "тёмная, светлая", "оформление цвет"),
+        (0, "Акцент", "цвет кнопок и выделения", "акцентный цвет оформление палитра"),
+        (0, "Анимации", "полные, минимум, выкл", "движение провода"),
+        (0, "При запуске", "какой раздел открыть первым", "старт открывать"),
+        (0, "Порядок вкладок", "разделы в шапке и клавиши 1–5", "шапка меню переставить перетащить"),
+        (1, "Списки задач", "какие списки видны", "скрыть показывать"),
+        (1, "Календари", "какие календари Google показывать", "скрыть показывать дни рождения праздники"),
+        (2, "Напоминания задачам", "за сколько напоминать", "по умолчанию уведомления"),
+        (2, "Напоминания событиям", "за сколько напоминать", "по умолчанию уведомления встречи"),
+        (2, "Напоминания дням рождения", "за сколько напоминать", "по умолчанию уведомления др"),
+        (2, "Задачи без времени", "во сколько напоминать", "час утро"),
+        (2, "Куда слать", "Telegram и Windows", "уведомления телеграм виндовс включить выключить"),
+        (2, "Telegram-бот", "подключить по коду", "телеграм бот код отключить проверить"),
+        (3, "Синхронизировать сейчас", "Google Задачи и Календарь", "синхронизация обновить"),
+        (3, "Выйти из Google", "аккаунт", "войти выйти почта"),
+        (3, "Резервные копии", "раз в день, хранятся 14", "бэкап копия папка"),
+        (4, "Клавиши", "горячие клавиши", "сочетания хоткеи"),
+        (5, "Обновления", "проверить и поставить новую версию", "версия обновить"),
+        (6, "Папка заметок", "Markdown, Obsidian", "знания заметки папка"),
+    ];
+    serde_json::Value::Array(rows.iter().map(|r| serde_json::json!({"tab": r.0, "title": r.1, "hint": r.2, "also": r.3})).collect())
+}
+
 /// Применить акцент к токенам G (вызывается при старте и из настроек).
 pub fn apply_accent(w: &crate::AppWindow, i: i64) {
     let a = &ACCENTS[(i.clamp(0, 5)) as usize];
@@ -48,7 +77,7 @@ pub fn tab_order(app: &App) -> Vec<i32> {
     if v.len() == 5 && (0..5).all(|i| v.contains(&i)) { v } else { vec![0, 1, 2, 3, 4] }
 }
 
-pub fn render(app: &App, _u: &Ui, g: &S) {
+pub fn render(app: &App, u: &Ui, g: &S) {
     let st = &app.layer["settings"];
     let start = st["start"]["v"].as_str().unwrap_or("today");
     g.set_set_start(model(STARTS.iter().map(|(id, l)| opt(*id, *l, *id == start)).collect()));
@@ -56,9 +85,14 @@ pub fn render(app: &App, _u: &Ui, g: &S) {
     g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(a.0), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
     let anim = st["anim"]["v"].as_i64().unwrap_or(0);
     g.set_set_anim(model(ANIMS.iter().enumerate().map(|(i, l)| opt(i.to_string(), *l, i as i64 == anim)).collect()));
+    // «Куда слать» в «Напоминаниях»
+    let linked = t(&st["tgbot"]["key"]);
     g.set_set_flags(model(vec![
-        Opt { id: ss("notify"), label: ss("Уведомления Windows"), hint: ss("окно привычки, задачи «за N минут»"), hue: color("clay"), on: st["notify"]["v"] != false },
+        Opt { id: ss("tgRemind"), label: ss("Telegram"), hint: ss(if linked { "напоминания о задачах, событиях и привычках" } else { "сначала подключи бота — ниже" }), hue: hex(0), on: st["tgRemind"]["v"] != false },
+        Opt { id: ss("notify"), label: ss("Windows"), hint: ss(if linked { "окно привычки; задачи — если Telegram выключен" } else { "окно привычки и задачи, пока Спутник открыт" }), hue: hex(0), on: st["notify"]["v"] != false },
     ]));
+    let found = sputnik_core::shell::search_in(&index(), &u.set_q);
+    g.set_set_found(model(found.iter().map(|r| Opt { id: ss(r["tab"].to_string()), label: ss(text(&r["title"])), hint: ss(TABS[r["tab"].as_u64().unwrap_or(0) as usize]), hue: hex(0), on: false }).collect()));
     g.set_set_lists(model(app.lists.iter().filter(|l| !sputnik_core::templates::is_habit_list(l, &app.layer)).map(|l| {
         let id = s(&l["id"]);
         let ll = app.ll(id);

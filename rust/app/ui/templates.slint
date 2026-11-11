@@ -1,0 +1,133 @@
+// Шаблоны досок (G_Templates): слева список шаблонов, справа правка выбранного.
+import { G } from "theme.slint";
+import { ScrollView } from "std-widgets.slint";
+import { Mono, Button, Node, Field, Brackets, Overlay, Icon } from "kit.slint";
+import { S, Opt } from "store.slint";
+
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> gone;
+    callback clicked;
+    height: 32px;
+    visible: !gone;
+    width: gone ? 0 : ct.preferred-width + 24px;
+    border-radius: 6px; border-width: 1px;
+    border-color: on ? G.accent : G.line;
+    background: on ? G.accent.transparentize(0.88) : (ta.has-hover ? G.node-hover : transparent);
+    ct := Text { text: root.text; color: on ? G.ink : #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component Small inherits Text {
+    callback clicked;
+    font-family: G.mono; font-size: 11px; color: sa.has-hover ? G.ink : #8A8C96;
+    horizontal-alignment: center; vertical-alignment: center;
+    sa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+export component Templates inherits Overlay {
+    close => { S.tp-close(); }
+    property <length> w: min(1060px, root.width - 40px);
+    property <length> h: min(660px, root.height - 80px);
+    TouchArea { x: (root.width - w) / 2; y: 60px; width: w; height: h; }
+    // список шаблонов
+    Node {
+        x: (root.width - w) / 2; y: 60px; width: 220px; height: h;
+        num: "ШАБЛОНЫ"; title: "ДОСОК"; aside: S.tp-list.length;
+        VerticalLayout {
+            padding: 8px; spacing: 4px; alignment: start;
+            for t in S.tp-list: Rectangle {
+                height: 52px; border-radius: 8px;
+                border-width: t.on ? 1px : 0; border-color: G.accent;
+                background: t.on ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
+                Rectangle { x: 12px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: t.hue; }
+                Text { x: 24px; y: 8px; width: parent.width - 32px; text: t.label; color: G.ink; font-size: 13px; font-weight: 600; overflow: elide; }
+                Text { x: 12px; y: 30px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
+                la := TouchArea { clicked => { S.tp-pick(t.id); } mouse-cursor: pointer; }
+            }
+            Rectangle {
+                height: 34px;
+                Text { x: 12px; text: "+ Новый шаблон"; color: na.has-hover ? G.ink : #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                na := TouchArea { clicked => { S.tp-new(); } mouse-cursor: pointer; }
+            }
+        }
+    }
+    // правка
+    ed := Node {
+        x: (root.width - w) / 2 + 232px; y: 60px; width: w - 232px; height: h;
+        main: true; num: "ШАБЛОН"; title: S.tp-name.to-uppercase(); aside: S.tp-builtin ? "ВСТРОЕННЫЙ" : "СВОЙ";
+        head: G.accent.darker(0.3);
+        VerticalLayout {
+            padding: 20px; spacing: 10px; alignment: start;
+            HorizontalLayout {
+                spacing: 20px;
+                VerticalLayout { spacing: 8px;
+                    Text { text: "Название шаблона"; color: #A3A5AE; font-size: 13px; }
+                    Field { height: 38px; text: S.tp-name; edited(t) => { S.tp-set("name", t); } }
+                }
+                VerticalLayout { spacing: 8px; width: 300px;
+                    Text { text: "Вид доски"; color: #A3A5AE; font-size: 13px; }
+                    HorizontalLayout { spacing: 4px; alignment: start;
+                        for v in [{ id: "kanban", label: "Канбан" }, { id: "pipe", label: "Конвейер" }, { id: "stickers", label: "Стикеры" }, { id: "list", label: "Список" }]: Chip {
+                            text: v.label; on: S.tp-view == v.id; clicked => { S.tp-set("view", v.id); }
+                        }
+                    }
+                }
+            }
+            Text { text: "Колонки · стрелки меняют порядок, клик по квадрату — цвет"; color: #A3A5AE; font-size: 13px; }
+            Flickable {
+                height: 128px;
+                viewport-width: S.tp-cols.length * (cw + 14px) + 110px;
+                property <length> cw: 150px;
+                for c[i] in S.tp-cols: Rectangle {
+                    x: i * (cw + 14px); width: cw; height: 120px;
+                    if i > 0: Rectangle { x: -14px; y: 15px; width: 14px; height: 2px; background: c.hue; }
+                    Rectangle {
+                        border-radius: 8px; border-width: 1px; border-color: G.line; background: G.bg; clip: true;
+                        Rectangle { height: 30px; y: 0; background: c.hue.darker(0.35);
+                            TextInput { x: 10px; width: parent.width - 34px; height: 30px; text: c.label; color: #fff; font-family: G.mono; font-size: 11px; font-weight: 600; vertical-alignment: center;
+                                accepted => { S.tp-col(i, "name", self.text); } edited => { S.tp-col(i, "name", self.text); } }
+                            if !c.on: Small { x: parent.width - 22px; width: 18px; height: 30px; text: "×"; color: #ffffffb0; clicked => { S.tp-col(i, "del", ""); } }
+                        }
+                        Text { x: 10px; y: 40px; text: "Лимит"; color: #A3A5AE; font-size: 12.5px; }
+                        Small { x: parent.width - 66px; y: 38px; width: 18px; height: 20px; text: "−"; clicked => { S.tp-col(i, "limit", "-1"); } }
+                        Text { x: parent.width - 46px; y: 38px; width: 24px; height: 20px; text: c.hint; color: G.ink; font-family: G.mono; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+                        Small { x: parent.width - 22px; y: 38px; width: 18px; height: 20px; text: "+"; clicked => { S.tp-col(i, "limit", "1"); } }
+                        Text { x: 10px; y: 66px; text: "Цвет"; color: #A3A5AE; font-size: 12.5px; }
+                        Rectangle { x: parent.width - 22px; y: 69px; width: 12px; height: 12px; border-radius: 3px; background: c.hue;
+                            TouchArea { clicked => { S.tp-col(i, "color", ""); } mouse-cursor: pointer; } }
+                        if c.on: Text { x: 10px; y: 92px; text: "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"; font-family: G.mono; font-size: 8.5px; color: #7A7C86; }
+                        if !c.on: Small { x: 6px; y: 92px; width: 24px; height: 20px; text: "‹"; clicked => { S.tp-col(i, "left", ""); } }
+                        if !c.on: Small { x: 32px; y: 92px; width: 24px; height: 20px; text: "›"; clicked => { S.tp-col(i, "right", ""); } }
+                    }
+                }
+                Rectangle {
+                    x: S.tp-cols.length * (cw + 14px); width: 100px; height: 120px;
+                    border-radius: 8px; border-width: 1px; border-color: aa.has-hover ? G.accent : G.line-strong;
+                    Text { text: "+\nКолонка"; color: #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                    aa := TouchArea { clicked => { S.tp-set("col-add", ""); } mouse-cursor: pointer; }
+                }
+            }
+            Text { text: "Поля карточки"; color: #A3A5AE; font-size: 13px; }
+            for row in ceil(S.tp-fields.length / 5): HorizontalLayout { spacing: 6px; alignment: start;
+                for k in 5: Chip {
+                    property <Opt> f: S.tp-fields[min(row * 5 + k, S.tp-fields.length - 1)];
+                    gone: row * 5 + k >= S.tp-fields.length;
+                    text: f.label; on: f.on; clicked => { S.tp-set("field", f.id); }
+                }
+            }
+            Text { text: "Используется"; color: #A3A5AE; font-size: 13px; }
+            Text { text: S.tp-used; color: G.ink; font-size: 13px; }
+            Rectangle { height: 6px; }
+            HorizontalLayout { spacing: 8px; alignment: start;
+                Button { text: "Сохранить шаблон"; primary: true; clicked => { S.tp-save(); } }
+                Button { text: "Дублировать"; clicked => { S.tp-dup(); } }
+                if S.tp-builtin: Button { text: "Вернуть как было"; clicked => { S.tp-reset(); } }
+                Button { text: "Закрыть"; clicked => { S.tp-close(); } }
+            }
+            Text { text: "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."; color: #8A8C96; font-size: 12.5px; wrap: word-wrap; }
+        }
+    }
+    Brackets { x: ed.x; y: ed.y; width: ed.width; height: ed.height; }
+}
