@@ -1,6 +1,9 @@
 //! Модели «Знаний».
 use super::*;
 use crate::{GDot, GLine, MdRow, NoteRow};
+use slint::{Model, VecModel};
+use std::cell::RefCell;
+use std::rc::Rc;
 use sputnik_core::graph as gr;
 
 pub fn render(app: &App, u: &Ui, g: &S) {
@@ -24,7 +27,6 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_note_path(ss(u.note_path.clone()));
     g.set_note_dirty(u.note_dirty);
     g.set_note_graph(u.note_graph);
-    g.set_note_reading(u.note_reading);
     // вкладки открытых заметок
     g.set_note_tabs(model(u.note_tabs.iter().map(|p| {
         let title = n0.notes.iter().find(|x| &x.path == p).map(|x| x.title.clone()).unwrap_or_else(|| p.clone());
@@ -50,10 +52,11 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             g.set_note_file(ss(x.path.rsplit('/').next().unwrap_or(&x.path).to_string()));
             let f = folder(&x.path);
             g.set_note_crumb(ss(if f.is_empty() { x.title.clone() } else { format!("{} › {}", f.replace('/', " › "), x.title) }));
-            g.set_note_words(x.body.split_whitespace().count() as i32);
+            let text = if u.note_dirty { u.note_draft.clone() } else { x.body.clone() };
             if !u.note_dirty {
                 g.set_note_body(ss(x.body.clone()));
             }
+            g.set_note_words(crate::notes::body_without_front(&text).split_whitespace().count() as i32);
             // плашки под заголовком: тип (первым), остальные свойства, затем #теги
             let mut pills: Vec<NoteRow> = vec![];
             let mut rest: Vec<&(String, String)> = x.props.iter().collect();
@@ -70,7 +73,19 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             }
             g.set_note_props(model(pills));
             // текст режима «Чтение»
-            g.set_note_read_md(model(crate::notes::read_blocks(&x.body).into_iter().map(|(k, t)| MdRow { kind: ss(k), text: ss(t) }).collect()));
+            let rows: Vec<MdRow> = crate::notes::line_blocks(&text).into_iter().map(|(k, raw, md)| MdRow {
+                kind: ss(k),
+                raw: ss(raw),
+                md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)),
+            }).collect();
+            sync_lines(g, &u.note_path, rows);
+            // упомянуто без ссылки: название встречается в тексте другой заметки, но не как [[ссылка]]
+            let low = x.title.to_lowercase();
+            g.set_note_mentions(model(if low.chars().count() < 3 { vec![] } else {
+                n0.notes.iter().filter(|o| o.path != x.path && !o.links.iter().any(|l| l.to_lowercase() == low)
+                    && o.body.to_lowercase().contains(&low)).take(8)
+                    .map(|o| NoteRow { path: ss(o.path.clone()), title: ss(o.title.clone()), sub: ss(around(&o.body, &x.title)), cur: false }).collect()
+            }));
             g.set_note_links(model(x.links.iter().map(|l| {
                 let f = n0.find(l);
                 NoteRow { path: ss(f.map(|f| f.path.clone()).unwrap_or_default()), title: ss(l.clone()), sub: ss(""), cur: false }
@@ -82,7 +97,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             g.set_note_links(model(vec![]));
             g.set_note_back(model(vec![]));
             g.set_note_props(model(vec![]));
-            g.set_note_read_md(model(vec![]));
+            sync_lines(g, "", vec![]);
+            g.set_note_mentions(model(vec![]));
         }
     }
 }
@@ -101,4 +117,46 @@ fn snippet(body: &str, title: &str) -> String {
     };
     let t: String = line.replace("[[", "").replace("]]", "").trim().trim_start_matches(['-', '*', ' ']).chars().take(140).collect();
     t
+}
+
+thread_local! {
+    /// Строки открытой заметки: одна модель на всё время, меняются только изменённые строки —
+    /// иначе строка, которую сейчас правят, пересоздаётся и теряет курсор.
+    static LINES: RefCell<(String, Option<Rc<VecModel<MdRow>>>)> = const { RefCell::new((String::new(), None)) };
+}
+
+fn sync_lines(g: &S, path: &str, rows: Vec<MdRow>) {
+    LINES.with(|c| {
+        let mut c = c.borrow_mut();
+        let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw;
+        match &c.1 {
+            Some(m) if c.0 == path => {
+                let old: Vec<MdRow> = m.iter().collect();
+                let pre = old.iter().zip(&rows).take_while(|(a, b)| same(a, b)).count();
+                let max_suf = old.len().min(rows.len()) - pre;
+                let suf = old.iter().rev().zip(rows.iter().rev()).take(max_suf).take_while(|(a, b)| same(a, b)).count();
+                let (o_end, n_end) = (old.len() - suf, rows.len() - suf);
+                let common = (o_end - pre).min(n_end - pre);
+                for k in 0..common {
+                    m.set_row_data(pre + k, rows[pre + k].clone());
+                }
+                for _ in pre + common..o_end {
+                    m.remove(pre + common);
+                }
+                for k in pre + common..n_end {
+                    m.insert(k, rows[k].clone());
+                }
+            }
+            _ => {
+                let m = Rc::new(VecModel::from(rows));
+                g.set_note_lines(m.clone().into());
+                *c = (path.to_string(), Some(m));
+            }
+        }
+    });
+}
+
+fn around(body: &str, word: &str) -> String {
+    let lw = word.to_lowercase();
+    body.lines().find(|l| l.to_lowercase().contains(&lw)).unwrap_or("").replace("[[", "").replace("]]", "").trim().chars().take(120).collect()
 }

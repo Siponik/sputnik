@@ -589,7 +589,42 @@ pub fn wire(w: &AppWindow) {
             u.note_dirty = false;
         }
     }));
-    g.on_note_read_set(|v| act(|_, u| u.note_reading = v));
+    g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
+    g.on_note_commit(|| act(|app, u| save_draft(app, u)));
+    g.on_note_line_split(|i, t, at| {
+        let mut caret = 0;
+        act(|app, u| {
+            let t = str_(&t);
+            let at = (at.max(0) as usize).min(t.len());
+            let at = (0..=at).rev().find(|k| t.is_char_boundary(*k)).unwrap_or(0);
+            let (a, b) = t.split_at(at);
+            // список продолжается: «- », «- [ ] », «> », «1. »
+            let lead = a.trim_start();
+            let pre = if lead.starts_with("- [") { "- [ ] " } else if lead.starts_with("- ") { "- " } else if lead.starts_with("* ") { "* " } else if lead.starts_with("> ") { "> " } else { "" };
+            let empty_item = !pre.is_empty() && a.trim() == pre.trim() && b.trim().is_empty();
+            if empty_item {
+                // Enter на пустом пункте — пункт кончается
+                note_set_lines(app, u, i as usize, "", 1);
+                caret = 0;
+            } else {
+                note_set_lines(app, u, i as usize, &format!("{a}\n{pre}{}", b.trim_start()), 1);
+                caret = pre.len() as i32;
+            }
+        });
+        caret
+    });
+    g.on_note_line_join(|i| {
+        let mut caret = 0;
+        act(|app, u| {
+            if i <= 0 { return; }
+            let body = note_text(app, u);
+            let ls = crate::notes::line_blocks(&body);
+            let (Some(p), Some(c)) = (ls.get(i as usize - 1), ls.get(i as usize)) else { return };
+            caret = p.1.len() as i32;
+            note_set_lines(app, u, i as usize - 1, &format!("{}{}", p.1, c.1), 2);
+        });
+        caret
+    });
     g.on_notes_pick(|| act(|app, u| {
         if let Some(dir) = rfd::FileDialog::new().set_title("Папка заметок").pick_folder() {
             set_notes_root(app, u, Some(dir.to_string_lossy().to_string()));
@@ -625,6 +660,24 @@ pub fn wire(w: &AppWindow) {
 
 /// Несохранённую правку текущей заметки — сохранить, прежде чем уйти с неё (на другую вкладку,
 /// заметку из списка, по ссылке). Иначе правка терялась или, хуже, текст одной заметки попадал в другую.
+/// Текст заметки с учётом несохранённой правки.
+fn note_text(app: &App, u: &Ui) -> String {
+    if u.note_dirty { return u.note_draft.clone(); }
+    app.notes.notes.iter().find(|x| x.path == u.note_path).map(|x| x.body.clone()).unwrap_or_default()
+}
+
+/// Заменить `drop` строк тела, начиная с `i`, на `t` (строки через \n). Пишет в черновик.
+fn note_set_lines(app: &App, u: &mut Ui, i: usize, t: &str, drop: usize) {
+    if u.note_path.is_empty() { return; }
+    let base = note_text(app, u);
+    let parts: Vec<&str> = t.split('\n').collect();
+    let new = crate::notes::replace_line(&base, i, &parts, drop);
+    if new != base {
+        u.note_draft = new;
+        u.note_dirty = true;
+    }
+}
+
 fn save_draft(app: &mut App, u: &mut Ui) {
     if !u.note_dirty || u.note_path.is_empty() {
         return;
@@ -677,7 +730,6 @@ fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     match app.notes.save(&path, &format!("# {}\n\n", title.trim())) {
         Ok(()) => {
             open_note_tab(app, u, &path);
-            u.note_reading = false;
         }
         Err(e) => app.say(format!("Заметка не создалась: {e}")),
     }

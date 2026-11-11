@@ -126,61 +126,79 @@ pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
     (2..).map(|i| format!("{name} {i}.md")).find(|p| !taken(p)).unwrap()
 }
 
-/// Строки заметки для режима «Чтение»: (вид, текст). Виды:
-/// h1/h2/h3 — заголовки, p — абзац, li — пункт списка, todo/done — чек-лист,
-/// quote — цитата, code — код, hr — линия, img — картинка.
-/// [[Ссылки]] превращаются в подпись, шапка YAML и пустые строки пропускаются.
-pub fn read_blocks(body: &str) -> Vec<(String, String)> {
-    let mut out: Vec<(String, String)> = vec![];
+/// Строка заметки для живого вида: (вид, исходный текст строки, текст в разметке StyledText).
+/// Одна запись на каждую строку после шапки YAML — номер записи = номер строки тела.
+/// Виды: h1 h2 h3 li todo done quote code fence hr img p empty.
+pub fn line_blocks(body: &str) -> Vec<(String, String, String)> {
+    let mut out = vec![];
     let mut code = false;
-    let strip = |s: &str| -> String {
-        let mut r = s.to_string();
-        while let Some(a) = r.find("[[") {
-            let Some(b) = r[a + 2..].find("]]") else { break };
-            let inner = &r[a + 2..a + 2 + b];
-            let label = inner.rsplit_once('|').map(|(_, x)| x).unwrap_or(inner).to_string();
-            r = format!("{}{}{}", &r[..a], label, &r[a + 2 + b + 2..]);
-        }
-        r
-    };
-    let mut push = |kind: &str, text: String| out.push((kind.to_string(), text));
-    for raw in body_without_front(body).lines() {
-        let l = raw.trim_end();
+    for raw in body_without_front(body).split('\n') {
+        let l = raw.trim_end_matches('\r');
         let t = l.trim();
-        if t.starts_with("```") {
+        let (kind, rest): (&str, &str) = if t.starts_with("```") {
             code = !code;
-            continue;
-        }
-        if code {
-            push("code", l.to_string());
-            continue;
-        }
-        if t.is_empty() {
-            continue;
-        }
-        if t.starts_with("###") && t[3..].starts_with(['#', ' ']) {
-            push("h3", strip(t[3..].trim_start_matches(['#', ' '])));
+            ("fence", "")
+        } else if code {
+            ("code", l)
+        } else if t.is_empty() {
+            ("empty", "")
+        } else if let Some(x) = t.strip_prefix("### ") {
+            ("h3", x)
         } else if let Some(x) = t.strip_prefix("## ") {
-            push("h2", strip(x));
+            ("h2", x)
         } else if let Some(x) = t.strip_prefix("# ") {
-            push("h1", strip(x));
+            ("h1", x)
         } else if t == "---" || t == "***" {
-            push("hr", String::new());
+            ("hr", "")
         } else if let Some(x) = t.strip_prefix("- [ ]") {
-            push("todo", strip(x.trim()));
+            ("todo", x.trim())
         } else if let Some(x) = t.strip_prefix("- [x]").or_else(|| t.strip_prefix("- [X]")) {
-            push("done", strip(x.trim()));
+            ("done", x.trim())
         } else if let Some(x) = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")) {
-            push("li", strip(x));
+            ("li", x)
         } else if let Some(x) = t.strip_prefix("> ") {
-            push("quote", strip(x));
+            ("quote", x)
         } else if t.starts_with("![[") || (t.starts_with("![") && t.ends_with(')')) {
-            push("img", strip(t.trim_start_matches('!').trim_start_matches('[').trim_end_matches([')', ']'])));
+            ("img", t.trim_start_matches('!').trim_start_matches('[').trim_end_matches([')', ']']))
         } else {
-            push("p", strip(t));
-        }
+            ("p", t)
+        };
+        let md = if kind == "code" { rest.to_string() } else { inline_md(rest) };
+        out.push((kind.to_string(), l.to_string(), md));
     }
     out
+}
+
+/// [[Заметка]] и [[Заметка|подпись]] → ссылка Markdown `[подпись](Заметка)`, остальное как есть.
+pub fn inline_md(s: &str) -> String {
+    let mut r = String::new();
+    let mut rest = s;
+    while let Some(a) = rest.find("[[") {
+        let Some(b) = rest[a + 2..].find("]]") else { break };
+        let inner = &rest[a + 2..a + 2 + b];
+        let (target, label) = inner.split_once('|').unwrap_or((inner, inner));
+        r.push_str(&rest[..a]);
+        r.push_str(&format!("[{}](<{}>)", label.trim(), target.trim()));
+        rest = &rest[a + 2 + b + 2..];
+    }
+    r.push_str(rest);
+    r
+}
+
+/// Сколько строк в начале файла занимает шапка YAML (0 — шапки нет).
+pub fn front_lines(body: &str) -> usize {
+    let skip = body.len() - body_without_front(body).len();
+    body[..skip].matches('\n').count()
+}
+
+/// Заменить строку тела `i` (без шапки) на `lines` (одну или несколько строк).
+pub fn replace_line(body: &str, i: usize, lines: &[&str], drop: usize) -> String {
+    let f = front_lines(body);
+    let mut all: Vec<&str> = body.split('\n').collect();
+    let at = (f + i).min(all.len());
+    let end = (at + drop).min(all.len());
+    all.splice(at..end, lines.iter().copied());
+    all.join("\n")
 }
 
 impl Notes {
@@ -288,6 +306,21 @@ impl Notes {
 }
 
 #[cfg(test)]
+mod live_tests {
+    use super::*;
+    #[test]
+    fn lines_and_links() {
+        let b = "---\ntags: [a]\n---\n# Заголовок\n\nТекст про [[Металл|металл]].";
+        let l = line_blocks(b);
+        assert_eq!(l.len(), 3);
+        assert_eq!(l[0].0, "h1");
+        assert_eq!(l[2].2, "Текст про [металл](<Металл>).");
+        assert_eq!(replace_line(b, 1, &["новое", ""], 1), "---\ntags: [a]\n---\n# Заголовок\nновое\n\nТекст про [[Металл|металл]].");
+        assert_eq!(replace_line(b, 2, &[], 1), "---\ntags: [a]\n---\n# Заголовок\n");
+    }
+}
+
+#[cfg(test)]
 mod t {
     #[test]
     fn links() {
@@ -308,7 +341,8 @@ mod t {
         // Windows: \r\n и русские буквы в шапке — тело не съезжает и не пропадает
         let w = "---\r\nгде: Substance\r\nтип: техника\r\n---\r\n# Тело\r\nтекст";
         assert_eq!(super::body_without_front(w), "# Тело\r\nтекст");
-        assert_eq!(super::read_blocks(w)[0], ("h1".into(), "Тело".into()));
+        assert_eq!(super::line_blocks(w)[0].0, "h1");
+        assert_eq!(super::line_blocks(w)[0].2, "Тело");
     }
 
     #[test]
@@ -321,9 +355,9 @@ mod t {
     #[test]
     fn blocks() {
         let b = "---\ntype: x\n---\n# Раздел\n\nАбзац с [[Ссылка|подписью]] и [[Именем]].\n\n- пункт\n- [ ] сделать\n- [x] готово\n> цитата\n```\nlet x = [[не ссылка]];\n```\n---\n### Мелкий";
-        let v = super::read_blocks(b);
+        let v: Vec<(String, String)> = super::line_blocks(b).into_iter().filter(|x| x.0 != "empty" && x.0 != "fence").map(|x| (x.0, x.2)).collect();
         assert_eq!(v[0], ("h1".into(), "Раздел".into()));
-        assert_eq!(v[1], ("p".into(), "Абзац с подписью и Именем.".into()));
+        assert_eq!(v[1], ("p".into(), "Абзац с [подписью](<Ссылка>) и [Именем](<Именем>).".into()));
         assert_eq!(v[2], ("li".into(), "пункт".into()));
         assert_eq!(v[3], ("todo".into(), "сделать".into()));
         assert_eq!(v[4], ("done".into(), "готово".into()));
