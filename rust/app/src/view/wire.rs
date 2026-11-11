@@ -820,7 +820,7 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
         let p = n0.path.clone();
         let sub = super::notes::snippet(&n0.body, &n0.title);
         out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(sub), list_id: ss(""), id: ss(""), head: ss("") },
-            Box::new(move |_, u| { u.tab = 4; open_note_tab(u, &p); })));
+            Box::new(move |app, u| { u.tab = 4; open_note_tab(app, u, &p); })));
     }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
