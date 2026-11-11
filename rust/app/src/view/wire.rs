@@ -494,6 +494,9 @@ pub fn wire(w: &AppWindow) {
         if let Some(d) = u.dp.take() { super::datetime::apply(app, &d); }
     }));
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
+    g.on_ls_show(|| act(|_, u| u.ls = true));
+    g.on_ls_close(|| act(|_, u| u.ls = false));
+    g.on_ls_set(|k, v| act(|app, u| super::listset::set(app, u, &k, &v)));
     g.on_t_due_set(|t| act(|app, u| {
         let Some((l, id)) = cur(u) else { return };
         let Some(tk) = task_of(app, &l, &id) else { return };

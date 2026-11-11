@@ -306,6 +306,17 @@ export global S {
     callback dp-dur-set(int);
     callback dp-done();
     callback dp-cancel();
+    // настройки списка (G_ListSettings)
+    in property <bool> ls-open;
+    in property <string> ls-name;
+    in property <[Opt]> ls-spheres;
+    in property <string> ls-sort;
+    in property <bool> ls-today;
+    in property <bool> ls-quiet;
+    in property <string> ls-tpl;
+    callback ls-show();
+    callback ls-set(string, string);
+    callback ls-close();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»
