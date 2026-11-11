@@ -896,6 +896,32 @@ fn submit(app: &mut App, c: &Create) -> bool {
     }
 }
 
+/// Название с подсвеченными словами запроса (ё = е, без регистра).
+fn mark(title: &str, q: &str) -> slint::StyledText {
+    let esc = |x: &str| x.replace('\\', "\\\\").replace(['*', '_', '[', ']', '<', '>', '`', '#'], " ");
+    let low: Vec<char> = title.to_lowercase().replace('ё', "е").chars().collect();
+    let chars: Vec<char> = title.chars().collect();
+    let mut on = vec![false; chars.len()];
+    for w in q.to_lowercase().replace('ё', "е").split_whitespace() {
+        let wc: Vec<char> = w.chars().collect();
+        if wc.is_empty() || wc.len() > low.len() { continue; }
+        for i in 0..=low.len() - wc.len() {
+            if low[i..i + wc.len()] == wc[..] { for k in i..i + wc.len() { on[k] = true; } }
+        }
+    }
+    let mut md = String::new();
+    let mut i = 0;
+    while i < chars.len() {
+        let st = on[i];
+        let mut j = i;
+        while j < chars.len() && on[j] == st { j += 1; }
+        let part: String = chars[i..j].iter().collect();
+        if st { md.push_str(&format!("<font color=\"#F0A04B\">**{}**</font>", esc(&part))); } else { md.push_str(&esc(&part)); }
+        i = j;
+    }
+    slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(title))
+}
+
 /// Поиск: разделы, списки, задачи.
 pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> {
     let mut out: Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> = vec![];
@@ -907,24 +933,26 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
     for f in search::find_tasks(q, &app.board_lists(), &app.tasks, 8) {
         let t0 = f.parent.clone().unwrap_or(f.task.clone());
         let (l, id) = (text(&f.list["id"]), text(&t0["id"]));
-        out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()), head: ss("") },
+        let due = super::due_text(&f.task, &app.lt(s(&f.task["id"]))["slot"]).0;
+        out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()), head: ss(""),
+            mark: mark(&text(&f.task["title"]), q), hue: super::list_hue(app, &l), due: ss(due.to_lowercase()) },
             Box::new(move |_, u| u.task = Some((l.clone(), id.clone())))));
     }
     for n0 in app.notes.search(q).into_iter().take(4) {
         let p = n0.path.clone();
         let sub = super::notes::snippet(&n0.body, &n0.title);
-        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(sub), list_id: ss(""), id: ss(""), head: ss("") },
+        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(sub), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&n0.title, q), hue: color("#7C7E88"), due: ss("") },
             Box::new(move |app, u| { u.tab = 4; open_note_tab(app, u, &p); })));
     }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
         }
     }
     for l in app.board_lists() {
         if search::norm(s(&l["title"])).contains(&nq) {
             let id = text(&l["id"]);
-            out.push((Found { kind: ss("раздел"), title: ss(text(&l["title"])), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss("") },
+            out.push((Found { kind: ss("раздел"), title: ss(format!("Доска · {}", text(&l["title"]))), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss(""), mark: mark(&format!("Доска · {}", text(&l["title"])), q), hue: super::list_hue(app, &id), due: ss("") },
                 Box::new(move |_, u| { u.tab = 2; u.board = id.clone(); })));
         }
     }
