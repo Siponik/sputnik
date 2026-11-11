@@ -4,6 +4,7 @@ pub mod accent;
 pub mod boardedit;
 pub mod calendar;
 pub mod authcheck;
+pub mod compose;
 pub mod create;
 pub mod dates;
 pub mod dropdown;

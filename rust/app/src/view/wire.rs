@@ -491,7 +491,13 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_dp_dur_set(|m| act(|_, u| if let Some(d) = u.dp.as_mut() { d.dur = m as i64 }));
     g.on_dp_done(|| act(|app, u| {
-        if let Some(d) = u.dp.take() { super::datetime::apply(app, &d); }
+        if let Some(d) = u.dp.take() {
+            if d.for_create {
+                if let Some(c) = u.create.as_mut() { c.m.when = Some(super::datetime::picked(&d)); }
+            } else {
+                super::datetime::apply(app, &d);
+            }
+        }
     }));
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_ls_show(|| act(|_, u| u.ls = true));
@@ -575,32 +581,35 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_c_close(|| act(|_, u| u.create = None));
     g.on_c_changed(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.text = str_(&t) }));
-    g.on_c_strip(|txt, kind| {
-        let p = sputnik_core::route::parse_line(&txt, sputnik_core::habits::now().date(), &json!({}));
-        let ch: Vec<char> = txt.chars().collect();
-        let mut keep = vec![true; ch.len()];
-        for m in a(&p["marks"]) {
-            if s(&m["kind"]) == kind.as_str() {
-                let (f, e) = (m["from"].as_u64().unwrap_or(0) as usize, m["to"].as_u64().unwrap_or(0) as usize);
-                for k in f..e.min(ch.len()) { keep[k] = false; }
-            }
-        }
-        let out: String = ch.iter().zip(keep).filter(|x| x.1).map(|x| *x.0).collect();
-        ss(out.split_whitespace().collect::<Vec<_>>().join(" ") + " ")
-    });
-    g.on_c_prio_text(|t, n| {
-        let mut words: Vec<&str> = t.split(' ').filter(|w| !(w.len() <= 3 && !w.is_empty() && w.chars().all(|c| c == '!'))).collect();
-        while words.last() == Some(&"") { words.pop(); }
-        let bang = match n { 1 => "!!!", 2 => "!!", 3 => "!", _ => "" };
-        let mut r = words.join(" ");
-        if !bang.is_empty() { r = format!("{r} {bang}"); }
-        ss(r)
-    });
-    g.on_c_add_text(|t, w| ss(format!("{} {}", t.trim_end(), w).trim_start().to_string()));
+    g.on_c_tok_off(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let k = str_(&k);
+        // «×» у срока, приоритета, повтора: сначала снимаем выбранное кнопкой, потом возвращаем кусок в название
+        let manual = match k.as_str() { "when" => c.m.when.take().is_some(), "prio" => c.m.prio.take().is_some(), "repeat" => c.m.repeat.take().is_some(), _ => false };
+        if !manual && !c.m.off.contains(&k) { c.m.off.push(k); }
+    }));
+    g.on_c_quick_set(|id| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let x = super::dialogs::resolved(c);
+        c.m.when = sputnik_core::compose::pick_quick(&id, &x["slot"], sputnik_core::habits::now().date());
+    }));
+    g.on_c_pick_date(|| act(|_, u| if let Some(c) = u.create.as_ref() {
+        let x = super::dialogs::resolved(c);
+        u.dp = Some(super::datetime::for_create(&x, c.kind));
+    }));
+    g.on_c_prio_set(|n| act(|_, u| if let Some(c) = u.create.as_mut() { c.m.prio = Some(n as i64) }));
+    g.on_c_rep_set(|r| act(|_, u| if let Some(c) = u.create.as_mut() {
+        c.m.repeat = Some(if r.is_empty() { Value::Null } else { json!({"every": str_(&r)}) });
+    }));
+    g.on_c_notes_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.notes = str_(&t) }));
     g.on_c_kind_set(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.kind = k; c.remind = None; }));
     g.on_c_dest_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.dest = Some(str_(&d)) }));
     g.on_c_cal_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal = Some(str_(&d)) }));
-    g.on_c_dur_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.dur = d.parse().unwrap_or(60) }));
+    g.on_c_dur_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() {
+        c.dur = d.parse().unwrap_or(60);
+        // время выбрано кнопкой — конец сдвигается вместе с длительностью
+        if let Some(w) = c.m.when.as_mut() {
+            if let Some((st, en)) = w.slot.as_mut() { if c.dur > 0 { *en = sputnik_core::create::add_min(st, c.dur); } }
+        }
+    }));
     g.on_c_remind(|m| act(|app, u| {
         let Some(c) = u.create.as_mut() else { return };
         let m: i64 = m.parse().unwrap_or(0);
@@ -613,7 +622,12 @@ pub fn wire(w: &AppWindow) {
         c.text = str_(&t);
         if submit(app, &c) {
             if more {
+                // «и ещё»: список и срок остаются, остальное — с чистого листа
                 c.text.clear();
+                c.notes.clear();
+                let when = c.m.when.take();
+                c.m = Default::default();
+                c.m.when = when;
                 u.create = Some(c);
             } else {
                 u.create = None;
@@ -900,65 +914,59 @@ fn add_habit(app: &mut App, t: &str) {
 
 /// Создать по виду окна. false — не получилось (окно остаётся).
 fn submit(app: &mut App, c: &Create) -> bool {
-    let tdy = today_s();
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
+    if c.kind == 2 {
+        add_habit(app, &c.text);
+        return true;
+    }
+    let x = super::dialogs::resolved(c);
+    let title = text(&x["title"]);
+    if title.trim().is_empty() {
+        app.say(if c.kind == 3 { "Нужно имя: «Мама 12 марта»" } else { "Напиши название" });
+        return false;
+    }
+    let slot = x["slot"]["s"].as_str().map(|st| (st.to_string(), x["slot"]["e"].as_str().unwrap_or(st).to_string()));
     match c.kind {
-        2 => {
-            add_habit(app, &c.text);
-            true
-        }
         3 => {
-            let w = when::parse_when(&c.text, hb::now().date());
-            let Some(day) = w.day else {
-                app.say("Нужна дата: «Мама 12 марта»");
+            let Some(day) = x["day"].as_str() else {
+                app.say("Нужна дата: «Мама 12 марта» или кнопка «Выбрать…»");
                 return false;
             };
-            let name = w.rest.trim().to_string();
-            if name.is_empty() {
-                app.say("Нужно имя");
-                return false;
-            }
             let cal = cal_of(app, c);
-            app.create_birthday(&name, &day, None, &mins, &cal, 7, None);
+            app.create_birthday(&title, day, None, &mins, &cal, 7, None);
             true
         }
         1 => {
-            let p = route::parse_line(&c.text, hb::now().date(), &json!({}));
-            let title = text(&p["title"]);
-            if title.trim().is_empty() {
-                return false;
-            }
-            let day = if p["day"].is_null() { tdy } else { text(&p["day"]) };
-            let dur = if c.dur == 0 { 60 } else { c.dur };
-            let slot = p["time"].as_str().filter(|_| dur > 0).map(|st| (st.to_string(), cr::add_min(st, dur)));
+            let day = text(&x["day"]);
             let cal = cal_of(app, c);
-            let rec = if p["repeat"].is_object() { cr::recurrence_of(&p["repeat"]) } else { Value::Null };
-            app.create_event(&title, &day, slot, "", &mins, &cal, "", rec);
+            let rec = if x["repeat"].is_object() { cr::recurrence_of(&x["repeat"]) } else { Value::Null };
+            app.create_event(&title, &day, slot.filter(|_| c.dur >= 0), c.notes.trim(), &mins, &cal, "", rec);
             true
         }
         _ => {
-            let p = route::parse_line(&c.text, hb::now().date(), &json!({}));
-            let title = text(&p["title"]);
-            if title.trim().is_empty() {
-                return false;
-            }
             let (dest, _) = dest_of(app, c);
             if dest.is_empty() {
                 app.say("Сначала создай список на «Доске»");
                 return false;
             }
-            let x = td::task_from(&p, &tdy, &dest, &json!({}));
-            let mut patch = if x["layer"].is_object() { x["layer"].clone() } else { json!({}) };
-            if !x["slot"].is_null() {
+            let p = &x["parsed"];
+            let tdy = today_s();
+            let from = td::task_from(p, &tdy, &dest, &json!({}));
+            let mut patch = if from["layer"].is_object() { from["layer"].clone() } else { json!({}) };
+            // приоритет и повтор — итоговые (кнопки главнее текста)
+            match x["priority"].as_i64().filter(|p| *p > 0) { Some(pr) => patch["priority"] = json!(pr), None => { patch.as_object_mut().map(|o| o.remove("priority")); } }
+            match &x["repeat"] { r if r.is_object() => patch["repeat"] = r.clone(), _ => { patch.as_object_mut().map(|o| o.remove("repeat")); } }
+            if x["slot"].is_object() {
                 patch["slot"] = x["slot"].clone();
             }
-            if !x["due"].is_null() || !p["day"].is_null() {
+            let due = x["day"].as_str();
+            if due.is_some() {
                 let r = sputnik_core::reminders::mins_to_rule(&mins.iter().map(|m| json!(m)).collect::<Vec<_>>());
                 if !r.is_null() {
                     patch["remind"] = r;
                 }
             }
-            let t0 = app.add_task(&dest, &title, x["due"].as_str(), patch, None, "");
+            let t0 = app.add_task(&dest, &title, due, patch, None, c.notes.trim());
             if c.dest.is_some() {
                 app.learn_route(&title, &dest, &Value::Null);
             }

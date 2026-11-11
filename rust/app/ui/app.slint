@@ -76,6 +76,7 @@ export component AppWindow inherits Window {
     keys := FocusScope {
         key-pressed(e) => {
             if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open) {
+                if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
                 if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); return accept; }
                 return reject;
             }
@@ -402,7 +403,7 @@ export component AppWindow inherits Window {
         if S.menu-open: CtxMenu { }
         if S.dp-open: Rectangle {
             TouchArea { }
-            DatePicker { x: max(16px, parent.width - 464px - 16px - 740px - 8px); y: 60px; }
+            DatePicker { x: S.create-open ? (parent.width - 740px) / 2 : max(16px, parent.width - 464px - 16px - 740px - 8px); y: S.create-open ? 120px : 60px; }
         }
         // окно обновления (G_Status, слева)
         upd := Rectangle {
