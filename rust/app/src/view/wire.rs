@@ -557,6 +557,27 @@ pub fn wire(w: &AppWindow) {
             _ => {}
         }
     }));
+    // акцент и анимации применяются сразу к токенам G и сохраняются
+    let ww = w.as_weak();
+    g.on_accent_set(move |id| {
+        let i: i64 = id.parse().unwrap_or(0);
+        act(|app, _| app.set_setting("accent", json!(i)));
+        if let Some(w) = ww.upgrade() { settings::apply_accent(&w, i); }
+    });
+    let ww = w.as_weak();
+    g.on_anim_set(move |id| {
+        let i: i64 = id.parse().unwrap_or(0);
+        act(|app, _| app.set_setting("anim", json!(i)));
+        if let Some(w) = ww.upgrade() { settings::apply_anim(&w, i); }
+    });
+    g.on_tab_move(|from, to| act(|app, _| {
+        let mut v = settings::tab_order(app);
+        if from >= 0 && to >= 0 && (from as usize) < v.len() && (to as usize) < v.len() {
+            let x = v.remove(from as usize);
+            v.insert(to as usize, x);
+            app.set_setting("tabOrder", json!(v));
+        }
+    }));
     g.on_bot_link(|c| act(|app, _| app.bot_link(&c)));
     g.on_bot_test(|| act(|app, _| app.bot_test()));
     g.on_bot_unlink(|| act(|app, u| ask(u, "Отключить Telegram? Напоминания перестанут приходить.", "Отключить", |app, _| app.bot_unlink())));
@@ -757,29 +778,38 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
         return out;
     }
     let nq = search::norm(q);
+    // порядок групп по макету G_Search: задачи, заметки, разделы; head — заголовок с числом у первой в группе
+    for f in search::find_tasks(q, &app.board_lists(), &app.tasks, 8) {
+        let t0 = f.parent.clone().unwrap_or(f.task.clone());
+        let (l, id) = (text(&f.list["id"]), text(&t0["id"]));
+        out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()), head: ss("") },
+            Box::new(move |_, u| u.task = Some((l.clone(), id.clone())))));
+    }
+    for n0 in app.notes.search(q).into_iter().take(4) {
+        let p = n0.path.clone();
+        let sub = super::notes::snippet(&n0.body, &n0.title);
+        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(sub), list_id: ss(""), id: ss(""), head: ss("") },
+            Box::new(move |_, u| { u.tab = 4; open_note_tab(u, &p); })));
+    }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
         }
     }
     for l in app.board_lists() {
         if search::norm(s(&l["title"])).contains(&nq) {
             let id = text(&l["id"]);
-            out.push((Found { kind: ss("раздел"), title: ss(text(&l["title"])), sub: ss(""), list_id: ss(id.clone()), id: ss("") },
+            out.push((Found { kind: ss("раздел"), title: ss(text(&l["title"])), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss("") },
                 Box::new(move |_, u| { u.tab = 2; u.board = id.clone(); })));
         }
     }
-    for f in search::find_tasks(q, &app.board_lists(), &app.tasks, 8) {
-        let t0 = f.parent.clone().unwrap_or(f.task.clone());
-        let (l, id) = (text(&f.list["id"]), text(&t0["id"]));
-        let done = App::is_done(&f.task);
-        out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()) },
-            Box::new(move |_, u| u.task = Some((l.clone(), id.clone())))));
-    }
-    for n0 in app.notes.search(q).into_iter().take(4) {
-        let p = n0.path.clone();
-        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(""), list_id: ss(""), id: ss("") },
-            Box::new(move |_, u| { u.tab = 4; u.note_path = p.clone(); u.note_dirty = false; })));
+    // заголовки групп с числом найденного
+    let names = [("задача", "Задачи"), ("заметка", "В заметках"), ("раздел", "Разделы и списки")];
+    for (kind, label) in names {
+        let n = out.iter().filter(|(f, _)| f.kind.as_str() == kind).count();
+        if let Some((f, _)) = out.iter_mut().find(|(f, _)| f.kind.as_str() == kind) {
+            f.head = ss(format!("{label} · {n}"));
+        }
     }
     out
 }

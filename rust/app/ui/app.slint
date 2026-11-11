@@ -11,6 +11,7 @@ import { SettingsPage } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
 export { S }
+export { G }
 
 component Tab inherits Rectangle {
     in property <string> text;
@@ -21,7 +22,7 @@ component Tab inherits Rectangle {
     width: hl.preferred-width;
     hl := HorizontalLayout {
         spacing: 7px;
-        if icon != "": Icon { name: icon; width: 13px; height: 13px; y: (parent.height - 13px) / 2; c: active || ta.has-hover ? G.ink : #8A8C96; }
+        if icon != "": Rectangle { width: 13px; Icon { name: icon; width: 13px; height: 13px; y: (parent.height - 13px) / 2; c: active || ta.has-hover ? G.ink : #8A8C96; } }
         tt := Text {
             text: root.text + (count > 0 ? " · " + count : "");
             font-family: G.mono;
@@ -47,6 +48,10 @@ export component AppWindow inherits Window {
     default-font-family: G.sans;
     icon: @image-url("../../assets/coon/coon-face.svg");
 
+    // имена и иконки разделов по id (0 Сегодня · 1 Календарь · 2 Доска · 3 Привычки · 4 Знания)
+    property <[string]> tab-names: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"];
+    property <[string]> tab-icons: ["today", "calendar", "board", "habits", "notes"];
+
     // Холст: точки 1 px через 24 px.
     Image { width: 100%; height: 100%; source: @image-url("dot.svg"); horizontal-tiling: repeat; vertical-tiling: repeat; }
 
@@ -66,7 +71,7 @@ export component AppWindow inherits Window {
             if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
             if (e.text == "/" || e.text == ".") { S.search-open-set(true); return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
-            if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(e.text.to-float() - 1); return accept; }
+            if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
             if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }
             if (e.text == "e" || e.text == "у") { S.go(S.tab >= 4 ? 0 : S.tab + 1); return accept; }
             if (S.tab == 1) {
@@ -125,11 +130,8 @@ export component AppWindow inherits Window {
                     HorizontalLayout {
                         horizontal-stretch: 0;
                         spacing: 12px;
-                        Tab { text: "СЕГОДНЯ"; icon: "today"; count: S.today-count; active: S.tab == 0; clicked => { S.go(0); } }
-                        Tab { text: "КАЛЕНДАРЬ"; icon: "calendar"; active: S.tab == 1; clicked => { S.go(1); } }
-                        Tab { text: "ДОСКА"; icon: "board"; active: S.tab == 2; clicked => { S.go(2); } }
-                        Tab { text: "ПРИВЫЧКИ"; icon: "habits"; active: S.tab == 3; clicked => { S.go(3); } }
-                        Tab { text: "ЗНАНИЯ"; icon: "notes"; active: S.tab == 4; clicked => { S.go(4); } }
+                        // порядок разделов настраивается: Настройки → Вид → «Порядок вкладок»
+                        for t in S.tab-order: Tab { text: root.tab-names[t]; icon: root.tab-icons[t]; count: t == 0 ? S.today-count : 0; active: S.tab == t; clicked => { S.go(t); } }
                     }
                     Rectangle { horizontal-stretch: 1; }
                     if S.upd-version != "": Rectangle {
@@ -199,7 +201,7 @@ export component AppWindow inherits Window {
                         background: ca.has-hover ? #FFFFFF : G.ink;
                         chl := HorizontalLayout {
                             alignment: center; spacing: 7px;
-                            Icon { name: "plus"; width: 12px; height: 12px; stroke-width: 2px; c: #1C1D21; }
+                            Rectangle { width: 12px; Icon { name: "plus"; width: 12px; height: 12px; y: (parent.height - 12px) / 2; stroke-width: 2px; c: #1C1D21; } }
                             ct := Text { text: "Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
                         }
                         ca := TouchArea { clicked => { S.create(""); } mouse-cursor: pointer; }

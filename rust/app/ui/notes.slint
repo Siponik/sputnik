@@ -1,7 +1,7 @@
 // «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets } from "kit.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Sat } from "kit.slint";
 import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
 import { ScrollView, TextEdit } from "std-widgets.slint";
 
@@ -192,12 +192,13 @@ export component NotesPage inherits Rectangle {
             }
             if S.note-tabs.length == 0: Text { x: 12px; text: "02  ЗАМЕТКА"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
         }
-        if S.note-path == "": Empty { y: 34px; height: parent.height - 34px; text: S.notes-count == 0 ? "Заметок пока нет. Укажи папку в Настройки → Синхронизация или нажми «+» слева." : "Выбери заметку слева"; pose: "sleep"; }
-        if S.note-path == "" && S.notes-count == 0: Button {
-            x: (parent.width - 180px) / 2; y: parent.height / 2 + 46px; width: 180px; height: 32px;
-            text: "Выбрать папку…"; primary: true;
-            clicked => { S.notes-pick(); }
+        if S.note-path == "" && S.notes-count == 0: VerticalLayout {
+            y: 34px; height: parent.height - 34px; alignment: center; spacing: 16px;
+            HorizontalLayout { alignment: center; Sat { width: 50px; height: 50px; c: #7C7E88; } }
+            Text { text: "Заметок пока нет. Выбери папку с заметками (подойдёт и папка Obsidian) — или нажми «+» слева."; color: G.muted; font-size: 14px; horizontal-alignment: center; wrap: word-wrap; }
+            HorizontalLayout { alignment: center; Button { text: "Выбрать папку…"; primary: true; clicked => { S.notes-pick(); } } }
         }
+        if S.note-path == "" && S.notes-count != 0: Empty { y: 34px; height: parent.height - 34px; text: "Выбери заметку слева"; pose: "sleep"; }
         if S.note-path != "": Rectangle {
             y: 34px; height: 42px;
             Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 330px; }

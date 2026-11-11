@@ -109,6 +109,8 @@ pub fn start(app: App) -> AppWindow {
         }
     });
     wire::wire(&w);
+    settings::apply_accent(&w, app.layer["settings"]["accent"]["v"].as_i64().unwrap_or(0));
+    settings::apply_anim(&w, app.layer["settings"]["anim"]["v"].as_i64().unwrap_or(0));
     crate::state::bg::install(app, render);
     crate::state::with(|a| a.start_timers());
     w
@@ -137,6 +139,7 @@ fn render(app: &App) {
 }
 
 fn shell(app: &App, u: &Ui, g: &S) {
+    g.set_tab_order(model(settings::tab_order(app)));
     let f = &app.flags;
     g.set_tab(u.tab);
     let wd = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];

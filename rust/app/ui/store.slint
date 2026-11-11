@@ -22,7 +22,7 @@ export struct Band { y: float, h: float, text: string, a: int }
 export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
-export struct Found { kind: string, title: string, sub: string, list-id: string, id: string }
+export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string }
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
 // Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
 export struct MdRow { kind: string, text: string }
@@ -300,6 +300,12 @@ export global S {
     in property <[Opt]> set-lists;
     in property <[Opt]> set-cals;
     in property <[Opt]> set-remind-task;
+    in property <[Opt]> set-accent;          // 6 цветов акцента, on — текущий
+    in property <[Opt]> set-anim;            // полные / минимум / выкл
+    in property <[int]> tab-order: [0, 1, 2, 3, 4]; // порядок разделов в шапке: 0 Сегодня … 4 Знания
+    callback accent-set(string);
+    callback anim-set(string);
+    callback tab-move(int, int);             // позиция, куда
     in property <[Opt]> set-remind-event;
     in property <[Opt]> set-remind-bday;
     in property <[Opt]> set-remind-hour;

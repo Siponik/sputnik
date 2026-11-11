@@ -112,6 +112,7 @@ export component Button inherits Rectangle {
     in property <bool> primary;
     callback clicked;
     height: 34px;
+    preferred-height: 34px;
     min-width: label.preferred-width + 28px;
     border-radius: G.r-btn;
     background: primary ? (ta.has-hover ? G.accent-ink : G.accent) : (ta.has-hover ? G.node-hover : G.node);
@@ -137,6 +138,7 @@ export component Pill inherits Rectangle {
     in property <color> hue: G.accent;
     callback clicked;
     height: 26px;
+    preferred-height: 26px;
     min-width: pt.preferred-width + 20px;
     border-radius: 13px;
     background: on ? hue.transparentize(0.78) : (pa.has-hover ? G.node-hover : transparent);
@@ -153,6 +155,7 @@ export component Seg inherits Rectangle {
     in property <int> current;
     callback picked(int);
     height: 28px;
+    preferred-height: 28px;
     border-radius: G.r-btn;
     border-width: 1px;
     border-color: G.line;
@@ -176,6 +179,7 @@ export component Check inherits Rectangle {
     callback toggled;
     width: 18px;
     height: 18px;
+    preferred-height: 18px;
     border-radius: 9px;
     border-width: 1.5px;
     border-color: done ? hue : (ca.has-hover ? G.ink : G.line-strong);
@@ -194,6 +198,7 @@ export component IconBtn inherits Rectangle {
     callback clicked;
     width: 28px;
     height: 28px;
+    preferred-height: 28px;
     border-radius: G.r-btn;
     background: on ? G.accent-wash : (ia.has-hover ? G.node-hover : transparent);
     Text { text: icon; color: on ? G.accent-ink : (ia.has-hover ? G.ink : G.muted); font-size: 15px; horizontal-alignment: center; vertical-alignment: center; }
@@ -223,6 +228,7 @@ export component Field inherits Rectangle {
     public function grab() { ti.focus(); }
     public function clear() { ti.text = ""; }
     height: 34px;
+    preferred-height: 34px;
     border-radius: G.r-btn;
     background: bare ? transparent : G.bg;
     border-width: bare ? 0 : 1px;
@@ -319,6 +325,7 @@ export component CSeg inherits Rectangle {
     in property <int> current;
     callback picked(int);
     height: 32px;
+    preferred-height: 32px;
     width: 128px;
     border-radius: 6px;
     border-width: 1px;

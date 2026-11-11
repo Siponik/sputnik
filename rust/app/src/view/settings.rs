@@ -7,10 +7,55 @@ pub const STARTS: [(&str, &str); 4] = [("today", "Сегодня"), ("calendar",
 pub const REMINDS: [(i64, &str); 5] = [(-1, "не напоминать"), (0, "в момент начала"), (15, "за 15 мин"), (60, "за час"), (1440, "за день")];
 pub const HOURS: [&str; 5] = ["08:00", "09:00", "10:00", "12:00", "off"];
 
+/// Акценты «Вида»: название, акцент, акцент-светлый, подложка, линия, текст на акценте, шапка главной ноды.
+pub const ACCENTS: [(&str, u32, u32, u32, u32, u32, u32); 6] = [
+    ("Оранж", 0xF0A04B, 0xFFD29C, 0x2E2722, 0x6A5238, 0x2A1A0A, 0x9A5A22),
+    ("Голубой", 0x6FA2F2, 0xB9D1FA, 0x222A38, 0x3A5170, 0x0A1626, 0x2F4F86),
+    ("Фиолет", 0xB48CF0, 0xDBC4FA, 0x2A2238, 0x57407A, 0x17092A, 0x5E3F92),
+    ("Зелень", 0x7FD18C, 0xBCE8C4, 0x222E24, 0x3E5E42, 0x0A220F, 0x2E6B3E),
+    ("Золото", 0xE8C65A, 0xF6E2A4, 0x332E20, 0x6E5E2E, 0x2A220A, 0x7A6620),
+    ("Красный", 0xF0785F, 0xFABDB0, 0x332320, 0x704338, 0x2A0F0A, 0x8A3A2E),
+];
+pub const ANIMS: [&str; 3] = ["Полные", "Минимум", "Выкл"];
+
+/// Применить акцент к токенам G (вызывается при старте и из настроек).
+pub fn apply_accent(w: &crate::AppWindow, i: i64) {
+    let a = &ACCENTS[(i.clamp(0, 5)) as usize];
+    let g = w.global::<crate::G>();
+    g.set_accent(hex(a.1));
+    g.set_accent_ink(hex(a.2));
+    g.set_accent_wash(hex(a.3));
+    g.set_accent_line(hex(a.4));
+    g.set_on_accent(hex(a.5));
+    g.set_head_main(hex(a.6));
+}
+
+/// Анимации: 0 полные, 1 минимум, 2 выкл.
+pub fn apply_anim(w: &crate::AppWindow, i: i64) {
+    let g = w.global::<crate::G>();
+    let (f, m) = match i {
+        2 => (0, 0),
+        1 => (60, 100),
+        _ => (120, 200),
+    };
+    g.set_fast(f);
+    g.set_mid(m);
+}
+
+/// Порядок разделов в шапке (0 Сегодня … 4 Знания); по умолчанию подряд.
+pub fn tab_order(app: &App) -> Vec<i32> {
+    let v: Vec<i32> = a(&app.layer["settings"]["tabOrder"]["v"]).iter().filter_map(|x| x.as_i64().map(|n| n as i32)).collect();
+    if v.len() == 5 && (0..5).all(|i| v.contains(&i)) { v } else { vec![0, 1, 2, 3, 4] }
+}
+
 pub fn render(app: &App, _u: &Ui, g: &S) {
     let st = &app.layer["settings"];
     let start = st["start"]["v"].as_str().unwrap_or("today");
     g.set_set_start(model(STARTS.iter().map(|(id, l)| opt(*id, *l, *id == start)).collect()));
+    let acc = st["accent"]["v"].as_i64().unwrap_or(0);
+    g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(a.0), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
+    let anim = st["anim"]["v"].as_i64().unwrap_or(0);
+    g.set_set_anim(model(ANIMS.iter().enumerate().map(|(i, l)| opt(i.to_string(), *l, i as i64 == anim)).collect()));
     g.set_set_flags(model(vec![
         Opt { id: ss("notify"), label: ss("Уведомления Windows"), hint: ss("окно привычки, задачи «за N минут»"), hue: color("clay"), on: st["notify"]["v"] != false },
     ]));
