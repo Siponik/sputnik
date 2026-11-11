@@ -447,6 +447,53 @@ pub fn wire(w: &AppWindow) {
         let Some((_, id)) = cur(u) else { return };
         app.set_priority(&id, if p == 0 { None } else { Some(p as i64) });
     }));
+    g.on_dp_open_task(|| act(|app, u| {
+        if let Some((l, id)) = cur(u) { u.dp = super::datetime::open(app, &l, &id); }
+    }));
+    g.on_dp_words(|t| act(|_, u| if let Some(d) = u.dp.as_mut() { super::datetime::words(d, &t) }));
+    g.on_dp_day(|t| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        d.day = chrono::NaiveDate::parse_from_str(&t, "%Y-%m-%d").ok();
+        if let Some(x) = d.day { d.month = chrono::Datelike::with_day(&x, 1).unwrap_or(x); }
+    }));
+    g.on_dp_quick_set(|q| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        let t = sputnik_core::habits::now().date();
+        use chrono::Datelike;
+        d.day = match q.as_str() {
+            "today" => Some(t),
+            "tomorrow" => Some(t + chrono::Duration::days(1)),
+            "weekend" => Some(t + chrono::Duration::days(((5 - t.weekday().num_days_from_monday() as i64) + 7) % 7)),
+            "week" => Some(t + chrono::Duration::days(7)),
+            _ => { d.hour = None; None }
+        };
+        if let Some(x) = d.day { d.month = x.with_day(1).unwrap_or(x); }
+    }));
+    g.on_dp_month_step(|k| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        use chrono::Datelike;
+        let (y, m) = (d.month.year(), d.month.month0() as i32 + k);
+        let (y, m) = (y + m.div_euclid(12), m.rem_euclid(12) as u32 + 1);
+        if let Some(x) = chrono::NaiveDate::from_ymd_opt(y, m, 1) { d.month = x; }
+    }));
+    g.on_dp_hour_set(|h| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        d.hour = if d.hour == Some(h as u32) { None } else { Some(h as u32) };
+        if d.day.is_none() { d.day = Some(sputnik_core::habits::now().date()); }
+    }));
+    g.on_dp_min_set(|m| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        d.min = m as u32;
+        if d.hour.is_none() { d.hour = Some(10); }
+    }));
+    g.on_dp_exact_set(|t| act(|_, u| if let Some(d) = u.dp.as_mut() {
+        let t = t.trim().replace('.', ":");
+        if let Some((a0, b0)) = t.split_once(':') {
+            if let (Ok(h), Ok(m)) = (a0.parse::<u32>(), b0.parse::<u32>()) {
+                if h < 24 && m < 60 { d.hour = Some(h); d.min = m; if d.day.is_none() { d.day = Some(sputnik_core::habits::now().date()); } }
+            }
+        }
+    }));
+    g.on_dp_dur_set(|m| act(|_, u| if let Some(d) = u.dp.as_mut() { d.dur = m as i64 }));
+    g.on_dp_done(|| act(|app, u| {
+        if let Some(d) = u.dp.take() { super::datetime::apply(app, &d); }
+    }));
+    g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_t_due_set(|t| act(|app, u| {
         let Some((l, id)) = cur(u) else { return };
         let Some(tk) = task_of(app, &l, &id) else { return };

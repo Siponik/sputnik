@@ -140,7 +140,7 @@ export component TaskDialog inherits Overlay {
                                     HorizontalLayout {
                                         spacing: 6px;
                                         alignment: start;
-                                        MChip { text: S.t-due-label == "" ? "БЕЗ СРОКА" : S.t-due-label.to-uppercase(); on: S.t-due-label != ""; clicked => { root.due-edit = !root.due-edit; } }
+                                        MChip { text: S.t-due-label == "" ? "БЕЗ СРОКА" : S.t-due-label.to-uppercase(); on: S.t-due-label != ""; clicked => { S.dp-open-task(); } }
                                     }
                                     if root.due-edit: Field {
                                         height: 30px; font-size: 13px; text: S.t-due; placeholder: "завтра 17:00 · пт · 25.11 · Enter";

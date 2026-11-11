@@ -1,0 +1,118 @@
+// Выбор даты и времени (G_DateTime): слева — словами, быстрые, месяц; справа — час, минуты, «до».
+import { G } from "theme.slint";
+import { Mono, Button, Node, Field, Icon } from "kit.slint";
+import { S } from "store.slint";
+
+component Chip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    in property <bool> busy;
+    callback clicked;
+    height: 28px;
+    min-width: ct.preferred-width + 20px;
+    border-radius: 4px;
+    border-width: 1px;
+    border-color: on ? G.accent : G.line;
+    background: on ? G.accent.transparentize(0.85) : (ta.has-hover ? G.node-hover : transparent);
+    if busy && !on: Rectangle { x: 3px; y: parent.height - 5px; width: parent.width - 6px; height: 2px; background: #55575F; }
+    ct := Text { text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+    ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component HourRow inherits HorizontalLayout {
+    in property <string> label;
+    in property <int> from;
+    spacing: 4px;
+    Mono { text: root.label; width: 52px; vertical-alignment: center; }
+    for i in 6: Chip {
+        width: 40px;
+        text: (root.from + i < 10 ? "0" : "") + (root.from + i);
+        on: S.dp-hour == root.from + i;
+        busy: S.dp-busy[root.from + i] > 0;
+        clicked => { S.dp-hour-set(root.from + i); }
+    }
+}
+
+export component DatePicker inherits Node {
+    num: "СРОК";
+    title: "ВЫБОР ДАТЫ И ВРЕМЕНИ";
+    aside: "ПРО «" + S.dp-title + "»";
+    head: G.accent.darker(0.3);
+    width: 740px;
+    height: 34px + body.preferred-height;
+    drop-shadow-blur: 24px;
+    drop-shadow-color: #000b;
+    body := VerticalLayout {
+        padding: 14px;
+        spacing: 12px;
+        HorizontalLayout {
+            spacing: 18px;
+            VerticalLayout {
+                width: 330px;
+                spacing: 8px;
+                Mono { text: "СЛОВАМИ"; }
+                Field { placeholder: "завтра в 15, в пятницу…"; edited(t) => { S.dp-words(t); } accepted(t) => { S.dp-words(t); } escape => { S.dp-cancel(); } }
+                Text { text: S.dp-said == "" ? " " : "Понял: " + S.dp-said; color: G.accent-ink; font-size: 12px; }
+                HorizontalLayout { spacing: 4px; alignment: start;
+                    for q in S.dp-quick: Chip { text: q.label; on: q.on; clicked => { S.dp-quick-set(q.id); } }
+                }
+                HorizontalLayout {
+                    Text { text: S.dp-month; color: G.ink; font-size: 14px; font-weight: 600; vertical-alignment: center; }
+                    Rectangle { }
+                    Chip { text: "‹"; width: 28px; clicked => { S.dp-month-step(-1); } }
+                    Rectangle { width: 4px; }
+                    Chip { text: "›"; width: 28px; clicked => { S.dp-month-step(1); } }
+                }
+                HorizontalLayout { spacing: 2px;
+                    for d in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Mono { text: d; width: 45px; horizontal-alignment: center; font-size: 10px; }
+                }
+                Rectangle {
+                    height: 6 * 32px;
+                    for c[i] in S.dp-cells: Rectangle {
+                        x: mod(i, 7) * 47px;
+                        y: floor(i / 7) * 32px;
+                        width: 45px; height: 30px;
+                        border-radius: 4px;
+                        background: c.sel ? G.accent : (da.has-hover ? G.node-hover : transparent);
+                        border-width: c.today && !c.sel ? 1px : 0;
+                        border-color: G.accent;
+                        Text { text: c.n; color: c.sel ? G.on-accent : (c.other ? G.dim : G.ink); font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                        da := TouchArea { clicked => { S.dp-day(c.day); } mouse-cursor: pointer; }
+                    }
+                }
+            }
+            Rectangle { width: 1px; background: G.line; }
+            VerticalLayout {
+                spacing: 8px;
+                Mono { text: "ВРЕМЯ · СЕРАЯ ПОЛОСКА — ЧАС УЖЕ ЗАНЯТ"; }
+                HourRow { label: "НОЧЬ"; from: 0; }
+                HourRow { label: "УТРО"; from: 6; }
+                HourRow { label: "ДЕНЬ"; from: 12; }
+                HourRow { label: "ВЕЧЕР"; from: 18; }
+                Mono { text: "МИНУТЫ"; }
+                HorizontalLayout { spacing: 4px; alignment: start;
+                    for m in [0, 15, 30, 45]: Chip { width: 44px; text: m == 0 ? ":00" : ":" + m; on: S.dp-hour >= 0 && S.dp-min == m; clicked => { S.dp-min-set(m); } }
+                    Mono { text: "  ИЛИ ТОЧНО"; vertical-alignment: center; }
+                    Field { width: 80px; height: 28px; mono: true; placeholder: "чч:мм"; text: S.dp-exact; accepted(t) => { S.dp-exact-set(t); } }
+                }
+                Mono { text: "ДО"; }
+                HorizontalLayout { spacing: 4px; alignment: start;
+                    Chip { text: "БЕЗ КОНЦА"; on: S.dp-dur == 0; clicked => { S.dp-dur-set(0); } }
+                    Chip { text: "30 МИН"; on: S.dp-dur == 30; clicked => { S.dp-dur-set(30); } }
+                    Chip { text: "1 ЧАС"; on: S.dp-dur == 60; clicked => { S.dp-dur-set(60); } }
+                    Chip { text: S.dp-dur-long; on: S.dp-dur > 60; clicked => { S.dp-dur-set(120); } }
+                }
+                Rectangle { }
+            }
+        }
+        Rectangle { height: 1px; background: G.line; }
+        HorizontalLayout {
+            spacing: 8px;
+            Icon { name: "calendar"; width: 16px; c: G.accent; }
+            Text { text: S.dp-summary; color: G.ink; font-size: 13px; vertical-alignment: center; }
+            Rectangle { }
+            Button { text: "Отмена"; clicked => { S.dp-cancel(); } }
+            Button { text: "Готово"; primary: true; clicked => { S.dp-done(); } }
+        }
+    }
+}
