@@ -1,6 +1,6 @@
 //! Модели «Знаний».
 use super::*;
-use crate::{GDot, GLine, NoteRow};
+use crate::{GDot, GLine, MdRow, NoteRow};
 use sputnik_core::graph as gr;
 
 pub fn render(app: &App, u: &Ui, g: &S) {
@@ -14,16 +14,22 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let f = folder(&x.path);
         if last.as_deref() != Some(f.as_str()) {
             let cnt = found.iter().filter(|y| folder(&y.path) == f).count();
-            list.push(NoteRow { path: ss(""), title: ss(if f.is_empty() { "КОРЕНЬ".to_string() } else { f.to_uppercase() }), sub: ss(cnt.to_string()) });
+            list.push(NoteRow { path: ss(""), title: ss(if f.is_empty() { "КОРЕНЬ".to_string() } else { f.to_uppercase() }), sub: ss(cnt.to_string()), cur: false });
             last = Some(f.clone());
         }
-        list.push(NoteRow { path: ss(x.path.clone()), title: ss(x.title.clone()), sub: ss("") });
+        list.push(NoteRow { path: ss(x.path.clone()), title: ss(x.title.clone()), sub: ss(""), cur: false });
     }
     g.set_notes(model(list));
     g.set_notes_count(n0.notes.len() as i32);
     g.set_note_path(ss(u.note_path.clone()));
     g.set_note_dirty(u.note_dirty);
     g.set_note_graph(u.note_graph);
+    g.set_note_reading(u.note_reading);
+    // вкладки открытых заметок
+    g.set_note_tabs(model(u.note_tabs.iter().map(|p| {
+        let title = n0.notes.iter().find(|x| &x.path == p).map(|x| x.title.clone()).unwrap_or_else(|| p.clone());
+        NoteRow { path: ss(p.clone()), title: ss(title), sub: ss(""), cur: *p == u.note_path }
+    }).collect()));
     if u.note_graph {
         let (ns, es) = &n0.graph;
         let cur = ns.iter().position(|x| x.id == u.note_path);
@@ -48,16 +54,35 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             if !u.note_dirty {
                 g.set_note_body(ss(x.body.clone()));
             }
+            // плашки под заголовком: тип (первым), остальные свойства, затем #теги
+            let mut pills: Vec<NoteRow> = vec![];
+            let mut rest: Vec<&(String, String)> = x.props.iter().collect();
+            if let Some(i) = rest.iter().position(|(k, _)| k == "type" || k == "тип") {
+                let (k, v) = rest.remove(i);
+                pills.push(NoteRow { path: ss("type"), title: ss(v.clone()), sub: ss(k.clone()), cur: true });
+            }
+            for (k, v) in rest {
+                if k == "tags" { continue; }
+                pills.push(NoteRow { path: ss("prop"), title: ss(format!("{k}: {v}")), sub: ss(""), cur: false });
+            }
+            for t in &x.tags {
+                pills.push(NoteRow { path: ss("tag"), title: ss(format!("#{t}")), sub: ss(""), cur: false });
+            }
+            g.set_note_props(model(pills));
+            // текст режима «Чтение»
+            g.set_note_read_md(model(crate::notes::read_blocks(&x.body).into_iter().map(|(k, t)| MdRow { kind: ss(k), text: ss(t) }).collect()));
             g.set_note_links(model(x.links.iter().map(|l| {
                 let f = n0.find(l);
-                NoteRow { path: ss(f.map(|f| f.path.clone()).unwrap_or_default()), title: ss(l.clone()), sub: ss("") }
+                NoteRow { path: ss(f.map(|f| f.path.clone()).unwrap_or_default()), title: ss(l.clone()), sub: ss(""), cur: false }
             }).collect()));
-            g.set_note_back(model(n0.backlinks(&x.title).iter().map(|b| NoteRow { path: ss(b.path.clone()), title: ss(b.title.clone()), sub: ss(snippet(&b.body, &x.title)) }).collect()));
+            g.set_note_back(model(n0.backlinks(&x.title).iter().map(|b| NoteRow { path: ss(b.path.clone()), title: ss(b.title.clone()), sub: ss(snippet(&b.body, &x.title)), cur: false }).collect()));
         }
         None => {
             g.set_note_title("".into());
             g.set_note_links(model(vec![]));
             g.set_note_back(model(vec![]));
+            g.set_note_props(model(vec![]));
+            g.set_note_read_md(model(vec![]));
         }
     }
 }

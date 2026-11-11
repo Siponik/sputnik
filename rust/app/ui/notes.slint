@@ -2,8 +2,29 @@
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
 import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets } from "kit.slint";
-import { S, NoteRow, GDot, GLine } from "store.slint";
+import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
 import { ScrollView, TextEdit } from "std-widgets.slint";
+
+// Строка заметки в режиме «Чтение»: заголовки, списки, чек-листы, цитаты, код.
+component MdLine inherits Rectangle {
+    in property <MdRow> line;
+    property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
+    height: t.preferred-height + (line.kind == "h1" ? 16px : line.kind == "h2" ? 14px : line.kind == "h3" ? 10px : line.kind == "hr" ? 12px : 6px);
+    if line.kind == "hr": Rectangle { x: 0; y: (parent.height - 1px) / 2; width: parent.width; height: 1px; background: G.line; }
+    if line.kind == "code": Rectangle { x: -8px; y: 2px; width: parent.width + 16px; height: parent.height - 4px; border-radius: 6px; background: G.bg; border-width: 1px; border-color: G.line; }
+    if line.kind == "quote": Rectangle { x: 0; y: 3px; width: 3px; height: parent.height - 9px; border-radius: 1.5px; background: G.accent; }
+    t := Text {
+        x: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" || line.kind == "code" ? 12px : 0);
+        y: line.kind == "h1" ? 10px : line.kind == "h2" ? 8px : line.kind == "h3" ? 6px : 3px;
+        width: parent.width - self.x;
+        text: (line.kind == "li" ? "•  " : line.kind == "todo" ? "☐  " : line.kind == "done" ? "☑  " : line.kind == "img" ? "🖼  " : "") + line.text;
+        font-size: line.kind == "h1" ? 20px : line.kind == "h2" ? 16.5px : 14.5px;
+        font-weight: h ? 600 : 400;
+        font-family: line.kind == "code" ? G.mono : "";
+        color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
+        wrap: word-wrap;
+    }
+}
 
 component NoteList inherits VerticalLayout {
     in property <[NoteRow]> rows;
@@ -151,32 +172,84 @@ export component NotesPage inherits Rectangle {
         Rectangle {
             y: 0; height: 34px; background: G.head-main; border-radius: 11px;
             Rectangle { y: 23px; height: 11px; background: parent.background; }
-            if S.note-path != "": Rectangle {
-                x: 8px; y: 5px; height: 29px; width: min(tt.preferred-width + 40px, parent.width - 16px);
-                border-radius: 6px; background: G.node;
-                Rectangle { y: 22px; height: 7px; background: parent.background; }
-                tt := Text { x: 12px; width: parent.width - 32px; text: S.note-title; font-size: 12.5px; font-weight: 500; color: G.ink; vertical-alignment: center; overflow: elide; }
-                Text { x: parent.width - 20px; text: S.note-dirty ? "●" : ""; color: G.accent; font-size: 11px; vertical-alignment: center; }
+            // вкладки открытых заметок
+            if S.note-tabs.length > 0: Rectangle {
+                x: 6px; y: 4px; width: parent.width - 12px; height: 30px; clip: true;
+                HorizontalLayout {
+                    x: 0; y: 0; height: parent.height; spacing: 3px; alignment: start;
+                    for t in S.note-tabs: Rectangle {
+                        height: 26px; y: 2px; width: min(tt.preferred-width + 40px, 200px);
+                        border-radius: 6px;
+                        background: t.cur ? G.node : (ta.has-hover ? G.node-hover : transparent);
+                        border-width: t.cur ? 1px : 0;
+                        border-color: G.line;
+                        tt := Text { x: 10px; width: parent.width - 34px; text: t.title; font-size: 12.5px; color: t.cur ? G.ink : G.muted; vertical-alignment: center; overflow: elide; }
+                        Text { x: parent.width - 22px; width: 18px; text: t.cur && S.note-dirty ? "●" : "×"; font-size: t.cur && S.note-dirty ? 9px : 13px; color: ca.has-hover ? G.red : (t.cur && S.note-dirty ? G.accent : G.dim); vertical-alignment: center; horizontal-alignment: center; }
+                        ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { if (!t.cur && S.note-dirty) { S.note-save(root.body); } S.note-tab-open(t.path); } }
+                        ca := TouchArea { x: parent.width - 24px; width: 24px; mouse-cursor: pointer; clicked => { if (t.cur && S.note-dirty) { S.note-save(root.body); } S.note-tab-close(t.path); } }
+                    }
+                }
             }
-            if S.note-path == "": Text { x: 12px; text: "02  ЗАМЕТКА"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
+            if S.note-tabs.length == 0: Text { x: 12px; text: "02  ЗАМЕТКА"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
         }
         if S.note-path == "": Empty { y: 34px; height: parent.height - 34px; text: S.notes-count == 0 ? "Заметок пока нет. Укажи папку в Настройки → Синхронизация или нажми «+» слева." : "Выбери заметку слева"; pose: "sleep"; }
+        if S.note-path == "" && S.notes-count == 0: Button {
+            x: (parent.width - 180px) / 2; y: parent.height / 2 + 46px; width: 180px; height: 32px;
+            text: "Выбрать папку…"; primary: true;
+            clicked => { S.notes-pick(); }
+        }
         if S.note-path != "": Rectangle {
             y: 34px; height: 42px;
-            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 160px; }
-            Button { x: parent.width - self.width - 12px; y: 6px; width: 110px; height: 30px; text: "Сохранить"; primary: S.note-dirty; clicked => { S.note-save(S.note-dirty ? root.body : S.note-body); } }
+            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 330px; }
+            Seg { x: parent.width - self.width - 130px; y: 6px; width: 170px; height: 30px; items: ["ПРАВКА", "ЧТЕНИЕ"]; current: S.note-reading ? 1 : 0;
+                picked(i) => {
+                    if (i == 1) { if (S.note-dirty) { S.note-save(root.body); } S.note-read-set(true); }
+                    else { S.note-read-set(false); }
+                } }
+            Button { x: parent.width - self.width - 12px; y: 6px; width: 104px; height: 30px; text: "Сохранить"; visible: !S.note-reading; primary: S.note-dirty; clicked => { S.note-save(S.note-dirty ? root.body : S.note-body); } }
             Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
         }
         if S.note-path != "": Rectangle {
             property <length> cw: min(720px, parent.width - 48px);
+            property <bool> has-props: S.note-props.length > 0;
+            property <length> body-y: 48px + (has-props ? 32px : 12px);
             x: (parent.width - cw) / 2; y: 76px; width: cw; height: parent.height - 76px - 34px;
-            Text { y: 20px; height: 34px; width: parent.width; text: S.note-title; font-size: 26px; font-weight: 600; color: G.ink; overflow: elide; }
-            ed := TextEdit {
-                y: 64px; height: parent.height - 64px; width: parent.width;
-                text: S.note-body;
-                font-size: 14.5px;
-                wrap: word-wrap;
-                edited(t) => { root.body = t; S.note-edited(); }
+            Text { y: 12px; height: 32px; width: parent.width; text: S.note-title; font-size: 26px; font-weight: 600; color: G.ink; overflow: elide; }
+            // свойства и теги под заголовком
+            if has-props: HorizontalLayout {
+                y: 48px; height: 24px; spacing: 6px; alignment: start;
+                for p in S.note-props: Rectangle {
+                    width: pt.preferred-width + 16px; height: 22px; border-radius: 11px;
+                    background: p.cur ? G.accent-wash : G.bg;
+                    border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
+                    pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                }
+            }
+            // правка: поле текста; Ctrl+S сохраняет
+            if !S.note-reading: FocusScope {
+                y: body-y; height: parent.height - body-y; width: parent.width;
+                key-pressed(e) => {
+                    if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы" || e.text == "\u{13}")) {
+                        S.note-save(root.body);
+                        accept
+                    } else { reject }
+                }
+                ed := TextEdit {
+                    y: 0; height: parent.height; width: parent.width;
+                    text: S.note-body;
+                    font-size: 14.5px;
+                    wrap: word-wrap;
+                    edited(t) => { root.body = t; S.note-edited(); }
+                }
+            }
+            // чтение: размеченный текст
+            if S.note-reading: ScrollView {
+                y: body-y; height: parent.height - body-y; width: parent.width;
+                VerticalLayout {
+                    x: 0; y: 0; width: parent.width; alignment: start;
+                    for b in S.note-read-md: MdLine { line: b; width: parent.width; }
+                    Rectangle { height: 24px; }
+                }
             }
         }
         if S.note-path != "": Rectangle {

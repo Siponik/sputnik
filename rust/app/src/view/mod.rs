@@ -42,6 +42,10 @@ pub struct Ui {
     pub note_path: String,
     pub note_dirty: bool,
     pub note_graph: bool,
+    /// Открытые вкладки заметок (пути), активная — note_path.
+    pub note_tabs: Vec<String>,
+    /// Режим «Чтение» вместо правки.
+    pub note_reading: bool,
     pub pipe_open: String,
     pub pipe_by: String,
     pub stk_by: String,

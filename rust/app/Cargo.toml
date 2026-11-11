@@ -20,6 +20,7 @@ minisign-verify = "0.2"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 pulldown-cmark = { version = "0.13", default-features = false }
 notify = { version = "8", default-features = false, features = ["macos_kqueue"] }
+rfd = "0.15"
 
 [build-dependencies]
 slint-build = "1.18"
