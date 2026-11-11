@@ -22,6 +22,7 @@ export struct Band { y: float, h: float, text: string, a: int }
 export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
+export struct DpCell { n: int, day: string, other: bool, today: bool, sel: bool }
 export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string, mark: styled-text, hue: color, due: string }
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
 // Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
@@ -280,6 +281,31 @@ export global S {
     in property <[Opt]> c-reminds;
     in property <string> c-hint;
     in property <string> c-free;
+    // выбор даты и времени (G_DateTime)
+    in property <bool> dp-open;
+    in property <string> dp-title;
+    in property <string> dp-month;
+    in property <[DpCell]> dp-cells;
+    in property <[int]> dp-busy;
+    in property <int> dp-hour;
+    in property <int> dp-min;
+    in property <string> dp-exact;
+    in property <int> dp-dur;
+    in property <string> dp-dur-long;
+    in property <string> dp-summary;
+    in property <string> dp-said;
+    in property <[Opt]> dp-quick;
+    callback dp-open-task();               // открыть для текущей задачи
+    callback dp-words(string);
+    callback dp-day(string);
+    callback dp-quick-set(string);
+    callback dp-month-step(int);
+    callback dp-hour-set(int);
+    callback dp-min-set(int);
+    callback dp-exact-set(string);
+    callback dp-dur-set(int);
+    callback dp-done();
+    callback dp-cancel();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»

@@ -6,6 +6,7 @@ mod calendar;
 mod dialogs;
 mod habits;
 mod notes;
+pub mod datetime;
 mod settings;
 mod today;
 mod wire;
@@ -20,6 +21,8 @@ use std::cell::RefCell;
 /// Состояние экрана (не данные): открытый раздел, список доски, день календаря, открытые окна.
 #[derive(Default)]
 pub struct Ui {
+    /// Открытый выбор даты и времени (G_DateTime).
+    pub dp: Option<datetime::Dp>,
     pub tab: i32,
     pub board: String,
     pub cal_sel: String,
@@ -137,6 +140,7 @@ fn render(app: &App) {
             g.set_today_count(app.today_items().iter().filter(|x| !App::is_done(&x.1)).count() as i32);
         }
         dialogs::render(app, &mut u, &g);
+        datetime::render(app, &u, &g);
     });
 }
 

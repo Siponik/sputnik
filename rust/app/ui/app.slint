@@ -10,6 +10,7 @@ import { HabitsPage } from "habits.slint";
 import { SettingsPage } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
+import { DatePicker } from "datetime.slint";
 import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
@@ -394,6 +395,10 @@ export component AppWindow inherits Window {
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
+        if S.dp-open: Rectangle {
+            TouchArea { }
+            DatePicker { x: max(16px, parent.width - 464px - 16px - 740px - 8px); y: 60px; }
+        }
         // окно обновления (G_Status, слева)
         upd := Rectangle {
             visible: false;
