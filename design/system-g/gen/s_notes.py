@@ -27,7 +27,7 @@ FC = {n: c for n, c, _ in FOLD}
 
 
 def save3(fname, html, title, i):
-    open(P + fname, 'w').write(html)
+    open(P + fname, 'w').write(iconize(html))
     c = json.load(open(P + 'canvas.json'))
     if not any(p['id'] == 'kb' for p in c['pages']):
         c['pages'].append({'id': 'kb', 'name': 'Знания'})
