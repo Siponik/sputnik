@@ -320,10 +320,10 @@ export component SettingsPage inherits Rectangle {
             }
             if S.set-tab == 2: Sec {
                 main: true; num: "03"; title: "НАПОМИНАНИЯ"; aside: "МОЖНО НЕСКОЛЬКО";
-                // «не напоминать» (id -1) — это «ничего не отмечено», отдельной галочкой не показываем
-                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
-                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
-                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-bday", o.id); } } }
+                // «не напоминать» — это «ничего не отмечено», отдельной галочки нет (её убирает settings.rs)
+                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: CBox { o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
+                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: CBox { o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
+                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: CBox { o: o; clicked => { S.set-toggle("remind-bday", o.id); } } }
                 Note { text: "НИЧЕГО НЕ ОТМЕЧЕНО — НЕ НАПОМИНАТЬ. ЭТО УМОЛЧАНИЯ ДЛЯ НОВЫХ: У ЗАДАЧИ МОЖНО ПОМЕНЯТЬ В ЕЁ ОКНЕ"; }
                 SRow { label: "БЕЗ ВРЕМЕНИ — В"; for o in S.set-remind-hour: CBox { radio: true; o: o; clicked => { S.set-toggle("hour", o.id); } } }
                 Rectangle { height: 1px; background: G.line-soft; }
