@@ -61,7 +61,8 @@ component SideCol inherits Rectangle {
                         Text { text: r.name; font-size: 13px; color: G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                         Text { text: r.count; font-family: G.mono; font-size: 10.5px; color: #8A8C96; vertical-alignment: center; }
                     }
-                    sa := TouchArea { enabled: !r.header; clicked => { S.pick-list(r.id); } mouse-cursor: pointer; }
+                    sa := TouchArea { enabled: !r.header; clicked => { S.pick-list(r.id); } mouse-cursor: pointer;
+                        pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("list", r.id, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                 }
                 Rectangle { height: 6px; }
                 nl := Field {

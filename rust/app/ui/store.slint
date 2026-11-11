@@ -20,6 +20,7 @@ export struct Block { title: string, sub: string, y: float, h: float, x: float, 
 export struct Label { text: string, y: float, small: bool }
 export struct Band { y: float, h: float, text: string, a: int }
 export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
+export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
 export struct DpCell { n: int, day: string, other: bool, today: bool, sel: bool }
@@ -317,6 +318,15 @@ export global S {
     callback ls-show();
     callback ls-set(string, string);
     callback ls-close();
+    // меню по правому клику (G_ListMenu): строит Rust, рисует CtxMenu
+    in property <bool> menu-open;
+    in property <length> menu-x;
+    in property <length> menu-y;
+    in property <string> menu-title;
+    in property <[MItem]> menu-items;
+    callback menu-ctx(string, string, length, length);   // что, id, x, y
+    callback menu-pick(string);
+    callback menu-close();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»

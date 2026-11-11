@@ -25,7 +25,7 @@ fn ui_now(f: impl FnOnce(&mut Ui)) {
     });
 }
 
-fn ask(u: &mut Ui, q: impl Into<String>, yes: &str, f: impl FnOnce(&mut App, &mut Ui) + 'static) {
+pub(super) fn ask(u: &mut Ui, q: impl Into<String>, yes: &str, f: impl FnOnce(&mut App, &mut Ui) + 'static) {
     u.confirm = Some((q.into(), yes.into(), Box::new(f)));
 }
 
@@ -496,6 +496,9 @@ pub fn wire(w: &AppWindow) {
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_ls_show(|| act(|_, u| u.ls = true));
     g.on_ls_close(|| act(|_, u| u.ls = false));
+    g.on_menu_ctx(|k, id, x, y| act(|_, u| u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })));
+    g.on_menu_close(|| act(|_, u| u.menu = None));
+    g.on_menu_pick(|id| act(|app, u| super::menu::pick(app, u, &id)));
     g.on_ls_set(|k, v| act(|app, u| super::listset::set(app, u, &k, &v)));
     g.on_t_due_set(|t| act(|app, u| {
         let Some((l, id)) = cur(u) else { return };
