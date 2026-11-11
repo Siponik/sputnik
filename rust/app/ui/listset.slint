@@ -1,0 +1,104 @@
+// Настройки списка (G_ListSettings): окно по центру поверх доски.
+import { G } from "theme.slint";
+import { Mono, Button, Node, Field, Brackets, Overlay } from "kit.slint";
+import { S, Opt } from "store.slint";
+
+component Seg3 inherits Rectangle {
+    in property <[Opt]> items;
+    callback picked(string);
+    height: 32px;
+    width: sl.preferred-width + 6px;
+    border-radius: 6px; border-width: 1px; border-color: G.line;
+    sl := HorizontalLayout {
+        padding: 3px; spacing: 2px;
+        for it in items: Rectangle {
+            width: st.preferred-width + 20px;
+            border-radius: 4px;
+            background: it.on ? G.ink : (sa.has-hover ? G.node-hover : transparent);
+            st := Text { text: it.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: it.on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+            sa := TouchArea { clicked => { root.picked(it.id); } mouse-cursor: pointer; }
+        }
+    }
+}
+
+component Switch inherits Rectangle {
+    in property <bool> on;
+    callback clicked;
+    width: 36px; height: 20px; border-radius: 10px;
+    background: on ? G.accent : G.line;
+    animate background { duration: G.fast; }
+    Rectangle { x: on ? parent.width - 18px : 2px; y: 2px; width: 16px; height: 16px; border-radius: 8px; background: #fff; animate x { duration: G.fast; } }
+    TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+component Row inherits Rectangle {
+    in property <string> label;
+    in property <string> hint;
+    min-height: 60px;
+    HorizontalLayout {
+        VerticalLayout {
+            alignment: center; spacing: 2px;
+            Text { text: root.label; color: G.ink; font-size: 13.5px; }
+            if root.hint != "": Text { text: root.hint; color: #8A8C96; font-size: 12px; }
+        }
+        Rectangle { }
+        HorizontalLayout { alignment: end; spacing: 6px; VerticalLayout { alignment: center; @children } }
+    }
+    Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+}
+
+export component ListSettings inherits Overlay {
+    close => { S.ls-close(); }
+    TouchArea { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
+    dlg := Node {
+        x: (parent.width - self.width) / 2;
+        y: max(60px, (parent.height - self.height) / 2);
+        width: 640px;
+        height: 34px + body.preferred-height;
+        num: "НАСТРОЙКИ СПИСКА"; title: "CTRL .";
+        aside: S.ls-tpl;
+        head: G.accent.darker(0.3);
+        border-color: G.accent-line;
+        drop-shadow-blur: 30px; drop-shadow-color: #000c;
+        body := VerticalLayout {
+            padding: 22px; padding-bottom: 14px; spacing: 0;
+            Text { text: "Название"; color: #A3A5AE; font-size: 13px; }
+            Rectangle { height: 8px; }
+            name := Field { height: 38px; font-size: 14px; text: S.ls-name; accepted(t) => { S.ls-set("name", t); } }
+            Rectangle { height: 6px; }
+            Row { label: "Сфера";
+                HorizontalLayout { spacing: 4px;
+                    for o in S.ls-spheres: Rectangle {
+                        height: 28px; width: lt.preferred-width + (o.id == "" ? 20px : 32px);
+                        border-radius: 4px; border-width: 1px;
+                        border-color: o.on ? G.accent : G.line;
+                        background: o.on ? G.accent.transparentize(0.88) : (oa.has-hover ? G.node-hover : transparent);
+                        if o.id != "": Rectangle { x: 10px; y: (parent.height - 7px) / 2; width: 7px; height: 7px; border-radius: 4px; background: o.hue; }
+                        lt := Text { x: o.id == "" ? 10px : 22px; text: o.label; color: o.on ? G.ink : #A3A5AE; font-size: 12.5px; vertical-alignment: center; height: parent.height; }
+                        oa := TouchArea { clicked => { S.ls-set("sphere", o.id); } mouse-cursor: pointer; }
+                    }
+                }
+            }
+            Row { label: "Порядок задач"; hint: "Как сортировать карточки в колонках";
+                Seg3 {
+                    items: [{ id: "own", label: "Свой", on: S.ls-sort == "own" }, { id: "due", label: "По сроку", on: S.ls-sort == "due" }, { id: "prio", label: "По приоритету", on: S.ls-sort == "prio" }];
+                    picked(id) => { S.ls-set("sort", id); }
+                }
+            }
+            Row { label: "Показывать в «Сегодня»"; hint: "Задачи с датой попадают на главный экран";
+                Switch { on: S.ls-today; clicked => { S.ls-set("today", ""); } }
+            }
+            Row { label: "В сводке и боте"; hint: "Выключи, если список тихий: доска и напоминания останутся";
+                Switch { on: !S.ls-quiet; clicked => { S.ls-set("quiet", ""); } }
+            }
+            Row { label: "Колонки"; hint: S.ls-tpl.to-lowercase(); }
+            Rectangle { height: 14px; }
+            HorizontalLayout {
+                spacing: 8px;
+                Rectangle { }
+                Button { text: "Готово"; primary: true; clicked => { S.ls-set("name", name.text); S.ls-close(); } }
+            }
+        }
+    }
+    Brackets { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
+}

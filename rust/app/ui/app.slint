@@ -11,6 +11,7 @@ import { SettingsPage } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
 import { DatePicker } from "datetime.slint";
+import { ListSettings } from "listset.slint";
 import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
@@ -73,14 +74,15 @@ export component AppWindow inherits Window {
 
     keys := FocusScope {
         key-pressed(e) => {
-            if (S.task-open || S.create-open || S.search-open || S.confirm != "") {
-                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); return accept; }
+            if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open) {
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); return accept; }
                 return reject;
             }
             if (e.modifiers.control) {
                 if (e.text == "k" || e.text == "л") { S.search-open-set(true); return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
+                if ((e.text == "." || e.text == "ю") && S.tab == 2) { S.ls-show(); return accept; }
                 if (e.text == "w" || e.text == "ц") { S.win-close(); return accept; }
                 return reject;
             }
@@ -395,6 +397,7 @@ export component AppWindow inherits Window {
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
+        if S.ls-open: ListSettings { }
         if S.dp-open: Rectangle {
             TouchArea { }
             DatePicker { x: max(16px, parent.width - 464px - 16px - 740px - 8px); y: 60px; }

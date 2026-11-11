@@ -927,19 +927,19 @@ export component BoardPage inherits Rectangle {
             drop-shadow-color: #0009;
             mv := VerticalLayout {
                 padding: 6px;
-                for m[i] in ["Переименовать", "Удалить список…"]: Rectangle {
+                for m[i] in ["Настройки списка", "Переименовать", "Удалить список…"]: Rectangle {
                     height: 32px;
                     border-radius: 4px;
                     background: ma.has-hover ? G.node-hover : transparent;
                     HorizontalLayout {
                         padding-left: 10px; spacing: 8px;
-                        Icon { name: i == 0 ? "edit" : "trash"; c: i == 1 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }
-                        Text { text: m; color: i == 1 ? G.red : G.ink; font-size: 13px; vertical-alignment: center; }
+                        Icon { name: i == 0 ? "settings" : i == 1 ? "edit" : "trash"; c: i == 2 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }
+                        Text { text: m; color: i == 2 ? G.red : G.ink; font-size: 13px; vertical-alignment: center; }
                     }
                     ma := TouchArea {
                         clicked => {
                             root.menu = false;
-                            if (i == 0) { root.renaming = true; } else { S.delete-list(S.board-id); }
+                            if (i == 0) { S.ls-show(); } else if (i == 1) { root.renaming = true; } else { S.delete-list(S.board-id); }
                         }
                     }
                 }

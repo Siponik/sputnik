@@ -7,6 +7,7 @@ mod dialogs;
 mod habits;
 mod notes;
 pub mod datetime;
+pub mod listset;
 mod settings;
 mod today;
 mod wire;
@@ -23,6 +24,7 @@ use std::cell::RefCell;
 pub struct Ui {
     /// Открытый выбор даты и времени (G_DateTime).
     pub dp: Option<datetime::Dp>,
+    pub ls: bool,
     pub tab: i32,
     pub board: String,
     pub cal_sel: String,
@@ -106,6 +108,7 @@ pub fn start(app: App) -> AppWindow {
             }
             ["note", p] => u.note_path = p.to_string(),
             ["pipe", p] => u.pipe_open = p.to_string(),
+            ["listset"] => u.ls = true,
             ["archive"] => u.arch = true,
             ["gallery"] => u.pipe_gallery = true,
             ["hmonth"] => u.habit_mode = "month".into(),
@@ -141,6 +144,7 @@ fn render(app: &App) {
         }
         dialogs::render(app, &mut u, &g);
         datetime::render(app, &u, &g);
+        listset::render(app, &u, &g);
     });
 }
 
