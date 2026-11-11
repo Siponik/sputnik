@@ -41,6 +41,8 @@ pub struct Ui {
     pub note_q: String,
     pub note_path: String,
     pub note_dirty: bool,
+    /// Текст правки текущей заметки, пока она не сохранена (note_dirty).
+    pub note_draft: String,
     pub note_graph: bool,
     /// Открытые вкладки заметок (пути), активная — note_path.
     pub note_tabs: Vec<String>,
