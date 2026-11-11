@@ -273,6 +273,8 @@ export global S {
     in-out property <int> c-kind;              // 0 задача · 1 событие · 2 привычка · 3 день рождения
     in property <string> c-text;
     in property <[string]> c-understood;
+    in property <string> c-when;      // распознанный срок задачи/события, "" — без срока
+    in property <string> c-rep;       // распознанный повтор
     in property <string> c-dest;
     in property <string> c-dest-why;
     in property <color> c-dest-hue;
@@ -331,6 +333,7 @@ export global S {
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»
     in property <int> c-prio;                  // 0 нет · 1 высокий · 2 средний · 3 низкий
+    callback c-strip(string, string) -> string;    // строка без распознанного куска: when | repeat
     callback c-prio-text(string, int) -> string;   // строка с другим приоритетом
     callback c-add-text(string, string) -> string; // дописать в строку слово («каждую неделю»)
     callback create(string);

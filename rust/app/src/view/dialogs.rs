@@ -139,6 +139,10 @@ fn create(app: &App, c: &Create, g: &S) {
     };
     g.set_c_meta(ss(und.join(" · ")));
     g.set_c_understood(strings(if c.text.trim().is_empty() { vec![] } else { und }));
+    let has_when = !p["day"].is_null() || t(&p["time"]);
+    let wt = if has_when { td::understood(&p, &tdy).iter().find(|x| x["kind"] == "when").map(|x| text(&x["text"])).unwrap_or_default() } else { String::new() };
+    g.set_c_when(ss(wt));
+    g.set_c_rep(ss(if t(&p["repeat"]) { sputnik_core::repeat::repeat_label(&p["repeat"]) } else { String::new() }));
     g.set_c_hint(ss(hint));
     let (dest, why) = dest_of(app, c);
     g.set_c_dest(ss(app.list_name(&dest)));

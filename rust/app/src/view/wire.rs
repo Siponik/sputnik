@@ -575,6 +575,19 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_c_close(|| act(|_, u| u.create = None));
     g.on_c_changed(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.text = str_(&t) }));
+    g.on_c_strip(|txt, kind| {
+        let p = sputnik_core::route::parse_line(&txt, sputnik_core::habits::now().date(), &json!({}));
+        let ch: Vec<char> = txt.chars().collect();
+        let mut keep = vec![true; ch.len()];
+        for m in a(&p["marks"]) {
+            if s(&m["kind"]) == kind.as_str() {
+                let (f, e) = (m["from"].as_u64().unwrap_or(0) as usize, m["to"].as_u64().unwrap_or(0) as usize);
+                for k in f..e.min(ch.len()) { keep[k] = false; }
+            }
+        }
+        let out: String = ch.iter().zip(keep).filter(|x| x.1).map(|x| *x.0).collect();
+        ss(out.split_whitespace().collect::<Vec<_>>().join(" ") + " ")
+    });
     g.on_c_prio_text(|t, n| {
         let mut words: Vec<&str> = t.split(' ').filter(|w| !(w.len() <= 3 && !w.is_empty() && w.chars().all(|c| c == '!'))).collect();
         while words.last() == Some(&"") { words.pop(); }
