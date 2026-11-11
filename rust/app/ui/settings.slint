@@ -1,4 +1,4 @@
-// Настройки: Вид, Что показывать, Напоминания, Синхронизация, Клавиши.
+// Настройки: Вид, Что показывать, Напоминания, Синхронизация (с Обновлениями), Клавиши, Знания.
 import { G } from "theme.slint";
 import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon } from "kit.slint";
 import { S, Opt } from "store.slint";
@@ -170,7 +170,7 @@ export component SettingsPage inherits Rectangle {
             x: 9px; y: 82px; width: parent.width - 18px;
             spacing: 2px;
             alignment: start;
-            for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ОБНОВЛЕНИЯ", "ЗНАНИЯ"]: Rectangle {
+            for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ЗНАНИЯ"]: Rectangle {
                 height: 36px;
                 border-radius: 6px;
                 border-width: S.set-tab == i ? 1px : 0;
@@ -292,7 +292,7 @@ export component SettingsPage inherits Rectangle {
                 Note { text: "ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–" + S.tab-order.length + " И Q / E"; }
             }
             if S.set-tab == 0 || S.set-tab == 1: Sec {
-                main: S.set-tab == 1; num: "02"; title: "ЧТО ПОКАЗЫВАТЬ";
+                main: S.set-tab == 1; num: S.set-tab == 0 ? "02" : "01"; title: "ЧТО ПОКАЗЫВАТЬ";
                 aside: S.set-lists.length + " СПИСКОВ · " + S.set-cals.length + " КАЛЕНДАРЕЙ";
                 ll := Rectangle {
                     height: lf.preferred-height;
@@ -319,7 +319,7 @@ export component SettingsPage inherits Rectangle {
                 Note { text: "СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ"; }
             }
             if S.set-tab == 2: Sec {
-                main: true; num: "03"; title: "НАПОМИНАНИЯ"; aside: "МОЖНО НЕСКОЛЬКО";
+                main: true; num: "01"; title: "НАПОМИНАНИЯ"; aside: "МОЖНО НЕСКОЛЬКО";
                 // «не напоминать» (id -1) — это «ничего не отмечено», отдельной галочкой не показываем
                 SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
                 SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
@@ -331,7 +331,7 @@ export component SettingsPage inherits Rectangle {
                 for o in S.set-flags: Note { text: o.label.to-uppercase() + " — " + o.hint.to-uppercase(); }
             }
             if S.set-tab == 2: Sec {
-                num: "04"; title: "TELEGRAM · @SPUTNIKTASKSBOT"; aside: S.bot-name != "" ? "ПОДКЛЮЧЁН" : "";
+                num: "02"; title: "TELEGRAM · @SPUTNIKTASKSBOT"; aside: S.bot-name != "" ? "ПОДКЛЮЧЁН" : "";
                 Text { text: S.bot-name != "" ? "Подключён: " + S.bot-name : "Напиши боту /start, он пришлёт код из 6 цифр — введи его здесь."; color: G.ink; font-size: 13px; wrap: word-wrap; }
                 if S.bot-status != "": Note { text: S.bot-status.to-uppercase(); }
                 if S.bot-name == "": Field { width: 220px; mono: true; placeholder: "код 123456"; accepted(t) => { S.bot-link(t); self.clear(); } }
@@ -343,7 +343,7 @@ export component SettingsPage inherits Rectangle {
                 }
             }
             if S.set-tab == 3: Sec {
-                main: true; num: "05"; title: "СИНХРОНИЗАЦИЯ";
+                main: true; num: "01"; title: "СИНХРОНИЗАЦИЯ";
                 Text { text: S.sync-info; color: G.ink; font-size: 13px; wrap: word-wrap; }
                 HorizontalLayout {
                     spacing: 8px;
@@ -354,14 +354,23 @@ export component SettingsPage inherits Rectangle {
                 Note { text: S.backup-info.to-uppercase(); }
                 HorizontalLayout { alignment: start; Button { text: "Открыть папку с копиями"; clicked => { S.open-backups(); } } }
             }
-            if S.set-tab == 6: Sec {
-                main: true; num: "08"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
+            if S.set-tab == 3: Sec {
+                num: "02"; title: "ОБНОВЛЕНИЯ"; aside: "ВЕРСИЯ " + S.version;
+                Text { text: "Спутник " + S.version + " — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет."; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                Note { text: (S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «✦ ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
+                HorizontalLayout { alignment: start; spacing: 8px;
+                    Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
+                    if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                }
+            }
+            if S.set-tab == 5: Sec {
+                main: true; num: "01"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
                 Text { text: "Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."; color: #A3A5AE; font-size: 13px; wrap: word-wrap; }
                 Field { width: 100%; mono: true; font-size: 12px; text: S.notes-root; accepted(t) => { S.notes-root-set(t); } }
                 Note { text: "РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"; }
             }
             if S.set-tab == 4: Sec {
-                main: true; num: "07"; title: "КЛАВИШИ";
+                main: true; num: "01"; title: "КЛАВИШИ";
                 for k in [
                     ["1 … 5", "разделы: Сегодня, Календарь, Доска, Привычки, Знания"],
                     ["Q / E", "раздел левее / правее"],
@@ -382,15 +391,6 @@ export component SettingsPage inherits Rectangle {
                     }
                     Text { x: 150px; text: k[1]; color: G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
                     Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
-                }
-            }
-            if S.set-tab == 5: Sec {
-                main: true; num: "08"; title: "ОБНОВЛЕНИЯ"; aside: "ВЕРСИЯ " + S.version;
-                Text { text: "Спутник " + S.version + " — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет."; color: G.ink; font-size: 13px; wrap: word-wrap; }
-                Note { text: (S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «✦ ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
-                HorizontalLayout { alignment: start; spacing: 8px;
-                    Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
-                    if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
                 }
             }
         }
@@ -422,9 +422,9 @@ export component SettingsPage inherits Rectangle {
             y: 24px; height: 28px;
             Text { text: S.now-label; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             Rectangle { width: 1px; background: G.line; }
-            Text { text: "РАЗДЕЛОВ 07"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: "РАЗДЕЛОВ 06"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             Rectangle { width: 1px; background: G.line; }
-            Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ОБНОВЛ.", "ЗНАНИЯ"][min(S.set-tab, 6)]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ЗНАНИЯ"][min(S.set-tab, 5)]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
     }
 }
