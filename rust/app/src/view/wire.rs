@@ -816,7 +816,7 @@ fn note_set_lines(app: &App, u: &mut Ui, i: usize, t: &str, drop: usize) {
     }
 }
 
-fn save_draft(app: &mut App, u: &mut Ui) {
+pub(super) fn save_draft(app: &mut App, u: &mut Ui) {
     if !u.note_dirty || u.note_path.is_empty() {
         return;
     }
@@ -840,7 +840,7 @@ fn set_notes_root(app: &mut App, u: &mut Ui, p: Option<String>) {
 }
 
 /// Открыть заметку вкладкой: запоминает в списке открытых и делает активной.
-fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
+pub(super) fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
     if path == u.note_path {
         return;
     }

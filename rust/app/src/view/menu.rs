@@ -53,7 +53,47 @@ fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
                 }
             }
         }
+        "note" => {
+            let title = app.notes.notes.iter().find(|n| n.path == m.id).map(|n| n.title.clone()).unwrap_or_default();
+            (format!("Заметка · {title}"), vec![
+                it("note-open", "Открыть", "open", ""),
+                it("note-graph", "Показать на графе", "graph", ""),
+                MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
+                it("note-file", "Открыть в другой программе", "share", ""),
+            ])
+        }
+        "tab" => (String::from("Вкладка"), vec![
+            it("tab-close", "Закрыть", "close", "Ctrl W"),
+            it("tab-others", "Закрыть остальные", "close", ""),
+            MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
+        ]),
         _ => (String::new(), vec![]),
+    }
+}
+
+fn note_file(app: &App, path: &str) -> Option<std::path::PathBuf> {
+    let p = std::path::PathBuf::from(path);
+    if p.is_absolute() { Some(p) } else { app.notes.root.as_ref().map(|r| r.join(p)) }
+}
+
+fn note_pick(app: &mut App, u: &mut Ui, m: &Menu, id: &str) {
+    let p = m.id.clone();
+    match id {
+        "note-open" => { u.note_graph = false; super::wire::open_note_tab(app, u, &p); }
+        "note-graph" => { super::wire::open_note_tab(app, u, &p); u.note_graph = true; }
+        "note-dir" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f.parent().unwrap_or(&f)); } }
+        "note-file" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f); } }
+        "tab-close" => {
+            if u.note_path == p { super::wire::save_draft(app, u); }
+            u.note_tabs.retain(|t| t != &p);
+            if u.note_path == p { u.note_path = u.note_tabs.last().cloned().unwrap_or_default(); }
+        }
+        "tab-others" => {
+            if u.note_path != p { super::wire::save_draft(app, u); }
+            u.note_tabs.retain(|t| t == &p);
+            if u.note_path != p { super::wire::open_note_tab(app, u, &p); }
+        }
+        _ => {}
     }
 }
 
@@ -74,6 +114,7 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
         return;
     }
     u.menu = None;
+    if m.kind == "note" || m.kind == "tab" { note_pick(app, u, &m, id); return; }
     if m.kind != "list" { return; }
     let l = m.id.clone();
     let (k, v) = id.split_once(':').unwrap_or((id, ""));

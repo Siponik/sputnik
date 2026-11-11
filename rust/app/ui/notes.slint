@@ -94,7 +94,7 @@ component NoteList inherits VerticalLayout {
         if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
         if r.path == "": Text { x: parent.width - self.preferred-width - 12px; y: 6px; height: 22px; text: r.sub; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; }
         if r.path != "": Text { x: 28px; width: parent.width - 40px; text: r.title; color: r.path == cur ? G.ink : #C9CBD3; font-size: 13px; vertical-alignment: center; overflow: elide; }
-        na := TouchArea { enabled: r.path != ""; clicked => { S.note-open(r.path); } mouse-cursor: pointer; }
+        na := TouchArea { enabled: r.path != ""; clicked => { S.note-open(r.path); } mouse-cursor: pointer; pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
     }
 }
 
@@ -155,7 +155,7 @@ component Graph inherits Rectangle {
         background: d.cur ? G.accent : (d.missing ? transparent : (d.near ? G.accent-ink : G.ink.with-alpha(0.75)));
         border-width: d.missing ? 1px : 0;
         border-color: G.dim;
-        da := TouchArea { clicked => { S.graph-open(d.path, d.title); } mouse-cursor: pointer; }
+        da := TouchArea { clicked => { S.graph-open(d.path, d.title); } mouse-cursor: pointer; pointer-event(e) => { if (d.path != "" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", d.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
         if root.k >= 1.8 || d.cur || d.near || da.has-hover: Text {
             x: (parent.width - self.preferred-width) / 2;
             y: parent.height + 3px;
@@ -245,7 +245,7 @@ export component NotesPage inherits Rectangle {
                         border-color: G.line;
                         tt := Text { x: 10px; width: parent.width - 34px; text: t.title; font-size: 12.5px; color: t.cur ? G.ink : G.muted; vertical-alignment: center; overflow: elide; }
                         Text { x: parent.width - 22px; width: 18px; text: t.cur && S.note-dirty ? "●" : "×"; font-size: t.cur && S.note-dirty ? 9px : 13px; color: ca.has-hover ? G.red : (t.cur && S.note-dirty ? G.accent : G.dim); vertical-alignment: center; horizontal-alignment: center; }
-                        ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { S.note-tab-open(t.path); } }
+                        ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { S.note-tab-open(t.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("tab", t.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                         ca := TouchArea { x: parent.width - 24px; width: 24px; mouse-cursor: pointer; clicked => { S.note-tab-close(t.path); } }
                     }
                 }
@@ -330,7 +330,7 @@ export component NotesPage inherits Rectangle {
                             border-width: has ? 1px : 0; border-color: G.line;
                             if has: Text { x: 12px; y: 10px; width: parent.width - 24px; text: n.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
                             if has: Text { x: 12px; y: 30px; width: parent.width - 24px; height: 36px; text: n.sub; font-size: 12px; color: #A3A5AE; wrap: word-wrap; overflow: elide; }
-                            bb := TouchArea { enabled: has; mouse-cursor: pointer; clicked => { S.note-open(n.path); } }
+                            bb := TouchArea { enabled: has; mouse-cursor: pointer; clicked => { S.note-open(n.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", n.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                         }
                     }
                 }
@@ -379,7 +379,7 @@ export component NotesPage inherits Rectangle {
                     Rectangle { x: 0; y: 8px; width: 2px; height: parent.height - 16px; background: G.accent; }
                     Text { x: 12px; y: 8px; width: parent.width - 22px; text: l.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
                     bt := Text { x: 12px; y: 28px; width: parent.width - 22px; text: "«" + l.sub + "»"; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
-                    ba := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } }
+                    ba := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", l.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                 }
                 Rectangle { height: 8px; }
                 Text { text: "УПОМЯНУТО БЕЗ ССЫЛКИ · " + S.note-mentions.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
@@ -389,7 +389,7 @@ export component NotesPage inherits Rectangle {
                     border-radius: 8px; background: ma.has-hover ? G.node-hover : transparent; border-width: 1px; border-color: G.line-soft;
                     Text { x: 10px; y: 8px; width: parent.width - 20px; text: l.title; font-size: 13px; color: G.ink; overflow: elide; }
                     mt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: #8A8C96; wrap: word-wrap; }
-                    ma := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } }
+                    ma := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", l.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                 }
             }
         }
