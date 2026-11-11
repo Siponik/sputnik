@@ -1,6 +1,6 @@
 // Настройки: Вид, Что показывать, Напоминания, Синхронизация, Клавиши.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon } from "kit.slint";
 import { S, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -169,38 +169,58 @@ export component SettingsPage inherits Rectangle {
             alignment: start;
             if S.set-tab == 0: Sec {
                 main: true; num: "01"; title: "ВИД";
+                SRow { label: "ТЕМА";
+                    OSeg { items: [{ id: "dark", label: "Тёмная", on: true }, { id: "light", label: "Светлая" }, { id: "sys", label: "Как в системе" }]; }
+                    Text { text: "светлая появится позже"; font-size: 12.5px; color: #7A7C86; vertical-alignment: center; }
+                }
                 SRow { label: "АКЦЕНТ";
                     for o in S.set-accent: Rectangle {
-                        width: 30px; height: 30px; border-radius: 15px;
+                        width: 32px; height: 32px; border-radius: 7px;
                         background: o.hue;
                         border-width: 2px;
                         border-color: o.on ? G.ink : (aa.has-hover ? G.ink.with-alpha(0.4) : transparent);
                         aa := TouchArea { clicked => { S.accent-set(o.id); } mouse-cursor: pointer; }
                     }
                 }
-                SRow { label: "АНИМАЦИИ"; OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } } }
+                SRow { label: "АНИМАЦИИ"; OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } }
+                    Text { text: "Провода рисуются при открытии экрана"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
+                }
                 SRow { label: "ПРИ ЗАПУСКЕ"; OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
                 for o in S.set-flags: SRow {
                     label: "";
                     TChip { o: o; clicked => { S.set-toggle("flag", o.id); } }
                     Text { text: o.hint; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 }
-                // порядок разделов в шапке: стрелки двигают, номер — клавиша
+                // порядок разделов в шапке: перетаскиваются, номер — клавиша
                 Rectangle {
-                    height: 30px + S.tab-order.length * 32px;
-                    Text { x: 0; y: 0; height: 26px; text: "ПОРЯДОК ВКЛАДОК"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+                    height: 30px + 40px;
+                    Text { x: 0; y: 0; height: 26px; text: "ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+                    property <length> cw: min(150px, (self.width - (S.tab-order.length - 1) * 18px) / max(1, S.tab-order.length));
                     for t[i] in S.tab-order: Rectangle {
-                        y: 30px + i * 32px; height: 28px;
-                        Text { x: 0; text: "☰"; font-size: 12px; color: G.dim; vertical-alignment: center; height: parent.height; }
-                        Text { x: 22px; text: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
-                        Text { x: 130px; text: (i + 1) + ""; font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
-                        Text { x: parent.width - 56px; width: 24px; text: "◀"; font-size: 11px; color: i > 0 ? (la.has-hover ? G.ink : #8A8C96) : G.line; vertical-alignment: center; height: parent.height; horizontal-alignment: center;
-                            la := TouchArea { enabled: i > 0; mouse-cursor: pointer; clicked => { S.tab-move(i, i - 1); } } }
-                        Text { x: parent.width - 28px; width: 24px; text: "▶"; font-size: 11px; color: i < S.tab-order.length - 1 ? (ra.has-hover ? G.ink : #8A8C96) : G.line; vertical-alignment: center; height: parent.height; horizontal-alignment: center;
-                            ra := TouchArea { enabled: i < S.tab-order.length - 1; mouse-cursor: pointer; clicked => { S.tab-move(i, i + 1); } } }
+                        x: i * (cw + 18px) + (dg.pressed ? dg.mouse-x - dg.pressed-x : 0);
+                        y: 30px; width: cw; height: 40px;
+                        if i > 0 && !dg.pressed: Rectangle { x: -18px; y: 19px; width: 18px; height: 2px; background: G.accent; }
+                        Rectangle {
+                            border-radius: 8px; border-width: 1px;
+                            border-color: dg.pressed || i == 0 ? G.accent : G.line;
+                            background: dg.pressed ? G.node-hover : G.node;
+                            drop-shadow-blur: dg.pressed ? 12px : 0;
+                            drop-shadow-color: #0008;
+                            Icon { x: 10px; width: 14px; name: "drag"; c: G.dim; }
+                            Text { x: 30px; text: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - 18px; text: (i + 1) + ""; font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                        }
+                        dg := TouchArea {
+                            mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
+                            pointer-event(e) => {
+                                if (e.kind == PointerEventKind.up) {
+                                    S.tab-move(i, max(0, min(S.tab-order.length - 1, i + round((self.mouse-x - self.pressed-x) / (cw + 18px)))));
+                                }
+                            }
+                        }
                     }
                 }
-                Note { text: "ТЕМА — ТЁМНАЯ (СВЕТЛАЯ ПОЯВИТСЯ ПОЗЖЕ) · ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–5 И Q / E"; }
+                Note { text: "ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–" + S.tab-order.length + " И Q / E"; }
             }
             if S.set-tab == 0 || S.set-tab == 1: Sec {
                 main: S.set-tab == 1; num: "02"; title: "ЧТО ПОКАЗЫВАТЬ";
