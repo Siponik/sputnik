@@ -1,29 +1,86 @@
 // «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Sat } from "kit.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat } from "kit.slint";
 import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
-import { ScrollView, TextEdit } from "std-widgets.slint";
+import { ScrollView } from "std-widgets.slint";
 
-// Строка заметки в режиме «Чтение»: заголовки, списки, чек-листы, цитаты, код.
-component MdLine inherits Rectangle {
+// Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
+component LiveLine inherits Rectangle {
     in property <MdRow> line;
+    in property <bool> editing;
+    in property <int> caret: -1;
+    in property <float> zoom: 1;
+    callback pick();
+    callback commit(string);
+    callback split(string, int);
+    callback join(string);
+    callback move(string, int);
+    callback leave(string);
+    callback focus-mode();
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
-    height: t.preferred-height + (line.kind == "h1" ? 16px : line.kind == "h2" ? 14px : line.kind == "h3" ? 10px : line.kind == "hr" ? 12px : 6px);
-    if line.kind == "hr": Rectangle { x: 0; y: (parent.height - 1px) / 2; width: parent.width; height: 1px; background: G.line; }
-    if line.kind == "code": Rectangle { x: -8px; y: 2px; width: parent.width + 16px; height: parent.height - 4px; border-radius: 6px; background: G.bg; border-width: 1px; border-color: G.line; }
-    if line.kind == "quote": Rectangle { x: 0; y: 3px; width: 3px; height: parent.height - 9px; border-radius: 1.5px; background: G.accent; }
-    t := Text {
-        x: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" || line.kind == "code" ? 12px : 0);
-        y: line.kind == "h1" ? 10px : line.kind == "h2" ? 8px : line.kind == "h3" ? 6px : 3px;
-        width: parent.width - self.x;
-        text: (line.kind == "li" ? "•  " : line.kind == "todo" ? "☐  " : line.kind == "done" ? "☑  " : line.kind == "img" ? "🖼  " : "") + line.text;
-        font-size: line.kind == "h1" ? 20px : line.kind == "h2" ? 16.5px : 14.5px;
-        font-weight: h ? 600 : 400;
-        font-family: line.kind == "code" ? G.mono : "";
-        color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
-        wrap: word-wrap;
+    property <length> fs: (line.kind == "h1" ? 22px : line.kind == "h2" ? 17.5px : line.kind == "h3" ? 15.5px : 14.5px) * zoom;
+    property <length> pad: line.kind == "h1" ? 14px : line.kind == "h2" ? 10px : line.kind == "h3" ? 6px : 3px;
+    property <length> ind: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 18px : (line.kind == "code" ? 12px : 0));
+    height: line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px));
+    ta := TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.pick(); } }
+    if line.kind == "code" && !editing: Rectangle { x: -8px; y: 0; width: parent.width + 16px; height: parent.height; background: G.bg; }
+    if line.kind == "hr" && !editing: Rectangle { y: (parent.height - 1px) / 2; height: 1px; background: G.line; }
+    if line.kind == "quote" && !editing: Rectangle { x: 0; y: pad; width: 3px; height: parent.height - pad - 3px; border-radius: 1.5px; background: G.accent; }
+    if line.kind == "li" && !editing: Rectangle { x: 6px; y: pad + fs * 0.62 - 2.5px; width: 5px; height: 5px; border-radius: 2.5px; background: G.muted; }
+    if (line.kind == "todo" || line.kind == "done") && !editing: Rectangle {
+        x: 0; y: pad + fs * 0.62 - 6.5px; width: 13px; height: 13px; border-radius: 3px;
+        border-width: 1.2px; border-color: line.kind == "done" ? G.accent : G.muted; background: line.kind == "done" ? G.accent : transparent;
+        if line.kind == "done": Text { text: "✓"; color: #1C1D21; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
     }
+    if line.kind == "img" && !editing: Rectangle {
+        y: pad; height: parent.height - pad - 5px; border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
+    }
+    st := StyledText {
+        visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr";
+        x: ind; y: pad; width: parent.width - ind;
+        text: line.md;
+        default-font-size: fs;
+        default-font-family: line.kind == "code" ? G.mono : G.sans;
+        default-color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
+        link-color: G.accent;
+        link-clicked(l) => { S.note-link(l); }
+    }
+    fs-scope := FocusScope {
+        x: 0; y: pad; width: parent.width; height: ed.preferred-height;
+        visible: editing;
+        enabled: editing;
+        capture-key-pressed(e) => {
+            if (!editing) { return reject; }
+            if (e.text == Key.Return && !e.modifiers.shift) { root.split(ed.text, ed.cursor-position-byte-offset); return accept; }
+            if (e.text == Key.UpArrow) { root.move(ed.text, -1); return accept; }
+            if (e.text == Key.DownArrow) { root.move(ed.text, 1); return accept; }
+            if (e.text == Key.Escape) { root.leave(ed.text); return accept; }
+            if (e.text == Key.Backspace && ed.cursor-position-byte-offset == 0 && ed.anchor-position-byte-offset == 0) { root.join(ed.text); return accept; }
+            if (e.modifiers.control && (e.text == "e" || e.text == "E" || e.text == "у" || e.text == "У")) { root.focus-mode(); return accept; }
+            if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы")) { root.commit(ed.text); return accept; }
+            reject
+        }
+        ed := TextInput {
+            x: 0; y: 0; width: parent.width;
+            text: line.raw;
+            single-line: false;
+            wrap: word-wrap;
+            font-size: root.fs;
+            font-family: line.kind == "code" ? G.mono : G.sans;
+            font-weight: root.h ? 600 : 400;
+            color: G.ink;
+            selection-background-color: G.accent-wash;
+            changed has-focus => { if (!self.has-focus && root.editing) { root.leave(self.text); } }
+        }
+    }
+    function start() {
+        ed.text = line.raw;
+        ed.focus();
+        if (caret >= 0) { ed.set-selection-offsets(caret, caret); } else { ed.set-selection-offsets(999999, 999999); }
+    }
+    changed editing => { if (editing) { start(); } }
+    init => { if (editing) { start(); } }
 }
 
 component NoteList inherits VerticalLayout {
@@ -124,14 +181,17 @@ component Graph inherits Rectangle {
 export component NotesPage inherits Rectangle {
     property <string> body: S.note-body;
     property <bool> wide: self.width >= 1100px;
-    property <length> lw: 264px;
-    property <length> rw: wide ? 300px : 0px;
-    property <length> mx0: 8px + lw + 8px;
-    property <length> mw: self.width - mx0 - 8px - (wide ? rw + 8px : 0px);
+    property <length> lw: zen ? 0px : 264px;
+    property <length> rw: wide && !zen ? 300px : 0px;
+    property <length> mx0: zen ? 8px : 8px + lw + 8px;
+    property <length> mw: self.width - mx0 - 8px - (wide && !zen ? rw + 8px : 0px);
     property <string> q;
+    in-out property <bool> zen;
+    property <int> edit-i: -1;
+    property <int> caret: -1;
 
     // 01 · заметки
-    Rectangle {
+    if !root.zen: Rectangle {
         x: 8px; y: 8px; width: root.lw; height: parent.height - 16px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
         Rectangle {
@@ -200,58 +260,79 @@ export component NotesPage inherits Rectangle {
         }
         if S.note-path == "" && S.notes-count != 0: Empty { y: 34px; height: parent.height - 34px; text: "Выбери заметку слева"; pose: "sleep"; }
         if S.note-path != "": Rectangle {
-            y: 34px; height: 42px;
-            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 330px; }
-            Seg { x: parent.width - self.width - 130px; y: 6px; width: 170px; height: 30px; items: ["ПРАВКА", "ЧТЕНИЕ"]; current: S.note-reading ? 1 : 0;
-                picked(i) => {
-                    if (i == 1) { if (S.note-dirty) { S.note-save(root.body); } S.note-read-set(true); }
-                    else { S.note-read-set(false); }
-                } }
-            Button { x: parent.width - self.width - 12px; y: 6px; width: 104px; height: 30px; text: "Сохранить"; visible: !S.note-reading; primary: S.note-dirty; clicked => { S.note-save(S.note-dirty ? root.body : S.note-body); } }
+            y: 34px; height: 40px;
+            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 200px; }
+            Rectangle {
+                x: parent.width - self.width - 12px; y: 6px; width: ft.preferred-width + 40px; height: 28px; border-radius: 6px;
+                border-width: 1px; border-color: root.zen ? G.accent : G.line; background: fa.has-hover ? G.node-hover : transparent;
+                Icon { name: "focus"; x: 9px; width: 14px; y: 7px; c: root.zen ? G.accent : G.muted; }
+                ft := Text { x: 29px; text: "ФОКУС · CTRL E"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: root.zen ? G.accent-ink : #A3A5AE; vertical-alignment: center; }
+                fa := TouchArea { mouse-cursor: pointer; clicked => { root.zen = !root.zen; } }
+            }
             Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
         }
-        if S.note-path != "": Rectangle {
-            property <length> cw: min(720px, parent.width - 48px);
-            property <bool> has-props: S.note-props.length > 0;
-            property <length> body-y: 48px + (has-props ? 32px : 12px);
-            x: (parent.width - cw) / 2; y: 76px; width: cw; height: parent.height - 76px - 34px;
-            Text { y: 12px; height: 32px; width: parent.width; text: S.note-title; font-size: 26px; font-weight: 600; color: G.ink; overflow: elide; }
-            // свойства и теги под заголовком
-            if has-props: HorizontalLayout {
-                y: 48px; height: 24px; spacing: 6px; alignment: start;
-                for p in S.note-props: Rectangle {
-                    width: pt.preferred-width + 16px; height: 22px; border-radius: 11px;
-                    background: p.cur ? G.accent-wash : G.bg;
-                    border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
-                    pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+        if S.note-path != "": sv := ScrollView {
+            y: 74px; height: parent.height - 74px - 34px;
+            property <length> cw: min(root.zen ? 780px : 700px, self.width - 64px);
+            VerticalLayout {
+                x: (sv.width - sv.cw) / 2; y: 0; width: sv.cw;
+                padding-top: 22px; padding-bottom: 40px; spacing: 0; alignment: start;
+                Text { text: S.note-title; font-size: root.zen ? 30px : 26px; font-weight: 600; color: G.ink; wrap: word-wrap; }
+                // теги и свойства под заголовком
+                if S.note-props.length > 0: Rectangle { height: 12px; }
+                if S.note-props.length > 0: HorizontalLayout {
+                    height: 24px; spacing: 6px; alignment: start;
+                    for p in S.note-props: Rectangle {
+                        width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
+                        background: p.cur ? G.accent-wash : G.bg;
+                        border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
+                        pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                    }
                 }
-            }
-            // правка: поле текста; Ctrl+S сохраняет
-            if !S.note-reading: FocusScope {
-                y: body-y; height: parent.height - body-y; width: parent.width;
-                key-pressed(e) => {
-                    if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы" || e.text == "\u{13}")) {
-                        // только если правили: root.body после первой правки больше не следует за S.note-body,
-                        // и без проверки Ctrl+S на другой заметке записал бы в неё текст прежней
-                        if (S.note-dirty) { S.note-save(root.body); }
-                        accept
-                    } else { reject }
+                Rectangle { height: 14px; }
+                for b[i] in S.note-lines: LiveLine {
+                    line: b;
+                    zoom: root.zen ? 1.12 : 1;
+                    editing: i == root.edit-i;
+                    caret: root.caret;
+                    pick => { root.caret = -1; root.edit-i = i; }
+                    leave(t) => { if (t != b.raw) { S.note-line-set(i, t); } if (root.edit-i == i) { root.edit-i = -1; } S.note-commit(); }
+                    commit(t) => { if (t != b.raw) { S.note-line-set(i, t); } S.note-commit(); }
+                    split(t, at) => { root.caret = S.note-line-split(i, t, at); root.edit-i = i + 1; }
+                    join(t) => { if (i > 0) { if (t != b.raw) { S.note-line-set(i, t); } root.caret = S.note-line-join(i); root.edit-i = i - 1; } }
+                    move(t, d) => { if (t != b.raw) { S.note-line-set(i, t); } root.caret = -1; root.edit-i = max(0, min(S.note-lines.length - 1, i + d)); }
+                    focus-mode => { root.zen = !root.zen; }
                 }
-                ed := TextEdit {
-                    y: 0; height: parent.height; width: parent.width;
-                    text: S.note-body;
-                    font-size: 14.5px;
-                    wrap: word-wrap;
-                    edited(t) => { root.body = t; S.note-edited(t); }
+                // клик под текстом — новая строка в конце
+                Rectangle {
+                    height: 60px;
+                    TouchArea { mouse-cursor: MouseCursor.text; clicked => {
+                        if (S.note-lines.length == 0 || S.note-lines[S.note-lines.length - 1].raw != "") { S.note-line-set(S.note-lines.length, ""); }
+                        root.caret = -1; root.edit-i = S.note-lines.length - 1;
+                    } }
                 }
-            }
-            // чтение: размеченный текст
-            if S.note-reading: ScrollView {
-                y: body-y; height: parent.height - body-y; width: parent.width;
-                VerticalLayout {
-                    x: 0; y: 0; width: parent.width; alignment: start;
-                    for b in S.note-read-md: MdLine { line: b; width: parent.width; }
-                    Rectangle { height: 24px; }
+                // ссылаются сюда
+                if S.note-back.length > 0: VerticalLayout {
+                    spacing: 10px;
+                    Rectangle { height: 1px; background: G.line-soft; }
+                    HorizontalLayout {
+                        spacing: 8px;
+                        Icon { name: "backlinks"; width: 14px; y: 1px; c: G.accent; }
+                        Text { text: "ССЫЛАЮТСЯ СЮДА · " + S.note-back.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent-ink; }
+                    }
+                    for r in (S.note-back.length + 1) / 2: HorizontalLayout {
+                        spacing: 10px;
+                        for k in 2: Rectangle {
+                            property <NoteRow> n: S.note-back[r * 2 + k];
+                            property <bool> has: r * 2 + k < S.note-back.length;
+                            height: 74px;
+                            border-radius: 8px; background: has ? (bb.has-hover ? G.node-hover : G.bg) : transparent;
+                            border-width: has ? 1px : 0; border-color: G.line;
+                            if has: Text { x: 12px; y: 10px; width: parent.width - 24px; text: n.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
+                            if has: Text { x: 12px; y: 30px; width: parent.width - 24px; height: 36px; text: n.sub; font-size: 12px; color: #A3A5AE; wrap: word-wrap; overflow: elide; }
+                            bb := TouchArea { enabled: has; mouse-cursor: pointer; clicked => { S.note-open(n.path); } }
+                        }
+                    }
                 }
             }
         }
@@ -266,7 +347,7 @@ export component NotesPage inherits Rectangle {
     if !S.note-graph && S.note-path != "": Brackets { x: root.mx0; y: 8px; width: root.mw; height: parent.height - 16px; }
 
     // 03 · связи
-    if !S.note-graph && root.wide: Rectangle {
+    if !S.note-graph && root.wide && !root.zen: Rectangle {
         x: parent.width - 8px - root.rw; y: 8px; width: root.rw; height: parent.height - 16px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
         Rectangle {
@@ -280,23 +361,35 @@ export component NotesPage inherits Rectangle {
             VerticalLayout {
                 x: 0; y: 0; width: root.rw;
                 padding: 12px; spacing: 8px; alignment: start;
+                Text { text: "ССЫЛАЕТСЯ НА · " + S.note-links.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
+                if S.note-links.length == 0: Text { text: "Ссылок нет — напиши [[название]]"; font-size: 12.5px; color: #62646E; }
+                for l in S.note-links: Rectangle {
+                    height: 30px;
+                    border-radius: 6px; background: la.has-hover ? G.node-hover : transparent;
+                    Icon { name: "link"; x: 6px; y: 8px; width: 14px; c: l.path == "" ? #62646E : G.accent; }
+                    Text { x: 26px; width: parent.width - 34px; text: l.title + (l.path == "" ? "  · создать" : ""); font-size: 13px; color: l.path == "" ? #8A8C96 : G.ink; vertical-alignment: center; overflow: elide; }
+                    la := TouchArea { mouse-cursor: pointer; clicked => { S.note-link(l.title); } }
+                }
+                Rectangle { height: 8px; }
                 Text { text: "ССЫЛАЮТСЯ СЮДА · " + S.note-back.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent-ink; }
                 if S.note-back.length == 0: Text { text: "Пока никто"; font-size: 12.5px; color: #62646E; }
                 for l in S.note-back: Rectangle {
                     height: bt.preferred-height + 38px;
                     border-radius: 8px; background: ba.has-hover ? G.node-hover : G.bg; border-width: 1px; border-color: G.line;
-                    Text { x: 10px; y: 8px; width: parent.width - 20px; text: l.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
-                    bt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
+                    Rectangle { x: 0; y: 8px; width: 2px; height: parent.height - 16px; background: G.accent; }
+                    Text { x: 12px; y: 8px; width: parent.width - 22px; text: l.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
+                    bt := Text { x: 12px; y: 28px; width: parent.width - 22px; text: "«" + l.sub + "»"; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
                     ba := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } }
                 }
                 Rectangle { height: 8px; }
-                Text { text: "ССЫЛКИ ОТСЮДА · " + S.note-links.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
-                for l in S.note-links: Rectangle {
-                    height: 30px;
-                    border-radius: 6px; background: la.has-hover ? G.node-hover : transparent;
-                    Rectangle { x: 8px; y: 12px; width: 6px; height: 6px; border-radius: 3px; background: l.path == "" ? transparent : G.accent; border-width: 1px; border-color: l.path == "" ? #62646E : G.accent; }
-                    Text { x: 22px; width: parent.width - 30px; text: l.title + (l.path == "" ? "  · создать" : ""); font-size: 13px; color: l.path == "" ? #8A8C96 : G.ink; vertical-alignment: center; overflow: elide; }
-                    la := TouchArea { mouse-cursor: pointer; clicked => { S.note-link(l.title); } }
+                Text { text: "УПОМЯНУТО БЕЗ ССЫЛКИ · " + S.note-mentions.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
+                if S.note-mentions.length == 0: Text { text: "Нет"; font-size: 12.5px; color: #62646E; }
+                for l in S.note-mentions: Rectangle {
+                    height: mt.preferred-height + 38px;
+                    border-radius: 8px; background: ma.has-hover ? G.node-hover : transparent; border-width: 1px; border-color: G.line-soft;
+                    Text { x: 10px; y: 8px; width: parent.width - 20px; text: l.title; font-size: 13px; color: G.ink; overflow: elide; }
+                    mt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: #8A8C96; wrap: word-wrap; }
+                    ma := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } }
                 }
             }
         }
