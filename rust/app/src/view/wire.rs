@@ -33,13 +33,25 @@ fn str_(x: &slint::SharedString) -> String {
     x.as_str().to_string()
 }
 
+/// Минимальный размер окна при своей рамке (no-frame): иначе winit даёт сжать окно так,
+/// что обрезается шапка с кнопками. Держим в двух местах: min-width/min-height в ui/app.slint и здесь.
+fn set_min_size(w: &slint::Weak<AppWindow>) {
+    if let Some(w) = w.upgrade() {
+        use slint::winit_030::{winit::dpi::LogicalSize, WinitWindowAccessor};
+        w.window().with_winit_window(|ww| ww.set_min_inner_size(Some(LogicalSize::new(1100.0, 640.0))));
+    }
+}
+
 pub fn wire(w: &AppWindow) {
     let g = w.global::<S>();
 
     // ---------- оболочка ----------
     // своя рамка окна (no-frame): перетаскивание, свернуть, развернуть, закрыть
     let ww = w.as_weak();
+    slint::Timer::single_shot(std::time::Duration::from_millis(50), move || set_min_size(&ww)); // при старте, когда окно уже показано
+    let ww = w.as_weak();
     g.on_win_drag(move || {
+        set_min_size(&ww);
         if let Some(w) = ww.upgrade() {
             use slint::winit_030::WinitWindowAccessor;
             w.window().with_winit_window(|ww| { let _ = ww.drag_window(); });
@@ -47,6 +59,7 @@ pub fn wire(w: &AppWindow) {
     });
     let ww = w.as_weak();
     g.on_win_resize(move |k| {
+        set_min_size(&ww);
         if let Some(w) = ww.upgrade() {
             use slint::winit_030::{winit::window::ResizeDirection as R, WinitWindowAccessor};
             let d = match k { 1 => R::East, 2 => R::South, 3 => R::West, _ => R::SouthEast };
