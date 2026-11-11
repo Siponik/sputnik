@@ -522,6 +522,15 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_c_close(|| act(|_, u| u.create = None));
     g.on_c_changed(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.text = str_(&t) }));
+    g.on_c_prio_text(|t, n| {
+        let mut words: Vec<&str> = t.split(' ').filter(|w| !(w.len() <= 3 && !w.is_empty() && w.chars().all(|c| c == '!'))).collect();
+        while words.last() == Some(&"") { words.pop(); }
+        let bang = match n { 1 => "!!!", 2 => "!!", 3 => "!", _ => "" };
+        let mut r = words.join(" ");
+        if !bang.is_empty() { r = format!("{r} {bang}"); }
+        ss(r)
+    });
+    g.on_c_add_text(|t, w| ss(format!("{} {}", t.trim_end(), w).trim_start().to_string()));
     g.on_c_kind_set(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.kind = k; c.remind = None; }));
     g.on_c_dest_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.dest = Some(str_(&d)) }));
     g.on_c_cal_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal = Some(str_(&d)) }));

@@ -1,6 +1,7 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
 import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon } from "kit.slint";
+import { Sat } from "kit.slint";
 import { S, Opt, Sub, Found } from "store.slint";
 import { ScrollView, TextEdit } from "std-widgets.slint";
 
@@ -350,9 +351,16 @@ export component CreateDialog inherits Overlay {
             border-width: 1px;
             border-color: G.accent;
             background: G.bg;
+            // подсветка распознанного: под прозрачным текстом поля — та же строка в цвете
+            StyledText {
+                x: 16px; width: parent.width - 60px; y: (parent.height - self.preferred-height) / 2;
+                text: S.c-line-md; default-font-size: 17px; default-font-family: G.sans; default-color: G.ink; max-lines: 1;
+                visible: line.text != "";
+            }
             line := Field {
                 x: 16px; width: parent.width - 60px; height: parent.height;
                 bare: true;
+                ink: transparent;
                 font-size: 17px;
                 text: S.c-text;
                 placeholder: S.c-kind == 0 ? "Сделать иконки для клиента завтра 15:00 @работа !!" : S.c-kind == 1 ? "Созвон с Олей в пт 14:00" : S.c-kind == 2 ? "Вода 8 стаканов каждый день" : "Мама 12 марта";
@@ -414,18 +422,34 @@ export component CreateDialog inherits Overlay {
             }
             Rectangle { height: 4px; }
             Rectangle {
-                height: root.more ? 120px : 40px;
+                height: root.more ? mo.preferred-height + 52px : 40px;
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: G.line;
                 background: G.bg;
                 Text { x: 13px; y: 0; height: 40px; text: (root.more ? "▾" : "▸") + " Ещё параметры"; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; }
-                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "приоритет, подзадачи, повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "приоритет, повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
                 TouchArea { height: 40px; y: 0; clicked => { root.more = !root.more; } mouse-cursor: pointer; }
-                if root.more: Text {
-                    x: 13px; y: 44px; width: parent.width - 26px;
-                    text: "Приоритет — «!!!» в строке, повтор — «каждую неделю», заметка — вторая строка. Остальное — в окне задачи после создания.";
-                    font-size: 12.5px; color: #A3A5AE; wrap: word-wrap;
+                if root.more: Rectangle { y: 40px; height: 1px; background: G.line; }
+                mo := VerticalLayout {
+                    visible: root.more;
+                    x: 13px; y: 50px; width: parent.width - 26px;
+                    spacing: 8px; alignment: start;
+                    if S.c-kind == 0: FRow {
+                        label: "Приоритет";
+                        for p[i] in ["!!! Высокий", "!! Средний", "! Низкий", "Нет"]: CChip {
+                            text: p; on: S.c-prio == (i == 3 ? 0 : i + 1);
+                            clicked => { line.text = S.c-prio-text(line.text, i == 3 ? 0 : i + 1); S.c-changed(line.text); line.grab(); }
+                        }
+                    }
+                    if S.c-kind != 3: FRow {
+                        label: "Повтор";
+                        for p[i] in ["каждый день", "по будням", "каждую неделю", "каждый месяц"]: CChip {
+                            text: p;
+                            clicked => { line.text = S.c-add-text(line.text, p); S.c-changed(line.text); line.grab(); }
+                        }
+                    }
+                    Text { text: "Заметка — вторая строка, Shift+Enter не нужен: подзадачи, цвет и картинка — в окне задачи после создания."; font-size: 11.5px; color: #8A8C96; wrap: word-wrap; }
                 }
             }
         }
@@ -480,8 +504,8 @@ export component CreateDialog inherits Overlay {
                     background: S.c-dest-hue.mix(#1C1D21, 0.3);
                     Text { text: S.c-kind == 3 ? "✦" : (S.c-kind == 2 ? "↻" : (S.c-kind == 1 ? "◷" : "✓")); font-size: 16px; color: #fff; horizontal-alignment: center; vertical-alignment: center; }
                 }
-                Text { x: 64px; y: 40px; width: parent.width - 74px; text: line.text == "" ? "Название" : line.text; font-size: 13.5px; font-weight: 600; color: line.text == "" ? #6E7079 : G.ink; overflow: elide; }
-                Text { x: 64px; y: 62px; width: parent.width - 74px; text: S.c-understood.length > 0 ? S.c-understood[0] : "сегодня"; font-size: 12px; color: #A3A5AE; overflow: elide; }
+                Text { x: 64px; y: 40px; width: parent.width - 74px; text: line.text == "" ? "Название" : (S.c-title != "" ? S.c-title : line.text); font-size: 13.5px; font-weight: 600; color: line.text == "" ? #6E7079 : G.ink; overflow: elide; }
+                Text { x: 64px; y: 62px; width: parent.width - 74px; text: S.c-meta != "" ? S.c-meta : "сегодня"; font-size: 12px; color: #A3A5AE; overflow: elide; }
             }
             if S.c-dest-why != "" || S.c-free != "": Rectangle {
                 height: 80px;
@@ -489,10 +513,7 @@ export component CreateDialog inherits Overlay {
                 background: #2E2A1E;
                 border-width: 1px;
                 border-color: #6A5A28;
-                Rectangle {
-                    x: 12px; y: 17px; width: 44px; height: 44px; border-radius: 22px; border-width: 1px; border-color: #8A8C96;
-                    Text { text: "ДУМАЕТ"; font-family: G.mono; font-size: 7.5px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
-                }
+                Sat { x: 12px; y: 17px; width: 44px; height: 44px; c: G.gold; }
                 Text { x: 66px; width: parent.width - 76px; text: S.c-free != "" ? "Время: " + S.c-free + "." : "Список выбран " + S.c-dest-why + ". Не то — Alt L."; font-size: 12.5px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
             }
             Rectangle {

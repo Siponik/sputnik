@@ -118,6 +118,9 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_text(ss(c.text.clone()));
     let tdy = today_s();
     let p = route::parse_line(&c.text, hb::now().date(), &json!({}));
+    g.set_c_line_md(line_md(&c.text, &p["marks"]));
+    g.set_c_title(ss(text(&p["title"])));
+    g.set_c_prio(p["priority"].as_i64().unwrap_or(0) as i32);
     let (und, hint): (Vec<String>, String) = match c.kind {
         2 => {
             let h = cr::parse_habit(&c.text, &json!({}));
@@ -134,6 +137,7 @@ fn create(app: &App, c: &Create, g: &S) {
             (td::understood(&p, &tdy).iter().map(|x| text(&x["text"])).collect(), h)
         }
     };
+    g.set_c_meta(ss(und.join(" · ")));
     g.set_c_understood(strings(if c.text.trim().is_empty() { vec![] } else { und }));
     g.set_c_hint(ss(hint));
     let (dest, why) = dest_of(app, c);
@@ -158,4 +162,29 @@ fn create(app: &App, c: &Create, g: &S) {
         if f["clash"].is_string() { format!("⚠ пересекается с «{}»", text(&f["clash"])) } else if f["until"].is_string() { format!("свободно до {}", text(&f["until"])) } else { "весь вечер свободен".into() }
     } else { String::new() };
     g.set_c_free(ss(free));
+}
+
+/// Строка «Создать» в разметке: распознанные куски цветом (дата и время — акцент, приоритет — красный, остальное — золото).
+fn line_md(raw: &str, marks: &Value) -> slint::StyledText {
+    let chars: Vec<char> = raw.chars().collect();
+    let esc = |x: &str| -> String {
+        let mut o = String::new();
+        for ch in x.chars() {
+            if "\\`*_[]<>#!-+.()&{}|~".contains(ch) { o.push('\\'); }
+            o.push(ch);
+        }
+        o
+    };
+    let mut md = String::new();
+    let mut at = 0;
+    for m in a(marks) {
+        let (f, t) = (m["from"].as_u64().unwrap_or(0) as usize, m["to"].as_u64().unwrap_or(0) as usize);
+        if f < at || t > chars.len() || f >= t { continue; }
+        md.push_str(&esc(&chars[at..f].iter().collect::<String>()));
+        let col = match s(&m["kind"]) { "day" | "time" | "when" | "date" => "#F0A04B", "priority" | "prio" => "#F0785F", _ => "#E0A04A" };
+        md.push_str(&format!("<font color=\"{col}\">{}</font>", esc(&chars[f..t].iter().collect::<String>())));
+        at = t;
+    }
+    md.push_str(&esc(&chars[at..].iter().collect::<String>()));
+    slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(raw))
 }
