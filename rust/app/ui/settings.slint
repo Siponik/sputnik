@@ -116,7 +116,7 @@ export component SettingsPage inherits Rectangle {
     property <length> mx: 8px;
     property <length> cx: root.mx + 264px;
     property <length> rw: 260px;
-    property <length> cw: self.width - root.cx - root.rw - 24px - root.mx;
+    property <length> cw: S.set-tab == 0 ? self.width - root.cx - root.rw - 24px - root.mx : self.width - root.cx - root.mx - 12px;
     // навигация
     Rectangle {
         x: root.mx; y: 20px; width: 240px; height: parent.height - 40px;
@@ -131,7 +131,7 @@ export component SettingsPage inherits Rectangle {
             x: 9px; y: 82px; width: parent.width - 18px;
             spacing: 2px;
             alignment: start;
-            for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ОБНОВЛЕНИЯ"]: Rectangle {
+            for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ОБНОВЛЕНИЯ", "ЗНАНИЯ"]: Rectangle {
                 height: 36px;
                 border-radius: 6px;
                 border-width: S.set-tab == i ? 1px : 0;
@@ -197,7 +197,9 @@ export component SettingsPage inherits Rectangle {
             }
             if S.set-tab == 2: Sec {
                 main: true; num: "03"; title: "НАПОМИНАНИЯ";
-                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind", o.id); } } }
+                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-task", o.id); } } }
+                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-event", o.id); } } }
+                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-bday", o.id); } } }
                 SRow { label: "БЕЗ ВРЕМЕНИ — В"; for o in S.set-remind-hour: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("hour", o.id); } } }
             }
             if S.set-tab == 2: Sec {
@@ -224,10 +226,11 @@ export component SettingsPage inherits Rectangle {
                 Note { text: S.backup-info.to-uppercase(); }
                 HorizontalLayout { alignment: start; Button { text: "Открыть папку с копиями"; clicked => { S.open-backups(); } } }
             }
-            if S.set-tab == 3: Sec {
-                num: "06"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
-                Text { text: "Папка с Markdown-файлами (можно ту же, что у Obsidian):"; color: #A3A5AE; font-size: 13px; }
-                Field { mono: true; font-size: 12px; text: S.notes-root; accepted(t) => { S.notes-root-set(t); } }
+            if S.set-tab == 6: Sec {
+                main: true; num: "08"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
+                Text { text: "Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."; color: #A3A5AE; font-size: 13px; wrap: word-wrap; }
+                Field { width: 100%; mono: true; font-size: 12px; text: S.notes-root; accepted(t) => { S.notes-root-set(t); } }
+                Note { text: "РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"; }
             }
             if S.set-tab == 4: Sec {
                 main: true; num: "07"; title: "КЛАВИШИ";
@@ -282,7 +285,7 @@ export component SettingsPage inherits Rectangle {
         Text { x: 14px; y: 208px; width: parent.width - 28px; text: "Так выглядят шапка и ноды с акцентом."; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
     }
     if S.set-tab == 0: Rectangle { x: root.cx + root.cw; y: 42px; width: 24px; height: 1.5px; background: G.accent; }
-    Rectangle {
+    if S.set-tab == 0: Rectangle {
         x: parent.width - root.mx - root.rw; y: parent.height - 86px; width: root.rw; height: 52px;
         border-radius: 6px; border-width: 1px; border-color: G.line;
         Text { x: 8px; y: 6px; text: "ЛИСТ · НАСТРОЙКИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
@@ -291,9 +294,9 @@ export component SettingsPage inherits Rectangle {
             y: 24px; height: 28px;
             Text { text: S.now-label; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             Rectangle { width: 1px; background: G.line; }
-            Text { text: "РАЗДЕЛОВ 06"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: "РАЗДЕЛОВ 07"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             Rectangle { width: 1px; background: G.line; }
-            Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ОБНОВЛ."][S.set-tab]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ОБНОВЛ.", "ЗНАНИЯ"][min(S.set-tab, 6)]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
     }
 }
