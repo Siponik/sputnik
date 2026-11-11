@@ -10,6 +10,7 @@ import { HabitsPage } from "habits.slint";
 import { SettingsPage } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
+import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
 
@@ -44,8 +45,10 @@ export component AppWindow inherits Window {
     no-frame: true;
     preferred-width: 1360px;
     preferred-height: 860px;
-    min-width: 1100px;
-    min-height: 640px;
+    // при масштабе Windows 125–150 % экран ноутбука в логических точках — около 1090×580:
+    // окно должно влезать, а разделы — прокручиваться (держать в лад с set_min_size в view/wire.rs)
+    min-width: 960px;
+    min-height: 540px;
     // шапка ужимается по ширине окна, чтобы кнопки окна справа никогда не обрезались:
     // < 1440 — «Найти» и обновление без подписей, время прячется; < 1240 — вкладки только значками
     // (через changed, а не привязку: иначе ширина шапки и ширина окна зависят друг от друга по кругу)
@@ -245,20 +248,27 @@ export component AppWindow inherits Window {
                 vertical-stretch: 1;
                 // клик по пустому месту возвращает клавиши окну (1–5, N, R…)
                 TouchArea { clicked => { keys.focus(); } }
-                if !S.signed-in: Rectangle {
+                // первый запуск: на маленьком экране или при масштабе 125–150 % — прокрутка, а не обрезка
+                if !S.signed-in: fr := ScrollView {
+                    content-width: self.visible-width;
+                    content-height: max(self.visible-height, st1.y + st1.height + 140px);
+                    Rectangle {
+                    width: fr.content-width;
+                    height: fr.content-height;
                     property <length> mx: 8px;
                     property <length> nw: (self.width - 2 * self.mx - 3 * 42px) / 4;
                     Text { x: parent.mx; y: 14px; text: "Первый запуск"; font-size: 60px; font-weight: 200; color: G.ink; }
                     Text { x: parent.mx; y: 90px; text: "ТРИ ШАГА · ОКОЛО МИНУТЫ · ВСЁ МОЖНО ПОМЕНЯТЬ В НАСТРОЙКАХ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #8A8C96; }
                     // 01 · вход и доступы
                     st1 := Rectangle {
-                        x: parent.mx; y: 148px; width: parent.nw * 1.4; height: s1.preferred-height + 50px;
+                        x: parent.mx; y: 148px; width: parent.nw * 1.4; height: 30px + s1.preferred-height;
                         border-radius: 12px; background: G.node; border-width: 1px; border-color: G.accent-line; clip: true;
                         Rectangle { y: 0; height: 30px; background: G.head-main;
                             Text { x: 12px; text: "01  ВХОД И ДОСТУПЫ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
                             Text { x: parent.width - self.preferred-width - 12px; text: "СЕЙЧАС"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; } }
                         s1 := VerticalLayout {
                             y: 30px;
+                            height: self.preferred-height;
                             padding: 14px;
                             spacing: 10px;
                             HorizontalLayout {
@@ -296,13 +306,13 @@ export component AppWindow inherits Window {
                     Rectangle { x: st1.x + st1.width - 4px; y: st1.y + 11px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; }
                     // 02 · что показывать
                     st2 := Rectangle {
-                        x: st1.x + st1.width + 42px; y: 148px; width: parent.nw; height: 230px;
+                        x: st1.x + st1.width + 42px; y: 148px; width: parent.nw; height: 30px + s2.preferred-height;
                         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
                         Rectangle { y: 0; height: 30px; background: #3D3E45;
                             Text { x: 12px; text: "02  ЧТО ПОКАЗЫВАТЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
                             Text { x: parent.width - self.preferred-width - 12px; text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #ffffffb0; vertical-alignment: center; height: parent.height; } }
-                        VerticalLayout {
-                            y: 30px; padding: 14px; spacing: 0;
+                        s2 := VerticalLayout {
+                            y: 30px; height: self.preferred-height; padding: 14px; spacing: 0;
                             for c[i] in ["Мои задачи", "Основной календарь", "Праздники России", "Дни рождения", "Рабочий календарь"]: Rectangle {
                                 height: 36px;
                                 Rectangle { x: 0; y: 11px; width: 14px; height: 14px; border-radius: 3px; border-width: 1px; border-color: #7C7E88; background: i < 3 ? #3D3E45 : transparent;
@@ -314,13 +324,13 @@ export component AppWindow inherits Window {
                     Rectangle { x: st2.x + st2.width; y: st2.y + 15px; width: 42px; height: 1px; background: #6E7079; }
                     // 03 · готово
                     Rectangle {
-                        x: st2.x + st2.width + 42px; y: 148px; width: parent.nw; height: 128px;
+                        x: st2.x + st2.width + 42px; y: 148px; width: parent.nw; height: 30px + s3.preferred-height;
                         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
                         Rectangle { y: 0; height: 30px; background: #3D3E45;
                             Text { x: 12px; text: "03  ГОТОВО"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
                             Text { x: parent.width - self.preferred-width - 12px; text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #ffffffb0; vertical-alignment: center; height: parent.height; } }
-                        VerticalLayout {
-                            y: 30px; padding: 12px; spacing: 0;
+                        s3 := VerticalLayout {
+                            y: 30px; height: self.preferred-height; padding: 12px; spacing: 0;
                             for h[i] in ["Ctrl N — создать из любого места", "«Запиши в Спутник» в чате с Claude", "Сводка дня в Telegram в 8:00"]: Rectangle {
                                 height: 27px;
                                 Text { x: 0; text: ["А", "Б", "В"][i]; font-family: G.mono; font-size: 9px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
@@ -342,6 +352,7 @@ export component AppWindow inherits Window {
                         border-radius: 6px; border-width: 1px; border-color: #55575F;
                         Rectangle { x: 14px; y: 17px; width: 6px; height: 6px; border-radius: 3px; background: G.red; }
                         Text { x: 28px; text: "НЕТ СВЯЗИ С GOOGLE · ПОВТОРЮ ЧЕРЕЗ МИНУТУ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.red; vertical-alignment: center; height: parent.height; }
+                    }
                     }
                 }
                 if S.signed-in && S.tab == 0: TodayPage { }
@@ -403,6 +414,7 @@ export component AppWindow inherits Window {
                 Text { x: parent.width - self.preferred-width - 13px; text: S.version + " → " + S.upd-version; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; } }
             ul := VerticalLayout {
                 y: 34px;
+                height: self.preferred-height;
                 padding: 20px;
                 spacing: 14px;
                 HorizontalLayout {
@@ -416,7 +428,8 @@ export component AppWindow inherits Window {
                     }
                 }
                 Text { text: "Что нового"; font-size: 13px; font-weight: 600; color: G.ink; }
-                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                // длинный список «Что нового» не выталкивает кнопки за низ окна
+                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; overflow: elide; height: min(self.preferred-height, max(60px, root.height - 360px)); }
                 HorizontalLayout {
                     spacing: 10px;
                     alignment: start;
@@ -455,6 +468,7 @@ export component AppWindow inherits Window {
                 Text { x: parent.width - self.preferred-width - 13px; text: S.status-ok && !S.offline ? "ВСЁ В ПОРЯДКЕ" : "ЕСТЬ ВОПРОСЫ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #ffffffd0; vertical-alignment: center; height: parent.height; } }
             sl := VerticalLayout {
                 y: 34px;
+                height: self.preferred-height;
                 padding: 14px;
                 spacing: 0;
                 for r[i] in [

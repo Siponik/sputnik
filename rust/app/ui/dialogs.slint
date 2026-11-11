@@ -367,9 +367,10 @@ export component CreateDialog inherits Overlay {
                 Text { text: "?"; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
             }
         }
-        // поля
+        // поля: в низком окне (масштаб 125–150 %) — прокрутка, а не уход под низ окна
+        ScrollView {
+        x: 22px; y: 132px; width: root.W - 44px - 270px - 22px; height: root.H - 132px - 60px - 4px;
         VerticalLayout {
-            x: 22px; y: 132px; width: root.W - 44px - 270px - 22px;
             spacing: 10px;
             alignment: start;
             if S.c-kind == 0 || S.c-kind == 2: FRow {
@@ -428,6 +429,7 @@ export component CreateDialog inherits Overlay {
                 }
             }
         }
+        }
         // выбор списка
         if root.dests && (S.c-kind == 0 || S.c-kind == 2): Rectangle {
             x: 22px + 116px; y: 132px + 38px;
@@ -455,8 +457,9 @@ export component CreateDialog inherits Overlay {
             }
         }
         // превью справа
+        ScrollView {
+        x: root.W - 22px - 248px; y: 132px; width: 248px; height: root.H - 132px - 60px - 4px;
         VerticalLayout {
-            x: root.W - 22px - 248px; y: 132px; width: 248px;
             spacing: 12px;
             alignment: start;
             Text { text: S.c-kind == 0 ? "Так появится на доске" : S.c-kind == 1 ? "Так появится в календаре" : S.c-kind == 2 ? "Так появится в «Привычках»" : "Так появится в календаре"; font-size: 12.5px; color: #A3A5AE; }
@@ -499,6 +502,7 @@ export component CreateDialog inherits Overlay {
                 border-color: G.line;
                 ht := Text { x: 12px; width: parent.width - 24px; text: "? " + S.c-hint; font-size: 12px; color: #A3A5AE; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
             }
+        }
         }
         // низ
         Rectangle {
@@ -624,13 +628,14 @@ export component Confirm inherits Overlay {
     Node {
         x: (parent.width - self.width) / 2;
         y: (parent.height - self.height) / 2;
-        width: 420px;
-        height: 170px;
+        width: min(420px, parent.width - 32px);
+        // высота по тексту вопроса: длинный вопрос не прячет кнопки
+        height: max(170px, 30px + cl.preferred-height);
         num: "!!";
         title: "ТОЧНО?";
         head: #8A3A2E;
         TouchArea { }
-        VerticalLayout {
+        cl := VerticalLayout {
             padding: 16px;
             spacing: 14px;
             Text { text: S.confirm; color: G.ink; font-size: 14px; wrap: word-wrap; vertical-stretch: 1; }

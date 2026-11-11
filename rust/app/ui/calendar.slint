@@ -345,7 +345,13 @@ export component CalendarPage inherits Rectangle {
     property <length> pw: 324px;
     property <length> mx: 8px;
     property <length> mw: self.width - 2 * root.mx - root.pw - 8px;
-    property <length> mh: max(420px, self.height - 64px - 44px);
+    // главная нода — по высоте окна (сетка недели внутри прокручивается), снизу место под обзор и штамп;
+    // раньше не меньше 420 px,
+    // и в низком окне (масштаб 125–150 %) низ календаря и обзор уходили за край
+    property <length> mh: max(260px, self.height - 64px - 76px);
+    // форма «Добавить на этот день» — не выше окна и не ниже его края
+    property <length> fh: min(400px, self.height - 64px - 16px);
+    property <length> fy: max(64px, min(64px + 86px, self.height - root.fh - 8px));
     property <bool> form: root.adding || S.add-time != "";
 
     // ---------- панель ----------
@@ -458,7 +464,7 @@ export component CalendarPage inherits Rectangle {
 
     // ---------- форма «добавить на этот день» (G_CalAdd) ----------
     if root.form: Rectangle {
-        x: panel.x - 24px; y: panel.y + 86px; width: root.pw + 24px; height: 400px;
+        x: panel.x - 24px; y: root.fy; width: root.pw + 24px; height: root.fh;
         border-radius: 12px;
         background: G.node;
         border-width: 1px;
@@ -532,8 +538,8 @@ export component CalendarPage inherits Rectangle {
             }
         }
     }
-    if root.form: DashBox {
-        x: panel.x - 24px; y: panel.y + 86px + 400px + 18px; width: root.pw + 24px; height: 52px;
+    if root.form && root.fy + root.fh + 18px + 52px <= root.height: DashBox {
+        x: panel.x - 24px; y: root.fy + root.fh + 18px; width: root.pw + 24px; height: 52px;
         c: #8A7430;
         Rectangle {
             x: 10px; y: 6px; width: 40px; height: 40px; border-radius: 20px; border-width: 1px; border-color: #6E7079;

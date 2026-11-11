@@ -99,8 +99,11 @@ component Sec inherits Rectangle {
         Text { x: 13px; text: num + "  " + title; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
         Text { x: parent.width - self.preferred-width - 13px; text: aside; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
     }
+    // высота — по содержимому: без явной высоты раскладка растягивается на всю карточку
+    // и уезжает на 34 px шапки вниз — низ (кнопки) обрезался
     sv := VerticalLayout {
         y: 34px;
+        height: self.preferred-height;
         padding: 18px;
         padding-left: 20px;
         spacing: 12px;
@@ -120,7 +123,9 @@ export component SettingsPage inherits Rectangle {
     property <length> mx: 8px;
     property <length> cx: root.mx + 264px;
     property <length> rw: 260px;
-    property <length> cw: S.set-tab == 0 ? self.width - root.cx - root.rw - 24px - root.mx : self.width - root.cx - root.mx - 12px;
+    // предпросмотр справа — только когда хватает ширины (масштаб 125–150 % и маленькие экраны)
+    property <bool> prev: S.set-tab == 0 && self.width >= 1100px;
+    property <length> cw: root.prev ? self.width - root.cx - root.rw - 24px - root.mx : self.width - root.cx - root.mx - 12px;
     // навигация
     Rectangle {
         x: root.mx; y: 20px; width: 240px; height: parent.height - 40px;
@@ -297,7 +302,7 @@ export component SettingsPage inherits Rectangle {
         }
     }
     // справа: предпросмотр (Вид) и штамп
-    if S.set-tab == 0: Rectangle {
+    if root.prev: Rectangle {
         x: parent.width - root.mx - root.rw; y: 20px; width: root.rw; height: 248px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
         Rectangle { y: 0; height: 32px; background: G.head-main;
@@ -313,8 +318,8 @@ export component SettingsPage inherits Rectangle {
         }
         Text { x: 14px; y: 208px; width: parent.width - 28px; text: "Так выглядят шапка и ноды с акцентом."; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
     }
-    if S.set-tab == 0: Rectangle { x: root.cx + root.cw; y: 42px; width: 24px; height: 1.5px; background: G.accent; }
-    if S.set-tab == 0: Rectangle {
+    if root.prev: Rectangle { x: root.cx + root.cw; y: 42px; width: 24px; height: 1.5px; background: G.accent; }
+    if root.prev && root.height >= 400px: Rectangle {
         x: parent.width - root.mx - root.rw; y: parent.height - 86px; width: root.rw; height: 52px;
         border-radius: 6px; border-width: 1px; border-color: G.line;
         Text { x: 8px; y: 6px; text: "ЛИСТ · НАСТРОЙКИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }

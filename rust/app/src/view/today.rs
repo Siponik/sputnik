@@ -109,6 +109,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         src.push(SrcNode { title: ss("ПРИВЫЧКИ"), label: ss("СЕГОДНЯ"), hue: color("gold"), y, h, rows: model(srows), dashed: false });
     }
     g.set_center_h(habits_top + if hs0.is_empty() { 0.0 } else { 92.0 } + 16.0);
+    let src_end = src.iter().map(|n| n.y + n.h).fold(0.0f32, f32::max);
+    g.set_today_h((TOP + habits_top + if hs0.is_empty() { 0.0 } else { 92.0 } + 16.0 + 40.0).max(src_end + 20.0));
     g.set_habits_top(habits_top);
     // загрузка дня по часам 09–21: цвет списка, где в этот час задача со временем
     let mut cells = vec![Color::from_argb_u8(0, 0, 0, 0); 12];
