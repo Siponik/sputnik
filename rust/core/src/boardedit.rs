@@ -1,4 +1,4 @@
-//! Правки черновика доски { view, fields, cols } в редакторе. Порт app/lib/core/boardedit.dart.
+//! Правки черновика доски { view, fields, cols } в редакторе. Порт tracker/src/lib/boardedit.js.
 use crate::j::*;
 
 pub fn field_info_list() -> Value {

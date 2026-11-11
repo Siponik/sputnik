@@ -1,4 +1,4 @@
-//! Логика выпадающего списка (поиск, клавиши, подпись, место меню). Порт app/lib/core/dropdown.dart.
+//! Логика выпадающего списка (поиск, клавиши, подпись, место меню). Порт tracker/src/lib/dropdown.js.
 use crate::j::*;
 
 fn norm(v: &Value) -> String {

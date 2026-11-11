@@ -1,4 +1,4 @@
-//! Вид «Стикеры»: раскладка по темам / срокам / людям, порядок, сроки, наклон. Порт app/lib/core/stickers.dart.
+//! Вид «Стикеры»: раскладка по темам / срокам / людям, порядок, сроки, наклон. Порт tracker/src/lib/stickers.js.
 use crate::dates::{add_days, parse_ymd, ymd};
 use crate::j::*;
 use crate::rx;

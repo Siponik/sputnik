@@ -1,4 +1,4 @@
-//! «Когда» словами → день и время. Порт tracker/src/lib/when.js (через app/lib/core/when.dart).
+//! «Когда» словами → день и время. Порт tracker/src/lib/when.js.
 //!   parse_when("завтра 15:00", today)   → day «2026-10-21», time «15:00», rest «»
 //!   parse_when("скетч в пятницу 17.30") → day <ближайшая пятница>, time «17:30», rest «скетч»
 use crate::dates::{add_days, dow_mon, js_date, ymd};

@@ -1,4 +1,4 @@
-//! Шапка, «Состояние», обновления, левая колонка и настройки — чистая логика. Порт app/lib/core/shell.dart.
+//! Шапка, «Состояние», обновления, левая колонка и настройки — чистая логика. Порт tracker/src/lib/shell.js.
 use crate::j::*;
 use crate::rx;
 use chrono::{Local, NaiveDateTime, TimeZone, Timelike};

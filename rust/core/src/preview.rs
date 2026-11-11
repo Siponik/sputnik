@@ -1,4 +1,4 @@
-//! Картинка задачи: tasks[id].preview = { thumb, file, w, h, at }. Порт app/lib/core/preview.dart.
+//! Картинка задачи: tasks[id].preview = { thumb, file, w, h, at }. Порт tracker/src/lib/preview.js.
 use crate::j::*;
 use crate::rx;
 
