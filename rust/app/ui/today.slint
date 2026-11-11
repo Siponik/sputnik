@@ -4,6 +4,7 @@
 import { G } from "theme.slint";
 import { Mono, Brackets, Button, Field, Empty } from "kit.slint";
 import { S, TaskRow, SrcNode, Wire } from "store.slint";
+import { ScrollView } from "std-widgets.slint";
 
 component SecLabel inherits HorizontalLayout {
     in property <string> text;
@@ -123,10 +124,16 @@ component DayRow inherits Rectangle {
 
 export component TodayPage inherits Rectangle {
     public function focus-quick() { quick.grab(); }
+    // схема не ужимается меньше 1080 px и растёт вниз со списком дел — в маленьком окне
+    // (масштаб Windows 125–150 %) её прокручивают, а не теряют низ и правый край
+    sv := ScrollView {
+    content-width: max(self.visible-width, 1080px);
+    content-height: max(self.visible-height, 24px + cv.content-h);
     cv := Rectangle {
-        x: max(0px, (parent.width - self.width) / 2);
+        x: max(0px, (sv.content-width - self.width) / 2);
         y: 24px;
-        width: max(1080px, parent.width - 16px);
+        width: max(1080px, sv.content-width - 16px);
+        property <length> content-h: max(max(S.today-h * 1px, 260px), S.today-events.length > 0 ? 342px + 42px + S.today-events.length * 26px + 20px : 0px);
         // источники 20…250, провода по 56 px, вывод 280 — середина забирает остальное
         property <length> m0: 306px;
         property <length> m1: self.width - 356px;
@@ -135,7 +142,7 @@ export component TodayPage inherits Rectangle {
         property <float> M1: m1 / 1px;
         property <float> R0: r0 / 1px;
         property <float> VW: self.width / 1px;
-        height: parent.height - 24px;
+        height: sv.content-height - 24px;
 
         SecLabel { x: 20px; y: 0; width: 230px; height: 12px; text: "01 · ИСТОЧНИКИ"; }
         SecLabel { x: cv.m0; y: 0; width: cv.m1 - cv.m0; height: 12px; text: "02 · СБОРКА ДНЯ"; }
@@ -379,7 +386,7 @@ export component TodayPage inherits Rectangle {
             Sock { x: -6px; y: 41px; fill: G.ink; }
         }
         if S.today-events.length > 0: Rectangle {
-            x: cv.r0; y: 342px; width: 280px; height: 30px + 12px + min(S.today-events.length, 5) * 26px;
+            x: cv.r0; y: 342px; width: 280px; height: 30px + 12px + S.today-events.length * 26px;
             border-radius: 8px;
             background: G.node;
             border-width: 1px;
@@ -417,5 +424,6 @@ export component TodayPage inherits Rectangle {
                 Text { text: "ВЕРСИЯ " + S.version; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             }
         }
+    }
     }
 }

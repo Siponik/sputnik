@@ -35,10 +35,49 @@ fn str_(x: &slint::SharedString) -> String {
 
 /// Минимальный размер окна при своей рамке (no-frame): иначе winit даёт сжать окно так,
 /// что обрезается шапка с кнопками. Держим в двух местах: min-width/min-height в ui/app.slint и здесь.
+/// При масштабе Windows 125–150 % экран в логических точках маленький — минимум не больше экрана.
+const MIN_W: f64 = 960.0;
+const MIN_H: f64 = 540.0;
+
 fn set_min_size(w: &slint::Weak<AppWindow>) {
     if let Some(w) = w.upgrade() {
         use slint::winit_030::{winit::dpi::LogicalSize, WinitWindowAccessor};
-        w.window().with_winit_window(|ww| ww.set_min_inner_size(Some(LogicalSize::new(1100.0, 640.0))));
+        w.window().with_winit_window(|ww| {
+            let (mut mw, mut mh) = (MIN_W, MIN_H);
+            if let Some(m) = ww.current_monitor() {
+                let sf = m.scale_factor().max(0.5);
+                let s = m.size().to_logical::<f64>(sf);
+                mw = mw.min(s.width - 20.0);
+                mh = mh.min(s.height - 60.0);
+            }
+            ww.set_min_inner_size(Some(LogicalSize::new(mw.max(640.0), mh.max(400.0))));
+        });
+    }
+}
+
+/// Окно больше экрана (масштаб 125–150 %, ноутбук) — ужимаем до экрана и разворачиваем,
+/// иначе низ и правый край окна уходят за экран и «половину не видно».
+fn fit_screen(w: &slint::Weak<AppWindow>) {
+    let Some(w) = w.upgrade() else { return };
+    use slint::winit_030::{winit::dpi::{PhysicalPosition, PhysicalSize}, WinitWindowAccessor};
+    let big = w.window().with_winit_window(|ww| {
+        let m = ww.current_monitor()?;
+        let sf = m.scale_factor().max(0.5);
+        let (ms, os) = (m.size(), ww.outer_size());
+        let (mw, mh) = (ms.width as f64 - 20.0 * sf, ms.height as f64 - 60.0 * sf);
+        if os.width as f64 <= mw && os.height as f64 <= mh {
+            return Some(false);
+        }
+        // размер «не развёрнутого» окна — тоже в пределах экрана
+        let (nw, nh) = ((os.width as f64).min(mw) as u32, (os.height as f64).min(mh) as u32);
+        let _ = ww.request_inner_size(PhysicalSize::new(nw, nh));
+        let p = m.position();
+        ww.set_outer_position(PhysicalPosition::new(p.x + (ms.width.saturating_sub(nw) / 2) as i32, p.y + 8));
+        Some(true)
+    });
+    if big.flatten() == Some(true) && !w.window().is_maximized() {
+        w.window().set_maximized(true);
+        w.global::<S>().set_win_maxed(true);
     }
 }
 
@@ -48,7 +87,10 @@ pub fn wire(w: &AppWindow) {
     // ---------- оболочка ----------
     // своя рамка окна (no-frame): перетаскивание, свернуть, развернуть, закрыть
     let ww = w.as_weak();
-    slint::Timer::single_shot(std::time::Duration::from_millis(50), move || set_min_size(&ww)); // при старте, когда окно уже показано
+    slint::Timer::single_shot(std::time::Duration::from_millis(50), move || { set_min_size(&ww); fit_screen(&ww); }); // при старте, когда окно уже показано
+    // и ещё раз чуть позже: на медленном старте окно и монитор появляются не сразу
+    let ww = w.as_weak();
+    slint::Timer::single_shot(std::time::Duration::from_millis(600), move || { set_min_size(&ww); fit_screen(&ww); });
     let ww = w.as_weak();
     g.on_win_drag(move || {
         set_min_size(&ww);

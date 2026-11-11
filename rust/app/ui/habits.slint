@@ -103,8 +103,10 @@ component Panel inherits Rectangle {
         Text { x: 13px; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
         Text { x: parent.width - self.preferred-width - 13px; text: S.hp-sched; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
     }
+    // в низком окне панель прокручивается, а не теряет «Окно» и «Напомнить»
+    ScrollView {
+    y: 34px; height: parent.height - 34px;
     VerticalLayout {
-        y: 34px; height: parent.height - 34px;
         padding: 16px;
         spacing: 10px;
         alignment: start;
@@ -188,6 +190,7 @@ component Panel inherits Rectangle {
             }
             Rectangle { }
         }
+    }
     }
 }
 
@@ -344,7 +347,9 @@ export component HabitsPage inherits Rectangle {
     property <length> mx: 8px;
     property <length> pw: 380px;
     property <length> aw: self.width - 2 * root.mx - root.pw - 8px;
-    property <length> cw: (root.aw - 2 * 18px) / 3;
+    // узкое окно (масштаб 125–150 %) — карточки в 2 колонки, а не сплющенные 3
+    property <int> cols: root.aw < 720px ? 2 : 3;
+    property <length> cw: (root.aw - (root.cols - 1) * 18px) / root.cols;
     property <int> sel-i: 0;
     Toolbar { x: root.mx; y: 8px; width: parent.width - 2 * root.mx; month: S.habit-mode == "month"; }
 
@@ -377,30 +382,30 @@ export component HabitsPage inherits Rectangle {
             x: root.mx - 8px; y: 108px; width: root.aw + 16px; height: parent.height - 108px;
             Rectangle {
                 x: 0; y: 0; width: root.aw + 16px;
-                height: 10px + ceil(S.habits.length / 3) * 222px + 140px;
+                height: 10px + ceil(S.habits.length / root.cols) * 222px + 140px;
                 for h[i] in S.habits: Card {
-                    x: 8px + mod(i, 3) * (root.cw + 18px);
-                    y: 8px + floor(i / 3) * 222px;
+                    x: 8px + mod(i, root.cols) * (root.cw + 18px);
+                    y: 8px + floor(i / root.cols) * 222px;
                     width: root.cw;
                     h: h;
                     sel: h.id == S.hp-id;
                 }
                 for h[i] in S.habits: Brackets {
                     visible: h.id == S.hp-id;
-                    x: 8px + mod(i, 3) * (root.cw + 18px);
-                    y: 8px + floor(i / 3) * 222px;
+                    x: 8px + mod(i, root.cols) * (root.cw + 18px);
+                    y: 8px + floor(i / root.cols) * 222px;
                     width: root.cw; height: 206px;
                 }
                 if S.habits.length == 0: Text { x: 8px; y: 20px; text: "Привычек пока нет — нажми «＋ Привычка» или напиши строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"; color: G.muted; font-size: 13px; wrap: word-wrap; width: root.aw; }
                 // совет енота
                 if S.habit-tip != "": DashBox {
-                    x: 8px; y: 8px + ceil(S.habits.length / 3) * 222px + 10px; width: root.cw * 2 + 18px; height: 72px;
+                    x: 8px; y: 8px + ceil(S.habits.length / root.cols) * 222px + 10px; width: root.cw * 2 + 18px; height: 72px;
                     c: #8A7430;
                     Circ { x: 12px; y: 14px; width: 44px; height: 44px; border-radius: 22px; text: "УРА"; }
                     Text { x: 70px; width: parent.width - 84px; text: S.habit-tip; font-size: 13px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
                 }
                 Field {
-                    x: 8px; y: 8px + ceil(S.habits.length / 3) * 222px + (S.habit-tip != "" ? 96px : 10px); width: root.cw * 2 + 18px;
+                    x: 8px; y: 8px + ceil(S.habits.length / root.cols) * 222px + (S.habit-tip != "" ? 96px : 10px); width: root.cw * 2 + 18px;
                     placeholder: "＋ Новая привычка · «чтение 20 минут вечером» · Enter";
                     accepted(t) => { if (t != "") { S.habit-add(t); self.clear(); } }
                 }
@@ -409,16 +414,24 @@ export component HabitsPage inherits Rectangle {
         if S.hp-id != "": Panel { x: parent.width - root.mx - root.pw; y: 108px; width: root.pw; height: parent.height - 116px; }
     }
 
-    if S.habit-mode == "month": Rectangle {
+    // «Месяц» с большим числом привычек — прокрутка вниз, итоги не уходят за край
+    if S.habit-mode == "month": ms := ScrollView {
+        y: 56px;
+        height: parent.height - 56px;
+        content-width: self.visible-width;
+        content-height: max(self.visible-height, 28px + 80px + S.habit-month.length * 47px + 44px + 20px + 84px + 16px);
+        Rectangle {
+        width: ms.content-width;
+        height: ms.content-height;
         MonthTable {
-            x: root.mx; y: 64px; width: parent.width - 2 * root.mx;
+            x: root.mx; y: 8px; width: parent.width - 2 * root.mx;
             height: 80px + S.habit-month.length * 47px + 44px;
         }
-        Brackets { x: root.mx; y: 64px; width: parent.width - 2 * root.mx; height: 80px + S.habit-month.length * 47px + 44px; }
+        Brackets { x: root.mx; y: 8px; width: parent.width - 2 * root.mx; height: 80px + S.habit-month.length * 47px + 44px; }
         for i in min(3, S.hm-sum.length / 2): Rectangle {
             property <length> w4: (parent.width - 2 * root.mx - 3 * 16px) / 4;
             x: root.mx + i * (self.w4 + 16px);
-            y: 84px + 80px + S.habit-month.length * 47px + 44px + 20px;
+            y: 28px + 80px + S.habit-month.length * 47px + 44px + 20px;
             width: self.w4; height: 84px;
             border-radius: 8px;
             background: G.node;
@@ -431,11 +444,12 @@ export component HabitsPage inherits Rectangle {
         DashBox {
             property <length> w4: (parent.width - 2 * root.mx - 3 * 16px) / 4;
             x: root.mx + 3 * (self.w4 + 16px);
-            y: 84px + 80px + S.habit-month.length * 47px + 44px + 20px;
+            y: 28px + 80px + S.habit-month.length * 47px + 44px + 20px;
             width: self.w4; height: 72px;
             c: #8A7430;
             Circ { x: 12px; y: 14px; width: 44px; height: 44px; border-radius: 22px; text: "ФЛАГ"; }
             Text { x: 70px; width: parent.width - 80px; text: "Клик по клетке — меню дня. Задним числом можно отметить любой день месяца."; font-size: 12.5px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
         }
+    }
     }
 }
