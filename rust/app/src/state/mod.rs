@@ -1114,7 +1114,7 @@ impl App {
         items
     }
 
-    /// Уведомления, пока приложение открыто: окно привычки; задачи — если бот не привязан.
+    /// Уведомления, пока приложение открыто: окно привычки; задачи — если бот не привязан или не напоминает.
     pub fn tick_notify(&mut self) {
         if self.layer["settings"]["notify"]["v"] == false {
             return;
@@ -1127,7 +1127,8 @@ impl App {
             self.shown.push(format!("{}|{td}", text(&h["id"])));
             crate::notify::show(&format!("Привычка · {}", text(&h["name"])), "Ещё не отмечено сегодня");
         }
-        if !self.bot_key().is_empty() {
+        // задачи напоминает бот; если он не привязан или в нём выключены напоминания — Windows
+        if !self.bot_key().is_empty() && self.layer["settings"]["tgRemind"]["v"] != false {
             return;
         }
         let now = now_ms();

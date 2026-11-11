@@ -63,6 +63,8 @@ pub struct Ui {
     pub pipe_stage: i32,
     pub arch_q: String,
     pub arch_sphere: String,
+    /// Строка «Найти настройку».
+    pub set_q: String,
 }
 pub use crate::Found;
 

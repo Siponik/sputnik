@@ -438,7 +438,9 @@ impl App {
         }
         let live: Vec<Value> = self.board_lists().into_iter().filter(|l| !t(&self.ll(s(&l["id"]))["quiet"])).collect();
         let today = sputnik_core::habits::now().date();
-        let mut body = json!({"items": self.remind_items(), "today": sbot::snapshot(&live, &self.tasks, &self.layer["tasks"], today), "tz": "Europe/Moscow"});
+        // «Куда слать» → Telegram выключен: бот не напоминает, задачи дня и «Входящие» работают
+        let items = if self.layer["settings"]["tgRemind"]["v"] == false { vec![] } else { self.remind_items() };
+        let mut body = json!({"items": items, "today": sbot::snapshot(&live, &self.tasks, &self.layer["tasks"], today), "tz": "Europe/Moscow"});
         extend(body.as_object_mut().unwrap(), o(&sbot::guess_ctx(&self.board_lists(), &self.layer)));
         let txt = body.to_string();
         let changed = txt != self.bot_last;
