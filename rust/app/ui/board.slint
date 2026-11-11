@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -930,7 +930,11 @@ export component BoardPage inherits Rectangle {
                     height: 32px;
                     border-radius: 4px;
                     background: ma.has-hover ? G.node-hover : transparent;
-                    Text { x: 10px; text: m; color: i == 1 ? G.red : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                    HorizontalLayout {
+                        padding-left: 10px; spacing: 8px;
+                        Icon { name: i == 0 ? "edit" : "trash"; c: i == 1 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }
+                        Text { text: m; color: i == 1 ? G.red : G.ink; font-size: 13px; vertical-alignment: center; }
+                    }
                     ma := TouchArea {
                         clicked => {
                             root.menu = false;

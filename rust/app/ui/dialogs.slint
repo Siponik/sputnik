@@ -1,6 +1,6 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon } from "kit.slint";
 import { S, Opt, Sub, Found } from "store.slint";
 import { ScrollView, TextEdit } from "std-widgets.slint";
 
@@ -233,7 +233,11 @@ export component TaskDialog inherits Overlay {
                     for it[i] in ["Дублировать", "Удалить"]: Rectangle {
                         height: 36px; border-radius: 5px;
                         background: ia.has-hover ? G.node-hover : transparent;
-                        Text { x: 10px; text: it; font-size: 13px; color: i == 1 ? G.red : G.ink; vertical-alignment: center; height: parent.height; }
+                        HorizontalLayout {
+                            padding-left: 10px; spacing: 8px;
+                            Icon { name: i == 0 ? "copy" : "trash"; c: i == 1 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }
+                            Text { text: it; font-size: 13px; color: i == 1 ? G.red : G.ink; vertical-alignment: center; }
+                        }
                         ia := TouchArea { clicked => { root.menu = false; if (i == 0) { S.t-dup(); } else { S.t-delete(); } } mouse-cursor: pointer; }
                     }
                 }

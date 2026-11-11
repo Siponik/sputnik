@@ -1,7 +1,7 @@
 // Главное окно Спутника: шапка с вкладками, разделы, плашка внизу и окна поверх.
 // Вся логика — в Rust (src/view, src/state); окно только показывает модели из глобала S.
 import { G } from "theme.slint";
-import { Mono, Button, Node, Brackets, Empty, IconBtn } from "kit.slint";
+import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon } from "kit.slint";
 import { S } from "store.slint";
 import { TodayPage } from "today.slint";
 import { BoardPage } from "board.slint";
@@ -14,18 +14,23 @@ export { S }
 
 component Tab inherits Rectangle {
     in property <string> text;
+    in property <string> icon;
     in property <bool> active;
     in property <int> count;
     callback clicked;
-    width: tt.preferred-width;
-    tt := Text {
-        text: root.text + (count > 0 ? " · " + count : "");
-        font-family: G.mono;
-        font-size: 11px;
-        font-weight: 500;
-        letter-spacing: 1.5px;
-        color: active || ta.has-hover ? G.ink : #8A8C96;
-        vertical-alignment: center;
+    width: hl.preferred-width;
+    hl := HorizontalLayout {
+        spacing: 7px;
+        if icon != "": Icon { name: icon; width: 13px; height: 13px; y: (parent.height - 13px) / 2; c: active || ta.has-hover ? G.ink : #8A8C96; }
+        tt := Text {
+            text: root.text + (count > 0 ? " · " + count : "");
+            font-family: G.mono;
+            font-size: 11px;
+            font-weight: 500;
+            letter-spacing: 1.5px;
+            color: active || ta.has-hover ? G.ink : #8A8C96;
+            vertical-alignment: center;
+        }
     }
     Rectangle { y: parent.height / 2 + 10px; height: 1px; background: active ? G.accent : transparent; animate background { duration: G.fast; } }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
@@ -120,11 +125,11 @@ export component AppWindow inherits Window {
                     HorizontalLayout {
                         horizontal-stretch: 0;
                         spacing: 12px;
-                        Tab { text: "СЕГОДНЯ"; count: S.today-count; active: S.tab == 0; clicked => { S.go(0); } }
-                        Tab { text: "КАЛЕНДАРЬ"; active: S.tab == 1; clicked => { S.go(1); } }
-                        Tab { text: "ДОСКА"; active: S.tab == 2; clicked => { S.go(2); } }
-                        Tab { text: "ПРИВЫЧКИ"; active: S.tab == 3; clicked => { S.go(3); } }
-                        Tab { text: "ЗНАНИЯ"; active: S.tab == 4; clicked => { S.go(4); } }
+                        Tab { text: "СЕГОДНЯ"; icon: "today"; count: S.today-count; active: S.tab == 0; clicked => { S.go(0); } }
+                        Tab { text: "КАЛЕНДАРЬ"; icon: "calendar"; active: S.tab == 1; clicked => { S.go(1); } }
+                        Tab { text: "ДОСКА"; icon: "board"; active: S.tab == 2; clicked => { S.go(2); } }
+                        Tab { text: "ПРИВЫЧКИ"; icon: "habits"; active: S.tab == 3; clicked => { S.go(3); } }
+                        Tab { text: "ЗНАНИЯ"; icon: "notes"; active: S.tab == 4; clicked => { S.go(4); } }
                     }
                     Rectangle { horizontal-stretch: 1; }
                     if S.upd-version != "": Rectangle {
@@ -183,16 +188,20 @@ export component AppWindow inherits Window {
                         border-radius: 8px;
                         border-width: 1px;
                         border-color: S.tab == 5 ? G.accent-line : (ga.has-hover ? G.line-strong : G.line);
-                        Text { text: "⚙"; font-size: 15px; color: S.tab == 5 ? G.accent : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        Icon { name: "settings"; width: 15px; height: 15px; x: (parent.width - 15px) / 2; y: (parent.height - 15px) / 2; c: S.tab == 5 ? G.accent : G.ink; }
                         ga := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
                     }
                     Rectangle {
-                        width: ct.preferred-width + 28px;
+                        width: chl.preferred-width + 26px;
                         height: 32px;
                         y: 14px;
                         border-radius: 8px;
                         background: ca.has-hover ? #FFFFFF : G.ink;
-                        ct := Text { text: "＋ Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
+                        chl := HorizontalLayout {
+                            alignment: center; spacing: 7px;
+                            Icon { name: "plus"; width: 12px; height: 12px; stroke-width: 2px; c: #1C1D21; }
+                            ct := Text { text: "Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
+                        }
                         ca := TouchArea { clicked => { S.create(""); } mouse-cursor: pointer; }
                     }
                     // кнопки окна (G_Window): 34×32, скругление 8, у «Закрыть» — красный при наведении
@@ -201,11 +210,11 @@ export component AppWindow inherits Window {
                         spacing: 4px;
                         Rectangle { width: 1px; height: 32px; y: 14px; background: G.line; }
                         Rectangle { width: 6px; }
-                        for b[i] in ["—", S.win-maxed ? "❐" : "▢", "✕"]: Rectangle {
+                        for b[i] in ["min", S.win-maxed ? "restore" : "max", "close"]: Rectangle {
                             width: 34px; height: 32px; y: 14px;
                             border-radius: 8px;
                             background: wa.has-hover ? (i == 2 ? #E5484D : #2C2D33) : transparent;
-                            Text { text: b; font-size: 11px; color: wa.has-hover ? #fff : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+                            Icon { name: b; width: 11px; height: 11px; x: (parent.width - 11px) / 2; y: (parent.height - 11px) / 2; stroke-width: 1.2px; c: wa.has-hover ? #fff : #A3A5AE; }
                             wa := TouchArea { clicked => { if (i == 0) { S.win-min(); } else if (i == 1) { S.win-max(); } else { S.win-close(); } } }
                         }
                     }
