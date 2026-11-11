@@ -13,6 +13,7 @@ import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
 import { DatePicker } from "datetime.slint";
 import { ListSettings } from "listset.slint";
 import { CtxMenu } from "menu.slint";
+import { Templates } from "templates.slint";
 import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
@@ -75,8 +76,8 @@ export component AppWindow inherits Window {
 
     keys := FocusScope {
         key-pressed(e) => {
-            if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open) {
-                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); return accept; }
+            if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); return accept; }
                 return reject;
             }
             if (e.modifiers.control) {
@@ -398,6 +399,7 @@ export component AppWindow inherits Window {
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
+        if S.tp-open: Templates { }
         if S.ls-open: ListSettings { }
         if S.menu-open: CtxMenu { }
         if S.dp-open: Rectangle {
