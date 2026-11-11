@@ -188,6 +188,7 @@ export component Field inherits Rectangle {
     in property <length> font-size: 14px;
     in property <bool> mono;
     in property <bool> bare;
+    in property <color> ink: G.ink;
     callback accepted(string);
     callback edited(string);
     callback escape();
@@ -216,7 +217,7 @@ export component Field inherits Rectangle {
         x: bare ? 0 : 10px;
         width: parent.width - (bare ? 0 : 20px);
         height: parent.height;
-        color: G.ink;
+        color: root.ink;
         font-size: root.font-size;
         font-family: mono ? G.mono : G.sans;
         vertical-alignment: center;

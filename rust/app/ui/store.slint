@@ -280,6 +280,12 @@ export global S {
     in property <[Opt]> c-reminds;
     in property <string> c-hint;
     in property <string> c-free;
+    in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками
+    in property <string> c-title;              // название без даты, «!!!», @списка
+    in property <string> c-meta;               // «Завтра 17:00 · !!!»
+    in property <int> c-prio;                  // 0 нет · 1 высокий · 2 средний · 3 низкий
+    callback c-prio-text(string, int) -> string;   // строка с другим приоритетом
+    callback c-add-text(string, string) -> string; // дописать в строку слово («каждую неделю»)
     callback create(string);
     callback c-close();
     callback c-changed(string);
