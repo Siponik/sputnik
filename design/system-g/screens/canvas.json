@@ -688,6 +688,24 @@
    "title": "Окно без рамки Windows: кнопки, логотип, настройки",
    "expand": "fill",
    "page": "r4"
+  },
+  "G_Icons.dc.html": {
+   "x": 1360,
+   "y": 17860,
+   "w": 1280,
+   "h": 820,
+   "title": "Иконки «Системы G»",
+   "expand": "fill",
+   "page": "r4"
+  },
+  "G_ListMenu.dc.html": {
+   "x": 0,
+   "y": 18800,
+   "w": 1280,
+   "h": 820,
+   "title": "Меню по правому клику: список, сфера, колонка",
+   "expand": "fill",
+   "page": "r4"
   }
  },
  "order": [
@@ -763,7 +781,9 @@
   "G_Motion.dc.html",
   "G_NotesRead.dc.html",
   "G_NotesNav.dc.html",
-  "G_Window.dc.html"
+  "G_Window.dc.html",
+  "G_Icons.dc.html",
+  "G_ListMenu.dc.html"
  ],
  "notes": {
   "head": {

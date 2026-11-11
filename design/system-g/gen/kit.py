@@ -240,8 +240,36 @@ def ab(x, y, inner, w=None, extra=''):
     return f'<div style="position: absolute; left: {x}px; top: {y}px;{ww}{extra}">{inner}</div>'
 
 
+GLYPHS = {'＋': 'plus', '⋯': 'more', '✕': 'close', '⤢': 'expand', '◉': 'graph', '⚙': 'settings', '↗': 'open', '✓': 'check', '◷': 'clock', '↻': 'repeat', '✦': 'star', '⌕': 'search', '⏱': 'timer'}
+
+
+def iconize(html):
+    """Символы ＋ ⋯ ✕ ⤢ ◉ ⚙ ↗ ✓ в тексте → иконки из design/system-g/icons (кроме svg и скриптов)."""
+    import re, os
+    d = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'icons')
+    if not os.path.isdir(d):
+        d = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'icons')
+    cache = {}
+    def ic(name):
+        if name not in cache:
+            src = open(os.path.join(d, name + '.svg')).read()
+            body = src[src.index('>') + 1:src.rindex('</svg>')]
+            cache[name] = (f'<svg width="1.05em" height="1.05em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" '
+                           f'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align: -.16em; flex: none">{body}</svg>')
+        return cache[name]
+    parts = re.split(r'(<svg[\s\S]*?</svg>|<script[\s\S]*?</script>|<style[\s\S]*?</style>|<[^>]+>)', html)
+    out = []
+    for p in parts:
+        if not p.startswith('<'):
+            for g, n in GLYPHS.items():
+                if g in p:
+                    p = p.replace(g, ic(n))
+        out.append(p)
+    return ''.join(out)
+
+
 def save(fname, html, title, x, y, page_id):
-    open(P + fname, 'w').write(html)
+    open(P + fname, 'w').write(iconize(html))
     c = json.load(open(P + 'canvas.json'))
     c['boards'][fname] = {"x": x, "y": y, "w": 1280, "h": 820, "title": title, "expand": "fill", "page": page_id}
     if fname not in c['order']:
