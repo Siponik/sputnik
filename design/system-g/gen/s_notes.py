@@ -210,7 +210,7 @@ def tool(links_on):
     lb = (btn('↔ Связи · 11', 'acc', True) if links_on else btn('↔ Связи · 11', 'sec', True))
     return (f'<div style="height: 44px; box-sizing: border-box; padding: 0 14px 0 20px; border-bottom: 1px solid {LINE}; display: flex; align-items: center; gap: 10px">'
             f'<span style="font-size: 12.5px; color: {MUT}">3D › Техники</span><span style="flex: 1"></span>'
-            f'{seg(["ПРАВКА", "ЧТЕНИЕ"], "ПРАВКА")}{lb}{btn("Граф", "ghost", True)}<span style="color: {MUT}; font-size: 15px; padding: 0 4px">⋯</span></div>')
+            f'{btn("⛶ Фокус", "ghost", True)}{lb}{btn("Граф", "ghost", True)}<span style="color: {MUT}; font-size: 15px; padding: 0 4px">⋯</span></div>')
 
 
 def chipv(t, c=None):
@@ -347,7 +347,7 @@ rd = (nhead('', 'ЧИТАЮ · ЗАПЕКАНИЕ НОРМАЛЕЙ', '↔ 11', O
       <div style="margin-top: 12px; font-size: 13.5px; line-height: 22px; color: #D4D5DA">1. Низкий полигонаж готов, UV — см. {wl('UV без растяжений')}.<br>2. Кейдж чуть больше модели.<br>3. Пеку в Substance, потом {wl('Умные маски Substance')}.<br><span style="color: {MUT}">…ещё 2 раздела</span></div>
       <div style="margin-top: 12px; font-size: 12px; color: {MUT}">Клик по ссылке — граф переезжает к той заметке, панель показывает её.</div></div>
       <div style="margin-top: 12px; border-top: 1px solid {LINE}; padding: 10px 16px 0">{micro('СОСЕДИ · 11', MUT)}<div style="margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px">{''.join(f'<span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px">{dot(OR)}{n}</span>' for n in nb_)}<span style="font-size: 12.5px; color: {MUT}; align-self: center">ещё 6</span></div></div>
-      <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid {LINE}; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px">{btn('Открыть в заметках', 'acc', True, '; width: 100%')}<div style="display: flex; gap: 8px">{btn('Читать целиком', sm=True, extra='; flex: 1')}{btn('Локальный граф', sm=True, extra='; flex: 1')}</div><div style="display: flex; gap: 12px; font-size: 12px; color: {MUT}"><span>{kbd('ENTER')} открыть</span><span>{kbd('L')} локальный</span><span>{kbd('ESC')} закрыть</span></div></div>""")
+      <div style="position: absolute; left: 0; right: 0; bottom: 0; border-top: 1px solid {LINE}; padding: 12px 16px; display: flex; flex-direction: column; gap: 8px">{btn('Открыть в заметках', 'acc', True, '; width: 100%')}<div style="display: flex; gap: 8px">{btn('Открыть в фокусе', sm=True, extra='; flex: 1')}{btn('Локальный граф', sm=True, extra='; flex: 1')}</div><div style="display: flex; gap: 12px; font-size: 12px; color: {MUT}"><span>{kbd('ENTER')} открыть</span><span>{kbd('L')} локальный</span><span>{kbd('ESC')} закрыть</span></div></div>""")
 tip = node(928, 0, 320, 700, rd, hub=True)
 zoom = f'<div style="position: absolute; left: 872px; top: 44px; display: flex; flex-direction: column; gap: 6px">' + ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {LINE}; background: {NODE}; display: grid; place-items: center; color: {MUT}">{t}</span>' for t in ['＋', '−', '⤢']) + '</div>'
 
