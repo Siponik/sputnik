@@ -108,7 +108,7 @@ fn folder(path: &str) -> String {
 }
 
 /// Кусок текста вокруг ссылки на заметку — для карточки «Ссылаются сюда».
-fn snippet(body: &str, title: &str) -> String {
+pub fn snippet(body: &str, title: &str) -> String {
     let low = body.to_lowercase();
     let key = format!("[[{}", title.to_lowercase());
     let line = match low.find(&key) {

@@ -19,18 +19,19 @@ export global G {
     out property <color> ink: #E2E3E8;
     out property <color> muted: #9A9CA6;
     out property <color> dim: #7A7C86;
-    out property <color> accent: #F0A04B;
-    out property <color> accent-ink: #FFD29C;
-    out property <color> accent-wash: #2E2722;
-    out property <color> accent-line: #6A5238;
-    out property <color> on-accent: #2A1A0A;
+    // Акцент меняется из Настройки → Вид (ставит Rust через global G).
+    in-out property <color> accent: #F0A04B;
+    in-out property <color> accent-ink: #FFD29C;
+    in-out property <color> accent-wash: #2E2722;
+    in-out property <color> accent-line: #6A5238;
+    in-out property <color> on-accent: #2A1A0A;
     out property <color> blue: #6FA2F2;
     out property <color> violet: #B48CF0;
     out property <color> green: #7FD18C;
     out property <color> gold: #E8C65A;
     out property <color> grey: #A3A5AE;
     out property <color> red: #F0785F;
-    out property <color> head-main: #9A5A22;
+    in-out property <color> head-main: #9A5A22;
     out property <color> dot: #ffffff12;
     out property <string> sans: "Onest";
     out property <string> mono: "JetBrains Mono";
@@ -38,9 +39,9 @@ export global G {
     out property <length> r-node: 8px;
     out property <length> r-main: 12px;
     out property <length> r-btn: 6px;
-    // Движение (мс): быстрые отклики короткие, чтобы интерфейс не казался вязким.
-    out property <duration> fast: 120ms;
-    out property <duration> mid: 200ms;
+    // Движение (мс): быстрые отклики короткие, чтобы интерфейс не казался вязким. Настройка «Анимации».
+    in-out property <duration> fast: 120ms;
+    in-out property <duration> mid: 200ms;
 }
 
 // Цвета сфер по порядку и их тёмные шапки.

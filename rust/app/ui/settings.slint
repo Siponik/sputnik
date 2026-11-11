@@ -8,6 +8,7 @@ component Sw inherits Rectangle {
     in property <Opt> o;
     callback clicked;
     height: 34px;
+    preferred-height: 34px;
     background: sa.has-hover ? G.node-hover : transparent;
     HorizontalLayout {
         padding-left: 8px;
@@ -34,6 +35,7 @@ component TChip inherits Rectangle {
     in property <Opt> o;
     callback clicked;
     height: 30px;
+    preferred-height: 30px;
     width: tl.preferred-width + (o.hue == #00000000 ? 24px : 38px);
     border-radius: 5px;
     border-width: 1px;
@@ -49,6 +51,7 @@ component OSeg inherits Rectangle {
     in property <[Opt]> items;
     callback picked(string);
     height: 32px;
+    preferred-height: 32px;
     width: sl.preferred-width + 6px;
     border-radius: 6px;
     border-width: 1px;
@@ -69,6 +72,7 @@ component OSeg inherits Rectangle {
 component SRow inherits Rectangle {
     in property <string> label;
     min-height: 36px;
+    preferred-height: 36px;
     Text { x: 0; y: 0; height: 32px; text: root.label; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
     HorizontalLayout {
         x: 126px; width: parent.width - 126px;
@@ -160,13 +164,38 @@ export component SettingsPage inherits Rectangle {
             alignment: start;
             if S.set-tab == 0: Sec {
                 main: true; num: "01"; title: "ВИД";
+                SRow { label: "АКЦЕНТ";
+                    for o in S.set-accent: Rectangle {
+                        width: 30px; height: 30px; border-radius: 15px;
+                        background: o.hue;
+                        border-width: 2px;
+                        border-color: o.on ? G.ink : (aa.has-hover ? G.ink.with-alpha(0.4) : transparent);
+                        aa := TouchArea { clicked => { S.accent-set(o.id); } mouse-cursor: pointer; }
+                    }
+                }
+                SRow { label: "АНИМАЦИИ"; OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } } }
                 SRow { label: "ПРИ ЗАПУСКЕ"; OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
                 for o in S.set-flags: SRow {
                     label: "";
                     TChip { o: o; clicked => { S.set-toggle("flag", o.id); } }
                     Text { text: o.hint; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 }
-                Note { text: "ТЕМА — ТЁМНАЯ · АКЦЕНТ #F0A04B · ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–5 И Q / E"; }
+                // порядок разделов в шапке: стрелки двигают, номер — клавиша
+                Rectangle {
+                    height: 30px + S.tab-order.length * 32px;
+                    Text { x: 0; y: 0; height: 26px; text: "ПОРЯДОК ВКЛАДОК"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+                    for t[i] in S.tab-order: Rectangle {
+                        y: 30px + i * 32px; height: 28px;
+                        Text { x: 0; text: "☰"; font-size: 12px; color: G.dim; vertical-alignment: center; height: parent.height; }
+                        Text { x: 22px; text: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                        Text { x: 130px; text: (i + 1) + ""; font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                        Text { x: parent.width - 56px; width: 24px; text: "◀"; font-size: 11px; color: i > 0 ? (la.has-hover ? G.ink : #8A8C96) : G.line; vertical-alignment: center; height: parent.height; horizontal-alignment: center;
+                            la := TouchArea { enabled: i > 0; mouse-cursor: pointer; clicked => { S.tab-move(i, i - 1); } } }
+                        Text { x: parent.width - 28px; width: 24px; text: "▶"; font-size: 11px; color: i < S.tab-order.length - 1 ? (ra.has-hover ? G.ink : #8A8C96) : G.line; vertical-alignment: center; height: parent.height; horizontal-alignment: center;
+                            ra := TouchArea { enabled: i < S.tab-order.length - 1; mouse-cursor: pointer; clicked => { S.tab-move(i, i + 1); } } }
+                    }
+                }
+                Note { text: "ТЕМА — ТЁМНАЯ (СВЕТЛАЯ ПОЯВИТСЯ ПОЗЖЕ) · ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–5 И Q / E"; }
             }
             if S.set-tab == 0 || S.set-tab == 1: Sec {
                 main: S.set-tab == 1; num: "02"; title: "ЧТО ПОКАЗЫВАТЬ";
