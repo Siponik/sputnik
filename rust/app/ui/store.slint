@@ -23,7 +23,9 @@ export struct Day { ymd: string, label: string, num: string, today: bool, sel: b
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
 export struct Found { kind: string, title: string, sub: string, list-id: string, id: string }
-export struct NoteRow { path: string, title: string, sub: string }
+export struct NoteRow { path: string, title: string, sub: string, cur: bool }
+// Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
+export struct MdRow { kind: string, text: string }
 export struct GDot { x: float, y: float, r: float, title: string, path: string, missing: bool, near: bool, cur: bool }
 export struct GLine { x1: float, y1: float, x2: float, y2: float, near: bool }
 
@@ -333,9 +335,17 @@ export global S {
     callback note-link(string);
     callback note-edited();
     in property <bool> note-graph;
+    in property <[NoteRow]> note-tabs;
+    in property <[NoteRow]> note-props;      // плашки под заголовком: тип, #теги, свойства
+    in property <[MdRow]> note-read-md;      // текст для режима «Чтение»
+    in property <bool> note-reading;
     in property <[GDot]> graph-dots;
     in property <[GLine]> graph-lines;
     callback note-graph-set(bool);
+    callback note-tab-open(string);
+    callback note-tab-close(string);
+    callback note-read-set(bool);
+    callback notes-pick();                   // выбрать папку заметок системным окном
     in property <string> upd-version;
     in property <string> upd-notes;
     in property <string> upd-info;

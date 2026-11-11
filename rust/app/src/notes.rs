@@ -9,6 +9,8 @@ pub struct Note {
     pub body: String,
     pub links: Vec<String>,
     pub tags: Vec<String>,
+    /// Свойства из шапки YAML (frontmatter): `тип`, `где` и т. п. — пары «ключ: значение».
+    pub props: Vec<(String, String)>,
 }
 
 #[derive(Default)]
@@ -76,6 +78,103 @@ pub fn links_of(body: &str) -> Vec<String> {
     parse(body).links
 }
 
+/// Шапка YAML в начале файла: строки «ключ: значение» между первой `---` и следующей `---`.
+pub fn frontmatter(body: &str) -> Vec<(String, String)> {
+    let mut lines = body.lines();
+    if lines.next().map(str::trim) != Some("---") {
+        return vec![];
+    }
+    let mut out = vec![];
+    for l in lines {
+        let l = l.trim_end();
+        if l.trim() == "---" {
+            break;
+        }
+        if let Some((k, v)) = l.split_once(':') {
+            let k = k.trim();
+            let v = v.trim().trim_matches('"');
+            if !k.is_empty() && !v.is_empty() {
+                out.push((k.to_string(), v.to_string()));
+            }
+        }
+    }
+    out
+}
+
+/// Тело без шапки YAML (по ссылке, без копий).
+pub fn body_without_front(body: &str) -> &str {
+    let mut it = body.lines();
+    if it.next().map(str::trim) != Some("---") {
+        return body;
+    }
+    let mut off = body.lines().next().map(|l| l.len() + 1).unwrap_or(0);
+    for l in it {
+        let end = l.trim() == "---";
+        off += l.len() + 1;
+        if end {
+            return body.get(off..).unwrap_or("");
+        }
+    }
+    body
+}
+
+/// Строки заметки для режима «Чтение»: (вид, текст). Виды:
+/// h1/h2/h3 — заголовки, p — абзац, li — пункт списка, todo/done — чек-лист,
+/// quote — цитата, code — код, hr — линия, img — картинка.
+/// [[Ссылки]] превращаются в подпись, шапка YAML и пустые строки пропускаются.
+pub fn read_blocks(body: &str) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = vec![];
+    let mut code = false;
+    let strip = |s: &str| -> String {
+        let mut r = s.to_string();
+        while let Some(a) = r.find("[[") {
+            let Some(b) = r[a + 2..].find("]]") else { break };
+            let inner = &r[a + 2..a + 2 + b];
+            let label = inner.rsplit_once('|').map(|(_, x)| x).unwrap_or(inner).to_string();
+            r = format!("{}{}{}", &r[..a], label, &r[a + 2 + b + 2..]);
+        }
+        r
+    };
+    let mut push = |kind: &str, text: String| out.push((kind.to_string(), text));
+    for raw in body_without_front(body).lines() {
+        let l = raw.trim_end();
+        let t = l.trim();
+        if t.starts_with("```") {
+            code = !code;
+            continue;
+        }
+        if code {
+            push("code", l.to_string());
+            continue;
+        }
+        if t.is_empty() {
+            continue;
+        }
+        if t.starts_with("###") && t[3..].starts_with(['#', ' ']) {
+            push("h3", strip(t[3..].trim_start_matches(['#', ' '])));
+        } else if let Some(x) = t.strip_prefix("## ") {
+            push("h2", strip(x));
+        } else if let Some(x) = t.strip_prefix("# ") {
+            push("h1", strip(x));
+        } else if t == "---" || t == "***" {
+            push("hr", String::new());
+        } else if let Some(x) = t.strip_prefix("- [ ]") {
+            push("todo", strip(x.trim()));
+        } else if let Some(x) = t.strip_prefix("- [x]").or_else(|| t.strip_prefix("- [X]")) {
+            push("done", strip(x.trim()));
+        } else if let Some(x) = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")) {
+            push("li", strip(x));
+        } else if let Some(x) = t.strip_prefix("> ") {
+            push("quote", strip(x));
+        } else if t.starts_with("![[") || (t.starts_with("![") && t.ends_with(')')) {
+            push("img", strip(t.trim_start_matches('!').trim_start_matches('[').trim_end_matches([')', ']'])));
+        } else {
+            push("p", strip(t));
+        }
+    }
+    out
+}
+
 impl Notes {
     /// Следить за папкой: события копятся 400 мс, потом одно перечитывание в потоке окна.
     pub fn watch(&mut self) {
@@ -136,7 +235,7 @@ impl Notes {
                     let body = std::fs::read_to_string(&p).unwrap_or_default();
                     let rel = p.strip_prefix(&root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
                     let pr = parse(&body);
-                    self.notes.push(Note { title: name.trim_end_matches(".md").to_string(), links: pr.links, tags: pr.tags, path: rel, body });
+                    self.notes.push(Note { title: name.trim_end_matches(".md").to_string(), links: pr.links, tags: pr.tags, props: frontmatter(&body), path: rel, body });
                 }
             }
         }
@@ -189,5 +288,29 @@ mod t {
         assert_eq!(p.title.as_deref(), Some("Заголовок"));
         assert_eq!(p.links, vec!["Задача"]);
         assert_eq!(p.tags, vec!["идея", "3d-арт"]);
+    }
+
+    #[test]
+    fn front() {
+        let b = "---\ntype: техника\ntags: [baking]\nгде: Substance\n---\n# Тело\nтекст";
+        assert_eq!(super::frontmatter(b), vec![("type".into(), "техника".into()), ("tags".into(), "[baking]".into()), ("где".into(), "Substance".into())]);
+        assert!(super::frontmatter("# Без шапки\nтекст").is_empty());
+        assert!(super::body_without_front(b).starts_with("# Тело"));
+        assert_eq!(super::body_without_front("# Без шапки\nтекст"), "# Без шапки\nтекст");
+    }
+
+    #[test]
+    fn blocks() {
+        let b = "---\ntype: x\n---\n# Раздел\n\nАбзац с [[Ссылка|подписью]] и [[Именем]].\n\n- пункт\n- [ ] сделать\n- [x] готово\n> цитата\n```\nlet x = [[не ссылка]];\n```\n---\n### Мелкий";
+        let v = super::read_blocks(b);
+        assert_eq!(v[0], ("h1".into(), "Раздел".into()));
+        assert_eq!(v[1], ("p".into(), "Абзац с подписью и Именем.".into()));
+        assert_eq!(v[2], ("li".into(), "пункт".into()));
+        assert_eq!(v[3], ("todo".into(), "сделать".into()));
+        assert_eq!(v[4], ("done".into(), "готово".into()));
+        assert_eq!(v[5], ("quote".into(), "цитата".into()));
+        assert_eq!(v[6], ("code".into(), "let x = [[не ссылка]];".into()));
+        assert_eq!(v[7], ("hr".into(), "".into()));
+        assert_eq!(v[8], ("h3".into(), "Мелкий".into()));
     }
 }

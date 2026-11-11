@@ -562,16 +562,35 @@ pub fn wire(w: &AppWindow) {
     // ---------- Знания ----------
     g.on_note_search(|q| act(|_, u| u.note_q = str_(&q)));
     g.on_note_open(|p| act(|_, u| {
-        u.note_path = str_(&p);
-        u.note_dirty = false;
+        open_note_tab(u, &str_(&p));
     }));
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
+    g.on_note_tab_open(|p| act(|_, u| u.note_path = str_(&p)));
+    g.on_note_tab_close(|p| act(|_, u| {
+        let p = str_(&p);
+        u.note_tabs.retain(|t| t != &p);
+        if u.note_path == p {
+            u.note_path = u.note_tabs.last().cloned().unwrap_or_default();
+            u.note_dirty = false;
+        }
+    }));
+    g.on_note_read_set(|v| act(|_, u| u.note_reading = v));
+    g.on_notes_pick(|| act(|app, _| {
+        if let Some(dir) = rfd::FileDialog::new().set_title("Папка заметок").pick_folder() {
+            let p = dir.to_string_lossy().to_string();
+            app.notes.root = Some(std::path::PathBuf::from(&p));
+            let _ = crate::data::store::write_json("notes.json", &json!({"root": p}));
+            app.notes.rescan();
+            app.notes.watch();
+            app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
+        }
+    }));
     g.on_graph_open(|p, t| act(|app, u| {
         u.note_graph = false;
-        if p.is_empty() { new_note(app, u, &t) } else { u.note_path = str_(&p); u.note_dirty = false; }
+        if p.is_empty() { new_note(app, u, &t) } else { open_note_tab(u, &str_(&p)); }
     }));
     g.on_note_edited(|| act(|_, u| u.note_dirty = true));
     g.on_note_save(|b| act(|app, u| {
@@ -587,13 +606,19 @@ pub fn wire(w: &AppWindow) {
     g.on_note_new(|t| act(|app, u| new_note(app, u, &t)));
     g.on_note_link(|t| act(|app, u| {
         match app.notes.find(&t).map(|n0| n0.path.clone()) {
-            Some(p) => {
-                u.note_path = p;
-                u.note_dirty = false;
-            }
+            Some(p) => open_note_tab(u, &p),
             None => new_note(app, u, &t),
         }
     }));
+}
+
+/// Открыть заметку вкладкой: запоминает в списке открытых и делает активной.
+fn open_note_tab(u: &mut Ui, path: &str) {
+    if !path.is_empty() && !u.note_tabs.iter().any(|t| t == path) {
+        u.note_tabs.push(path.to_string());
+    }
+    u.note_path = path.to_string();
+    u.note_dirty = false;
 }
 
 fn new_note(app: &mut App, u: &mut Ui, title: &str) {
@@ -606,8 +631,8 @@ fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     }
     match app.notes.save(&path, &format!("# {}\n\n", title.trim())) {
         Ok(()) => {
-            u.note_path = path;
-            u.note_dirty = false;
+            open_note_tab(u, &path);
+            u.note_reading = false;
         }
         Err(e) => app.say(format!("Заметка не создалась: {e}")),
     }
