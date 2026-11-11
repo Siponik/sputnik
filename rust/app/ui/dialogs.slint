@@ -402,11 +402,24 @@ export component CreateDialog inherits Overlay {
                 label: "Календарь";
                 for c in S.c-cals: CChip { text: c.label; on: c.on; clicked => { S.c-cal-set(c.id); } }
             }
-            FRow {
+            if S.c-kind == 0 || S.c-kind == 1: FRow {
                 label: "Когда";
-                for u[i] in S.c-understood: CChip { text: u; on: true; x-mark: true; visible: i < 3; }
-                if S.c-understood.length == 0: CChip { text: S.c-kind == 3 ? "Дата в строке: «12 марта»" : "Сегодня"; }
-                if S.c-kind == 0: CChip { text: "Без срока"; }
+                if S.c-when != "": CChip { text: S.c-when; on: true; x-mark: true; clicked => { line.text = S.c-strip(line.text, "when"); S.c-changed(line.text); line.grab(); } }
+                if S.c-rep != "": CChip { text: "↻ " + S.c-rep; on: true; }
+                if S.c-when == "": CChip { text: S.c-kind == 0 ? "Без срока" : "Сегодня"; on: S.c-kind == 0; }
+                for w in S.c-when == "" ? ["сегодня", "завтра", "в пятницу"] : []: CChip { text: w; clicked => { line.text = S.c-add-text(line.text, w); S.c-changed(line.text); line.grab(); } }
+            }
+            if S.c-kind == 3 || S.c-kind == 2: FRow {
+                label: S.c-kind == 2 ? "Понял" : "Когда";
+                for u[i] in S.c-understood: CChip { text: u; on: true; visible: i < 4; }
+                if S.c-understood.length == 0: CChip { text: S.c-kind == 3 ? "Дата в строке: «12 марта»" : "Пиши: «8 стаканов по будням утром»"; }
+            }
+            if S.c-kind == 0: FRow {
+                label: "Приоритет";
+                for p[i] in ["!!! Высокий", "!! Средний", "! Низкий", "Нет"]: CChip {
+                    text: p; on: S.c-prio == (i == 3 ? 0 : i + 1);
+                    clicked => { line.text = S.c-prio-text(line.text, i == 3 ? 0 : i + 1); S.c-changed(line.text); line.grab(); }
+                }
             }
             if S.c-kind == 1: FRow {
                 label: "Длится";
@@ -428,20 +441,13 @@ export component CreateDialog inherits Overlay {
                 border-color: G.line;
                 background: G.bg;
                 Text { x: 13px; y: 0; height: 40px; text: (root.more ? "▾" : "▸") + " Ещё параметры"; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; }
-                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "приоритет, повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
                 TouchArea { height: 40px; y: 0; clicked => { root.more = !root.more; } mouse-cursor: pointer; }
                 if root.more: Rectangle { y: 40px; height: 1px; background: G.line; }
                 mo := VerticalLayout {
                     visible: root.more;
                     x: 13px; y: 50px; width: parent.width - 26px;
                     spacing: 8px; alignment: start;
-                    if S.c-kind == 0: FRow {
-                        label: "Приоритет";
-                        for p[i] in ["!!! Высокий", "!! Средний", "! Низкий", "Нет"]: CChip {
-                            text: p; on: S.c-prio == (i == 3 ? 0 : i + 1);
-                            clicked => { line.text = S.c-prio-text(line.text, i == 3 ? 0 : i + 1); S.c-changed(line.text); line.grab(); }
-                        }
-                    }
                     if S.c-kind != 3: FRow {
                         label: "Повтор";
                         for p[i] in ["каждый день", "по будням", "каждую неделю", "каждый месяц"]: CChip {
