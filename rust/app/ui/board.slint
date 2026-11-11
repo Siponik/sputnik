@@ -260,12 +260,13 @@ component Kanban inherits Rectangle {
                     }
                 }
                 if hot: Brackets { x: 0; y: 0; width: root.colw - 8px; height: parent.height; }
-                // провод к следующей колонке
+                // провод к следующей колонке: по зазору 8 px между колонками, на высоте шапки;
+                // сокеты 10 px сидят центром на краях нод (правая грань этой — colw-8, левая следующей — colw)
                 if ci < S.columns.length - 1: Rectangle {
-                    x: 232px; y: 10px; width: 28px; height: 10px;
-                    Rectangle { x: 4px; y: 4px; width: 20px; height: 1.5px; background: head == #3D3E45 ? #7C7E88 : col.hue; }
-                    Rectangle { x: -5px; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
-                    Rectangle { x: 23px; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
+                    x: root.colw - 13px; y: 10px; width: 18px; height: 10px;
+                    Rectangle { x: 5px; y: 4.25px; width: 8px; height: 1.5px; background: head == #3D3E45 ? #7C7E88 : col.hue; }
+                    Rectangle { x: 0; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
+                    Rectangle { x: 8px; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
                 }
             }
         }
