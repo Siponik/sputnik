@@ -24,6 +24,15 @@ pub fn render(app: &App, _u: &Ui, g: &S) {
     }).collect()));
     let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, "task")).iter().filter_map(|x| x.as_i64()).collect();
     g.set_set_remind_task(model(REMINDS.iter().map(|(m, l)| opt(m.to_string(), *l, if *m < 0 { cur.is_empty() } else { cur.contains(m) })).collect()));
+    // умолчания напоминаний для событий и дней рождения — те же наборы, что в старом трекере (core::reminders::leads_for)
+    let leads_model = |kind: &str| {
+        let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, kind)).iter().filter_map(|x| x.as_i64()).collect();
+        let mut v = vec![opt("-1", "не напоминать", cur.is_empty())];
+        v.extend(sputnik_core::reminders::leads_for(kind).iter().map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))));
+        model(v)
+    };
+    g.set_set_remind_event(leads_model("event"));
+    g.set_set_remind_bday(leads_model("birthday"));
     let hour = st["remindHour"]["v"].as_str().unwrap_or("10:00");
     g.set_set_remind_hour(model(HOURS.iter().map(|h| opt(*h, if *h == "off" { "не напоминать" } else { *h }, *h == hour)).collect()));
     let tg = &st["tgbot"];

@@ -526,13 +526,14 @@ pub fn wire(w: &AppWindow) {
                 app.touch("cals", &id, json!({"hidden": shown}));
                 app.refresh();
             }
-            "remind" => {
+            s if s == "remind" || s.starts_with("remind-") => {
+                let kind = if s == "remind" { "task" } else { &s["remind-".len()..] };
                 let m: i64 = id.parse().unwrap_or(60);
                 let mut r = app.layer["settings"]["remind"].clone();
                 if !r.is_object() {
                     r = json!({});
                 }
-                r["task"] = if m < 0 { json!([]) } else { json!([m]) };
+                r[kind] = if m < 0 { json!([]) } else { json!([m]) };
                 r.as_object_mut().unwrap().shift_remove("t");
                 app.touch("settings", "remind", r);
             }
