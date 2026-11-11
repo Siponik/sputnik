@@ -341,7 +341,7 @@ export global S {
     callback note-save(string);
     callback note-new(string);
     callback note-link(string);
-    callback note-edited();
+    callback note-edited(string);   // текст правки — чтобы сохранить его, если уйти с заметки
     in property <bool> note-graph;
     in property <[NoteRow]> note-tabs;
     in property <[NoteRow]> note-props;      // плашки под заголовком: тип, #теги, свойства
