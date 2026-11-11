@@ -495,6 +495,15 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_ls_show(|| act(|_, u| u.ls = true));
+    g.on_tp_show(|| act(|app, u| u.tp = Some(super::tpl::open(app, &sputnik_core::j::text(&sputnik_core::templates::board_of(&u.board, &app.layer)["id"])))));
+    g.on_tp_close(|| act(|_, u| u.tp = None));
+    g.on_tp_pick(|id| act(|app, u| u.tp = Some(super::tpl::open(app, &id))));
+    g.on_tp_set(|k, v| act(|_, u| super::tpl::set(u, &k, &v)));
+    g.on_tp_col(|i, k, v| act(|_, u| super::tpl::col(u, i, &k, &v)));
+    g.on_tp_save(|| act(|app, u| super::tpl::save(app, u)));
+    g.on_tp_new(|| act(|_, u| super::tpl::new(u)));
+    g.on_tp_dup(|| act(|_, u| super::tpl::dup(u)));
+    g.on_tp_reset(|| act(|app, u| super::tpl::reset(app, u)));
     g.on_ls_close(|| act(|_, u| u.ls = false));
     g.on_menu_ctx(|k, id, x, y| act(|_, u| u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })));
     g.on_menu_close(|| act(|_, u| u.menu = None));

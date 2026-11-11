@@ -9,6 +9,7 @@ mod notes;
 pub mod datetime;
 pub mod listset;
 pub mod menu;
+pub mod tpl;
 mod settings;
 mod today;
 mod wire;
@@ -27,6 +28,7 @@ pub struct Ui {
     pub dp: Option<datetime::Dp>,
     pub ls: bool,
     pub menu: Option<menu::Menu>,
+    pub tp: Option<tpl::Tp>,
     pub tab: i32,
     pub board: String,
     pub cal_sel: String,
@@ -111,6 +113,7 @@ pub fn start(app: App) -> AppWindow {
             ["note", p] => u.note_path = p.to_string(),
             ["pipe", p] => u.pipe_open = p.to_string(),
             ["listset"] => u.ls = true,
+            ["templates"] => u.tp = Some(tpl::open(&app, "work")),
             ["menu", k, id] => u.menu = Some(menu::Menu { kind: k.to_string(), id: id.to_string(), x: 250.0, y: 200.0, sub: String::new() }),
             ["archive"] => u.arch = true,
             ["gallery"] => u.pipe_gallery = true,
@@ -148,6 +151,7 @@ fn render(app: &App) {
         dialogs::render(app, &mut u, &g);
         datetime::render(app, &u, &g);
         listset::render(app, &u, &g);
+        tpl::render(app, &u, &g);
         menu::render(app, &u, &g);
     });
 }

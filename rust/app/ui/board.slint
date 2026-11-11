@@ -93,7 +93,7 @@ component SideCol inherits Rectangle {
                 for d[i] in ["ШАБЛОНЫ", "АРХИВ", "ПОКАЗЫВАТЬ"]: Text {
                     text: d; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: da.has-hover ? G.ink : #8A8C96;
                     horizontal-alignment: center; vertical-alignment: center;
-                    da := TouchArea { clicked => { if (i == 1) { S.open-archive(); } else { S.go(5); } } mouse-cursor: pointer; }
+                    da := TouchArea { clicked => { if (i == 0) { S.tp-show(); } else if (i == 1) { S.open-archive(); } else { S.go(5); } } mouse-cursor: pointer; }
                 }
             }
         }
