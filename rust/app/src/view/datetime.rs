@@ -17,6 +17,8 @@ pub struct Dp {
     /// Показанный месяц: первое число.
     pub month: NaiveDate,
     pub said: String,
+    /// Выбор для окна «Создать», а не для задачи.
+    pub for_create: bool,
 }
 
 const MONTHS: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -40,7 +42,36 @@ pub fn open(app: &App, l: &str, id: &str) -> Option<Dp> {
         _ => (None, 0, 0),
     };
     let base = day.unwrap_or_else(|| hb::now().date());
-    Some(Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new() })
+    Some(Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new(), for_create: false })
+}
+
+/// Открыть для окна «Создать»: срок и время — из того, что уже понято (`compose::resolve`).
+pub fn for_create(x: &Value, kind: i32) -> Dp {
+    let day = x["day"].as_str().and_then(|d| NaiveDate::parse_from_str(d, "%Y-%m-%d").ok());
+    let (hour, min, dur) = match (x["slot"]["s"].as_str(), x["slot"]["e"].as_str()) {
+        (Some(a0), e) if kind != 3 => {
+            let st = cr::to_min(a0);
+            let d = e.map(|b0| cr::to_min(b0) - st).filter(|x| *x > 0).unwrap_or(0);
+            (Some((st / 60) as u32), (st % 60) as u32, d)
+        }
+        _ => (None, 0, 0),
+    };
+    let base = day.unwrap_or_else(|| hb::now().date());
+    let title = text(&x["title"]);
+    Dp { title: if title.is_empty() { "новое".into() } else { title }, day, hour, min, dur, month: first(base), for_create: true, ..Default::default() }
+}
+
+/// Выбранное в окне — для «Создать».
+pub fn picked(d: &Dp) -> sputnik_core::compose::Picked {
+    let day = d.day.map(|x| x.format("%Y-%m-%d").to_string());
+    let slot = match (day.is_some(), d.hour) {
+        (true, Some(h)) => {
+            let st = h as i64 * 60 + d.min as i64;
+            Some((hhmm(st), hhmm(if d.dur > 0 { st + d.dur } else { st + 60 })))
+        }
+        _ => None,
+    };
+    sputnik_core::compose::Picked { day, slot }
 }
 
 /// Разобрать «словами».

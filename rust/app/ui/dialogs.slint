@@ -304,12 +304,72 @@ component FRow inherits Rectangle {
     }
 }
 
+// Окно «Создать» (как в старом трекере): строка понимает дату, время, !!!, @список, #тип и повтор — в название они не идут;
+// всё понятое — чипы «×» (вернуть в название), срок и приоритет — ещё и кнопками (кнопка главнее текста, текст не трогает).
+// Клавиши работают и из строки: Alt+1…4 вид, Alt+L список (потом 1–9), Alt+D срок, Alt+M «Ещё», Ctrl+Enter добавить,
+// Tab — выйти из строки (тогда те же клавиши без Alt), Esc — закрыть.
 export component CreateDialog inherits Overlay {
     property <bool> dests;
     property <bool> more;
+    property <bool> dp: S.dp-open;
+    changed dp => { if (self.dp) { keys.focus(); } else { line.grab(); } }
     close => { S.c-close(); }
     property <length> W: min(840px, self.width - 32px);
     property <length> H: min(672px, self.height - 48px);
+    property <bool> fits: hl.preferred-width < line.width - 4px && S.c-text == line.text;
+    function submit(more: bool) {
+        if (line.text == "") { line.grab(); return; }
+        S.c-submit(line.text, more);
+        if (more) { line.clear(); line.grab(); }
+    }
+    function pick-dest(i: int) {
+        if (i >= 0 && i < S.c-lists.length) { S.c-dest-set(S.c-lists[i].id); }
+        root.dests = false;
+        line.grab();
+    }
+    // общие клавиши; bare — строка не в фокусе (можно без Alt)
+    function hk(e: KeyEvent, bare: bool) -> bool {
+        if (e.text == Key.Escape) {
+            if (root.dests) { root.dests = false; line.grab(); } else { S.c-close(); }
+            return true;
+        }
+        if (root.dests && !e.modifiers.alt && !e.modifiers.control && e.text >= "1" && e.text <= "9" && e.text.character-count == 1) {
+            root.pick-dest(e.text.to-float() - 1);
+            return true;
+        }
+        if (e.text == Key.Return && e.modifiers.control) { root.submit(false); return true; }
+        if (e.text == Key.Tab && !e.modifiers.control) {
+            if (line.focused) { root.dests = false; keys.focus(); } else { line.grab(); }
+            return true;
+        }
+        if (!(e.modifiers.alt || bare) || e.modifiers.control) { return false; }
+        if (e.text == "1") { S.c-kind-set(0); return true; }
+        if (e.text == "2") { S.c-kind-set(1); return true; }
+        if (e.text == "3") { S.c-kind-set(2); return true; }
+        if (e.text == "4") { S.c-kind-set(3); return true; }
+        if (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д") {
+            if (S.c-kind == 0 || S.c-kind == 2) { root.dests = !root.dests; }
+            return true;
+        }
+        if (e.text == "d" || e.text == "D" || e.text == "в" || e.text == "В") {
+            if (S.c-kind != 2) { root.dests = false; S.c-pick-date(); }
+            return true;
+        }
+        if (e.text == "m" || e.text == "M" || e.text == "ь" || e.text == "Ь") { root.more = !root.more; return true; }
+        if (bare && e.text == Key.Return) { root.submit(e.modifiers.shift); return true; }
+        false
+    }
+    keys := FocusScope {
+        capture-key-pressed(e) => {
+            if (S.dp-open || self.has-focus) { return reject; }
+            if (root.hk(e, false)) { return accept; }
+            reject
+        }
+        key-pressed(e) => {
+            if (S.dp-open) { return reject; }
+            if (root.hk(e, true)) { return accept; }
+            reject
+        }
     win := Rectangle {
         x: (parent.width - root.W) / 2;
         y: max(24px, (parent.height - root.H) / 2 - 10px);
@@ -322,7 +382,8 @@ export component CreateDialog inherits Overlay {
         drop-shadow-blur: 32px;
         drop-shadow-color: #000c;
         clip: true;
-        TouchArea { }
+        // клик по пустому месту — выйти из строки (клавиши без Alt)
+        TouchArea { clicked => { root.dests = false; keys.focus(); } }
         // вкладки видов
         Rectangle {
             height: 46px; y: 0;
@@ -340,7 +401,7 @@ export component CreateDialog inherits Overlay {
                     Text { text: k; font-size: 14px; font-weight: 500; color: S.c-kind == i ? #8A4A12 : #fff; vertical-alignment: center; }
                     Text { text: "ALT " + (i + 1); font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: S.c-kind == i ? #B07A4A : #ffffff90; vertical-alignment: center; }
                 }
-                ka := TouchArea { clicked => { S.c-kind-set(i); line.grab(); } mouse-cursor: pointer; }
+                ka := TouchArea { clicked => { root.dests = false; S.c-kind-set(i); line.grab(); } mouse-cursor: pointer; }
             }
             Text { x: root.W - 34px; text: "✕"; font-size: 15px; color: #fff; vertical-alignment: center; height: parent.height; TouchArea { clicked => { S.c-close(); } mouse-cursor: pointer; } }
         }
@@ -349,30 +410,26 @@ export component CreateDialog inherits Overlay {
             x: 22px; y: 64px; width: root.W - 44px; height: 52px;
             border-radius: 8px;
             border-width: 1px;
-            border-color: G.accent;
+            border-color: line.focused ? G.accent : G.line;
             background: G.bg;
-            // подсветка распознанного: под прозрачным текстом поля — та же строка в цвете
-            StyledText {
-                x: 16px; width: parent.width - 60px; y: (parent.height - self.preferred-height) / 2;
+            TouchArea { clicked => { line.grab(); } mouse-cursor: text; }
+            // подсветка понятого: та же строка в цвете под прозрачным текстом поля; не влезает — обычный текст
+            hl := StyledText {
+                x: 16px; y: (parent.height - self.preferred-height) / 2;
                 text: S.c-line-md; default-font-size: 17px; default-font-family: G.sans; default-color: G.ink; max-lines: 1;
-                visible: line.text != "";
+                visible: line.text != "" && root.fits;
             }
             line := Field {
-                x: 16px; width: parent.width - 60px; height: parent.height;
+                x: 16px; width: parent.width - 32px; height: parent.height;
                 bare: true;
-                ink: transparent;
+                ink: root.fits && line.text != "" ? transparent : G.ink;
                 font-size: 17px;
                 text: S.c-text;
                 placeholder: S.c-kind == 0 ? "Сделать иконки для клиента завтра 15:00 @работа !!" : S.c-kind == 1 ? "Созвон с Олей в пт 14:00" : S.c-kind == 2 ? "Вода 8 стаканов каждый день" : "Мама 12 марта";
                 edited(t) => { S.c-changed(t); }
-                accepted(t) => { if (t != "") { S.c-submit(t, false); } }
-                shift-enter(t) => { if (t != "") { S.c-submit(t, true); self.clear(); } }
+                accepted(t) => { root.submit(false); }
+                shift-enter(t) => { root.submit(true); }
                 escape => { S.c-close(); }
-            }
-            Rectangle {
-                x: parent.width - 36px; y: 13px; width: 26px; height: 26px; border-radius: 13px;
-                border-width: 1px; border-color: #6E7079;
-                Text { text: "?"; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
             }
         }
         // поля: в низком окне (масштаб 125–150 %) — прокрутка, а не уход под низ окна
@@ -381,6 +438,16 @@ export component CreateDialog inherits Overlay {
         VerticalLayout {
             spacing: 10px;
             alignment: start;
+            if S.c-kind != 2: FRow {
+                label: "Понял";
+                for u in S.c-toks: CChip { text: u.label; on: !u.on; x-mark: true; clicked => { S.c-tok-off(u.id); line.grab(); } }
+                if S.c-toks.length == 0: Text { height: 32px; text: S.c-kind == 3 ? "имя и дата: «Мама 12 марта»" : "дата, время, !!!, @список — прямо в строке"; font-size: 12.5px; color: #8A8C96; vertical-alignment: center; }
+            }
+            if S.c-kind == 2: FRow {
+                label: "Понял";
+                for u[i] in S.c-understood: CChip { text: u; on: true; visible: i < 4; }
+                if S.c-understood.length == 0: Text { height: 32px; text: "пиши: «8 стаканов по будням утром»"; font-size: 12.5px; color: #8A8C96; vertical-alignment: center; }
+            }
             if S.c-kind == 0 || S.c-kind == 2: FRow {
                 label: "Куда";
                 Rectangle {
@@ -388,7 +455,7 @@ export component CreateDialog inherits Overlay {
                     width: dl.preferred-width + dw.preferred-width + 62px;
                     border-radius: 6px;
                     border-width: 1px;
-                    border-color: G.line;
+                    border-color: root.dests ? G.accent : G.line;
                     background: da.has-hover ? G.node-hover : G.bg;
                     Rectangle { x: 13px; y: 14px; width: 7px; height: 7px; border-radius: 1.5px; background: S.c-dest-hue; }
                     dl := Text { x: 28px; text: S.c-dest; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; }
@@ -396,29 +463,26 @@ export component CreateDialog inherits Overlay {
                     Text { x: parent.width - 18px; text: "▾"; font-size: 11px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                     da := TouchArea { clicked => { root.dests = !root.dests; } mouse-cursor: pointer; }
                 }
-                Text { height: 34px; text: "Alt L"; font-size: 12.5px; color: G.accent; vertical-alignment: center; }
+                Text { height: 34px; text: "Alt L"; font-family: G.mono; font-size: 11px; color: G.accent; vertical-alignment: center; }
             }
             if S.c-kind == 1 || S.c-kind == 3: FRow {
                 label: "Календарь";
                 for c in S.c-cals: CChip { text: c.label; on: c.on; clicked => { S.c-cal-set(c.id); } }
             }
-            if S.c-kind == 0 || S.c-kind == 1: FRow {
-                label: "Когда";
-                if S.c-when != "": CChip { text: S.c-when; on: true; x-mark: true; clicked => { line.text = S.c-strip(line.text, "when"); S.c-changed(line.text); line.grab(); } }
-                if S.c-rep != "": CChip { text: "↻ " + S.c-rep; on: true; }
-                if S.c-when == "": CChip { text: S.c-kind == 0 ? "Без срока" : "Сегодня"; on: S.c-kind == 0; }
-                for w in S.c-when == "" ? ["сегодня", "завтра", "в пятницу"] : []: CChip { text: w; clicked => { line.text = S.c-add-text(line.text, w); S.c-changed(line.text); line.grab(); } }
+            if S.c-kind != 2: FRow {
+                label: S.c-kind == 0 ? "Срок" : "Когда";
+                CChip { text: S.c-when; on: S.c-when != "Без срока"; clicked => { S.c-pick-date(); } }
+                CChip { text: "Выбрать…  Alt D"; clicked => { root.dests = false; S.c-pick-date(); } }
             }
-            if S.c-kind == 3 || S.c-kind == 2: FRow {
-                label: S.c-kind == 2 ? "Понял" : "Когда";
-                for u[i] in S.c-understood: CChip { text: u; on: true; visible: i < 4; }
-                if S.c-understood.length == 0: CChip { text: S.c-kind == 3 ? "Дата в строке: «12 марта»" : "Пиши: «8 стаканов по будням утром»"; }
+            if S.c-kind != 2 && S.c-kind != 3: FRow {
+                label: "";
+                for q in S.c-quick: CChip { text: q.label; on: q.on; clicked => { S.c-quick-set(q.id); line.grab(); } }
             }
             if S.c-kind == 0: FRow {
                 label: "Приоритет";
                 for p[i] in ["!!! Высокий", "!! Средний", "! Низкий", "Нет"]: CChip {
                     text: p; on: S.c-prio == (i == 3 ? 0 : i + 1);
-                    clicked => { line.text = S.c-prio-text(line.text, i == 3 ? 0 : i + 1); S.c-changed(line.text); line.grab(); }
+                    clicked => { S.c-prio-set(i == 3 ? 0 : i + 1); line.grab(); }
                 }
             }
             if S.c-kind == 1: FRow {
@@ -434,35 +498,35 @@ export component CreateDialog inherits Overlay {
                 for r[i] in S.c-reminds: CChip { text: r.label; on: r.on; x-mark: r.on; clicked => { S.c-remind(r.id); } }
             }
             Rectangle { height: 4px; }
-            Rectangle {
+            if S.c-kind != 2 && S.c-kind != 3: Rectangle {
                 height: root.more ? mo.preferred-height + 52px : 40px;
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: G.line;
                 background: G.bg;
                 Text { x: 13px; y: 0; height: 40px; text: (root.more ? "▾" : "▸") + " Ещё параметры"; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; }
-                Text { x: 140px; y: 0; height: 40px; text: S.c-kind == 2 ? "цвет, до какого дня" : "повтор, заметка"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                Text { x: 140px; y: 0; height: 40px; text: "повтор, заметка · Alt M"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
                 TouchArea { height: 40px; y: 0; clicked => { root.more = !root.more; } mouse-cursor: pointer; }
                 if root.more: Rectangle { y: 40px; height: 1px; background: G.line; }
                 mo := VerticalLayout {
                     visible: root.more;
                     x: 13px; y: 50px; width: parent.width - 26px;
                     spacing: 8px; alignment: start;
-                    if S.c-kind != 3: FRow {
+                    FRow {
                         label: "Повтор";
-                        for p[i] in ["каждый день", "по будням", "каждую неделю", "каждый месяц"]: CChip {
-                            text: p;
-                            clicked => { line.text = S.c-add-text(line.text, p); S.c-changed(line.text); line.grab(); }
-                        }
+                        for p in S.c-reps: CChip { text: p.label; on: p.on; clicked => { S.c-rep-set(p.id); } }
                     }
-                    Text { text: "Заметка — вторая строка, Shift+Enter не нужен: подзадачи, цвет и картинка — в окне задачи после создания."; font-size: 11.5px; color: #8A8C96; wrap: word-wrap; }
+                    FRow {
+                        label: "Заметка";
+                        Field { width: 260px; placeholder: "необязательно"; text: S.c-notes; edited(t) => { S.c-notes-set(t); } accepted => { line.grab(); } escape => { S.c-close(); } }
+                    }
                 }
             }
         }
         }
         // выбор списка
         if root.dests && (S.c-kind == 0 || S.c-kind == 2): Rectangle {
-            x: 22px + 116px; y: 132px + 38px;
+            x: 22px + 116px; y: 132px + 52px + 38px;
             width: 300px;
             height: min(260px, S.c-lists.length * 30px + 10px);
             border-radius: 8px;
@@ -471,17 +535,18 @@ export component CreateDialog inherits Overlay {
             border-color: G.line;
             drop-shadow-blur: 16px;
             drop-shadow-color: #0009;
+            TouchArea { }
             ScrollView {
                 VerticalLayout {
                     padding: 5px;
-                    for l in S.c-lists: Rectangle {
+                    for l[i] in S.c-lists: Rectangle {
                         height: 30px;
                         border-radius: 5px;
                         background: la.has-hover ? G.node-hover : transparent;
                         Rectangle { x: 10px; y: 12px; width: 7px; height: 7px; border-radius: 1.5px; background: l.hue; }
                         Text { x: 26px; text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; }
                         Text { x: parent.width - self.preferred-width - 10px; text: l.hint; color: #7A7C86; font-size: 11px; vertical-alignment: center; height: parent.height; }
-                        la := TouchArea { clicked => { root.dests = false; S.c-dest-set(l.id); } }
+                        la := TouchArea { clicked => { root.pick-dest(i); } mouse-cursor: pointer; }
                     }
                 }
             }
@@ -510,8 +575,8 @@ export component CreateDialog inherits Overlay {
                     background: S.c-dest-hue.mix(#1C1D21, 0.3);
                     Text { text: S.c-kind == 3 ? "✦" : (S.c-kind == 2 ? "↻" : (S.c-kind == 1 ? "◷" : "✓")); font-size: 16px; color: #fff; horizontal-alignment: center; vertical-alignment: center; }
                 }
-                Text { x: 64px; y: 40px; width: parent.width - 74px; text: line.text == "" ? "Название" : (S.c-title != "" ? S.c-title : line.text); font-size: 13.5px; font-weight: 600; color: line.text == "" ? #6E7079 : G.ink; overflow: elide; }
-                Text { x: 64px; y: 62px; width: parent.width - 74px; text: S.c-meta != "" ? S.c-meta : "сегодня"; font-size: 12px; color: #A3A5AE; overflow: elide; }
+                Text { x: 64px; y: 40px; width: parent.width - 74px; text: S.c-title == "" ? "Название" : S.c-title; font-size: 13.5px; font-weight: 600; color: S.c-title == "" ? #6E7079 : G.ink; overflow: elide; }
+                Text { x: 64px; y: 62px; width: parent.width - 74px; text: S.c-meta; font-size: 12px; color: #A3A5AE; overflow: elide; }
             }
             if S.c-dest-why != "" || S.c-free != "": Rectangle {
                 height: 80px;
@@ -527,7 +592,7 @@ export component CreateDialog inherits Overlay {
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: G.line;
-                ht := Text { x: 12px; width: parent.width - 24px; text: "? " + S.c-hint; font-size: 12px; color: #A3A5AE; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+                ht := Text { x: 12px; width: parent.width - 24px; text: S.c-hint; font-size: 12px; color: #A3A5AE; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
             }
         }
         }
@@ -535,8 +600,8 @@ export component CreateDialog inherits Overlay {
         Rectangle {
             y: root.H - 60px; height: 60px;
             Rectangle { y: 0; height: 1px; background: G.line; }
-            Text { x: 22px; text: "Enter — добавить · Shift+Enter — и ещё · Esc — закрыть"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
-            HorizontalLayout {
+            Text { x: 22px; width: root.W - 22px - bl.preferred-width - 40px; text: line.focused ? "Enter добавить · Shift+Enter и ещё · Tab из строки · Esc закрыть" : "Строка не в фокусе: 1–4 вид, L список, D срок, M ещё · Tab — к строке"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; overflow: elide; }
+            bl := HorizontalLayout {
                 x: root.W - 22px - self.preferred-width; y: 11px; height: 38px;
                 spacing: 10px;
                 Rectangle {
@@ -544,19 +609,20 @@ export component CreateDialog inherits Overlay {
                     border-radius: 6px; border-width: 1px; border-color: #8A8C96;
                     background: ma.has-hover ? G.node-hover : transparent;
                     mt := Text { text: "Добавить и ещё"; font-size: 13.5px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                    ma := TouchArea { clicked => { if (line.text != "") { S.c-submit(line.text, true); line.clear(); } } mouse-cursor: pointer; }
+                    ma := TouchArea { clicked => { root.submit(true); } mouse-cursor: pointer; }
                 }
                 Rectangle {
                     width: pt.preferred-width + 34px;
                     border-radius: 6px;
                     background: pa.has-hover ? G.accent-ink : G.accent;
                     pt := Text { text: ["Добавить задачу", "Добавить событие", "Добавить привычку", "Добавить день рождения"][S.c-kind]; font-size: 13.5px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
-                    pa := TouchArea { clicked => { if (line.text != "") { S.c-submit(line.text, false); } } mouse-cursor: pointer; }
+                    pa := TouchArea { clicked => { root.submit(false); } mouse-cursor: pointer; }
                 }
             }
         }
     }
     Brackets { x: win.x; y: win.y; width: win.width; height: win.height; }
+    }
     init => { line.grab(); }
 }
 

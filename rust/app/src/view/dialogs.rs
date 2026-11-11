@@ -1,7 +1,7 @@
 //! Модели окон: задача, «Создать», поиск.
 use super::*;
 use crate::{Opt, Sub};
-use sputnik_core::{create as cr, habits as hb, reminders as rem, route, today as td, when};
+use sputnik_core::{compose as cr2, create as cr, habits as hb, reminders as rem, route, when};
 
 /// Состояние окна «Создать».
 #[derive(Clone, Default)]
@@ -12,6 +12,14 @@ pub struct Create {
     pub cal: Option<String>,
     pub dur: i64,
     pub remind: Option<Vec<i64>>,
+    /// Выбранное кнопками: срок, приоритет, повтор, возвращённые в название куски.
+    pub m: cr2::Manual,
+    pub notes: String,
+}
+
+/// Итог строки и выбранного руками (название без дат, срок, приоритет, повтор).
+pub fn resolved(c: &Create) -> Value {
+    cr2::resolve(&c.text, c.kind, &c.m, if c.dur == 0 { 60 } else { c.dur }, hb::now().date())
 }
 
 pub fn opt(id: impl Into<String>, label: impl Into<String>, on: bool) -> Opt {
@@ -116,39 +124,49 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_create_open(true);
     g.set_c_kind(c.kind);
     g.set_c_text(ss(c.text.clone()));
-    let tdy = today_s();
-    let p = route::parse_line(&c.text, hb::now().date(), &json!({}));
-    g.set_c_line_md(line_md(&c.text, &p["marks"]));
-    g.set_c_title(ss(text(&p["title"])));
-    g.set_c_prio(p["priority"].as_i64().unwrap_or(0) as i32);
-    let (und, hint): (Vec<String>, String) = match c.kind {
-        2 => {
-            let h = cr::parse_habit(&c.text, &json!({}));
-            (a(&h["toks"]).iter().map(|x| text(&x["l"])).collect(), "Привычка: цель («8 стаканов»), частота («по будням», «3 раза в неделю») и часть дня («утром»).".into())
-        }
-        3 => (if c.text.trim().is_empty() { vec![] } else {
-            let w = when::parse_when(&c.text, hb::now().date());
-            w.day.map(|d| vec![cr::day_month(&d)]).unwrap_or_default()
-        }, "Имя и дата: «Мама 12 марта». Каждый год, задача «Подарок» заведётся сама.".into()),
-        1 => (td::understood(&p, &tdy).iter().map(|x| text(&x["text"])).collect(), "Событие в Google Календаре: день и время словами — «в пт 14:00».".into()),
+    g.set_c_notes(ss(c.notes.clone()));
+    let tdy = hb::now().date();
+    let x = resolved(c);
+    let p = &x["parsed"];
+    let empty = c.text.trim().is_empty();
+    let habit = (c.kind == 2).then(|| cr::parse_habit(&c.text, &c.m.off_json()));
+    let marks = match &habit { Some(h) => h["marks"].clone(), None => p["marks"].clone() };
+    g.set_c_line_md(line_md(&c.text, &marks));
+    g.set_c_title(ss(match &habit { Some(h) => text(&h["name"]), None => text(&x["title"]) }));
+    g.set_c_prio(x["priority"].as_i64().unwrap_or(0) as i32);
+    // понятое из строки — чипы с «×»
+    g.set_c_toks(model(if c.kind == 2 { vec![] } else {
+        a(&x["toks"]).iter().filter(|k| c.kind == 0 || k["k"] != "prio").map(|k| Opt { id: ss(text(&k["k"])), label: ss(text(&k["l"])), hint: ss(""), hue: color("clay"), on: t(&k["over"]) }).collect()
+    }));
+    g.set_c_understood(strings(match &habit { Some(h) if !empty => a(&h["toks"]).iter().map(|x| text(&x["l"])).collect(), _ => vec![] }));
+    // срок
+    g.set_c_when(ss(cr2::when_label(&x["day"], &x["slot"], tdy)));
+    let q = cr2::quick_of(&x["day"], tdy);
+    g.set_c_quick(model(cr2::quick_days(tdy).iter().filter(|d| c.kind == 0 || d.0 != "none").map(|(id, l, _)| opt(*id, *l, *id == q)).collect()));
+    let every = s(&x["repeat"]["every"]);
+    g.set_c_reps(model([("", "нет"), ("day", "каждый день"), ("weekdays", "по будням"), ("week", "каждую неделю"), ("month", "каждый месяц")].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect()));
+    let meta: Vec<String> = {
+        let mut v = vec![if c.kind == 3 { x["day"].as_str().map(cr::day_month).unwrap_or_else(|| "дата?".into()) } else { cr2::when_label(&x["day"], &x["slot"], tdy) }];
+        if let Some(pr) = x["priority"].as_i64().filter(|p| *p > 0 && c.kind == 0) { v.push(["", "!!! высокий", "!! средний", "! низкий"][pr as usize].into()); }
+        if !every.is_empty() { v.push(format!("↻ {}", sputnik_core::repeat::repeat_label(&x["repeat"]))); }
+        v
+    };
+    g.set_c_meta(ss(match &habit { Some(h) => a(&h["toks"]).iter().map(|x| text(&x["l"])).collect::<Vec<_>>().join(" · "), None => meta.join(" · ") }));
+    let hint = match c.kind {
+        2 => "Привычка: цель («8 стаканов»), частота («по будням», «3 раза в неделю») и часть дня («утром»).".to_string(),
+        3 => "Имя и дата: «Мама 12 марта». Каждый год, задача «Подарок» заведётся сама.".into(),
+        1 => "Событие в Google Календаре: день и время словами — «в пт 14:00» — или кнопкой «Выбрать…» (Alt+D).".into(),
         _ => {
-            let sk = cr::suggest_kind(&c.text, &p);
-            let h = if s(&sk["kind"]) == "event" { "Похоже на встречу — можно сделать событием: вкладка «Событие» сверху".to_string() } else { "Дата, время, @список, #тип, !!! — прямо в строке.".to_string() };
-            (td::understood(&p, &tdy).iter().map(|x| text(&x["text"])).collect(), h)
+            let sk = cr::suggest_kind(&c.text, p);
+            if s(&sk["kind"]) == "event" { "Похоже на встречу — можно сделать событием: Alt+2".to_string() } else { "Дата, время, @список, #тип, !!! — прямо в строке, в название они не попадут. Срок можно выбрать и кнопкой.".to_string() }
         }
     };
-    g.set_c_meta(ss(und.join(" · ")));
-    g.set_c_understood(strings(if c.text.trim().is_empty() { vec![] } else { und }));
-    let has_when = !p["day"].is_null() || t(&p["time"]);
-    let wt = if has_when { td::understood(&p, &tdy).iter().find(|x| x["kind"] == "when").map(|x| text(&x["text"])).unwrap_or_default() } else { String::new() };
-    g.set_c_when(ss(wt));
-    g.set_c_rep(ss(if t(&p["repeat"]) { sputnik_core::repeat::repeat_label(&p["repeat"]) } else { String::new() }));
     g.set_c_hint(ss(hint));
     let (dest, why) = dest_of(app, c);
     g.set_c_dest(ss(app.list_name(&dest)));
     g.set_c_dest_hue(list_hue(app, &dest));
     g.set_c_dest_why(ss(why));
-    g.set_c_lists(model(list_opts(app, &dest)));
+    g.set_c_lists(model(list_opts(app, &dest).into_iter().enumerate().map(|(i, mut o)| { if i < 9 { o.hint = ss(format!("{}   {}", o.hint, i + 1).trim().to_string()); } o }).collect()));
     let cal = cal_of(app, c);
     g.set_c_cals(model(app.writable_cals().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["summaryOverride"]).max(text(&x["summary"]))), hint: ss(""),
         hue: color(s(&x["backgroundColor"])), on: x["id"] == cal.as_str() }).collect()));
@@ -158,13 +176,13 @@ fn create(app: &App, c: &Create, g: &S) {
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
     g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).take(4).collect()));
     // событие: свободно ли
-    let free = if c.kind == 1 && t(&p["time"]) {
-        let day = if p["day"].is_null() { tdy.clone() } else { text(&p["day"]) };
-        let st = text(&p["time"]);
-        let en = cr::add_min(&st, dur.max(15));
-        let f = cr::free_check(&app.events_on(&day), &day, &json!({"s": st, "e": en}));
-        if f["clash"].is_string() { format!("⚠ пересекается с «{}»", text(&f["clash"])) } else if f["until"].is_string() { format!("свободно до {}", text(&f["until"])) } else { "весь вечер свободен".into() }
-    } else { String::new() };
+    let free = match (c.kind, x["day"].as_str(), x["slot"]["s"].as_str(), x["slot"]["e"].as_str()) {
+        (1, Some(day), Some(st), Some(en)) => {
+            let f = cr::free_check(&app.events_on(day), day, &json!({"s": st, "e": en}));
+            if f["clash"].is_string() { format!("⚠ пересекается с «{}»", text(&f["clash"])) } else if f["until"].is_string() { format!("свободно до {}", text(&f["until"])) } else { "весь вечер свободен".into() }
+        }
+        _ => String::new(),
+    };
     g.set_c_free(ss(free));
 }
 
@@ -174,6 +192,8 @@ fn line_md(raw: &str, marks: &Value) -> slint::StyledText {
     let esc = |x: &str| -> String {
         let mut o = String::new();
         for ch in x.chars() {
+            // пробелы — неразрывные: иначе разметка схлопывает их и подсветка уезжает от курсора
+            if ch == ' ' { o.push('\u{a0}'); continue; }
             if "\\`*_[]<>#!-+.()&{}|~".contains(ch) { o.push('\\'); }
             o.push(ch);
         }

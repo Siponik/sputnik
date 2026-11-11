@@ -272,9 +272,12 @@ export global S {
     in property <bool> create-open;
     in-out property <int> c-kind;              // 0 задача · 1 событие · 2 привычка · 3 день рождения
     in property <string> c-text;
-    in property <[string]> c-understood;
-    in property <string> c-when;      // распознанный срок задачи/события, "" — без срока
-    in property <string> c-rep;       // распознанный повтор
+    in property <[string]> c-understood;  // привычка: что понято из строки
+    in property <[Opt]> c-toks;       // понято из строки (id: when|prio|repeat|at|tag, on — перебито кнопкой); «×» возвращает в название
+    in property <string> c-when;      // итоговый срок: «Завтра, 12 ноября · 15:00–16:00» | «Без срока»
+    in property <[Opt]> c-quick;      // быстрые сроки: none/today/tomorrow/fri/mon
+    in property <[Opt]> c-reps;       // повтор: "", day, weekdays, week, month
+    in property <string> c-notes;
     in property <string> c-dest;
     in property <string> c-dest-why;
     in property <color> c-dest-hue;
@@ -352,9 +355,12 @@ export global S {
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»
     in property <int> c-prio;                  // 0 нет · 1 высокий · 2 средний · 3 низкий
-    callback c-strip(string, string) -> string;    // строка без распознанного куска: when | repeat
-    callback c-prio-text(string, int) -> string;   // строка с другим приоритетом
-    callback c-add-text(string, string) -> string; // дописать в строку слово («каждую неделю»)
+    callback c-tok-off(string);                // «×» у понятого куска: вернуть его в название
+    callback c-quick-set(string);              // быстрый срок кнопкой
+    callback c-pick-date();                    // окно «Когда» (Alt+D)
+    callback c-prio-set(int);                  // приоритет кнопкой, 0 — нет
+    callback c-rep-set(string);
+    callback c-notes-set(string);
     callback create(string);
     callback c-close();
     callback c-changed(string);
