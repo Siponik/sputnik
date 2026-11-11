@@ -368,7 +368,10 @@ export global S {
     in property <[Opt]> set-remind-bday;
     in property <[Opt]> set-remind-hour;
     in property <[Opt]> set-start;
-    in property <[Opt]> set-flags;
+    in property <[Opt]> set-flags;           // «Куда слать»: Telegram, Windows
+    in property <[Opt]> set-found;           // «Найти настройку»: id — номер раздела
+    callback set-find(string);
+    in-out property <int> set-find-focus;   // +1 — поставить курсор в «Найти настройку» (Ctrl+K на экране настроек)
     in property <string> bot-name;
     in property <string> bot-status;
     in property <string> sync-info;

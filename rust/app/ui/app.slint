@@ -80,7 +80,7 @@ export component AppWindow inherits Window {
                 return reject;
             }
             if (e.modifiers.control) {
-                if (e.text == "k" || e.text == "л") { S.search-open-set(true); return accept; }
+                if (e.text == "k" || e.text == "л") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
                 if ((e.text == "." || e.text == "ю") && S.tab == 2) { S.ls-show(); return accept; }
@@ -88,7 +88,7 @@ export component AppWindow inherits Window {
                 return reject;
             }
             if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
-            if (e.text == "/" || e.text == ".") { S.search-open-set(true); return accept; }
+            if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
             if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
             if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }

@@ -52,3 +52,15 @@ fn birthdays_get_default_reminders() {
     let items = r::collect(&[], &json!({}), &json!({}), &Value::Null, &[], &got);
     assert!(items.iter().any(|x| x["title"] == "Аня" && x["kind"] == "birthday"));
 }
+
+#[test]
+fn settings_checkboxes_pick_several() {
+    // отметить второй вариант — первый остаётся
+    assert_eq!(r::toggle_min(&[60], 15), vec![60, 15]);
+    assert_eq!(r::toggle_min(&[60, 15], 0), vec![60, 15, 0]);
+    // снять отмеченный
+    assert_eq!(r::toggle_min(&[60, 15, 0], 15), vec![60, 0]);
+    assert_eq!(r::toggle_min(&[60], 60), Vec::<i64>::new());
+    // «не напоминать» снимает всё
+    assert_eq!(r::toggle_min(&[1440, 60], -1), Vec::<i64>::new());
+}

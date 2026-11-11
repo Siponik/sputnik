@@ -46,6 +46,30 @@ component TChip inherits Rectangle {
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
+// Галочка (radio — кружок, один из вариантов): квадрат с ✓ и подпись.
+component CBox inherits Rectangle {
+    in property <Opt> o;
+    in property <bool> radio;
+    callback clicked;
+    height: 30px;
+    preferred-height: 30px;
+    width: cl.preferred-width + 38px;
+    border-radius: 5px;
+    background: ca.has-hover ? G.node-hover : transparent;
+    Rectangle {
+        x: 6px; y: 7px; width: 16px; height: 16px;
+        border-radius: radio ? 8px : 3px;
+        border-width: 1.5px;
+        border-color: o.on ? G.accent : (ca.has-hover ? G.ink : G.line-strong);
+        background: o.on && !radio ? G.accent : transparent;
+        animate background, border-color { duration: G.fast; }
+        Text { visible: o.on && !radio; text: "✓"; color: G.on-accent; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+        Rectangle { visible: o.on && radio; x: 4px; y: 4px; width: 8px; height: 8px; border-radius: 4px; background: G.accent; }
+    }
+    cl := Text { x: 28px; text: o.label; font-size: 13px; color: o.on ? G.ink : #A3A5AE; vertical-alignment: center; height: parent.height; }
+    ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
 // Сегмент из Opt: выбранное — светлая заливка.
 component OSeg inherits Rectangle {
     in property <[Opt]> items;
@@ -120,6 +144,12 @@ component Note inherits Text {
 }
 
 export component SettingsPage inherits Rectangle {
+    // строка «Найти настройку»
+    property <string> q;
+    function pick(tab: int) { S.set-tab = tab; root.q = ""; fq.clear(); S.set-find(""); }
+    // Ctrl+K на этом экране — сюда, а не в общий поиск
+    property <int> find-ask: S.set-find-focus;
+    changed find-ask => { fq.grab(); }
     property <length> mx: 8px;
     property <length> cx: root.mx + 264px;
     property <length> rw: 260px;
@@ -136,7 +166,7 @@ export component SettingsPage inherits Rectangle {
         Text { x: 12px; y: 0; height: 32px; text: "НАСТРОЙКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; }
         Text { x: parent.width - self.preferred-width - 12px; y: 0; height: 32px; text: "CTRL ,"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
         Rectangle { y: 31px; height: 1px; background: G.line; }
-        VerticalLayout {
+        if root.q == "": VerticalLayout {
             x: 9px; y: 82px; width: parent.width - 18px;
             spacing: 2px;
             alignment: start;
@@ -151,11 +181,28 @@ export component SettingsPage inherits Rectangle {
                 ta := TouchArea { clicked => { S.set-tab = i; } mouse-cursor: pointer; }
             }
         }
-        Rectangle {
+        // поиск по настройкам (не общий поиск задач): результаты — вместо списка разделов
+        fq := Field {
             x: 10px; y: 42px; width: parent.width - 20px; height: 32px;
-            border-radius: 6px; border-width: 1px; border-color: #6E7079;
-            Text { x: 10px; text: "Найти настройку — Ctrl K"; font-size: 13px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
-            TouchArea { clicked => { S.search-open-set(true); } mouse-cursor: pointer; }
+            font-size: 13px;
+            placeholder: "Найти настройку";
+            edited(t) => { root.q = t; S.set-find(t); }
+            accepted(t) => { if (S.set-found.length > 0) { root.pick(S.set-found[0].id.to-float()); } }
+            escape => { root.pick(S.set-tab); }
+        }
+        if root.q != "": VerticalLayout {
+            x: 9px; y: 82px; width: parent.width - 18px;
+            spacing: 2px;
+            alignment: start;
+            for r in S.set-found: Rectangle {
+                height: 44px;
+                border-radius: 6px;
+                background: ra.has-hover ? G.node-hover : transparent;
+                Text { x: 10px; y: 5px; text: r.label; font-size: 13px; color: G.ink; }
+                Text { x: 10px; y: 25px; text: r.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
+                ra := TouchArea { clicked => { root.pick(r.id.to-float()); } mouse-cursor: pointer; }
+            }
+            if S.set-found.length == 0: Text { text: "  Ничего не нашлось"; font-size: 13px; color: #7A7C86; }
         }
         Text { x: 12px; y: parent.height - 30px; text: "СПУТНИК " + S.version; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
     }
@@ -186,37 +233,59 @@ export component SettingsPage inherits Rectangle {
                     Text { text: "Провода рисуются при открытии экрана"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 }
                 SRow { label: "ПРИ ЗАПУСКЕ"; OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
-                for o in S.set-flags: SRow {
-                    label: "";
-                    TChip { o: o; clicked => { S.set-toggle("flag", o.id); } }
-                    Text { text: o.hint; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
-                }
-                // порядок разделов в шапке: перетаскиваются, номер — клавиша
+                // порядок разделов в шапке: перетаскиваются, номер — клавиша.
+                // Пока тащишь, карточка идёт за мышью, а соседи плавно раздвигаются под место, куда она встанет.
                 Rectangle {
                     height: 30px + 40px;
                     Text { x: 0; y: 0; height: 26px; text: "ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
                     property <length> cw: min(150px, (self.width - (S.tab-order.length - 1) * 18px) / max(1, S.tab-order.length));
+                    property <length> step: cw + 18px;
+                    property <int> drag: -1;      // кого тащим
+                    property <length> dx;         // насколько сдвинули
+                    property <int> n: S.tab-order.length;
+                    // куда встанет: ближайшее место к центру карточки
+                    property <int> tgt: drag < 0 ? -1 : max(0, min(n - 1, drag + round(dx / step)));
                     for t[i] in S.tab-order: Rectangle {
-                        x: i * (cw + 18px) + (dg.pressed ? dg.mouse-x - dg.pressed-x : 0);
+                        // место в ряду: соседи между старым и новым местом сдвигаются на одно
+                        property <int> slot: drag < 0 || i == drag ? i : (i > drag && i <= tgt ? i - 1 : (i < drag && i >= tgt ? i + 1 : i));
+                        property <bool> me: i == drag;
+                        x: slot * step;
+                        // после отпускания порядок меняется сразу, без анимации — иначе карточки «перепрыгивают»
+                        animate x { duration: drag < 0 ? 0ms : G.mid; easing: ease-out; }
                         y: 30px; width: cw; height: 40px;
-                        if i > 0 && !dg.pressed: Rectangle { x: -18px; y: 19px; width: 18px; height: 2px; background: G.accent; }
+                        z: me ? 10 : 0;
+                        if i > 0 && drag < 0: Rectangle { x: -18px; y: 19px; width: 18px; height: 2px; background: G.accent; }
                         Rectangle {
+                            // карточку, которую тащат, держим в пределах ряда
+                            x: me ? max(-i * step - 6px, min((n - 1 - i) * step + 6px, dx)) : 0;
+                            y: me ? -3px : 0;
                             border-radius: 8px; border-width: 1px;
-                            border-color: dg.pressed || i == 0 ? G.accent : G.line;
-                            background: dg.pressed ? G.node-hover : G.node;
-                            drop-shadow-blur: dg.pressed ? 12px : 0;
-                            drop-shadow-color: #0008;
-                            Icon { x: 10px; width: 14px; name: "drag"; c: G.dim; }
+                            border-color: me || (drag < 0 && i == 0) ? G.accent : (dg.has-hover ? G.line-strong : G.line);
+                            background: me ? G.node-hover : G.node;
+                            drop-shadow-blur: me ? 16px : 0;
+                            drop-shadow-offset-y: me ? 6px : 0;
+                            drop-shadow-color: #0009;
+                            animate y, drop-shadow-blur { duration: G.fast; }
+                            Icon { x: 10px; width: 14px; name: "drag"; c: me ? G.accent : G.dim; }
                             Text { x: 30px; text: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
-                            Text { x: parent.width - 18px; text: (i + 1) + ""; font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - 18px; text: ((me ? tgt : slot) + 1) + ""; font-family: G.mono; font-size: 9.5px; color: me ? G.accent : #7A7C86; vertical-alignment: center; height: parent.height; }
                         }
                         dg := TouchArea {
                             mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
                             pointer-event(e) => {
-                                if (e.kind == PointerEventKind.up) {
-                                    S.tab-move(i, max(0, min(S.tab-order.length - 1, i + round((self.mouse-x - self.pressed-x) / (cw + 18px)))));
+                                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
+                                    drag = i;
+                                    dx = 0;
+                                } else if (e.kind == PointerEventKind.up && drag == i) {
+                                    if (tgt != i) { S.tab-move(i, tgt); }
+                                    drag = -1;
+                                    dx = 0;
+                                } else if (e.kind == PointerEventKind.cancel) {
+                                    drag = -1;
+                                    dx = 0;
                                 }
                             }
+                            moved => { if (self.pressed && drag == i) { dx = self.mouse-x - self.pressed-x; } }
                         }
                     }
                 }
@@ -250,11 +319,16 @@ export component SettingsPage inherits Rectangle {
                 Note { text: "СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ"; }
             }
             if S.set-tab == 2: Sec {
-                main: true; num: "03"; title: "НАПОМИНАНИЯ";
-                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-task", o.id); } } }
-                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-event", o.id); } } }
-                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("remind-bday", o.id); } } }
-                SRow { label: "БЕЗ ВРЕМЕНИ — В"; for o in S.set-remind-hour: TChip { o: { id: o.id, label: o.label, hint: o.hint, hue: #00000000, on: o.on }; clicked => { S.set-toggle("hour", o.id); } } }
+                main: true; num: "03"; title: "НАПОМИНАНИЯ"; aside: "МОЖНО НЕСКОЛЬКО";
+                // «не напоминать» (id -1) — это «ничего не отмечено», отдельной галочкой не показываем
+                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
+                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
+                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: CBox { visible: o.id != "-1"; width: o.id == "-1" ? 0 : self.preferred-width; o: o; clicked => { S.set-toggle("remind-bday", o.id); } } }
+                Note { text: "НИЧЕГО НЕ ОТМЕЧЕНО — НЕ НАПОМИНАТЬ. ЭТО УМОЛЧАНИЯ ДЛЯ НОВЫХ: У ЗАДАЧИ МОЖНО ПОМЕНЯТЬ В ЕЁ ОКНЕ"; }
+                SRow { label: "БЕЗ ВРЕМЕНИ — В"; for o in S.set-remind-hour: CBox { radio: true; o: o; clicked => { S.set-toggle("hour", o.id); } } }
+                Rectangle { height: 1px; background: G.line-soft; }
+                SRow { label: "КУДА СЛАТЬ"; for o in S.set-flags: CBox { o: o; clicked => { S.set-toggle("flag", o.id); } } }
+                for o in S.set-flags: Note { text: o.label.to-uppercase() + " — " + o.hint.to-uppercase(); }
             }
             if S.set-tab == 2: Sec {
                 num: "04"; title: "TELEGRAM · @SPUTNIKTASKSBOT"; aside: S.bot-name != "" ? "ПОДКЛЮЧЁН" : "";

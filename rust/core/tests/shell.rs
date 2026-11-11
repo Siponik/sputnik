@@ -61,3 +61,17 @@ fn shell() {
         })
     });
 }
+
+#[test]
+fn search_in_own_index() {
+    let idx = json!([
+        {"tab": 2, "title": "Куда слать", "hint": "Telegram и Windows", "also": "уведомления телеграм"},
+        {"tab": 3, "title": "Проверить обновления", "hint": "", "also": "версия"},
+    ]);
+    let ids = |q: &str| sh::search_in(&idx, q).iter().map(|r| r["tab"].clone()).collect::<Vec<_>>();
+    assert_eq!(ids("телеграм"), vec![json!(2)]);
+    assert_eq!(ids("Обновл"), vec![json!(3)]);
+    assert_eq!(ids("уведомления windows"), vec![json!(2)]);
+    assert!(ids("").is_empty());
+    assert!(ids("клавиши").is_empty());
+}
