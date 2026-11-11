@@ -170,7 +170,7 @@ export component AppWindow inherits Window {
                         }
                         sa := TouchArea { clicked => { S.refresh(); } mouse-cursor: pointer; }
                     }
-                    Rectangle {
+                    sbox := Rectangle {
                         width: root.hd-compact ? 40px : 172px;
                         height: 32px;
                         y: 14px;
@@ -393,7 +393,7 @@ export component AppWindow inherits Window {
 
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
-        if S.search-open: SearchDialog { }
+        if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
         // окно обновления (G_Status, слева)
         upd := Rectangle {
             visible: false;

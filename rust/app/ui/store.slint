@@ -22,7 +22,7 @@ export struct Band { y: float, h: float, text: string, a: int }
 export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
-export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string }
+export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string, mark: styled-text, hue: color, due: string }
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
 // Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
 export struct MdRow { kind: string, raw: string, md: styled-text }

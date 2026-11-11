@@ -535,72 +535,86 @@ export component CreateDialog inherits Overlay {
 
 // Поиск Ctrl+K (макет G_Search): панель по центру сверху — поле, группы с числом найденного,
 // клавиши ↑ ↓ / Enter / Esc, «ё = е».
+// Поиск (G_Search, п.8): поле «Найти» в шапке вырастает до 400 px, результаты — прямо под ним, 560 px по правому краю.
 export component SearchDialog inherits Overlay {
+    in property <length> right: root.width - 300px;
+    in property <length> top: 14px;
     property <int> cur;
     property <string> q-text;
-    background: #0007;
+    background: transparent;
     close => { S.search-open-set(false); }
-    property <length> pw: min(560px, root.width - 80px);
+    property <length> fw: 400px;
+    property <length> pw: min(560px, root.right - 16px);
     keys := FocusScope {
         key-pressed(e) => {
             if (e.text == Key.DownArrow) { root.cur = min(S.found.length - 1, root.cur + 1); return accept; }
             if (e.text == Key.UpArrow) { root.cur = max(0, root.cur - 1); return accept; }
             reject
         }
-        panel := Rectangle {
-            x: (parent.width - pw) / 2; y: 84px; width: pw;
-            height: min(parent.height - 100px, 54px + rl.preferred-height + (root.q-text != "" ? 41px : 0px));
+        // поле на месте «Найти»
+        Rectangle {
+            x: root.right - root.fw; y: root.top; width: root.fw; height: 32px;
+            border-radius: 8px; background: G.node; border-width: 1px; border-color: G.accent;
+            TouchArea { }
+            Icon { name: "search"; x: 10px; width: 14px; y: 9px; c: G.muted; }
+            q := Field {
+                x: 30px; width: parent.width - 120px; height: 30px; y: 1px;
+                bare: true;
+                font-size: 13.5px;
+                placeholder: "Найти задачу, заметку, раздел…";
+                edited(t) => { root.cur = 0; root.q-text = t; S.search(t); }
+                accepted => { S.search-go(root.cur); }
+                escape => { S.search-open-set(false); }
+            }
+            Text { x: parent.width - self.preferred-width - 10px; text: root.q-text == "" ? "CTRL K" : S.found.length + " найдено"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+        }
+        // результаты под полем
+        if root.q-text != "": Rectangle {
+            x: root.right - root.pw; y: root.top + 38px; width: root.pw;
+            height: min(root.height - self.y - 16px, rl.preferred-height + 41px);
             border-radius: 12px;
             background: G.node;
             border-width: 1px;
-            border-color: G.accent-line;
+            border-color: G.accent;
             drop-shadow-blur: 24px;
             drop-shadow-color: #000b;
             clip: true;
             TouchArea { }
-            // поле
-            Rectangle {
-                y: 0; height: 54px; width: parent.width;
-                Rectangle { x: 16px; width: 15px; Icon { name: "search"; width: 15px; height: 15px; y: (parent.height - 15px) / 2; c: G.muted; } }
-                q := Field {
-                    x: 42px; width: parent.width - 140px; height: parent.height;
-                    bare: true;
-                    font-size: 15px;
-                    placeholder: "Найти задачу, заметку, раздел…";
-                    edited(t) => { root.cur = 0; root.q-text = t; S.search(t); }
-                    accepted => { S.search-go(root.cur); }
-                    escape => { S.search-open-set(false); }
-                }
-                Text { x: parent.width - self.preferred-width - 16px; text: root.q-text == "" ? "CTRL K" : S.found.length + " НАЙДЕНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
-            }
-            // результаты
             rl := VerticalLayout {
-                y: 54px; width: parent.width;
-                padding: 6px;
-                padding-top: 4px;
+                y: 0; width: parent.width;
+                padding: 6px; padding-top: 4px;
                 alignment: start;
-                if root.q-text != "" && S.found.length == 0: Text { height: 52px; x: 10px; text: "Ничего не нашлось — попробуй другое слово"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                if S.found.length == 0: Text { height: 52px; x: 10px; text: "Ничего не нашлось — попробуй другое слово"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
                 for f[i] in S.found: VerticalLayout {
-                    visible: i < 12;
+                    visible: i < 14;
                     if f.head != "": Text {
-                        height: 30px; x: 10px;
-                        text: f.head;
-                        font-family: G.mono; font-size: 10px; letter-spacing: 1.3px; color: G.accent-ink; vertical-alignment: center;
+                        height: 30px;
+                        text: "    " + f.head;
+                        font-size: 12.5px; color: #A3A5AE; vertical-alignment: center;
                     }
                     Rectangle {
                         height: 38px;
-                        border-radius: 5px;
+                        border-radius: 6px;
                         background: i == root.cur || fa.has-hover ? G.node-hover : transparent;
-                        if f.kind == "задача": Rectangle { x: 12px; y: 12px; width: 13px; height: 13px; border-radius: 3px; border-width: 1px; border-color: #8A8C96; }
-                        if f.kind != "задача": Rectangle { x: 14px; y: 16px; width: 6px; height: 6px; border-radius: 3px; background: G.accent; }
-                        Text { x: 36px; width: parent.width - 190px; text: f.title; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; overflow: elide; }
-                        Text { x: parent.width - self.preferred-width - 12px; text: f.sub; color: #A3A5AE; font-size: 12px; vertical-alignment: center; height: parent.height; }
+                        if f.kind != "раздел": Rectangle { x: 10px; y: 12px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.2px; border-color: #8A8C96; }
+                        if f.kind == "раздел": Rectangle { x: 13px; y: 16px; width: 6px; height: 6px; border-radius: 3px; background: f.hue; }
+                        StyledText { x: f.kind == "раздел" ? 30px : 36px; width: parent.width - 240px; y: (parent.height - self.preferred-height) / 2; text: f.mark; default-color: G.ink; default-font-size: 13.5px; max-lines: 1; }
+                        HorizontalLayout {
+                            x: parent.width - self.preferred-width - 12px; height: parent.height; spacing: 16px;
+                            if f.sub != "" && f.kind == "задача": HorizontalLayout {
+                                spacing: 7px;
+                                Rectangle { width: 6px; Rectangle { y: (parent.height - 6px) / 2; height: 6px; border-radius: 3px; background: f.hue; } }
+                                Text { text: f.sub; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; }
+                            }
+                            if f.kind == "заметка" && f.sub != "": Text { text: "«…" + f.sub + "…»"; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; max-width: 220px; overflow: elide; }
+                            if f.due != "": Text { text: f.due; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; }
+                        }
                         fa := TouchArea { clicked => { S.search-go(i); } mouse-cursor: pointer; }
                     }
                 }
             }
             // подвал с клавишами
-            if root.q-text != "": Rectangle {
+            Rectangle {
                 y: parent.height - 41px; height: 41px; width: parent.width;
                 Rectangle { y: 0; height: 1px; background: G.line; }
                 HorizontalLayout {
@@ -608,7 +622,7 @@ export component SearchDialog inherits Overlay {
                     for k[i] in ["↑ ↓", "ENTER", "ESC"]: HorizontalLayout {
                         spacing: 6px;
                         Rectangle {
-                            y: 11px; height: 18px; width: kt.preferred-width + 10px;
+                            y: 11px; height: 18px; width: kt.preferred-width + 12px;
                             border-radius: 3px; border-width: 1px; border-color: G.line;
                             kt := Text { text: k; font-family: G.mono; font-size: 8.5px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                         }
