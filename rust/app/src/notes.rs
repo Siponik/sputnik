@@ -101,21 +101,29 @@ pub fn frontmatter(body: &str) -> Vec<(String, String)> {
     out
 }
 
-/// Тело без шапки YAML (по ссылке, без копий).
+/// Тело без шапки YAML (по ссылке, без копий). Переводы строк могут быть и `\r\n` (Windows).
 pub fn body_without_front(body: &str) -> &str {
-    let mut it = body.lines();
+    let mut it = body.split_inclusive('\n');
     if it.next().map(str::trim) != Some("---") {
         return body;
     }
-    let mut off = body.lines().next().map(|l| l.len() + 1).unwrap_or(0);
+    let mut off = body.split_inclusive('\n').next().map_or(0, str::len);
     for l in it {
-        let end = l.trim() == "---";
-        off += l.len() + 1;
-        if end {
-            return body.get(off..).unwrap_or("");
+        off += l.len();
+        if l.trim() == "---" {
+            return &body[off..];
         }
     }
     body
+}
+
+/// Свободное имя файла для новой заметки: `Имя.md`, занято — `Имя 2.md`, `Имя 3.md`…
+pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
+    let first = format!("{name}.md");
+    if !taken(&first) {
+        return first;
+    }
+    (2..).map(|i| format!("{name} {i}.md")).find(|p| !taken(p)).unwrap()
 }
 
 /// Строки заметки для режима «Чтение»: (вид, текст). Виды:
@@ -297,6 +305,17 @@ mod t {
         assert!(super::frontmatter("# Без шапки\nтекст").is_empty());
         assert!(super::body_without_front(b).starts_with("# Тело"));
         assert_eq!(super::body_without_front("# Без шапки\nтекст"), "# Без шапки\nтекст");
+        // Windows: \r\n и русские буквы в шапке — тело не съезжает и не пропадает
+        let w = "---\r\nгде: Substance\r\nтип: техника\r\n---\r\n# Тело\r\nтекст";
+        assert_eq!(super::body_without_front(w), "# Тело\r\nтекст");
+        assert_eq!(super::read_blocks(w)[0], ("h1".into(), "Тело".into()));
+    }
+
+    #[test]
+    fn free() {
+        let have = ["Новая заметка.md", "Новая заметка 2.md"];
+        assert_eq!(super::free_name("Идея", |p| have.contains(&p)), "Идея.md");
+        assert_eq!(super::free_name("Новая заметка", |p| have.contains(&p)), "Новая заметка 3.md");
     }
 
     #[test]

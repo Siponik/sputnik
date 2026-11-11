@@ -185,8 +185,8 @@ export component NotesPage inherits Rectangle {
                         border-color: G.line;
                         tt := Text { x: 10px; width: parent.width - 34px; text: t.title; font-size: 12.5px; color: t.cur ? G.ink : G.muted; vertical-alignment: center; overflow: elide; }
                         Text { x: parent.width - 22px; width: 18px; text: t.cur && S.note-dirty ? "●" : "×"; font-size: t.cur && S.note-dirty ? 9px : 13px; color: ca.has-hover ? G.red : (t.cur && S.note-dirty ? G.accent : G.dim); vertical-alignment: center; horizontal-alignment: center; }
-                        ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { if (!t.cur && S.note-dirty) { S.note-save(root.body); } S.note-tab-open(t.path); } }
-                        ca := TouchArea { x: parent.width - 24px; width: 24px; mouse-cursor: pointer; clicked => { if (t.cur && S.note-dirty) { S.note-save(root.body); } S.note-tab-close(t.path); } }
+                        ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { S.note-tab-open(t.path); } }
+                        ca := TouchArea { x: parent.width - 24px; width: 24px; mouse-cursor: pointer; clicked => { S.note-tab-close(t.path); } }
                     }
                 }
             }
@@ -230,7 +230,9 @@ export component NotesPage inherits Rectangle {
                 y: body-y; height: parent.height - body-y; width: parent.width;
                 key-pressed(e) => {
                     if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы" || e.text == "\u{13}")) {
-                        S.note-save(root.body);
+                        // только если правили: root.body после первой правки больше не следует за S.note-body,
+                        // и без проверки Ctrl+S на другой заметке записал бы в неё текст прежней
+                        if (S.note-dirty) { S.note-save(root.body); }
                         accept
                     } else { reject }
                 }
@@ -239,7 +241,7 @@ export component NotesPage inherits Rectangle {
                     text: S.note-body;
                     font-size: 14.5px;
                     wrap: word-wrap;
-                    edited(t) => { root.body = t; S.note-edited(); }
+                    edited(t) => { root.body = t; S.note-edited(t); }
                 }
             }
             // чтение: размеченный текст

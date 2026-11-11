@@ -564,27 +564,25 @@ pub fn wire(w: &AppWindow) {
     g.on_open_backups(|| act(|_, _| {
         let _ = open::that(crate::data::store::own("backups"));
     }));
-    g.on_notes_root_set(|p| act(|app, _| {
+    g.on_notes_root_set(|p| act(|app, u| {
         let p = p.trim().to_string();
-        app.notes.root = if p.is_empty() { None } else { Some(std::path::PathBuf::from(&p)) };
-        let _ = crate::data::store::write_json("notes.json", &json!({"root": p}));
-        app.notes.rescan();
-        app.notes.watch();
-        app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
+        set_notes_root(app, u, if p.is_empty() { None } else { Some(p) });
     }));
+
 
     // ---------- Знания ----------
     g.on_note_search(|q| act(|_, u| u.note_q = str_(&q)));
-    g.on_note_open(|p| act(|_, u| {
-        open_note_tab(u, &str_(&p));
-    }));
+    g.on_note_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
-    g.on_note_tab_open(|p| act(|_, u| u.note_path = str_(&p)));
-    g.on_note_tab_close(|p| act(|_, u| {
+    g.on_note_tab_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
+    g.on_note_tab_close(|p| act(|app, u| {
         let p = str_(&p);
+        if u.note_path == p {
+            save_draft(app, u);
+        }
         u.note_tabs.retain(|t| t != &p);
         if u.note_path == p {
             u.note_path = u.note_tabs.last().cloned().unwrap_or_default();
@@ -592,21 +590,20 @@ pub fn wire(w: &AppWindow) {
         }
     }));
     g.on_note_read_set(|v| act(|_, u| u.note_reading = v));
-    g.on_notes_pick(|| act(|app, _| {
+    g.on_notes_pick(|| act(|app, u| {
         if let Some(dir) = rfd::FileDialog::new().set_title("Папка заметок").pick_folder() {
-            let p = dir.to_string_lossy().to_string();
-            app.notes.root = Some(std::path::PathBuf::from(&p));
-            let _ = crate::data::store::write_json("notes.json", &json!({"root": p}));
-            app.notes.rescan();
-            app.notes.watch();
-            app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
+            set_notes_root(app, u, Some(dir.to_string_lossy().to_string()));
         }
     }));
+
     g.on_graph_open(|p, t| act(|app, u| {
         u.note_graph = false;
-        if p.is_empty() { new_note(app, u, &t) } else { open_note_tab(u, &str_(&p)); }
+        if p.is_empty() { new_note(app, u, &t) } else { open_note_tab(app, u, &str_(&p)); }
     }));
-    g.on_note_edited(|| act(|_, u| u.note_dirty = true));
+    g.on_note_edited(|t| act(|_, u| {
+        u.note_dirty = true;
+        u.note_draft = str_(&t);
+    }));
     g.on_note_save(|b| act(|app, u| {
         let p = u.note_path.clone();
         match app.notes.save(&p, &b) {
@@ -620,14 +617,46 @@ pub fn wire(w: &AppWindow) {
     g.on_note_new(|t| act(|app, u| new_note(app, u, &t)));
     g.on_note_link(|t| act(|app, u| {
         match app.notes.find(&t).map(|n0| n0.path.clone()) {
-            Some(p) => open_note_tab(u, &p),
+            Some(p) => open_note_tab(app, u, &p),
             None => new_note(app, u, &t),
         }
     }));
 }
 
+/// Несохранённую правку текущей заметки — сохранить, прежде чем уйти с неё (на другую вкладку,
+/// заметку из списка, по ссылке). Иначе правка терялась или, хуже, текст одной заметки попадал в другую.
+fn save_draft(app: &mut App, u: &mut Ui) {
+    if !u.note_dirty || u.note_path.is_empty() {
+        return;
+    }
+    match app.notes.save(&u.note_path, &u.note_draft) {
+        Ok(()) => u.note_dirty = false,
+        Err(e) => app.say(format!("Не сохранилось: {e}")),
+    }
+}
+
+/// Сменить папку заметок: вкладки прежней папки закрываются.
+fn set_notes_root(app: &mut App, u: &mut Ui, p: Option<String>) {
+    save_draft(app, u);
+    app.notes.root = p.as_ref().map(std::path::PathBuf::from);
+    let _ = crate::data::store::write_json("notes.json", &json!({"root": p.unwrap_or_default()}));
+    app.notes.rescan();
+    app.notes.watch();
+    u.note_tabs.clear();
+    u.note_path.clear();
+    u.note_dirty = false;
+    app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
+}
+
 /// Открыть заметку вкладкой: запоминает в списке открытых и делает активной.
-fn open_note_tab(u: &mut Ui, path: &str) {
+fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
+    if path == u.note_path {
+        return;
+    }
+    save_draft(app, u);
+    if u.note_dirty {
+        return; // не сохранилось — остаёмся на заметке, чтобы правка не пропала
+    }
     if !path.is_empty() && !u.note_tabs.iter().any(|t| t == path) {
         u.note_tabs.push(path.to_string());
     }
@@ -637,15 +666,17 @@ fn open_note_tab(u: &mut Ui, path: &str) {
 
 fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     let name: String = title.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).collect();
-    let path = format!("{}.md", name.trim());
     if app.notes.root.is_none() {
         app.notes.root = Some(crate::data::store::own("notes"));
         let _ = std::fs::create_dir_all(crate::data::store::own("notes"));
         app.notes.watch();
     }
+    // такой файл уже есть (дважды «+» → «Новая заметка») — не затирать, а взять «Имя 2», «Имя 3»…
+    let root = app.notes.root.clone().unwrap_or_default();
+    let path = crate::notes::free_name(name.trim(), |p| root.join(p).exists());
     match app.notes.save(&path, &format!("# {}\n\n", title.trim())) {
         Ok(()) => {
-            open_note_tab(u, &path);
+            open_note_tab(app, u, &path);
             u.note_reading = false;
         }
         Err(e) => app.say(format!("Заметка не создалась: {e}")),
