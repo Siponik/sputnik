@@ -199,7 +199,7 @@ more = f'''<div style="margin-top: 6px; border-radius: 10px; border: 1px solid {
   <div style="padding: 8px 12px 10px; display: flex; flex-direction: column; gap: 6px">
     {frow("Приоритет", o("!!! Высокий", True) + o("!! Средний") + o("! Низкий") + o("Нет"))}
     {frow("Подзадачи", f'<span style="display: flex; flex-direction: column; gap: 4px"><span style="display: flex; gap: 8px; align-items: center">{check()}Свет и камера</span><span style="display: flex; gap: 8px; align-items: center">{check()}Рендер 4K</span><span style="color: {MUT}; font-size: 12.5px">＋ подзадача</span></span>')}
-    <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid {SOFT}">{"".join(f'<span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px dashed #55575F; display: inline-flex; align-items: center; font-size: 12.5px; color: #C9CAD0">＋ {t}</span>' for t in ["Повтор", "Заметка", "Цвет", "Картинка", "Клиент и сумма", "Исполнитель"])}</div>
+    <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid {SOFT}">{"".join(f'<span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px dashed #55575F; display: inline-flex; align-items: center; font-size: 12.5px; color: #C9CAD0">＋ {t}</span>' for t in ["Повтор", "Заметка", "Цвет", "Картинка", "Исполнитель"])}</div>
   </div>
 </div>'''
 chip_ = lambda t, on=False: f'<span style="height: 28px; padding: 0 11px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 12.5px; {"background: "+OR+"29; border: 1px solid "+OR+"; color: "+INK+"; font-weight: 600" if on else "border: 1px solid "+LINE+"; color: #C9CAD0"}">{t}</span>'
@@ -214,8 +214,18 @@ when_land = f'''<div style="margin: 2px 0 4px 116px; padding: 10px 12px; border-
   <div style="display: flex; gap: 4px">{"".join(_day(d, n, t, i == 1) for i, (d, n, t) in enumerate(_days))}</div>
   <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #DADBE0"><span style="color: {OR}; font-weight: 600">→ Попадёт</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Доска · колонка «Завтра»</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">«Сегодня» в пт 6 · 17:00</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Календарь · неделя 2–8 ноя</span></div>
 </div>'''
-task_rows = (frow("Куда", where + f'<span style="font-size: 12.5px; color: {OR}">Alt L</span>') + frow("Когда", when_chips) + when_land
-             + frow("Этап", o("Модель") + o("UV") + o("Покраска") + o("Рендер", True) + o("Сдача")) + frow("Напомнить", o("За час", True, True) + o("За день") + o("＋")) + more_c)
+_set = lambda k, v, c=OR: f'<span style="height: 30px; padding: 0 6px 0 10px; border-radius: 8px; background: {c}1F; border: 1px solid {c}66; display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px"><span style="color: {MUT}">{k}</span><span style="font-weight: 600; color: {INK}">{v}</span><span style="color: {MUT}; font-size: 11px; padding: 0 3px">✕</span></span>'
+_add = lambda t: f'<span style="height: 30px; padding: 0 10px; border-radius: 8px; border: 1px dashed #55575F; display: inline-flex; align-items: center; font-size: 12.5px; color: #C9CAD0">＋ {t}</span>'
+props_bar = f'''<div style="margin-top: 4px; padding-top: 12px; border-top: 1px solid {SOFT}; display: flex; flex-direction: column; gap: 10px">
+  <div style="display: flex; gap: 6px; flex-wrap: wrap">{_set("Этап", "Рендер")}{_set("Приоритет", "!!!", RED)}{_set("Напомнить", "за час")}{_set("Подзадачи", "2")}</div>
+  <div style="display: flex; gap: 6px; flex-wrap: wrap">{"".join(_add(t) for t in ["Повтор", "Заметка", "Цвет", "Картинка", "Исполнитель"])}</div>
+  <div style="font-size: 12px; color: {MUT}">Клик по свойству — маленькое всплывающее окно рядом. Или «/» в строке: <span style="font: 500 11.5px {MONO}; color: {INK}">/этап</span>, <span style="font: 500 11.5px {MONO}; color: {INK}">/повтор</span>. Заданное фразой («!!!», «в пятницу») сразу становится чипом.</div>
+</div>'''
+_fld = lambda ic, t, w, mono=False: f'<span style="width: {w}px; height: 34px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; background: {HOVER}; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 8px; font: {"500 13px "+MONO if mono else "600 13px "+SANS}; color: {INK}"><span style="color: {MUT}">{ic}</span><span style="flex: 1">{t}</span><span style="color: {MUT}; font-size: 11px">▾</span></span>'
+when_block = (frow("Когда", _fld("◷", "17:00", 104, True) + _fld("📅", "Пт, 6 ноября", 200))
+              + f'<div style="margin: -2px 0 0 116px; display: flex; gap: 6px; flex-wrap: wrap">{chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока")}</div>')
+task_rows = (frow("Куда", where + f'<span style="font-size: 12.5px; color: {OR}">Alt L</span>') + when_block + when_land
+             + props_bar)
 prev = f'''<span style="font-size: 12.5px; color: {MUT}">Так появится на доске</span>
 <div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; overflow: hidden">
   <div style="height: 28px; padding: 0 10px; background: {FILL[OR]}; display: flex; align-items: center; justify-content: space-between; font: 500 10px {MONO}; letter-spacing: .14em; color: #FFFFFF">3D-АССЕТЫ<span style="color: rgba(255,255,255,.72)">РЕНДЕР</span></div>
@@ -382,3 +392,99 @@ st += node(0, 96, 1248, 0, nhead('', 'КАТАЛОГ', '16 МЕСТ', OR, None, 
 st += ab(0, 704, f'<span style="font-size: 12.5px; color: {MUT}">Настройки → Вид → «Анимации: полные / минимум / выкл». «Минимум» и системное «уменьшить движение» — только затухания до 120 мс, без сдвигов. Рамка фокуса — всегда сразу.</span>', w=1248)
 save2('G_Motion.dc.html', page('Анимации', '', st, stage_h=730), 'Анимации · каталог')
 print('fix ok')
+
+# вариант B: панель свойств справа
+_pr = lambda k, v='', c=None: f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px"><span style="width: 92px; color: {MUT}">{k}</span>' + (f'<span style="flex: 1; font-weight: 600; color: {c or INK}">{v}</span><span style="color: {MUT}">▾</span>' if v else f'<span style="flex: 1; color: #55575F">—</span>') + '</div>'
+insp = f'''<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden">
+  <div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">СВОЙСТВА</div>
+  {_pr("Список", "● 3D-ассеты", OR)}{_pr("Этап", "Рендер")}{_pr("Приоритет", "!!! Высокий", RED)}{_pr("Напомнить", "за час")}{_pr("Повтор")}{_pr("Цвет")}{_pr("Картинка")}{_pr("Исполнитель")}
+</div>'''
+_sub = lambda t, done=False: f'<div style="height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 13px; color: {MUT if done else INK}">{check(done) if done else check()}<span style="{"text-decoration: line-through" if done else ""}">{t}</span></div>'
+main_b = f'''<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px">
+  <div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden">
+    <div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ПОДЗАДАЧИ<span style="margin-left: auto; font: 400 11px {MONO}">0 / 2</span></div>
+    {_sub("Свет и камера")}{_sub("Рендер 4K")}<div style="height: 30px; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px; color: {MUT}">＋ подзадача · Enter</div>
+  </div>
+  <div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">
+    <div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА<span style="margin-left: auto; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font: 400 11.5px {SANS}; letter-spacing: 0; color: #C9CAD0">↗ из Знаний</span><span title="Развернуть" style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>
+    <div style="flex: 1; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">Ракурс как на референсе, фон нейтральный… Markdown, ссылки на «Знания» через [[</div>
+  </div>
+</div>'''
+_hdr = lambda t: f'<div style="font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">{t}</div>'
+rows_b = (_hdr("КОГДА") + f'<div style="display: flex; gap: 6px">{_fld("◷", "17:00", 110, True)}{_fld("📅", "Пт, 6 ноября", 0).replace("width: 0px", "flex: 1")}</div>'
+          + f'<div style="display: flex; gap: 6px; flex-wrap: wrap">{chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока")}</div>'
+          + when_land.replace("margin: 2px 0 4px 116px", "margin: 0") + main_b)
+prev_node = node(1022, 150, 230, 112, f'<div style="padding: 8px 10px 6px; font: 500 9.5px {MONO}; letter-spacing: .14em; color: {MUT}">ПОЯВИТСЯ НА ДОСКЕ</div><div style="padding: 0 8px 8px">'+f'''<div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; overflow: hidden">
+  <div style="height: 26px; padding: 0 10px; background: {FILL[OR]}; display: flex; align-items: center; justify-content: space-between; font: 500 10px {MONO}; letter-spacing: .14em; color: #FFFFFF">3D-АССЕТЫ<span style="color: rgba(255,255,255,.72)">РЕНДЕР</span></div>
+  <div style="padding: 10px; display: flex; gap: 10px; align-items: center">{art("shield", OR, 32, 32, 6)}<span style="flex: 1"><span style="display: block; font-weight: 600; font-size: 13px">Рендер щита</span><span style="font-size: 11.5px; color: {MUT}">Завтра 17:00 · !!! · 0 / 2</span></span></div>
+</div>
+'''+'</div>', style=SH)
+st = K + cwin(0, f'Рендер щита {mark("завтра в 17:00", OR)} {mark("!!!", RED)}', rows_b, insp, 'Добавить задачу', x=150, h=584) + svg(wire(990, 190, 1022, 190, OR, 1.5, k=12) + f'<circle cx="990" cy="190" r="3.5" fill="{OR}"></circle><circle cx="1022" cy="190" r="3.5" fill="{OR}"></circle>') + prev_node
+save('G_CreateB.dc.html', page('Создать', 'ДОСКА', st), 'Создать · вариант B: панель свойств справа', 2720, 0, 'task')
+
+# ==== все окна «Создать» по схеме варианта B ====
+def chipc(t, c, on=False):
+    st_ = f"background: {c}29; border: 1px solid {c}; color: {INK}; font-weight: 600" if on else f"border: 1px solid {LINE}; color: #C9CAD0"
+    return f'<span style="height: 28px; padding: 0 11px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 12.5px; {st_}">{t}</span>'
+chips = lambda c, items, on: f'<div style="display: flex; gap: 6px; flex-wrap: wrap">{"".join(chipc(t, c, t in on) for t in items)}</div>'
+fflex = lambda ic, t: _fld(ic, t, 0).replace("width: 0px", "flex: 1")
+frow2 = lambda *a: f'<div style="display: flex; gap: 6px">{"".join(a)}</div>'
+
+
+def notebox(ph, h=96):
+    return (f'<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; min-height: {h}px; display: flex; flex-direction: column">'
+            f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА'
+            f'<span style="margin-left: auto; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font: 400 11.5px {SANS}; letter-spacing: 0; color: #C9CAD0">↗ из Знаний</span>'
+            f'<span style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>'
+            f'<div style="flex: 1; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">{ph}</div></div>')
+
+
+def props(rows):
+    return (f'<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden"><div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">СВОЙСТВА</div>'
+            + ''.join(_pr(*r) for r in rows) + '</div>')
+
+
+def bwin(k, line, left, right, preview, label, primary, h, wire_y=190, ph=112, **kw):
+    c = KINDS[k][1]
+    pn = node(1022, 150, 230, ph, f'<div style="padding: 8px 10px 6px; font: 500 9.5px {MONO}; letter-spacing: .14em; color: {MUT}">{label}</div><div style="padding: 0 8px 8px">{preview}</div>', style=SH)
+    return (cwin(k, line, left, right, primary, x=150, h=h, **kw)
+            + svg(wire(990, wire_y, 1022, wire_y, c, 1.5, k=12) + f'<circle cx="990" cy="{wire_y}" r="3.5" fill="{c}"></circle><circle cx="1022" cy="{wire_y}" r="3.5" fill="{c}"></circle>') + pn)
+
+
+# событие
+ev_left = (_hdr("КОГДА") + frow2(_fld("◷", "15:00", 110, True), fflex("📅", "Пт, 6 ноября"))
+           + chips(BLUE, ["Сегодня", "Завтра", "Пн", "След. неделя"], ["Завтра"])
+           + _hdr("ДЛИТСЯ") + chips(BLUE, ["30 мин", "1 час", "2 часа", "Весь день"], ["1 час"])
+           + f'<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: {GREEN}">{dot(GREEN, 6)}Свободно до 17:00 · в календаре 15:00–16:00</div>'
+           + _hdr("МЕСТО") + f'<span style="height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid {STRONG}; display: flex; align-items: center; padding: 0 12px; color: {MUT}">Адрес или ссылка на созвон</span>'
+           + notebox("Повестка, ссылки… Markdown, «Знания» через [[", 88))
+ev_right = props([("Календарь", "● Основной", BLUE), ("Напомнить", "за 15 мин"), ("Повтор",), ("Участники",), ("Цвет",)])
+ev_prev = ev_r.split('</span>', 1)[1]
+st = W + bwin(1, f'Встреча с заказчиком {mark("в пятницу 15:00", BLUE)} {mark("час", BLUE)}', ev_left, ev_right, ev_prev, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить событие', 576, ph=232)
+save('G_CreateEvent.dc.html', page('Создать · событие', 'КАЛЕНДАРЬ', st), 'Создать · событие', 1360, 1120, 'task')
+
+# привычка
+def hab_left():
+    return (_hdr("ЗНАЧОК") + f'<div style="display: flex; gap: 6px">{icons}</div>'
+            + _hdr("КАК ЧАСТО") + chips(GOLD, ["Каждый день", "По будням", "Свои дни", "N раз в неделю"], ["Каждый день"])
+            + _hdr("КОГДА") + frow2(_fld("◷", "07:00", 104, True), f'<span style="align-self: center; color: {MUT}">до</span>', _fld("◷", "09:00", 104, True))
+            + chips(GOLD, ["Утро", "День", "Вечер", "Любое"], ["Утро"])
+            + notebox("Зачем и как… Markdown, «Знания» через [[", 80))
+hab_right = lambda edit: props([("Цель", "Просто сделать"), ("Telegram", "в 07:00"), ("Windows", "пока идёт окно"), ("До какого дня",), ("Цвет",)] + ([("Удалить", "…", RED)] if edit else []))
+hcard = hprev.split('</span>', 1)[1]
+st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 556, ph=150)
+save('G_CreateHabit.dc.html', page('Создать · привычка', 'ПРИВЫЧКИ', st), 'Создать · привычка', 2720, 1120, 'task')
+st = dim(s_b4.HM, .2) + bwin(2, 'Зарядка', hab_left(), hab_right(True), hcard, 'КАРТОЧКА ПРИВЫЧКИ', 'Сохранить', 590, ph=150, mode='locked', title='Привычка · Зарядка',
+                             foot_left='Ctrl+Enter — сохранить · Esc — закрыть', ctx='То же окно «Создать», открыто из карточки привычки: поля заполнены, серия 21 день не сбросится.')
+c_ = json.load(open(P + 'canvas.json')); hb = c_['boards'].get('G_HabitEdit.dc.html', {})
+save('G_HabitEdit.dc.html', page('Окно привычки', 'ПРИВЫЧКИ', st), 'Привычка · правка в том же окне «Создать»', hb.get('x', 0), hb.get('y', 0), hb.get('page', 'habits'))
+
+# день рождения
+bd_left = (_hdr("КОГДА") + frow2(fflex("📅", "12 ноября"), _fld("", "1994", 110, True).replace('<span style="color: #8A8C94"></span>', ''))
+           + f'<div style="font-size: 12px; color: {MUT}">Каждый год · год необязателен, нужен для «исполнится 32»</div>'
+           + _hdr("ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ") + chips(VIO, ["Не надо", "За неделю", "За 2 недели", "За месяц"], ["За неделю"])
+           + notebox("Идеи подарков, размеры, что любит… Markdown, «Знания» через [[", 120))
+bd_right = props([("Календарь", "● Основной", VIO), ("Напомнить", "в день, за день"), ("Контакт",), ("Цвет",)])
+bcard = bd_r.split('</span>', 1)[1]
+st = K + bwin(3, f'Оля {mark("12 ноября", VIO)} {mark("1994", VIO)}', bd_left, bd_right, bcard, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить день рождения', 486, ph=112)
+save('G_CreateBday.dc.html', page('Создать · день рождения', 'КАЛЕНДАРЬ', st), 'Создать · день рождения', 4080, 1120, 'task')
