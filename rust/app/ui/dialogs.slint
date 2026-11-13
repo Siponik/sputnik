@@ -715,9 +715,9 @@ component HabitBody inherits Rectangle {
         HorizontalLayout {
             height: 36px; spacing: 8px; alignment: start;
             z: ws.open || we.open ? 20 : 0;
-            ws := TimeBox { val: S.c-hwin-s; picked(t) => { S.c-hwin-s(t); root.grab-line(); } }
+            ws := TimeBox { val: S.c-hwin-s; picked(t) => { S.c-hwin-s-set(t); root.grab-line(); } }
             Text { text: "до"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
-            we := TimeBox { val: S.c-hwin-e; picked(t) => { S.c-hwin-e(t); root.grab-line(); } }
+            we := TimeBox { val: S.c-hwin-e; picked(t) => { S.c-hwin-e-set(t); root.grab-line(); } }
             for p in S.c-hpart: CChip { text: p.label; on: p.on; clicked => { S.c-hpart-set(p.id); root.grab-line(); } }
         }
         Rectangle { height: 4px; }
