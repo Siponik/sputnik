@@ -311,3 +311,13 @@ export component CSeg inherits Rectangle {
     }
 }
 
+
+// Стрелка выпадающего списка (символ ▾ есть не во всех шрифтах Windows).
+export component Chev inherits Path {
+    in property <color> c: #A3A5AE;
+    in property <bool> up;
+    width: 10px; height: 10px;
+    viewbox-width: 10; viewbox-height: 10;
+    fill: transparent; stroke: root.c; stroke-width: 1.5px; stroke-line-cap: round; stroke-line-join: round;
+    commands: root.up ? "M2 6.5 L5 3.5 L8 6.5" : "M2 3.5 L5 6.5 L8 3.5";
+}

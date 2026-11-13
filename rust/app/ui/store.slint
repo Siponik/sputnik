@@ -367,6 +367,9 @@ export global S {
     in property <string> c-popen;              // открытое свойство
     in property <[Opt]> c-popts;               // его варианты
     in property <[string]> c-subs;
+    in property <string> c-cal-month;          // «Ноябрь 2026» — выпадающий календарь у поля даты
+    in property <[DpCell]> c-cal;
+    callback c-cal-step(int);
     callback c-time-set(string);
     callback c-strip-set(string);
     callback c-prop(string);                   // открыть/закрыть выбор свойства
