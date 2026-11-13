@@ -355,6 +355,23 @@ export global S {
     in property <string> c-title;              // название без даты, «!!!», @списка
     in property <string> c-meta;               // «Завтра 17:00 · !!!»
     in property <int> c-prio;                  // 0 нет · 1 высокий · 2 средний · 3 низкий
+    // §18–19: «Когда», полоса дней, «Попадёт», «Свойства», подзадачи
+    in property <string> c-time;               // «17:00» | ""
+    in property <string> c-day;                // «Пт, 6 ноября» | «Без срока»
+    in property <[string]> c-times;            // шаг 15 минут
+    in property <[Opt]> c-strip;               // 7 дней: id день, label «ПТ», hint «6», on — выбран
+    in property <[string]> c-lands;            // «→ Попадёт»: первые два
+    in property <[string]> c-lands2;           // и остальное — второй строкой
+    in property <[Opt]> c-props;               // id ключ, label название, hint значение, on — задано
+    in property <string> c-popen;              // открытое свойство
+    in property <[Opt]> c-popts;               // его варианты
+    in property <[string]> c-subs;
+    callback c-time-set(string);
+    callback c-strip-set(string);
+    callback c-prop(string);                   // открыть/закрыть выбор свойства
+    callback c-prop-set(string, string);       // ключ, значение
+    callback c-sub-add(string);
+    callback c-sub-del(int);
     callback c-tok-off(string);                // «×» у понятого куска: вернуть его в название
     callback c-quick-set(string);              // быстрый срок кнопкой
     callback c-pick-date();                    // окно «Когда» (Alt+D)

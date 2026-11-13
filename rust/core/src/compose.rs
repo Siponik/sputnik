@@ -132,18 +132,47 @@ pub fn when_label(day: &Value, slot: &Value, today: NaiveDate) -> String {
     }
 }
 
-/// Быстрые сроки окна «Создать»: id → день (None — без срока).
+/// Быстрые сроки окна «Создать» (§18): id → день (None — без срока).
 pub fn quick_days(today: NaiveDate) -> Vec<(&'static str, &'static str, Option<String>)> {
     let wd = today.weekday().num_days_from_monday() as i64;
-    let fri = dates::add_days(today, if wd < 4 { 4 - wd } else { 11 - wd });
     let mon = dates::add_days(today, 7 - wd);
     vec![
-        ("none", "Без срока", None),
         ("today", "Сегодня", Some(dates::ymd(today))),
         ("tomorrow", "Завтра", Some(dates::ymd(dates::add_days(today, 1)))),
-        ("fri", "Пт", Some(dates::ymd(fri))),
         ("mon", "Пн", Some(dates::ymd(mon))),
+        ("week", "След. неделя", Some(dates::ymd(dates::add_days(today, 7)))),
+        ("none", "Без срока", None),
     ]
+}
+
+const WD: [&str; 7] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
+const MON3: [&str; 12] = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
+
+/// Полоса из 7 дней с сегодняшнего: (день «ГГГГ-ММ-ДД», «ПТ», «6»).
+pub fn strip(today: NaiveDate) -> Vec<(String, String, String)> {
+    (0..7).map(|i| {
+        let d = dates::add_days(today, i);
+        (dates::ymd(d), WD[d.weekday().num_days_from_monday() as usize].to_string(), d.day().to_string())
+    }).collect()
+}
+
+/// Время с шагом 15 минут: «00:00» … «23:45».
+pub fn times() -> Vec<String> {
+    (0..96).map(|i| format!("{:02}:{:02}", i / 4, i % 4 * 15)).collect()
+}
+
+/// «→ Попадёт»: колонка доски; со сроком — ещё день в «Сегодня» и неделя в календаре.
+pub fn lands(day: &Value, slot: &Value, col: &str, today: NaiveDate) -> Vec<String> {
+    let mut v = vec![format!("Доска · колонка «{col}»")];
+    let Some(d) = day.as_str().and_then(dates::parse_ymd) else { return v };
+    let at = slot["s"].as_str().map(|s| format!(" · {s}")).unwrap_or_default();
+    let wd = WD[d.weekday().num_days_from_monday() as usize].to_lowercase();
+    v.push(if d == today { format!("«Сегодня» сразу{at}") } else { format!("«Сегодня» в {wd} {}{at}", d.day()) });
+    let a = dates::add_days(d, -(d.weekday().num_days_from_monday() as i64));
+    let b = dates::add_days(a, 6);
+    let m = |x: NaiveDate| MON3[x.month0() as usize];
+    v.push(if a.month() == b.month() { format!("Календарь · неделя {}–{} {}", a.day(), b.day(), m(b)) } else { format!("Календарь · неделя {} {}–{} {}", a.day(), m(a), b.day(), m(b)) });
+    v
 }
 
 /// Какой быстрый срок сейчас выбран ("" — другой день).

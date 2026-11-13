@@ -15,6 +15,11 @@ pub struct Create {
     /// Выбранное кнопками: срок, приоритет, повтор, возвращённые в название куски.
     pub m: cr2::Manual,
     pub notes: String,
+    /// Этап (колонка доски); None — первая.
+    pub col: Option<String>,
+    pub subs: Vec<String>,
+    /// Открытый выбор в «Свойствах».
+    pub popen: String,
 }
 
 /// Итог строки и выбранного руками (название без дат, срок, приоритет, повтор).
@@ -184,6 +189,50 @@ fn create(app: &App, c: &Create, g: &S) {
         _ => String::new(),
     };
     g.set_c_free(ss(free));
+    props(app, c, g, &x, &dest, &mins, &every);
+}
+
+/// §18–19: «Когда», полоса дней, «Попадёт», «Свойства».
+fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], every: &str) {
+    let tdy = hb::now().date();
+    let day = x["day"].as_str().unwrap_or("");
+    g.set_c_time(ss(x["slot"]["s"].as_str().unwrap_or("")));
+    g.set_c_day(ss(match sputnik_core::dates::parse_ymd(day) {
+        Some(d) => { let l = cr::short_day(day); let _ = d; let mut ch = l.chars(); ch.next().map(|f| f.to_uppercase().collect::<String>() + ch.as_str()).unwrap_or_default() }
+        None => "Без срока".into(),
+    }));
+    g.set_c_times(strings(cr2::times()));
+    g.set_c_strip(model(cr2::strip(tdy).into_iter().map(|(id, wd, n)| Opt { on: id == day, id: ss(id), label: ss(wd), hint: ss(n), hue: color("clay") }).collect()));
+    let cols = app.columns(dest);
+    let col = c.col.clone().filter(|k| cols.iter().any(|x| x.0["id"] == k.as_str())).or_else(|| cols.first().map(|x| text(&x.0["id"])));
+    let col_name = cols.iter().find(|x| Some(text(&x.0["id"])) == col).map(|x| text(&x.0["name"])).unwrap_or_else(|| "Входящие".into());
+    let mut lands = cr2::lands(&x["day"], &x["slot"], &col_name, tdy);
+    let rest = if lands.len() > 2 { lands.split_off(2) } else { vec![] };
+    g.set_c_lands(strings(lands));
+    g.set_c_lands2(strings(rest));
+    let prio = x["priority"].as_i64().unwrap_or(0);
+    let lead = rem::LEADS.iter().filter(|l| mins.contains(&l.0)).map(|l| l.1.replace("За ", "за ").replace("В момент начала", "в начале")).collect::<Vec<_>>().join(", ");
+    let row = |id: &str, l: &str, v: String| { let on = !v.is_empty(); Opt { id: ss(id), label: ss(l), hint: ss(if on { v } else { "—".into() }), hue: color("clay"), on } };
+    g.set_c_props(model(vec![
+        { let mut r = row("list", "Список", app.list_name(dest)); r.hue = list_hue(app, dest); r }
+        , row("col", "Этап", if cols.len() > 1 { col_name.clone() } else { String::new() }),
+        row("prio", "Приоритет", ["", "!!! Высокий", "!! Средний", "! Низкий"][prio.clamp(0, 3) as usize].into()),
+        row("remind", "Напомнить", if day.is_empty() { String::new() } else { lead }),
+        row("repeat", "Повтор", if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) }),
+        row("color", "Цвет", String::new()),
+        row("image", "Картинка", String::new()),
+        row("who", "Исполнитель", String::new()),
+    ]));
+    g.set_c_popen(ss(c.popen.clone()));
+    g.set_c_popts(model(match c.popen.as_str() {
+        "list" => list_opts(app, dest),
+        "col" => cols.iter().map(|(k, _)| Opt { id: ss(text(&k["id"])), label: ss(text(&k["name"])), hint: ss(""), hue: color(&sputnik_core::templates::col_color(k)), on: Some(text(&k["id"])) == col }).collect(),
+        "prio" => [(1, "!!! Высокий"), (2, "!! Средний"), (3, "! Низкий"), (0, "Нет")].iter().map(|(n, l)| opt(n.to_string(), *l, prio == *n)).collect(),
+        "remind" => rem::LEADS.iter().filter(|l| l.0 != 5).map(|(m, l)| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).collect(),
+        "repeat" => [("", "нет"), ("day", "каждый день"), ("weekdays", "по будням"), ("week", "каждую неделю"), ("month", "каждый месяц"), ("year", "каждый год")].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect(),
+        _ => vec![],
+    }));
+    g.set_c_subs(strings(c.subs.clone()));
 }
 
 /// Строка «Создать» в разметке: распознанные куски цветом (дата и время — акцент, приоритет — красный, остальное — золото).

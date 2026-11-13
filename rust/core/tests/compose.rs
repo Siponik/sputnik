@@ -79,12 +79,31 @@ fn event_duration_and_birthday() {
 #[test]
 fn quick_days() {
     let q = c::quick_days(today());
-    assert_eq!(q[3].2.as_deref(), Some("2026-11-13"));
-    assert_eq!(q[4].2.as_deref(), Some("2026-11-16"));
+    assert_eq!(q[2].2.as_deref(), Some("2026-11-16"));
+    assert_eq!(q[3].2.as_deref(), Some("2026-11-18"));
+    assert_eq!(q[4].2, None);
     assert_eq!(c::quick_of(&json!("2026-11-12"), today()), "tomorrow");
     assert_eq!(c::quick_of(&serde_json::Value::Null, today()), "none");
     let p = c::pick_quick("tomorrow", &json!({"s": "15:00", "e": "16:00"}), today()).unwrap();
     assert_eq!(p.slot, Some(("15:00".into(), "16:00".into())));
     assert_eq!(c::pick_quick("none", &json!({"s": "15:00", "e": "16:00"}), today()).unwrap(), Picked::default());
     assert_eq!(c::when_label(&json!("2026-11-12"), &json!({"s": "15:00", "e": "16:00"}), today()), "Завтра, 12 ноября · 15:00–16:00");
+}
+
+#[test]
+fn strip_and_lands() {
+    let st = c::strip(today());
+    assert_eq!(st.len(), 7);
+    assert_eq!(st[0], ("2026-11-11".to_string(), "СР".to_string(), "11".to_string()));
+    assert_eq!(st[6].1, "ВТ");
+    assert_eq!(c::times().len(), 96);
+    assert_eq!(c::times()[69], "17:15");
+    let none = c::lands(&serde_json::Value::Null, &serde_json::Value::Null, "Входящие", today());
+    assert_eq!(none, vec!["Доска · колонка «Входящие»"]);
+    let fri = c::lands(&json!("2026-11-13"), &json!({"s": "17:00", "e": "17:00"}), "Входящие", today());
+    assert_eq!(fri[1], "«Сегодня» в пт 13 · 17:00");
+    assert_eq!(fri[2], "Календарь · неделя 9–15 ноя");
+    let x = c::lands(&json!("2026-12-01"), &serde_json::Value::Null, "К", today());
+    assert_eq!(x[2], "Календарь · неделя 30 ноя–6 дек");
+    assert_eq!(c::lands(&json!("2026-11-11"), &serde_json::Value::Null, "К", today())[1], "«Сегодня» сразу");
 }
