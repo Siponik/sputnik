@@ -168,3 +168,11 @@ fn bday_year_parse() {
     assert_eq!(cr::bday_year("1800"), None);
     assert_eq!(cr::bday_year("2999"), None);
 }
+
+#[test]
+fn habit_custom_days_stay_custom() {
+    use sputnik_core::create::habit_freq_of;
+    let h = json!({});
+    assert_eq!(habit_freq_of(&h, &json!({"freq": "days", "days": [0, 1, 2, 3, 4]}))["kind"], "weekdays");
+    assert_eq!(habit_freq_of(&h, &json!({"freq": "days", "custom": true, "days": [0, 1, 2, 3, 4]}))["kind"], "days");
+}

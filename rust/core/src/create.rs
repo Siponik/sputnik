@@ -454,7 +454,9 @@ pub fn habit_freq_of(h: &Value, manual: &Value) -> Value {
         d.sort_unstable();
         d.dedup();
         if !d.is_empty() {
-            return json!({"kind": if d == [0, 1, 2, 3, 4] { "weekdays" } else { "days" }, "days": d});
+            // «Свои дни», выбранные кнопкой, остаются своими, даже если совпали с буднями
+            let custom = src["custom"] == true;
+            return json!({"kind": if d == [0, 1, 2, 3, 4] && !custom { "weekdays" } else { "days" }, "days": d});
         }
     }
     json!({"kind": "daily"})
