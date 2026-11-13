@@ -202,8 +202,20 @@ more = f'''<div style="margin-top: 6px; border-radius: 10px; border: 1px solid {
     <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 4px; border-top: 1px solid {SOFT}">{"".join(f'<span style="height: 26px; padding: 0 10px; border-radius: 13px; border: 1px dashed #55575F; display: inline-flex; align-items: center; font-size: 12.5px; color: #C9CAD0">＋ {t}</span>' for t in ["Повтор", "Заметка", "Цвет", "Картинка", "Клиент и сумма", "Исполнитель"])}</div>
   </div>
 </div>'''
-task_rows = (frow("Куда", where + f'<span style="font-size: 12.5px; color: {OR}">Alt L</span>') + frow("Когда", o("Завтра, пт 6 ноября · 17:00", True, True) + o("Без срока"))
-             + frow("Этап", o("Модель") + o("UV") + o("Покраска") + o("Рендер", True) + o("Сдача")) + frow("Напомнить", o("За час", True, True) + o("За день") + o("＋")) + more)
+chip_ = lambda t, on=False: f'<span style="height: 28px; padding: 0 11px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 12.5px; {"background: "+OR+"29; border: 1px solid "+OR+"; color: "+INK+"; font-weight: 600" if on else "border: 1px solid "+LINE+"; color: #C9CAD0"}">{t}</span>'
+more_c = f'<div style="margin-top: 6px; height: 38px; border-radius: 10px; border: 1px solid {LINE}; background: {BG}; display: flex; align-items: center; gap: 10px; padding: 0 12px"><span style="font: 600 13px {SANS}">▸ Ещё параметры</span><span style="font-size: 12px; color: {MUT}">приоритет, подзадачи, повтор…</span></div>'
+when_chips = chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока") + f'<span style="height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 6px; font: 500 12px {MONO}; color: {INK}">◷ 17:00</span><span style="font-size: 12.5px; color: {MUT}">📅 дата…</span>'
+_days = [("ЧТ", "5", "сегодня"), ("ПТ", "6", ""), ("СБ", "7", ""), ("ВС", "8", ""), ("ПН", "9", ""), ("ВТ", "10", ""), ("СР", "11", "")]
+def _day(d, n, note, on):
+    st_ = f"background: {OR}29; border: 1.5px solid {OR}" if on else f"border: 1px solid {SOFT}"
+    pin = f'<span style="position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); width: 6px; height: 6px; border-radius: 50%; background: {OR}"></span>' if on else ''
+    return f'<span style="position: relative; flex: 1; height: 40px; border-radius: 7px; {st_}; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px"><span style="font: 500 9.5px {MONO}; letter-spacing: .1em; color: {OR if on else MUT}">{d}</span><span style="font-size: 13px; font-weight: {600 if on else 400}; color: {INK if on else "#C9CAD0"}">{n}</span>{pin}</span>'
+when_land = f'''<div style="margin: 2px 0 4px 116px; padding: 10px 12px; border-radius: 10px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column; gap: 10px">
+  <div style="display: flex; gap: 4px">{"".join(_day(d, n, t, i == 1) for i, (d, n, t) in enumerate(_days))}</div>
+  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #DADBE0"><span style="color: {OR}; font-weight: 600">→ Попадёт</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Доска · колонка «Завтра»</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">«Сегодня» в пт 6 · 17:00</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Календарь · неделя 2–8 ноя</span></div>
+</div>'''
+task_rows = (frow("Куда", where + f'<span style="font-size: 12.5px; color: {OR}">Alt L</span>') + frow("Когда", when_chips) + when_land
+             + frow("Этап", o("Модель") + o("UV") + o("Покраска") + o("Рендер", True) + o("Сдача")) + frow("Напомнить", o("За час", True, True) + o("За день") + o("＋")) + more_c)
 prev = f'''<span style="font-size: 12.5px; color: {MUT}">Так появится на доске</span>
 <div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; overflow: hidden">
   <div style="height: 28px; padding: 0 10px; background: {FILL[OR]}; display: flex; align-items: center; justify-content: space-between; font: 500 10px {MONO}; letter-spacing: .14em; color: #FFFFFF">3D-АССЕТЫ<span style="color: rgba(255,255,255,.72)">РЕНДЕР</span></div>
