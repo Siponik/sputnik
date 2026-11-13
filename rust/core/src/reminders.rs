@@ -1,4 +1,4 @@
-//! Напоминания: правила слоя tasks[id].remind и пункты файла для бота. Порт app/lib/core/reminders.dart.
+//! Напоминания: правила слоя tasks[id].remind и пункты файла для бота. Порт tracker/src/lib/reminders.js.
 //!   { kind: 'before', days, time } · { kind: 'at', at: 'YYYY-MM-DDTHH:MM' } · { kind: 'lead', min }
 use crate::calendar::habit_day;
 use crate::dates::{add_days, parse_ymd, ymd};

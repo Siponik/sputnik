@@ -1,4 +1,4 @@
-//! Акцентный цвет (settings.accent.v = id набора или «#RRGGBB»). Порт app/lib/core/accent.dart.
+//! Акцентный цвет (settings.accent.v = id набора или «#RRGGBB»). Порт tracker/src/lib/accent.js.
 use crate::j::*;
 use crate::rx;
 

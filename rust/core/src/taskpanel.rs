@@ -1,4 +1,4 @@
-//! Окно задачи v2: счётчики колонок, вид этапа, подписи напоминаний, «▸ Ещё». Порт app/lib/core/taskpanel.dart.
+//! Окно задачи v2: счётчики колонок, вид этапа, подписи напоминаний, «▸ Ещё». Порт tracker/src/lib/taskpanel.js.
 use crate::j::*;
 use crate::reminders::{rules_of, BEFORE, LEADS};
 

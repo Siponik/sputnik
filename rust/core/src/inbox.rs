@@ -1,5 +1,5 @@
 //! «Входящие от Claude»: задачи, которые Apps Script (reminders/Inbox.gs) создал по запросам из чатов.
-//! Решение хранится в слое: tasks[id].inbox = 'accepted' | 'rejected'. Порт app/lib/core/inbox.dart.
+//! Решение хранится в слое: tasks[id].inbox = 'accepted' | 'rejected'. Порт tracker/src/lib/inbox.js.
 use crate::habits::now;
 use crate::j::*;
 use crate::reminders::{local, parse_any};

@@ -1,4 +1,4 @@
-//! Окно «Создать» v2: умная строка и авто-определение списка (очки, без ИИ). Порт app/lib/core/route.dart.
+//! Окно «Создать» v2: умная строка и авто-определение списка (очки, без ИИ). Порт tracker/src/lib/route.js.
 //!   parse_line(строка, today, off) → { title, rest, day, time, priority, repeat, at, tag, marks }
 //!   route(текст, lists, layer, tasks, current, now) → [{ listId, score, why, topic?, project? }]
 //!   learn(route, title, listId, topic) → новые записи settings.route

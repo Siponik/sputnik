@@ -1,4 +1,4 @@
-// Золотые данные для app/test/core/repeat_test.dart. Запуск: node tools/golden/repeat.mjs
+// Золотые данные для rust/core/tests (repeat.json). Запуск: node tools/golden/repeat.mjs
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { nextDue, dueRepeats, repeatLabel, takeRepeat, existingNext, CARRY } from '../../tracker/src/lib/repeat.js';
 

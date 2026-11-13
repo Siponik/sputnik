@@ -1,4 +1,4 @@
-//! Поиск по задачам и переходам (окно Ctrl+K). Порт app/lib/core/search.dart.
+//! Поиск по задачам и переходам (окно Ctrl+K). Порт tracker/src/lib/search.js.
 use crate::j::*;
 use crate::rx;
 use std::cmp::Ordering;
