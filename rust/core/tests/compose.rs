@@ -2,6 +2,7 @@
 use chrono::NaiveDate;
 use serde_json::json;
 use sputnik_core::compose::{self as c, Manual, Picked};
+use sputnik_core::create as cr;
 
 fn today() -> NaiveDate {
     NaiveDate::from_ymd_opt(2026, 11, 11).unwrap() // среда
@@ -106,4 +107,64 @@ fn strip_and_lands() {
     let x = c::lands(&json!("2026-12-01"), &serde_json::Value::Null, "К", today());
     assert_eq!(x[2], "Календарь · неделя 30 ноя–6 дек");
     assert_eq!(c::lands(&json!("2026-11-11"), &serde_json::Value::Null, "К", today())[1], "«Сегодня» сразу");
+}
+
+#[test]
+fn habit_freq_of_parse_and_manual() {
+    let null = serde_json::Value::Null;
+    // из строки
+    let h = cr::parse_habit("Зарядка каждый день утром", &json!({}));
+    assert_eq!(cr::habit_freq_of(&h, &null), json!({"kind": "daily"}));
+    let h = cr::parse_habit("Вода 8 стаканов по будням", &json!({}));
+    assert_eq!(cr::habit_freq_of(&h, &null), json!({"kind": "weekdays", "days": [0, 1, 2, 3, 4]}));
+    let h = cr::parse_habit("Скетч 3 раза в неделю", &json!({}));
+    assert_eq!(cr::habit_freq_of(&h, &null), json!({"kind": "week", "perWeek": 3}));
+    let h = cr::parse_habit("Витамины по выходным", &json!({}));
+    assert_eq!(cr::habit_freq_of(&h, &null), json!({"kind": "days", "days": [5, 6]}));
+    // кнопки главнее строки
+    let h = cr::parse_habit("Зарядка каждый день", &json!({}));
+    assert_eq!(cr::habit_freq_of(&h, &json!({"freq": "days", "days": [2, 0, 4, 2]})), json!({"kind": "days", "days": [0, 2, 4]}));
+    assert_eq!(cr::habit_freq_of(&h, &json!({"freq": "week", "perWeek": 5})), json!({"kind": "week", "perWeek": 5}));
+    // пустой ручной выбор — как из строки; «свои дни» без дней — каждый день
+    assert_eq!(cr::habit_freq_of(&h, &null), json!({"kind": "daily"}));
+    assert_eq!(cr::habit_freq_of(&h, &json!({"freq": "days", "days": []})), json!({"kind": "daily"}));
+}
+
+#[test]
+fn habit_fields_manual_overrides() {
+    let null = serde_json::Value::Null;
+    // строка без кнопок — как раньше
+    let h = cr::parse_habit("Вода 8 стаканов по будням утром", &json!({}));
+    let f = cr::habit_fields(&h, &null, "", &null, "");
+    assert_eq!(f["days"], json!([0, 1, 2, 3, 4]));
+    assert_eq!(f["part"], "morning");
+    assert_eq!(f["goal"], json!({"n": 8, "unit": "стаканов"}));
+    assert!(f["win"].is_null() && f["icon"].is_null());
+    // кнопки: N раз в неделю, своё окно главнее части дня, значок
+    let f = cr::habit_fields(&h, &json!({"freq": "week", "perWeek": 3}), "evening", &json!({"s": "07:00", "e": "09:00"}), "💧");
+    assert_eq!(f["days"], json!([0, 1, 2, 3, 4, 5, 6]));
+    assert_eq!(f["perWeek"], 3);
+    assert!(f["part"].is_null(), "своё окно убирает часть дня");
+    assert_eq!(f["win"], json!({"s": "07:00", "e": "09:00"}));
+    assert_eq!(f["time"], "07:00");
+    assert_eq!(f["end"], "09:00");
+    assert_eq!(f["icon"], "💧");
+    assert_eq!(f["goal"], json!({"n": 8, "unit": "стаканов"}), "цель из строки остаётся");
+    // часть дня кнопкой перебивает строку
+    let f = cr::habit_fields(&h, &null, "evening", &null, "");
+    assert_eq!(f["part"], "evening");
+    // кривое окно — просто часть дня
+    let f = cr::habit_fields(&h, &null, "", &json!({"s": "09:00", "e": "07:00"}), "");
+    assert_eq!(f["part"], "morning");
+    assert!(f["win"].is_null());
+}
+
+#[test]
+fn bday_year_parse() {
+    assert_eq!(cr::bday_year(""), None);
+    assert_eq!(cr::bday_year("  "), None);
+    assert_eq!(cr::bday_year("1994"), Some(1994));
+    assert_eq!(cr::bday_year("год"), None);
+    assert_eq!(cr::bday_year("1800"), None);
+    assert_eq!(cr::bday_year("2999"), None);
 }

@@ -457,18 +457,19 @@ impl App {
         self.touch("habits", id, patch);
     }
 
-    pub fn add_habit(&mut self, name: String, fields: Value) {
+    pub fn add_habit(&mut self, name: String, fields: Value, notes: &str) {
         if let Some(hl) = self.habit_list() {
-            let t = self.add_task(s(&hl["id"]), &name, None, json!({}), None, "");
+            let t = self.add_task(s(&hl["id"]), &name, None, json!({}), None, notes);
             let mut f = fields;
             f["createdAt"] = json!(today_ymd());
             self.touch("habits", s(&t["id"]), f);
             return;
         }
+        let notes = notes.to_string();
         run(|| crate::data::api::create_list("Привычки"), move |app, r| match r {
             Ok(l) => {
                 app.lists.push(l);
-                app.add_habit(name, fields);
+                app.add_habit(name, fields, &notes);
             }
             Err(e) => app.say(format!("Не получилось создать список «Привычки»: {e}")),
         });

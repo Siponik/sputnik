@@ -609,7 +609,7 @@ pub fn wire(w: &AppWindow) {
         c.m.repeat = Some(if r.is_empty() { Value::Null } else { json!({"every": str_(&r)}) });
     }));
     g.on_c_notes_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.notes = str_(&t) }));
-    g.on_c_kind_set(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.kind = k; c.remind = None; }));
+    g.on_c_kind_set(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.kind = k; c.remind = None; c.popen.clear(); }));
     g.on_c_dest_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.dest = Some(str_(&d)) }));
     g.on_c_cal_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal = Some(str_(&d)) }));
     g.on_c_dur_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() {
@@ -647,6 +647,7 @@ pub fn wire(w: &AppWindow) {
         match k.as_str() {
             "list" => { c.dest = Some(v); c.col = None; }
             "col" => c.col = Some(v),
+            "cal" => c.cal = Some(v),
             "prio" => c.m.prio = Some(v.parse().unwrap_or(0)),
             "repeat" => c.m.repeat = Some(if v.is_empty() { Value::Null } else { json!({"every": v}) }),
             "remind" => {
@@ -659,6 +660,59 @@ pub fn wire(w: &AppWindow) {
             _ => {}
         }
         c.popen.clear();
+    }));
+    // ---------- Окно «Создать»: событие / привычка / день рождения ----------
+    g.on_c_place_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.place = str_(&t) }));
+    g.on_c_year_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.year = str_(&t) }));
+    g.on_c_gift_set(|n| act(|_, u| if let Some(c) = u.create.as_mut() {
+        c.gift = Some(str_(&n).parse().unwrap_or(7));
+    }));
+    g.on_c_hfreq_set(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let f = cr::habit_freq_of(&cr::parse_habit(&c.text, &c.m.off_json()), &c.hfreq);
+        c.hfreq = match k.as_str() {
+            "weekdays" => json!({"freq": "days", "days": [0, 1, 2, 3, 4]}),
+            "days" => json!({"freq": "days", "days": if matches!(s(&f["kind"]), "days" | "weekdays") { f["days"].clone() } else { json!([0, 1, 2, 3, 4]) }}),
+            "week" => json!({"freq": "week", "perWeek": if s(&f["kind"]) == "week" { f["perWeek"].as_i64().unwrap_or(3).max(2) } else { 3 }}),
+            _ => json!({"freq": "daily"}),
+        };
+    }));
+    g.on_c_hday(|i| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let f = cr::habit_freq_of(&cr::parse_habit(&c.text, &c.m.off_json()), &c.hfreq);
+        let mut d: Vec<i64> = if matches!(s(&f["kind"]), "days" | "weekdays") {
+            f["days"].as_array().map(|a| a.iter().filter_map(|x| x.as_i64()).collect()).unwrap_or_default()
+        } else {
+            vec![0, 1, 2, 3, 4]
+        };
+        match d.iter().position(|x| *x == i as i64) {
+            Some(p) if d.len() > 1 => { d.remove(p); }
+            Some(_) => {}
+            None => { d.push(i as i64); d.sort_unstable(); }
+        }
+        c.hfreq = json!({"freq": "days", "days": d});
+    }));
+    g.on_c_hper_set(|n| act(|_, u| if let Some(c) = u.create.as_mut() {
+        c.hfreq = json!({"freq": "week", "perWeek": str_(&n).parse::<i64>().unwrap_or(3).clamp(1, 6)});
+    }));
+    g.on_c_hpart_set(|p| act(|_, u| if let Some(c) = u.create.as_mut() {
+        c.hpart = str_(&p);
+        c.hwin = None; // часть дня сбрасывает своё окно
+    }));
+    g.on_c_hwin_s_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let (_, en) = habit_win_base(c);
+        let st = str_(&t);
+        // конец раньше начала — пододвигаем: окно не короче часа
+        let en = if cr::to_min(&en) <= cr::to_min(&st) { cr::from_min((cr::to_min(&st) + 60).min(1439)) } else { en };
+        c.hwin = Some((st, en));
+    }));
+    g.on_c_hwin_e_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let (st, _) = habit_win_base(c);
+        let en = str_(&t);
+        let st = if cr::to_min(&st) >= cr::to_min(&en) { cr::from_min((cr::to_min(&en) - 60).max(0)) } else { st };
+        c.hwin = Some((st, en));
+    }));
+    g.on_c_hicon(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let t = str_(&t);
+        c.hicon = if c.hicon == t { String::new() } else { t };
     }));
     g.on_c_sub_add(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
         let t = str_(&t);
@@ -677,6 +731,13 @@ pub fn wire(w: &AppWindow) {
                 c.notes.clear();
                 c.subs.clear();
                 c.popen.clear();
+                c.place.clear();
+                c.year.clear();
+                c.hfreq = Value::Null;
+                c.hpart.clear();
+                c.hwin = None;
+                c.hicon.clear();
+                c.gift = None;
                 let when = c.m.when.take();
                 c.m = Default::default();
                 c.m.when = when;
@@ -945,6 +1006,19 @@ fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     }
 }
 
+/// Окно времени привычки для полей «с … до …»: своё → окно выбранной части дня → из строки → 07:00–09:00.
+fn habit_win_base(c: &Create) -> (String, String) {
+    if let Some(w) = &c.hwin {
+        return w.clone();
+    }
+    let part = if c.hpart.is_empty() { text(&cr::parse_habit(&c.text, &c.m.off_json())["part"]) } else { c.hpart.clone() };
+    let w = hb::part_win(&json!(part));
+    match (w["s"].as_str(), w["e"].as_str()) {
+        (Some(a), Some(b)) => (a.to_string(), b.to_string()),
+        _ => ("07:00".into(), "09:00".into()),
+    }
+}
+
 fn add_habit(app: &mut App, t: &str) {
     let h = cr::parse_habit(t, &json!({}));
     let name = text(&h["name"]);
@@ -966,7 +1040,7 @@ fn add_habit(app: &mut App, t: &str) {
     if !h["goal"].is_null() {
         f["goal"] = h["goal"].clone();
     }
-    app.add_habit(name.clone(), f);
+    app.add_habit(name.clone(), f, "");
     app.say(format!("Привычка «{name}» заведена"));
 }
 
@@ -974,7 +1048,16 @@ fn add_habit(app: &mut App, t: &str) {
 fn submit(app: &mut App, c: &Create) -> bool {
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
     if c.kind == 2 {
-        add_habit(app, &c.text);
+        let h = cr::parse_habit(&c.text, &c.m.off_json());
+        let name = text(&h["name"]);
+        if name.trim().is_empty() {
+            app.say("Напиши название");
+            return false;
+        }
+        let win = c.hwin.clone().map(|(a, b)| json!({ "s": a, "e": b })).unwrap_or(Value::Null);
+        let f = cr::habit_fields(&h, &c.hfreq, &c.hpart, &win, &c.hicon);
+        app.add_habit(name.clone(), f, c.notes.trim());
+        app.say(format!("Привычка «{name}» заведена"));
         return true;
     }
     let x = super::dialogs::resolved(c);
@@ -991,14 +1074,14 @@ fn submit(app: &mut App, c: &Create) -> bool {
                 return false;
             };
             let cal = cal_of(app, c);
-            app.create_birthday(&title, day, None, &mins, &cal, 7, None);
+            app.create_birthday(&title, day, cr::bday_year(&c.year), &mins, &cal, c.gift.unwrap_or(7), None);
             true
         }
         1 => {
             let day = text(&x["day"]);
             let cal = cal_of(app, c);
             let rec = if x["repeat"].is_object() { cr::recurrence_of(&x["repeat"]) } else { Value::Null };
-            app.create_event(&title, &day, slot.filter(|_| c.dur >= 0), c.notes.trim(), &mins, &cal, "", rec);
+            app.create_event(&title, &day, slot.filter(|_| c.dur >= 0), c.notes.trim(), &mins, &cal, c.place.trim(), rec);
             true
         }
         _ => {
