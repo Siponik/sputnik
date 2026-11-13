@@ -636,7 +636,9 @@ pub fn wire(w: &AppWindow) {
         let x = super::dialogs::resolved(c);
         let slot = x["slot"]["s"].as_str().map(|st| (st.to_string(), x["slot"]["e"].as_str().unwrap_or(st).to_string()));
         c.m.when = Some(sputnik_core::compose::Picked { day: Some(str_(&d)), slot });
+        c.cal_step = 0;
     }));
+    g.on_c_cal_step(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal_step += k }));
     g.on_c_prop(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
         let k = str_(&k);
         c.popen = if c.popen == k || ["color", "image", "who"].contains(&k.as_str()) { String::new() } else { k };

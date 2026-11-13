@@ -20,6 +20,8 @@ pub struct Create {
     pub subs: Vec<String>,
     /// Открытый выбор в «Свойствах».
     pub popen: String,
+    /// Сдвиг месяца в выпадающем календаре даты.
+    pub cal_step: i32,
     /// Событие: место.
     pub place: String,
     /// Привычка: частота кнопками (Null — из строки), часть дня ("" — из строки), своё окно, значок.
@@ -231,6 +233,22 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         None => "Без срока".into(),
     }));
     g.set_c_times(strings(cr2::times()));
+    {
+        use chrono::Datelike;
+        let sel = sputnik_core::dates::parse_ymd(day);
+        let base = sel.unwrap_or(tdy);
+        let m0 = base.year() * 12 + base.month0() as i32 + c.cal_step;
+        let first = chrono::NaiveDate::from_ymd_opt(m0.div_euclid(12), m0.rem_euclid(12) as u32 + 1, 1).unwrap_or(tdy);
+        const MN: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        g.set_c_cal_month(ss(format!("{} {}", MN[first.month0() as usize], first.year())));
+        let start = first - chrono::Duration::days(first.weekday().num_days_from_monday() as i64);
+        let next = chrono::NaiveDate::from_ymd_opt((m0 + 1).div_euclid(12), (m0 + 1).rem_euclid(12) as u32 + 1, 1).unwrap_or(tdy);
+        let weeks = ((next - start).num_days() + 6) / 7;
+        let cells: Vec<crate::DpCell> = (0..weeks * 7).map(|i| start + chrono::Duration::days(i))
+            .map(|x| crate::DpCell { n: x.day() as i32, day: ss(x.format("%Y-%m-%d").to_string()), other: x.month() != first.month(), today: x == tdy, sel: Some(x) == sel })
+            .collect();
+        g.set_c_cal(model(cells));
+    }
     g.set_c_strip(model(cr2::strip(tdy).into_iter().map(|(id, wd, n)| Opt { on: id == day, id: ss(id), label: ss(wd), hint: ss(n), hue: color("clay") }).collect()));
     let cols = app.columns(dest);
     let col = c.col.clone().filter(|k| cols.iter().any(|x| x.0["id"] == k.as_str())).or_else(|| cols.first().map(|x| text(&x.0["id"])));

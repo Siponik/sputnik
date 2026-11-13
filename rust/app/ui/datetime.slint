@@ -38,7 +38,7 @@ export component DatePicker inherits Node {
     title: "ВЫБОР ДАТЫ И ВРЕМЕНИ";
     aside: "ПРО «" + S.dp-title + "»";
     head: G.accent.darker(0.3);
-    width: 740px;
+    width: max(860px, body.preferred-width);
     height: 34px + body.preferred-height;
     drop-shadow-blur: 24px;
     drop-shadow-color: #000b;
@@ -48,12 +48,12 @@ export component DatePicker inherits Node {
         HorizontalLayout {
             spacing: 18px;
             VerticalLayout {
-                width: 330px;
+                width: max(330px, qr.preferred-width);
                 spacing: 8px;
                 Mono { text: "СЛОВАМИ"; }
                 Field { placeholder: "завтра в 15, в пятницу…"; edited(t) => { S.dp-words(t); } accepted(t) => { S.dp-words(t); } escape => { S.dp-cancel(); } }
                 Text { text: S.dp-said == "" ? " " : "Понял: " + S.dp-said; color: G.accent-ink; font-size: 12px; }
-                HorizontalLayout { spacing: 4px; alignment: start;
+                qr := HorizontalLayout { spacing: 4px; alignment: start;
                     for q in S.dp-quick: Chip { text: q.label; on: q.on; clicked => { S.dp-quick-set(q.id); } }
                 }
                 HorizontalLayout {
