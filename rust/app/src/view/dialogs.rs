@@ -285,7 +285,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         "cal" => app.writable_cals().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["summaryOverride"]).max(text(&x["summary"]))), hint: ss(""), hue: color(s(&x["backgroundColor"])), on: x["id"] == cal.as_str() }).collect(),
         "col" => cols.iter().map(|(k, _)| Opt { id: ss(text(&k["id"])), label: ss(text(&k["name"])), hint: ss(""), hue: color(&sputnik_core::templates::col_color(k)), on: Some(text(&k["id"])) == col }).collect(),
         "prio" => [(1, "!!! Высокий"), (2, "!! Средний"), (3, "! Низкий"), (0, "Нет")].iter().map(|(n, l)| opt(n.to_string(), *l, prio == *n)).collect(),
-        "remind" => leads.iter().filter(|l| c.kind == 3 || l.0 != 5).map(|(m, l)| opt(m.to_string(), lab(l.1), mins.contains(m))).collect(),
+        "remind" => leads.iter().filter(|x| c.kind == 3 || x.0 != 5).map(|x| opt(x.0.to_string(), lab(x.1), mins.contains(&x.0))).collect(),
         "repeat" => [("", "нет"), ("day", "каждый день"), ("weekdays", "по будням"), ("week", "каждую неделю"), ("month", "каждый месяц"), ("year", "каждый год")].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect(),
         _ => vec![],
     }));

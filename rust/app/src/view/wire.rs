@@ -698,14 +698,14 @@ pub fn wire(w: &AppWindow) {
         c.hwin = None; // часть дня сбрасывает своё окно
     }));
     g.on_c_hwin_s_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
-        let (st, en) = habit_win_base(c);
+        let (_, en) = habit_win_base(c);
         let st = str_(&t);
         // конец раньше начала — пододвигаем: окно не короче часа
         let en = if cr::to_min(&en) <= cr::to_min(&st) { cr::from_min((cr::to_min(&st) + 60).min(1439)) } else { en };
         c.hwin = Some((st, en));
     }));
     g.on_c_hwin_e_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
-        let (st, en) = habit_win_base(c);
+        let (st, _) = habit_win_base(c);
         let en = str_(&t);
         let st = if cr::to_min(&st) >= cr::to_min(&en) { cr::from_min((cr::to_min(&en) - 60).max(0)) } else { st };
         c.hwin = Some((st, en));
