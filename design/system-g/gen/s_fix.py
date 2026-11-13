@@ -419,7 +419,8 @@ prev_node = node(1022, 150, 230, 112, f'<div style="padding: 8px 10px 6px; font:
   <div style="padding: 10px; display: flex; gap: 10px; align-items: center">{art("shield", OR, 32, 32, 6)}<span style="flex: 1"><span style="display: block; font-weight: 600; font-size: 13px">Рендер щита</span><span style="font-size: 11.5px; color: {MUT}">Завтра 17:00 · !!! · 0 / 2</span></span></div>
 </div>
 '''+'</div>', style=SH)
-st = K + cwin(0, f'Рендер щита {mark("завтра в 17:00", OR)} {mark("!!!", RED)}', rows_b, insp, 'Добавить задачу', x=150, h=584) + svg(wire(990, 190, 1022, 190, OR, 1.5, k=12) + f'<circle cx="990" cy="190" r="3.5" fill="{OR}"></circle><circle cx="1022" cy="190" r="3.5" fill="{OR}"></circle>') + prev_node
+st = K + cwin(0, f'Рендер щита {mark("завтра в 17:00", OR)} {mark("!!!", RED)}', rows_b, insp, 'Добавить задачу', x=150, h=620) + svg(wire(990, 190, 1022, 190, OR, 1.5, k=12) + f'<circle cx="990" cy="190" r="3.5" fill="{OR}"></circle><circle cx="1022" cy="190" r="3.5" fill="{OR}"></circle>') + prev_node
+stB = st
 save('G_CreateB.dc.html', page('Создать', 'ДОСКА', st), 'Создать · вариант B: панель свойств справа', 2720, 0, 'task')
 
 # ==== все окна «Создать» по схеме варианта B ====
@@ -460,7 +461,7 @@ ev_left = (_hdr("КОГДА") + frow2(_fld("◷", "15:00", 110, True), fflex("�
            + notebox("Повестка, ссылки… Markdown, «Знания» через [[", 88))
 ev_right = props([("Календарь", "● Основной", BLUE), ("Напомнить", "за 15 мин"), ("Повтор",), ("Участники",), ("Цвет",)])
 ev_prev = ev_r.split('</span>', 1)[1]
-st = W + bwin(1, f'Встреча с заказчиком {mark("в пятницу 15:00", BLUE)} {mark("час", BLUE)}', ev_left, ev_right, ev_prev, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить событие', 576, ph=232)
+st = W + bwin(1, f'Встреча с заказчиком {mark("в пятницу 15:00", BLUE)} {mark("час", BLUE)}', ev_left, ev_right, ev_prev, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить событие', 620, ph=232)
 save('G_CreateEvent.dc.html', page('Создать · событие', 'КАЛЕНДАРЬ', st), 'Создать · событие', 1360, 1120, 'task')
 
 # привычка
@@ -472,19 +473,44 @@ def hab_left():
             + notebox("Зачем и как… Markdown, «Знания» через [[", 80))
 hab_right = lambda edit: props([("Цель", "Просто сделать"), ("Telegram", "в 07:00"), ("Windows", "пока идёт окно"), ("До какого дня",), ("Цвет",)] + ([("Удалить", "…", RED)] if edit else []))
 hcard = hprev.split('</span>', 1)[1]
-st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 556, ph=150)
+st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 620, ph=150)
 save('G_CreateHabit.dc.html', page('Создать · привычка', 'ПРИВЫЧКИ', st), 'Создать · привычка', 2720, 1120, 'task')
-st = dim(s_b4.HM, .2) + bwin(2, 'Зарядка', hab_left(), hab_right(True), hcard, 'КАРТОЧКА ПРИВЫЧКИ', 'Сохранить', 590, ph=150, mode='locked', title='Привычка · Зарядка',
+st = dim(s_b4.HM, .2) + bwin(2, 'Зарядка', hab_left(), hab_right(True), hcard, 'КАРТОЧКА ПРИВЫЧКИ', 'Сохранить', 620, ph=150, mode='locked', title='Привычка · Зарядка',
                              foot_left='Ctrl+Enter — сохранить · Esc — закрыть', ctx='То же окно «Создать», открыто из карточки привычки: поля заполнены, серия 21 день не сбросится.')
 c_ = json.load(open(P + 'canvas.json')); hb = c_['boards'].get('G_HabitEdit.dc.html', {})
 save('G_HabitEdit.dc.html', page('Окно привычки', 'ПРИВЫЧКИ', st), 'Привычка · правка в том же окне «Создать»', hb.get('x', 0), hb.get('y', 0), hb.get('page', 'habits'))
 
 # день рождения
 bd_left = (_hdr("КОГДА") + frow2(fflex("📅", "12 ноября"), _fld("", "1994", 110, True).replace('<span style="color: #8A8C94"></span>', ''))
-           + f'<div style="font-size: 12px; color: {MUT}">Каждый год · год необязателен, нужен для «исполнится 32»</div>'
+           + f'<div style="font-size: 12px; color: {MUT}">Повторяется каждый год · год можно не указывать, он нужен, чтобы показать возраст («исполнится 32»)</div>'
            + _hdr("ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ") + chips(VIO, ["Не надо", "За неделю", "За 2 недели", "За месяц"], ["За неделю"])
            + notebox("Идеи подарков, размеры, что любит… Markdown, «Знания» через [[", 120))
 bd_right = props([("Календарь", "● Основной", VIO), ("Напомнить", "в день, за день"), ("Контакт",), ("Цвет",)])
 bcard = bd_r.split('</span>', 1)[1]
-st = K + bwin(3, f'Оля {mark("12 ноября", VIO)} {mark("1994", VIO)}', bd_left, bd_right, bcard, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить день рождения', 486, ph=112)
+st = K + bwin(3, f'Оля {mark("12 ноября", VIO)} {mark("1994", VIO)}', bd_left, bd_right, bcard, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить день рождения', 620, ph=112)
 save('G_CreateBday.dc.html', page('Создать · день рождения', 'КАЛЕНДАРЬ', st), 'Создать · день рождения', 4080, 1120, 'task')
+
+
+# ==== выпадашки времени и даты — у своих полей ====
+def _tpop():
+    rows = ''.join(f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; margin: 0 4px; border-radius: 6px; font: 400 13px {MONO}; {"background: "+OR+"29; color: "+INK+"; font-weight: 600" if t == "17:00" else "color: #C9CAD0"}">{t}<span style="margin-left: auto; color: {OR}">{"✓" if t == "17:00" else ""}</span></div>' for t in ["16:00", "16:15", "16:30", "16:45", "17:00", "17:15", "17:30", "17:45"])
+    return (f'<div style="position: absolute; left: 174px; top: 206px; width: 150px; padding: 4px 0; border-radius: 10px; background: {NODE}; border: 1px solid {STRONG}; box-shadow: 0 18px 40px rgba(0,0,0,.5)">'
+            f'<div style="margin: 0 8px 4px; height: 30px; border-radius: 7px; border: 1px solid {OR}; display: flex; align-items: center; padding: 0 8px; font: 400 13px {MONO}">17:00<span style="margin-left: auto; font: 400 10.5px {SANS}; color: {MUT}">ввод</span></div>'
+            + rows + f'<div style="height: 1px; background: {LINE}; margin: 4px 0"></div><div style="height: 30px; display: flex; align-items: center; padding: 0 14px; font-size: 12.5px; color: {MUT}">Без времени</div></div>')
+def _dpop():
+    days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
+    head = ''.join(f'<span style="font: 500 9.5px {MONO}; color: {MUT}; text-align: center">{d}</span>' for d in days)
+    cells = ''
+    for i in range(36):
+        n = i - 5
+        if n < 1 or n > 30: cells += '<span></span>'; continue
+        on, today = n == 6, n == 5
+        st_ = f"background: {OR}; color: #1B1206; font-weight: 600" if on else (f"border: 1px solid {OR}; color: {INK}" if today else "color: #C9CAD0")
+        cells += f'<span style="height: 30px; border-radius: 7px; display: grid; place-items: center; font-size: 12.5px; {st_}">{n}</span>'
+    quick = ''.join(f'<span style="height: 26px; padding: 0 9px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font-size: 12px; color: #C9CAD0">{t}</span>' for t in ["Сегодня", "Завтра", "Пн", "+1 нед"])
+    return (f'<div style="position: absolute; left: 290px; top: 206px; width: 268px; padding: 10px; box-sizing: border-box; border-radius: 10px; background: {NODE}; border: 1px solid {STRONG}; box-shadow: 0 18px 40px rgba(0,0,0,.5)">'
+            f'<div style="display: flex; align-items: center; margin-bottom: 8px"><span style="color: {MUT}">‹</span><span style="flex: 1; text-align: center; font-weight: 600; font-size: 13px">Ноябрь 2026</span><span style="color: {MUT}">›</span></div>'
+            f'<div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px">{head}{cells}</div>'
+            f'<div style="display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; padding-top: 8px; border-top: 1px solid {LINE}">{quick}</div></div>')
+save('G_CreateTime.dc.html', page('Создать · время', 'ДОСКА', stB + _tpop()), 'Создать · выбор времени у поля', 0, 2240, 'task')
+save('G_CreateDate.dc.html', page('Создать · дата', 'ДОСКА', stB + _dpop()), 'Создать · выбор даты у поля', 1360, 2240, 'task')
