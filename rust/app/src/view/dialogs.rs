@@ -250,7 +250,8 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
     let row = |id: &str, l: &str, v: String| { let on = !v.is_empty(); Opt { id: ss(id), label: ss(l), hint: ss(if on { v } else { "—".into() }), hue: color("clay"), on } };
     let cal = cal_of(app, c);
     let cal_row = |app: &App| {
-        let c0 = app.writable_cals().iter().find(|x| text(&x["id"]) == cal);
+        let cals = app.writable_cals();
+        let c0 = cals.iter().find(|x| text(&x["id"]) == cal);
         let mut r = row("cal", "Календарь", c0.map(|x| text(&x["summaryOverride"]).max(text(&x["summary"]))).unwrap_or_else(|| "Основной".into()));
         r.hue = c0.map(|x| color(s(&x["backgroundColor"]))).unwrap_or_else(|| color("clay"));
         r
