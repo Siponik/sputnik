@@ -626,6 +626,47 @@ pub fn wire(w: &AppWindow) {
         if let Some(i) = mins.iter().position(|x| *x == m) { mins.remove(i); } else { mins.push(m); }
         c.remind = Some(mins);
     }));
+    g.on_c_time_set(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let x = super::dialogs::resolved(c);
+        let t = str_(&t);
+        let day = x["day"].as_str().map(|d| d.to_string()).or_else(|| (!t.is_empty()).then(today_s));
+        c.m.when = Some(sputnik_core::compose::Picked { day, slot: (!t.is_empty()).then(|| (t.clone(), t)) });
+    }));
+    g.on_c_strip_set(|d| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let x = super::dialogs::resolved(c);
+        let slot = x["slot"]["s"].as_str().map(|st| (st.to_string(), x["slot"]["e"].as_str().unwrap_or(st).to_string()));
+        c.m.when = Some(sputnik_core::compose::Picked { day: Some(str_(&d)), slot });
+    }));
+    g.on_c_prop(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let k = str_(&k);
+        c.popen = if c.popen == k || ["color", "image", "who"].contains(&k.as_str()) { String::new() } else { k };
+    }));
+    g.on_c_prop_set(|k, v| act(|app, u| {
+        let Some(c) = u.create.as_mut() else { return };
+        let v = str_(&v);
+        match k.as_str() {
+            "list" => { c.dest = Some(v); c.col = None; }
+            "col" => c.col = Some(v),
+            "prio" => c.m.prio = Some(v.parse().unwrap_or(0)),
+            "repeat" => c.m.repeat = Some(if v.is_empty() { Value::Null } else { json!({"every": v}) }),
+            "remind" => {
+                let m: i64 = v.parse().unwrap_or(0);
+                let mut mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
+                if let Some(i) = mins.iter().position(|x| *x == m) { mins.remove(i); } else { mins.push(m); }
+                c.remind = Some(mins);
+                return; // несколько напоминаний — список остаётся открытым
+            }
+            _ => {}
+        }
+        c.popen.clear();
+    }));
+    g.on_c_sub_add(|t| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let t = str_(&t);
+        if !t.trim().is_empty() { c.subs.push(t.trim().to_string()); }
+    }));
+    g.on_c_sub_del(|i| act(|_, u| if let Some(c) = u.create.as_mut() {
+        if (i as usize) < c.subs.len() { c.subs.remove(i as usize); }
+    }));
     g.on_c_submit(|t, more| act(|app, u| {
         let Some(mut c) = u.create.clone() else { return };
         c.text = str_(&t);
@@ -634,6 +675,8 @@ pub fn wire(w: &AppWindow) {
                 // «и ещё»: список и срок остаются, остальное — с чистого листа
                 c.text.clear();
                 c.notes.clear();
+                c.subs.clear();
+                c.popen.clear();
                 let when = c.m.when.take();
                 c.m = Default::default();
                 c.m.when = when;
@@ -981,7 +1024,11 @@ fn submit(app: &mut App, c: &Create) -> bool {
                     patch["remind"] = r;
                 }
             }
-            let t0 = app.add_task(&dest, &title, due, patch, None, c.notes.trim());
+            let col = c.col.clone().filter(|k| app.columns(&dest).first().is_some_and(|f| f.0["id"] != k.as_str()));
+            let t0 = app.add_task(&dest, &title, due, patch, col.as_deref(), c.notes.trim());
+            for st in &c.subs {
+                app.add_subtask(&dest, s(&t0["id"]), st);
+            }
             if c.dest.is_some() {
                 app.learn_route(&title, &dest, &Value::Null);
             }
