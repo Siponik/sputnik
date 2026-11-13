@@ -438,6 +438,74 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
     Value::Object(res)
 }
 
+/// Значки привычки в окне «Создать» (хранятся в поле `icon`; в списке значок — первая буква, §G_CreateHabit).
+pub const HABIT_ICONS: [&str; 7] = ["🏃", "💧", "✏️", "📖", "🧘", "🍎", "🌙"];
+
+/// Частота привычки из строки или кнопок: {"kind": "daily"|"weekdays"|"days"|"week", "days"?, "perWeek"?}.
+/// `manual` — выбор кнопками в том же виде, что даёт разбор строки (`parse_habit`); Null — из строки.
+pub fn habit_freq_of(h: &Value, manual: &Value) -> Value {
+    let src = if manual.is_object() { manual } else { h };
+    let per = n(&src["perWeek"]).unwrap_or(0.0) as i64;
+    if s(&src["freq"]) == "week" || per > 0 {
+        return json!({"kind": "week", "perWeek": per.clamp(1, 6)});
+    }
+    if s(&src["freq"]) == "days" || src["days"].is_array() {
+        let mut d: Vec<i64> = a(&src["days"]).iter().filter_map(|x| x.as_i64()).filter(|x| (0..=6).contains(x)).collect();
+        d.sort_unstable();
+        d.dedup();
+        if !d.is_empty() {
+            return json!({"kind": if d == [0, 1, 2, 3, 4] { "weekdays" } else { "days" }, "days": d});
+        }
+    }
+    json!({"kind": "daily"})
+}
+
+/// Поля привычки для слоя: разбор строки + выбор кнопками (частота, часть дня, своё окно, значок).
+/// `freq` — Null, если кнопками не трогали; `part` — "" — как в строке; `win` — Null, своего окна нет (оно главнее части дня).
+pub fn habit_fields(h: &Value, freq: &Value, part: &str, win: &Value, icon: &str) -> Value {
+    let mut f = Json::new();
+    let fr = habit_freq_of(h, freq);
+    match s(&fr["kind"]) {
+        "weekdays" | "days" => {
+            f.insert("days".into(), fr["days"].clone());
+        }
+        "week" => {
+            f.insert("days".into(), json!([0, 1, 2, 3, 4, 5, 6]));
+            f.insert("perWeek".into(), fr["perWeek"].clone());
+        }
+        _ => {
+            f.insert("days".into(), json!([0, 1, 2, 3, 4, 5, 6]));
+        }
+    }
+    let w = crate::habits::clean_win(win);
+    if !w.is_null() {
+        extend(&mut f, o(&crate::habits::win_fields(&w)));
+    } else {
+        let p = if part.is_empty() { s(&h["part"]) } else { part.into() };
+        if crate::habits::PART_IDS.contains(&p.as_str()) {
+            f.insert("part".into(), json!(p));
+        }
+    }
+    if h["goal"].is_object() {
+        f.insert("goal".into(), h["goal"].clone());
+    }
+    if !icon.is_empty() {
+        f.insert("icon".into(), json!(icon));
+    }
+    Value::Object(f)
+}
+
+/// Год рождения из строки окна: 1900…текущий; пусто или мусор — None.
+pub fn bday_year(raw: &str) -> Option<i64> {
+    let t = raw.trim();
+    if t.is_empty() {
+        return None;
+    }
+    let y: i64 = t.parse().ok()?;
+    let cur = crate::habits::now().date().year() as i64;
+    (1900..=cur).contains(&y).then_some(y)
+}
+
 // ---------- подарок ко дню рождения ----------
 
 pub const GIFT_DAYS: [(i64, &str); 4] = [(3, "за 3 дня"), (7, "за неделю"), (14, "за 2 недели"), (30, "за месяц")];

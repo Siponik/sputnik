@@ -287,6 +287,7 @@ export global S {
     in property <[Opt]> c-reminds;
     in property <string> c-hint;
     in property <string> c-free;
+    in property <bool> c-free-warn;   // «свободно до…» пересекается с другим событием
     // выбор даты и времени (G_DateTime)
     in property <bool> dp-open;
     in property <string> dp-title;
@@ -387,6 +388,27 @@ export global S {
     callback c-cal-set(string);
     callback c-dur-set(string);
     callback c-remind(string);
+    // виды 1–3 (#195): событие, привычка, день рождения
+    in property <string> c-place;              // событие: место
+    in property <string> c-year;               // день рождения: год (пусто — без года)
+    in property <[Opt]> c-gift;                // «подарок заранее»: 0/7/14/30 дней
+    in property <[Opt]> c-hfreq;               // привычка, как часто: daily/weekdays/days/week
+    in property <[Opt]> c-hdays;               // свои дни Пн–Вс (id — номер дня 0–6)
+    in property <[Opt]> c-hper;                // «N раз в неделю» (2..6)
+    in property <[Opt]> c-hpart;               // утро/день/вечер/любое
+    in property <string> c-hwin-s;             // своё окно «с …»
+    in property <string> c-hwin-e;             // своё окно «до …»
+    in property <[Opt]> c-hicons;              // значки привычки (emoji в label и id)
+    callback c-place-set(string);
+    callback c-year-set(string);
+    callback c-gift-set(string);
+    callback c-hfreq-set(string);
+    callback c-hday(int);
+    callback c-hper-set(string);
+    callback c-hpart-set(string);
+    callback c-hwin-s(string);
+    callback c-hwin-e(string);
+    callback c-hicon(string);
 
     // ---------- Поиск ----------
     in property <bool> search-open;

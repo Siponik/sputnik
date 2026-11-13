@@ -249,7 +249,7 @@ pub fn parts() -> Value {
     ])
 }
 
-const PART_IDS: [&str; 4] = ["morning", "day", "evening", "any"];
+pub const PART_IDS: [&str; 4] = ["morning", "day", "evening", "any"];
 
 pub fn part_of(h: &Value) -> String {
     let p = s(&h["part"]);
