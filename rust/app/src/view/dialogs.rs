@@ -212,7 +212,7 @@ fn create(app: &App, c: &Create, g: &S) {
     let per = n(&fr["perWeek"]).unwrap_or(0.0) as i64;
     g.set_c_hper(model((2..=6).map(|nn| opt(nn.to_string(), cr::plural(nn, "раз", "раза", "раз"), per == nn)).collect()));
     g.set_c_hicons(model(cr::HABIT_ICONS.iter().map(|i| opt(*i, *i, c.hicon == *i)).collect()));
-    let part_eff = if !c.hpart.is_empty() { c.hpart.clone() } else { let p = s(&h0["part"]); if p.is_empty() { "any".into() } else { p } };
+    let part_eff = if !c.hpart.is_empty() { c.hpart.clone() } else { let p = s(&h0["part"]); if p.is_empty() { "any".into() } else { p.into() } };
     let win_eff = c.hwin.clone().map(|(a0, b0)| json!({"s": a0, "e": b0})).unwrap_or_else(|| hb::part_win(&json!(part_eff)));
     let custom_win = !win_eff.is_null() && !hb::whole_part(&win_eff);
     g.set_c_hpart(model([("morning", "Утро"), ("day", "День"), ("evening", "Вечер"), ("any", "Любое")].iter().map(|(k, l)| opt(*k, *l, part_eff == *k && !custom_win)).collect()));

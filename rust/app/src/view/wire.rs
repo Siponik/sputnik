@@ -671,14 +671,14 @@ pub fn wire(w: &AppWindow) {
         let f = cr::habit_freq_of(&cr::parse_habit(&c.text, &c.m.off_json()), &c.hfreq);
         c.hfreq = match k.as_str() {
             "weekdays" => json!({"freq": "days", "days": [0, 1, 2, 3, 4]}),
-            "days" => json!({"freq": "days", "days": if matches!(s(&f["kind"]).as_str(), "days" | "weekdays") { f["days"].clone() } else { json!([0, 1, 2, 3, 4]) }}),
+            "days" => json!({"freq": "days", "days": if matches!(s(&f["kind"]), "days" | "weekdays") { f["days"].clone() } else { json!([0, 1, 2, 3, 4]) }}),
             "week" => json!({"freq": "week", "perWeek": if s(&f["kind"]) == "week" { f["perWeek"].as_i64().unwrap_or(3).max(2) } else { 3 }}),
             _ => json!({"freq": "daily"}),
         };
     }));
     g.on_c_hday(|i| act(|_, u| if let Some(c) = u.create.as_mut() {
         let f = cr::habit_freq_of(&cr::parse_habit(&c.text, &c.m.off_json()), &c.hfreq);
-        let mut d: Vec<i64> = if matches!(s(&f["kind"]).as_str(), "days" | "weekdays") {
+        let mut d: Vec<i64> = if matches!(s(&f["kind"]), "days" | "weekdays") {
             f["days"].as_array().map(|a| a.iter().filter_map(|x| x.as_i64()).collect()).unwrap_or_default()
         } else {
             vec![0, 1, 2, 3, 4]
@@ -1011,7 +1011,7 @@ fn habit_win_base(c: &Create) -> (String, String) {
     if let Some(w) = &c.hwin {
         return w.clone();
     }
-    let part = if c.hpart.is_empty() { s(&cr::parse_habit(&c.text, &c.m.off_json())["part"]) } else { c.hpart.clone() };
+    let part = if c.hpart.is_empty() { text(&cr::parse_habit(&c.text, &c.m.off_json())["part"]) } else { c.hpart.clone() };
     let w = hb::part_win(&json!(part));
     match (w["s"].as_str(), w["e"].as_str()) {
         (Some(a), Some(b)) => (a.to_string(), b.to_string()),

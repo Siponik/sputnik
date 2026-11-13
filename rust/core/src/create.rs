@@ -482,7 +482,7 @@ pub fn habit_fields(h: &Value, freq: &Value, part: &str, win: &Value, icon: &str
         extend(&mut f, o(&crate::habits::win_fields(&w)));
     } else {
         let p = if part.is_empty() { s(&h["part"]) } else { part.into() };
-        if crate::habits::PART_IDS.contains(&p.as_str()) {
+        if crate::habits::PART_IDS.iter().any(|x| *x == p) {
             f.insert("part".into(), json!(p));
         }
     }
