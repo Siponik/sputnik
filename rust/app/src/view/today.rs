@@ -58,7 +58,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let nx0 = sputnik_core::small::pick_next(&open0, &app.layer["tasks"], &tdy);
     let next_at = rows.iter().position(|r| nx0.is_object() && r.id.as_str() == text(&nx0["task"]["id"]));
     let row_y = |i: usize| rows_top + i as f32 * 46.0 + if next_at.is_some_and(|n| i > n) { 46.0 } else { 0.0 } + 20.0;
-    let rows_end = rows_top + rows.len() as f32 * 46.0 + if next_at.is_some() { 46.0 } else { 0.0 };
+    let rows_end = rows_top + if rows.is_empty() { 160.0 } else { rows.len() as f32 * 46.0 } + if next_at.is_some() { 46.0 } else { 0.0 };
     let node_h = |n: usize| 30.0 + n as f32 * 28.0 + 2.0;
     let mut src: Vec<SrcNode> = vec![];
     let mut wires: Vec<Wire> = vec![];

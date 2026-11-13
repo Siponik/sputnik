@@ -271,9 +271,6 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
             row("prio", "Приоритет", ["", "!!! Высокий", "!! Средний", "! Низкий"][prio.clamp(0, 3) as usize].into()),
             row("remind", "Напомнить", if day.is_empty() { String::new() } else { lead }),
             row("repeat", "Повтор", if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) }),
-            row("color", "Цвет", String::new()),
-            row("image", "Картинка", String::new()),
-            row("who", "Исполнитель", String::new()),
         ],
     }));
     g.set_c_popen(ss(c.popen.clone()));

@@ -298,6 +298,8 @@ component Preview inherits Rectangle {
     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
     drop-shadow-blur: 16px; drop-shadow-color: #0008;
     property <color> hue: S.c-kind == 0 || S.c-kind == 2 ? S.c-dest-hue : (S.c-kind == 3 ? G.violet : G.grey);
+    // цвет окна по виду: задача — рыжий, событие — синий, привычка — зелёный, день рождения — фиолетовый
+    property <color> kc: S.c-kind == 1 ? #2F5A9A : S.c-kind == 2 ? #3A7A48 : S.c-kind == 3 ? #6A4A9A : G.head-main;
     Text { x: 12px; y: 8px; text: S.c-kind == 0 ? "ПОЯВИТСЯ НА ДОСКЕ" : S.c-kind == 2 ? "ПОЯВИТСЯ В «ПРИВЫЧКАХ»" : "ПОЯВИТСЯ В КАЛЕНДАРЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; }
     Rectangle {
         x: 8px; y: 30px; width: parent.width - 16px; height: 92px;
@@ -308,7 +310,7 @@ component Preview inherits Rectangle {
         }
         Rectangle {
             x: 10px; y: 38px; width: 36px; height: 36px; border-radius: 6px; background: root.hue.mix(#1C1D21, 0.3);
-            Text { text: S.c-kind == 3 ? "✦" : (S.c-kind == 2 ? "↻" : (S.c-kind == 1 ? "◷" : "✓")); font-size: 15px; color: #fff; horizontal-alignment: center; vertical-alignment: center; }
+            Icon { x: 9px; y: 9px; width: 18px; height: 18px; name: ["check", "event", "habits", "birthday"][S.c-kind]; c: #fff; }
         }
         Text { x: 56px; y: 38px; width: parent.width - 66px; text: S.c-title == "" ? "Название" : S.c-title; font-size: 13.5px; font-weight: 600; color: S.c-title == "" ? #6E7079 : G.ink; overflow: elide; }
         Text { x: 56px; y: 58px; width: parent.width - 66px; text: S.c-meta + (S.c-kind == 0 && S.c-subs.length > 0 ? " · 0 / " + S.c-subs.length : ""); font-size: 11.5px; color: #A3A5AE; overflow: elide; }
@@ -342,13 +344,13 @@ component TaskBody inherits Rectangle {
             Box {
                 width: 104px;
                 border-color: root.topen ? G.accent : G.line;
-                Text { x: 12px; text: "◷"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; height: parent.height; }
+                Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
                 Text { x: 32px; text: S.c-time == "" ? "—:—" : S.c-time; font-family: G.mono; font-size: 13.5px; color: S.c-time == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - 18px; text: "▾"; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                 TouchArea { clicked => { root.topen = !root.topen; } mouse-cursor: pointer; }
             }
             Box {
-                Text { x: 12px; text: "📅"; font-size: 12px; vertical-alignment: center; height: parent.height; }
+                Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "calendar"; c: #A3A5AE; }
                 Text { x: 36px; text: S.c-day; font-size: 13.5px; font-weight: 600; color: root.dated ? G.ink : #8A8C96; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - 20px; text: "▾"; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                 TouchArea { clicked => { S.c-pick-date(); } mouse-cursor: pointer; }
@@ -488,7 +490,7 @@ component TaskBody inherits Rectangle {
                 Text { x: parent.width - 18px; text: "▾"; visible: can && p.on; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                 pa := TouchArea { clicked => { S.c-prop(p.id); } mouse-cursor: can ? pointer : default; }
                 if p.id == S.c-popen: Rectangle {
-                    x: 96px; y: parent.height; width: 220px;
+                    x: parent.width - 212px; y: parent.height; width: 208px;
                     height: min(240px, S.c-popts.length * 28px + 10px);
                     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
                     drop-shadow-blur: 16px; drop-shadow-color: #0009;
@@ -532,7 +534,7 @@ component PropsPanel inherits Rectangle {
             Text { x: parent.width - 18px; text: "▾"; visible: can && p.on; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
             pa := TouchArea { clicked => { S.c-prop(p.id); } mouse-cursor: can ? pointer : default; }
             if p.id == S.c-popen: Rectangle {
-                x: 96px; y: parent.height; width: 220px;
+                x: parent.width - 212px; y: parent.height; width: 208px;
                 height: min(240px, S.c-popts.length * 28px + 10px);
                 border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
                 drop-shadow-blur: 16px; drop-shadow-color: #0009;
@@ -562,7 +564,7 @@ component TimeBox inherits Box {
     out property <bool> open;
     width: 104px;
     border-color: root.open ? G.accent : G.line;
-    Text { x: 12px; text: "◷"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; height: parent.height; }
+    Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
     Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13.5px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
     Text { x: parent.width - 18px; text: "▾"; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
     TouchArea { clicked => { root.open = !root.open; } mouse-cursor: pointer; }
@@ -626,7 +628,7 @@ component EventBody inherits Rectangle {
             z: wtime.open ? 20 : 0;
             wtime := TimeBox { val: S.c-time; clearable: true; picked(t) => { S.c-time-set(t); root.grab-line(); } }
             Box {
-                Text { x: 12px; text: "📅"; font-size: 12px; vertical-alignment: center; height: parent.height; }
+                Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "calendar"; c: #A3A5AE; }
                 Text { x: 36px; text: S.c-day; font-size: 13.5px; font-weight: 600; color: root.dated ? G.ink : #8A8C96; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - 20px; text: "▾"; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                 TouchArea { clicked => { S.c-pick-date(); } mouse-cursor: pointer; }
@@ -741,7 +743,7 @@ component BdayBody inherits Rectangle {
         HorizontalLayout {
             height: 36px; spacing: 8px;
             Box {
-                Text { x: 12px; text: "📅"; font-size: 12px; vertical-alignment: center; height: parent.height; }
+                Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "calendar"; c: #A3A5AE; }
                 Text { x: 36px; text: S.c-day; font-size: 13.5px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - 20px; text: "▾"; font-size: 10px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
                 TouchArea { clicked => { S.c-pick-date(); } mouse-cursor: pointer; }
@@ -784,6 +786,8 @@ export component CreateDialog inherits Overlay {
     // превью — отдельная нода справа от окна, если хватает места
     property <bool> side: self.width >= root.W + 300px;
     property <color> hue: S.c-kind == 0 || S.c-kind == 2 ? S.c-dest-hue : (S.c-kind == 3 ? G.violet : G.grey);
+    // цвет окна по виду: задача — рыжий, событие — синий, привычка — зелёный, день рождения — фиолетовый
+    property <color> kc: S.c-kind == 1 ? #2F5A9A : S.c-kind == 2 ? #3A7A48 : S.c-kind == 3 ? #6A4A9A : G.head-main;
     property <bool> fits: hl.preferred-width < line.width - 4px && S.c-text == line.text;
     function submit(more: bool) {
         if (line.text == "") { line.grab(); return; }
@@ -837,17 +841,19 @@ export component CreateDialog inherits Overlay {
         border-radius: 12px;
         background: G.node;
         border-width: 1px;
-        border-color: G.accent-line;
+        border-color: root.kc;
         drop-shadow-blur: 32px;
         drop-shadow-color: #000c;
-        clip: true;
+        // без clip: выпадающие списки «Свойств» не должны обрезаться краем окна
         // клик по пустому месту — выйти из строки (клавиши без Alt)
         TouchArea { clicked => { keys.focus(); } }
         // вкладки видов
         Rectangle {
             height: 46px; y: 0;
-            background: G.head-main;
-            for k[i] in ["✓  Задача", "◷  Событие", "↻  Привычка", "✦  День рождения"]: Rectangle {
+            border-top-left-radius: 12px; border-top-right-radius: 12px;
+            background: root.kc;
+            animate background { duration: 150ms; }
+            for k[i] in ["Задача", "Событие", "Привычка", "День рождения"]: Rectangle {
                 x: 12px + i * (root.W - 66px) / 4;
                 y: 7px;
                 width: (root.W - 66px) / 4 - 4px;
@@ -857,12 +863,13 @@ export component CreateDialog inherits Overlay {
                 HorizontalLayout {
                     alignment: center;
                     spacing: 8px;
-                    Text { text: k; font-size: 14px; font-weight: 500; color: S.c-kind == i ? #8A4A12 : #fff; vertical-alignment: center; }
-                    Text { text: "ALT " + (i + 1); font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: S.c-kind == i ? #B07A4A : #ffffff90; vertical-alignment: center; }
+                    Icon { y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: ["check", "event", "habits", "birthday"][i]; c: S.c-kind == i ? root.kc.mix(#000, 0.6) : #fff; }
+                    Text { text: k; font-size: 14px; font-weight: 500; color: S.c-kind == i ? root.kc.mix(#000, 0.6) : #fff; vertical-alignment: center; }
+                    Text { text: "ALT " + (i + 1); font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: S.c-kind == i ? root.kc.mix(#000, 0.8) : #ffffff90; vertical-alignment: center; }
                 }
                 ka := TouchArea { clicked => { S.c-kind-set(i); line.grab(); } mouse-cursor: pointer; }
             }
-            Text { x: root.W - 34px; text: "✕"; font-size: 15px; color: #fff; vertical-alignment: center; height: parent.height; TouchArea { clicked => { S.c-close(); } mouse-cursor: pointer; } }
+            Icon { x: root.W - 36px; y: 15px; width: 16px; height: 16px; name: "close"; c: #fff; TouchArea { clicked => { S.c-close(); } mouse-cursor: pointer; } }
         }
         // умная строка
         Rectangle {
