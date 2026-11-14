@@ -75,3 +75,18 @@ fn search_in_own_index() {
     assert!(ids("").is_empty());
     assert!(ids("клавиши").is_empty());
 }
+
+#[test]
+fn tab_step_user_order() {
+    let order = [2, 0, 1, 3, 4];
+    assert_eq!(sh::tab_step(&order, 2, 1), 0);
+    assert_eq!(sh::tab_step(&order, 2, -1), 4, "по кругу назад");
+    assert_eq!(sh::tab_step(&order, 4, 1), 2, "по кругу вперёд");
+    assert_eq!(sh::tab_step(&order, 5, -1), 4, "из настроек назад — последняя по порядку");
+    assert_eq!(sh::tab_step(&order, 5, 1), 2, "из настроек вперёд — первая по порядку");
+    assert_eq!(sh::tab_step(&[], 3, 1), 3, "пустой порядок — без смены");
+    // порядок по умолчанию — старое поведение
+    let def = [0, 1, 2, 3, 4];
+    assert_eq!(sh::tab_step(&def, 0, -1), 4);
+    assert_eq!(sh::tab_step(&def, 4, 1), 0);
+}

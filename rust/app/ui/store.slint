@@ -47,6 +47,7 @@ export global S {
     in property <int> toast-id;
     in property <string> version;
     callback go(int);
+    callback tab-step(int, int) -> int;    // соседняя вкладка по порядку пользователя (Q/E): id, направление ±1 → id
     callback win-drag();
     callback win-min();
     callback win-max();

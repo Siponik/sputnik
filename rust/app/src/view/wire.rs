@@ -120,6 +120,14 @@ pub fn wire(w: &AppWindow) {
             app.notes.rescan();
         }
     }));
+    g.on_tab_step(|cur, dir| {
+        let mut out = cur as i64;
+        crate::state::with(|app| {
+            let order: Vec<i64> = super::settings::tab_order(app).into_iter().map(|x| x as i64).collect();
+            out = sputnik_core::shell::tab_step(&order, cur as i64, dir as i64);
+        });
+        out as i32
+    });
     g.on_login(|| act(|app, _| app.login()));
     g.on_cancel_login(|| act(|app, _| {
         crate::data::google::cancel_login();
