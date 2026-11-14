@@ -553,7 +553,7 @@ export component CalendarPage inherits Rectangle {
         x: root.mx; y: main.y + main.height + 16px; width: root.mw; height: 16px;
         spacing: 14px;
         alignment: start;
-        Text { text: S.cal-mode == "week" ? "ОБЗОР НЕДЕЛИ ▾" : S.cal-foot; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: S.cal-mode == "week" ? G.ink : #8A8C96; }
+        Text { text: S.cal-mode == "week" ? "ОБЗОР НЕДЕЛИ" : S.cal-foot; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: S.cal-mode == "week" ? G.ink : #8A8C96; }
         if S.cal-mode == "week": Text { text: S.cal-foot; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
         Text { text: S.cal-foot-hl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.gold; }
         if S.cal-mode == "month": Text { text: "ПУНКТИР — ЕЩЁ ВПЕРЕДИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }

@@ -163,7 +163,7 @@ export component AppWindow inherits Window {
                         border-width: 1px;
                         border-color: G.accent-line;
                         background: ua.has-hover ? G.accent-wash : transparent;
-                        ut := Text { text: (root.hd-compact ? "✦ " : "✦ ВЕРСИЯ ") + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
+                        ut := Text { text: (root.hd-compact ? "" : "ВЕРСИЯ ") + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
                         ua := TouchArea { clicked => { upd.visible = !upd.visible; } mouse-cursor: pointer; }
                     }
                     if !root.hd-compact || S.busy || S.offline: Rectangle {

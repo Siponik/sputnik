@@ -399,7 +399,7 @@ export component SettingsPage inherits Rectangle {
                         wrap: word-wrap;
                     }
                 }
-                Note { text: (S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «✦ ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
+                Note { text: (S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
                 HorizontalLayout { alignment: start; spacing: 8px;
                     Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
                     if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
