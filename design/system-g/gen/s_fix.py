@@ -2,6 +2,7 @@
 # Запуск последним: python3 s_fix.py
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import *
+from s_icons import svg_
 import s_board, s_cal, s_b4
 from s_board import sidebar, titlebar
 
@@ -221,8 +222,8 @@ props_bar = f'''<div style="margin-top: 4px; padding-top: 12px; border-top: 1px 
   <div style="display: flex; gap: 6px; flex-wrap: wrap">{"".join(_add(t) for t in ["Повтор", "Заметка", "Цвет", "Картинка", "Исполнитель"])}</div>
   <div style="font-size: 12px; color: {MUT}">Клик по свойству — маленькое всплывающее окно рядом. Или «/» в строке: <span style="font: 500 11.5px {MONO}; color: {INK}">/этап</span>, <span style="font: 500 11.5px {MONO}; color: {INK}">/повтор</span>. Заданное фразой («!!!», «в пятницу») сразу становится чипом.</div>
 </div>'''
-_fld = lambda ic, t, w, mono=False: f'<span style="width: {w}px; height: 34px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; background: {HOVER}; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 8px; font: {"500 13px "+MONO if mono else "600 13px "+SANS}; color: {INK}"><span style="color: {MUT}">{ic}</span><span style="flex: 1">{t}</span><span style="color: {MUT}; font-size: 11px">▾</span></span>'
-when_block = (frow("Когда", _fld("◷", "17:00", 104, True) + _fld("📅", "Пт, 6 ноября", 200))
+_fld = lambda ic, t, w, mono=False: f'<span style="width: {w}px; height: 34px; box-sizing: border-box; padding: 0 10px; border-radius: 8px; background: {HOVER}; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 8px; font: {"500 13px "+MONO if mono else "600 13px "+SANS}; color: {INK}"><span style="color: {MUT}; display: grid">{svg_(ic[1:], 16) if ic.startswith("@") else ic}</span><span style="flex: 1">{t}</span><span style="color: {MUT}; font-size: 11px">▾</span></span>'
+when_block = (frow("Когда", _fld("@clock", "17:00", 104, True) + _fld("@calendar", "Пт, 6 ноября", 200))
               + f'<div style="margin: -2px 0 0 116px; display: flex; gap: 6px; flex-wrap: wrap">{chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока")}</div>')
 task_rows = (frow("Куда", where + f'<span style="font-size: 12.5px; color: {OR}">Alt L</span>') + when_block + when_land
              + props_bar)
@@ -255,7 +256,7 @@ st = W + cwin(1, line, ev_rows, ev_r, 'Добавить событие')
 save2('G_CreateEvent.dc.html', page('Создать · событие', 'КАЛЕНДАРЬ', st), 'Создать · событие')
 
 gd = s_(GOLD)
-icons = ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {GOLD if i == 0 else LINE}; background: {"rgba(232,198,90,.12)" if i == 0 else "transparent"}; display: grid; place-items: center; font-size: 15px">{e}</span>' for i, e in enumerate(['🏃', '💧', '✏️', '📖', '🧘', '🍎', '🌙']))
+icons = ''.join(f'<span style="width: 32px; height: 32px; border-radius: 8px; border: 1px solid {GOLD if i == 0 else LINE}; background: {"rgba(232,198,90,.12)" if i == 0 else "transparent"}; display: grid; place-items: center; font-size: 15px">{e}</span>' for i, e in enumerate([svg_('fire', 16), svg_('timer', 16), svg_('edit', 16), svg_('read', 16), svg_('focus', 16), svg_('star', 16), svg_('theme', 16)]))
 
 
 def hab_rows(edit=False):
@@ -269,7 +270,7 @@ def hab_rows(edit=False):
 
 hprev = f'''<span style="font-size: 12.5px; color: {MUT}">Так появится в «Привычках»</span>
 <div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; padding-bottom: 12px">
- <div style="height: 34px; padding: 0 12px; border-bottom: 1px solid {LINE}; display: flex; align-items: center; gap: 8px"><span style="width: 20px; height: 20px; border-radius: 5px; background: {GOLD}; display: grid; place-items: center; font-size: 11px">🏃</span><span style="font-weight: 600">Зарядка</span><span style="margin-left: auto">{micro("УТРО")}</span></div>
+ <div style="height: 34px; padding: 0 12px; border-bottom: 1px solid {LINE}; display: flex; align-items: center; gap: 8px"><span style="width: 20px; height: 20px; border-radius: 5px; background: {GOLD}; display: grid; place-items: center; font-size: 11px">{svg_("fire", 13)}</span><span style="font-weight: 600">Зарядка</span><span style="margin-left: auto">{micro("УТРО")}</span></div>
  <div style="padding: 12px 14px 0; display: flex; align-items: flex-end; gap: 10px"><span style="font: 200 50px/46px {SANS}">21</span><span style="padding-bottom: 6px">{micro("ДН ПОДРЯД", MUT)}</span></div>
 </div>'''
 line = f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}'
@@ -394,7 +395,8 @@ save2('G_Motion.dc.html', page('Анимации', '', st, stage_h=730), 'Ани
 print('fix ok')
 
 # вариант B: панель свойств справа
-_pr = lambda k, v='', c=None: f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px"><span style="width: 92px; color: {MUT}">{k}</span>' + (f'<span style="flex: 1; font-weight: 600; color: {c or INK}">{v}</span><span style="color: {MUT}">▾</span>' if v else f'<span style="flex: 1; color: #55575F">—</span>') + '</div>'
+PI = {'Список': 'board', 'Этап': 'stage', 'Приоритет': 'priority', 'Напомнить': 'bell', 'Повтор': 'repeat', 'Цвет': 'accent', 'Картинка': 'image', 'Исполнитель': 'share', 'Календарь': 'calendar', 'Участники': 'share', 'Цель': 'done', 'Telegram': 'telegram', 'Windows': 'bell', 'До какого дня': 'calendar', 'Удалить': 'trash', 'Контакт': 'link'}
+_pr = lambda k, v='', c=None: f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px"><span style="display: grid; color: {MUT}">{svg_(PI.get(k, "circle"), 15)}</span><span style="width: 84px; flex: none; color: {MUT}; white-space: nowrap">{k}</span>' + (f'<span style="flex: 1; min-width: 0; font-weight: 600; color: {c or INK}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{v}</span><span style="color: {MUT}">▾</span>' if v else f'<span style="flex: 1; color: #55575F">—</span>') + '</div>'
 insp = f'''<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden">
   <div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">СВОЙСТВА</div>
   {_pr("Список", "● 3D-ассеты", OR)}{_pr("Этап", "Рендер")}{_pr("Приоритет", "!!! Высокий", RED)}{_pr("Напомнить", "за час")}{_pr("Повтор")}{_pr("Цвет")}{_pr("Картинка")}{_pr("Исполнитель")}
@@ -411,7 +413,7 @@ main_b = f'''<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10p
   </div>
 </div>'''
 _hdr = lambda t: f'<div style="font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">{t}</div>'
-rows_b = (_hdr("КОГДА") + f'<div style="display: flex; gap: 6px">{_fld("◷", "17:00", 110, True)}{_fld("📅", "Пт, 6 ноября", 0).replace("width: 0px", "flex: 1")}</div>'
+rows_b = (_hdr("КОГДА") + f'<div style="display: flex; gap: 6px">{_fld("@clock", "17:00", 110, True)}{_fld("@calendar", "Пт, 6 ноября", 0).replace("width: 0px", "flex: 1")}</div>'
           + f'<div style="display: flex; gap: 6px; flex-wrap: wrap">{chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока")}</div>'
           + when_land.replace("margin: 2px 0 4px 116px", "margin: 0") + main_b)
 prev_node = node(1022, 150, 230, 112, f'<div style="padding: 8px 10px 6px; font: 500 9.5px {MONO}; letter-spacing: .14em; color: {MUT}">ПОЯВИТСЯ НА ДОСКЕ</div><div style="padding: 0 8px 8px">'+f'''<div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; overflow: hidden">
@@ -453,7 +455,7 @@ def bwin(k, line, left, right, preview, label, primary, h, wire_y=190, ph=112, *
 
 
 # событие
-ev_left = (_hdr("КОГДА") + frow2(_fld("◷", "15:00", 110, True), fflex("📅", "Пт, 6 ноября"))
+ev_left = (_hdr("КОГДА") + frow2(_fld("@clock", "15:00", 110, True), fflex("@calendar", "Пт, 6 ноября"))
            + chips(BLUE, ["Сегодня", "Завтра", "Пн", "След. неделя"], ["Завтра"])
            + _hdr("ДЛИТСЯ") + chips(BLUE, ["30 мин", "1 час", "2 часа", "Весь день"], ["1 час"])
            + f'<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: {GREEN}">{dot(GREEN, 6)}Свободно до 17:00 · в календаре 15:00–16:00</div>'
@@ -468,10 +470,10 @@ save('G_CreateEvent.dc.html', page('Создать · событие', 'КАЛЕ
 def hab_left():
     return (_hdr("ЗНАЧОК") + f'<div style="display: flex; gap: 6px">{icons}</div>'
             + _hdr("КАК ЧАСТО") + chips(GOLD, ["Каждый день", "По будням", "Свои дни", "N раз в неделю"], ["Каждый день"])
-            + _hdr("КОГДА") + frow2(_fld("◷", "07:00", 104, True), f'<span style="align-self: center; color: {MUT}">до</span>', _fld("◷", "09:00", 104, True))
+            + _hdr("КОГДА") + frow2(_fld("@clock", "07:00", 104, True), f'<span style="align-self: center; color: {MUT}">до</span>', _fld("@clock", "09:00", 104, True))
             + chips(GOLD, ["Утро", "День", "Вечер", "Любое"], ["Утро"])
             + notebox("Зачем и как… Markdown, «Знания» через [[", 80))
-hab_right = lambda edit: props([("Цель", "Просто сделать"), ("Telegram", "в 07:00"), ("Windows", "пока идёт окно"), ("До какого дня",), ("Цвет",)] + ([("Удалить", "…", RED)] if edit else []))
+hab_right = lambda edit: props([("Цель", "Сделать"), ("Telegram", "в 07:00"), ("Windows", "в окне"), ("До какого дня",), ("Цвет",)] + ([("Удалить", "…", RED)] if edit else []))
 hcard = hprev.split('</span>', 1)[1]
 st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 620, ph=150)
 save('G_CreateHabit.dc.html', page('Создать · привычка', 'ПРИВЫЧКИ', st), 'Создать · привычка', 2720, 1120, 'task')
@@ -481,7 +483,7 @@ c_ = json.load(open(P + 'canvas.json')); hb = c_['boards'].get('G_HabitEdit.dc.h
 save('G_HabitEdit.dc.html', page('Окно привычки', 'ПРИВЫЧКИ', st), 'Привычка · правка в том же окне «Создать»', hb.get('x', 0), hb.get('y', 0), hb.get('page', 'habits'))
 
 # день рождения
-bd_left = (_hdr("КОГДА") + frow2(fflex("📅", "12 ноября"), _fld("", "1994", 110, True).replace('<span style="color: #8A8C94"></span>', ''))
+bd_left = (_hdr("КОГДА") + frow2(fflex("@calendar", "12 ноября"), _fld("", "1994", 110, True).replace('<span style="color: #8A8C94"></span>', ''))
            + f'<div style="font-size: 12px; color: {MUT}">Повторяется каждый год · год можно не указывать, он нужен, чтобы показать возраст («исполнится 32»)</div>'
            + _hdr("ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ") + chips(VIO, ["Не надо", "За неделю", "За 2 недели", "За месяц"], ["За неделю"])
            + notebox("Идеи подарков, размеры, что любит… Markdown, «Знания» через [[", 120))
@@ -493,10 +495,17 @@ save('G_CreateBday.dc.html', page('Создать · день рождения',
 
 # ==== выпадашки времени и даты — у своих полей ====
 def _tpop():
-    rows = ''.join(f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; margin: 0 4px; border-radius: 6px; font: 400 13px {MONO}; {"background: "+OR+"29; color: "+INK+"; font-weight: 600" if t == "17:00" else "color: #C9CAD0"}">{t}<span style="margin-left: auto; color: {OR}">{"✓" if t == "17:00" else ""}</span></div>' for t in ["16:00", "16:15", "16:30", "16:45", "17:00", "17:15", "17:30", "17:45"])
-    return (f'<div style="position: absolute; left: 174px; top: 206px; width: 150px; padding: 4px 0; border-radius: 10px; background: {NODE}; border: 1px solid {STRONG}; box-shadow: 0 18px 40px rgba(0,0,0,.5)">'
-            f'<div style="margin: 0 8px 4px; height: 30px; border-radius: 7px; border: 1px solid {OR}; display: flex; align-items: center; padding: 0 8px; font: 400 13px {MONO}">17:00<span style="margin-left: auto; font: 400 10.5px {SANS}; color: {MUT}">ввод</span></div>'
-            + rows + f'<div style="height: 1px; background: {LINE}; margin: 4px 0"></div><div style="height: 30px; display: flex; align-items: center; padding: 0 14px; font-size: 12.5px; color: {MUT}">Без времени</div></div>')
+    cell = lambda t, on=False, mono=True: f'<span style="height: 28px; border-radius: 6px; display: grid; place-items: center; font: {"600" if on else "400"} 12.5px {MONO if mono else SANS}; {"background: "+OR+"; color: #1B1206" if on else "color: #C9CAD0"}">{t}</span>'
+    hours = ''.join(cell(f"{h:02d}", h == 17) for h in range(24))
+    mins = ''.join(cell(m, m == "00") for m in ["00", "15", "30", "45"])
+    quick = ''.join(f'<span style="height: 26px; padding: 0 9px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font-size: 12px; color: #C9CAD0">{t}</span>' for t in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"])
+    return (f'<div style="position: absolute; left: 174px; top: 206px; width: 300px; padding: 10px; box-sizing: border-box; border-radius: 10px; background: {NODE}; border: 1px solid {STRONG}; box-shadow: 0 18px 40px rgba(0,0,0,.5)">'
+            f'<div style="height: 32px; border-radius: 7px; border: 1px solid {OR}; display: flex; align-items: center; padding: 0 10px; font: 400 14px {MONO}">17:00<span style="margin-left: auto; font: 400 11px {SANS}; color: {MUT}">«1730», «5pm» · Enter</span></div>'
+            f'<div style="display: flex; gap: 4px; flex-wrap: wrap; margin: 8px 0">{quick}</div>'
+            f'<div style="display: grid; grid-template-columns: 1fr 52px; gap: 10px; padding-top: 8px; border-top: 1px solid {LINE}">'
+            f'<div><div style="font: 500 9.5px {MONO}; letter-spacing: .12em; color: {MUT}; margin-bottom: 4px">ЧАС</div><div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px">{hours}</div></div>'
+            f'<div><div style="font: 500 9.5px {MONO}; letter-spacing: .12em; color: {MUT}; margin-bottom: 4px">МИН</div><div style="display: grid; gap: 3px">{mins}</div></div></div>'
+            f'<div style="font-size: 11px; color: {MUT}; margin-top: 8px">Колесо над полем времени — ±15 мин без открытия</div></div>')
 def _dpop():
     days = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]
     head = ''.join(f'<span style="font: 500 9.5px {MONO}; color: {MUT}; text-align: center">{d}</span>' for d in days)
