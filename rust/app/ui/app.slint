@@ -374,7 +374,7 @@ export component AppWindow inherits Window {
         if S.toast != "": Rectangle {
             x: (parent.width - self.width) / 2;
             y: parent.height - 64px;
-            width: tr.preferred-width + 32px;
+            width: min(tr.preferred-width + 32px, parent.width - 32px);
             height: 40px;
             border-radius: G.r-node;
             background: G.node-hover;
@@ -384,8 +384,9 @@ export component AppWindow inherits Window {
             drop-shadow-color: #0009;
             tr := HorizontalLayout {
                 x: 16px;
+                width: parent.width - 32px;
                 spacing: 14px;
-                Text { text: S.toast; color: G.ink; font-size: 13px; vertical-alignment: center; }
+                Text { text: S.toast; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 if S.toast-label != "": Text {
                     text: S.toast-label;
                     color: G.accent;

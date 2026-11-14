@@ -36,13 +36,13 @@ component TChip inherits Rectangle {
     callback clicked;
     height: 30px;
     preferred-height: 30px;
-    width: tl.preferred-width + (o.hue == #00000000 ? 24px : 38px);
+    width: min(tl.preferred-width + (o.hue == #00000000 ? 24px : 38px), 240px);
     border-radius: 5px;
     border-width: 1px;
     border-color: o.on ? G.accent-line.mix(G.accent, 0.4) : G.line;
     background: o.on ? #2C2620 : (ta.has-hover ? G.node-hover : transparent);
     Rectangle { visible: o.hue != #00000000; x: 12px; y: 12px; width: 6px; height: 6px; border-radius: 1.5px; background: o.hue; opacity: o.on ? 1 : 0.5; }
-    tl := Text { x: o.hue == #00000000 ? 12px : 24px; text: o.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: o.on ? G.ink : #7A7C86; vertical-alignment: center; height: parent.height; }
+    tl := Text { x: o.hue == #00000000 ? 12px : 24px; width: parent.width - self.x - 12px; text: o.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: o.on ? G.ink : #7A7C86; vertical-alignment: center; height: parent.height; overflow: elide; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -198,8 +198,8 @@ export component SettingsPage inherits Rectangle {
                 height: 44px;
                 border-radius: 6px;
                 background: ra.has-hover ? G.node-hover : transparent;
-                Text { x: 10px; y: 5px; text: r.label; font-size: 13px; color: G.ink; }
-                Text { x: 10px; y: 25px; text: r.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
+                Text { x: 10px; y: 5px; width: parent.width - 20px; text: r.label; font-size: 13px; color: G.ink; overflow: elide; }
+                Text { x: 10px; y: 25px; width: parent.width - 20px; text: r.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; overflow: elide; }
                 ra := TouchArea { clicked => { root.pick(r.id.to-float()); } mouse-cursor: pointer; }
             }
             if S.set-found.length == 0: Text { text: "  Ничего не нашлось"; font-size: 13px; color: #7A7C86; }

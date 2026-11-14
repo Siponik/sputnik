@@ -29,13 +29,15 @@ component Small inherits Text {
 export component Templates inherits Overlay {
     close => { S.tp-close(); }
     property <length> w: min(1060px, root.width - 40px);
-    property <length> h: min(660px, root.height - 80px);
-    TouchArea { x: (root.width - w) / 2; y: 60px; width: w; height: h; }
+    property <length> h: min(660px, root.height - 16px);
+    TouchArea { x: (root.width - w) / 2; y: max(8px, (root.height - h) / 2); width: w; height: h; }
     // список шаблонов
     Node {
-        x: (root.width - w) / 2; y: 60px; width: 220px; height: h;
+        x: (root.width - w) / 2; y: max(8px, (root.height - h) / 2); width: 220px; height: h;
         num: "ШАБЛОНЫ"; title: "ДОСОК"; aside: S.tp-list.length;
-        VerticalLayout {
+        ScrollView {
+            viewport-height: tpl.preferred-height;
+            tpl := VerticalLayout {
             padding: 8px; spacing: 4px; alignment: start;
             for t in S.tp-list: Rectangle {
                 height: 52px; border-radius: 8px;
@@ -43,7 +45,7 @@ export component Templates inherits Overlay {
                 background: t.on ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
                 Rectangle { x: 12px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: t.hue; }
                 Text { x: 24px; y: 8px; width: parent.width - 32px; text: t.label; color: G.ink; font-size: 13px; font-weight: 600; overflow: elide; }
-                Text { x: 12px; y: 30px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
+                Text { x: 12px; y: 30px; width: parent.width - 20px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; overflow: elide; }
                 la := TouchArea { clicked => { S.tp-pick(t.id); } mouse-cursor: pointer; }
             }
             Rectangle {
@@ -51,14 +53,17 @@ export component Templates inherits Overlay {
                 Text { x: 12px; text: "+ Новый шаблон"; color: na.has-hover ? G.ink : #A3A5AE; font-size: 13px; vertical-alignment: center; }
                 na := TouchArea { clicked => { S.tp-new(); } mouse-cursor: pointer; }
             }
+            }
         }
     }
     // правка
     ed := Node {
-        x: (root.width - w) / 2 + 232px; y: 60px; width: w - 232px; height: h;
+        x: (root.width - w) / 2 + 232px; y: max(8px, (root.height - h) / 2); width: w - 232px; height: h;
         main: true; num: "ШАБЛОН"; title: S.tp-name.to-uppercase(); aside: S.tp-builtin ? "ВСТРОЕННЫЙ" : "СВОЙ";
         head: G.accent.darker(0.3);
-        VerticalLayout {
+        ScrollView {
+            viewport-height: tped.preferred-height;
+            tped := VerticalLayout {
             padding: 20px; spacing: 10px; alignment: start;
             HorizontalLayout {
                 spacing: 20px;
@@ -118,7 +123,7 @@ export component Templates inherits Overlay {
                 }
             }
             Text { text: "Используется"; color: #A3A5AE; font-size: 13px; }
-            Text { text: S.tp-used; color: G.ink; font-size: 13px; }
+            Text { text: S.tp-used; color: G.ink; font-size: 13px; overflow: elide; }
             Rectangle { height: 6px; }
             HorizontalLayout { spacing: 8px; alignment: start;
                 Button { text: "Сохранить шаблон"; primary: true; clicked => { S.tp-save(); } }
@@ -127,6 +132,7 @@ export component Templates inherits Overlay {
                 Button { text: "Закрыть"; clicked => { S.tp-close(); } }
             }
             Text { text: "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."; color: #8A8C96; font-size: 12.5px; wrap: word-wrap; }
+            }
         }
     }
     Brackets { x: ed.x; y: ed.y; width: ed.width; height: ed.height; }

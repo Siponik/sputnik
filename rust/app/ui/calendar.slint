@@ -367,7 +367,7 @@ export component CalendarPage inherits Rectangle {
             spacing: 10px;
             alignment: start;
             Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; horizontal-stretch: 0; }
-            Text { text: S.cal-sub; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center; horizontal-stretch: 0; }
+            Text { text: S.cal-sub; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
             Rectangle { width: 2px; }
             Sq { y: 9px; icon: "‹"; clicked => { S.cal-shift(-1); } }
             Sq { y: 9px; icon: "›"; clicked => { S.cal-shift(1); } }
@@ -395,7 +395,7 @@ export component CalendarPage inherits Rectangle {
         Rectangle {
             height: 34px; y: 0;
             background: G.head-main;
-            Text { x: 13px; text: S.cal-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: 13px; width: parent.width - 26px; text: S.cal-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 13px; text: S.cal-head-r; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
         }
         Rectangle {
@@ -422,7 +422,7 @@ export component CalendarPage inherits Rectangle {
         Rectangle {
             height: 34px; y: 0;
             background: G.head-main;
-            Text { x: 13px; text: S.day-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: 13px; width: parent.width - 26px; text: S.day-head; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; height: parent.height; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 13px; text: S.day-count; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
         }
         ScrollView {
@@ -438,7 +438,7 @@ export component CalendarPage inherits Rectangle {
                 if S.day-habits.length > 0: Text { height: 34px; text: S.day-habits-sum; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; color: G.gold; vertical-alignment: center; }
                 for h in S.day-habits: Rectangle {
                     height: 28px;
-                    Text { x: 0; width: parent.width - 60px; text: (h.on ? "✓ " : "") + h.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                    Text { x: 0; width: parent.width - 60px; text: (h.on ? "✓ " : "") + h.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                     Text { x: parent.width - self.preferred-width; text: h.hint; font-family: G.mono; font-size: 10px; letter-spacing: 1px; color: h.on ? G.gold : #8A8C96; vertical-alignment: center; height: parent.height; }
                     TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
                 }
@@ -475,7 +475,7 @@ export component CalendarPage inherits Rectangle {
         Rectangle {
             height: 34px; y: 0;
             background: G.head-main;
-            Text { x: 13px; text: S.day-head + " · ДОБАВИТЬ НА ЭТОТ ДЕНЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: 13px; width: parent.width - 26px; text: S.day-head + " · ДОБАВИТЬ НА ЭТОТ ДЕНЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 13px; text: "ENTER"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
         }
         VerticalLayout {

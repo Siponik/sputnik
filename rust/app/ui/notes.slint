@@ -281,13 +281,17 @@ export component NotesPage inherits Rectangle {
                 Text { text: S.note-title; font-size: root.zen ? 30px : 26px; font-weight: 600; color: G.ink; wrap: word-wrap; }
                 // теги и свойства под заголовком
                 if S.note-props.length > 0: Rectangle { height: 12px; }
-                if S.note-props.length > 0: HorizontalLayout {
-                    height: 24px; spacing: 6px; alignment: start;
-                    for p in S.note-props: Rectangle {
-                        width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
-                        background: p.cur ? G.accent-wash : G.bg;
-                        border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
-                        pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                if S.note-props.length > 0: ScrollView {
+                    height: 24px;
+                    viewport-width: props.preferred-width;
+                    props := HorizontalLayout {
+                        spacing: 6px; alignment: start;
+                        for p in S.note-props: Rectangle {
+                            width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
+                            background: p.cur ? G.accent-wash : G.bg;
+                            border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
+                            pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                        }
                     }
                 }
                 Rectangle { height: 14px; }
@@ -341,7 +345,7 @@ export component NotesPage inherits Rectangle {
             y: parent.height - 34px; height: 34px;
             Rectangle { y: 0; height: 1px; background: G.line-soft; }
             Rectangle { x: 16px; y: 14px; width: 6px; height: 6px; border-radius: 3px; background: S.note-dirty ? G.accent : G.green; }
-            Text { x: 30px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; }
+            Text { x: 30px; width: parent.width - 140px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 16px; text: S.note-words + " СЛОВ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #62646E; vertical-alignment: center; }
         }
     }
