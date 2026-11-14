@@ -20,9 +20,11 @@ component Chip inherits Rectangle {
 }
 
 component Small inherits Text {
+    in property <string> icon: "";
     callback clicked;
     font-family: G.mono; font-size: 11px; color: sa.has-hover ? G.ink : #8A8C96;
     horizontal-alignment: center; vertical-alignment: center;
+    Icon { visible: root.icon != ""; name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: sa.has-hover ? G.ink : #8A8C96; }
     sa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -88,7 +90,7 @@ export component Templates inherits Overlay {
                         Rectangle { height: 30px; y: 0; background: c.hue.darker(0.35);
                             TextInput { x: 10px; width: parent.width - 34px; height: 30px; text: c.label; color: #fff; font-family: G.mono; font-size: 11px; font-weight: 600; vertical-alignment: center;
                                 accepted => { S.tp-col(i, "name", self.text); } edited => { S.tp-col(i, "name", self.text); } }
-                            if !c.on: Small { x: parent.width - 22px; width: 18px; height: 30px; text: "×"; color: #ffffffb0; clicked => { S.tp-col(i, "del", ""); } }
+                            if !c.on: Small { x: parent.width - 22px; width: 18px; height: 30px; icon: "close"; text: ""; clicked => { S.tp-col(i, "del", ""); } }
                         }
                         Text { x: 10px; y: 40px; text: "Лимит"; color: #A3A5AE; font-size: 12.5px; }
                         Small { x: parent.width - 66px; y: 38px; width: 18px; height: 20px; text: "−"; clicked => { S.tp-col(i, "limit", "-1"); } }
@@ -98,8 +100,8 @@ export component Templates inherits Overlay {
                         Rectangle { x: parent.width - 22px; y: 69px; width: 12px; height: 12px; border-radius: 3px; background: c.hue;
                             TouchArea { clicked => { S.tp-col(i, "color", ""); } mouse-cursor: pointer; } }
                         if c.on: Text { x: 10px; y: 92px; text: "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"; font-family: G.mono; font-size: 8.5px; color: #7A7C86; }
-                        if !c.on: Small { x: 6px; y: 92px; width: 24px; height: 20px; text: "‹"; clicked => { S.tp-col(i, "left", ""); } }
-                        if !c.on: Small { x: 32px; y: 92px; width: 24px; height: 20px; text: "›"; clicked => { S.tp-col(i, "right", ""); } }
+                        if !c.on: Small { x: 6px; y: 92px; width: 24px; height: 20px; icon: "prev"; text: ""; clicked => { S.tp-col(i, "left", ""); } }
+                        if !c.on: Small { x: 32px; y: 92px; width: 24px; height: 20px; icon: "next"; text: ""; clicked => { S.tp-col(i, "right", ""); } }
                     }
                 }
                 Rectangle {

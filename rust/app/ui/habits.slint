@@ -1,7 +1,7 @@
 // «Привычки» по макетам G_Habits и G_HabitsMonth: панель-нода сверху, ряд «Сегодня», карточки 3 в ряд,
 // справа — панель выбранной привычки; «Месяц» — таблица привычка × день с меню дня.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg, Icon } from "kit.slint";
 import { S, HabitCard, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -321,7 +321,8 @@ component MonthTable inherits Rectangle {
         Rectangle {
             height: 32px; y: 0; background: #8A5320;
             Text { x: 12px; text: root.m-name.to-uppercase() + " · " + root.m-day + " ЧИСЛО"; font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 40px; }
-            Text { x: parent.width - 24px; text: "✕"; color: #ffffffb0; vertical-alignment: center; height: parent.height; TouchArea { clicked => { root.m-day = -1; } } }
+            Icon { name: "close"; width: 12px; x: parent.width - 26px; y: (parent.height - 12px) / 2; c: #ffffffb0; }
+            TouchArea { x: parent.width - 32px; width: 32px; clicked => { root.m-day = -1; } mouse-cursor: pointer; }
         }
         VerticalLayout {
             y: 36px; height: parent.height - 40px;

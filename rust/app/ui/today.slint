@@ -2,7 +2,7 @@
 // Слева «01 · Источники» — ноды списков, «От Claude» и привычек; провода к строкам «Сборки дня» в середине;
 // справа «03 · Вывод» — «Дальше» и «Итог дня». Координаты проводов считает Rust (view/today.rs).
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Empty } from "kit.slint";
+import { Mono, Brackets, Button, Field, Empty, Icon } from "kit.slint";
 import { S, TaskRow, SrcNode, Wire } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -74,7 +74,7 @@ component Check2 inherits Rectangle {
     background: done ? #45464D : transparent;
     border-width: done ? 0 : 1px;
     border-color: hot ? G.accent : #8A8C96;
-    if done: Text { text: "✓"; font-size: 9px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+    if done: Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; c: G.ink; stroke-width: 2.2px; }
     TouchArea { clicked => { root.toggled(); } mouse-cursor: pointer; }
 }
 
