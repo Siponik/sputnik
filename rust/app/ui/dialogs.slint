@@ -1,6 +1,6 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput } from "kit.slint";
 import { Sat } from "kit.slint";
 import { S, Opt, Sub, Found, DpCell } from "store.slint";
 import { ScrollView, TextEdit } from "std-widgets.slint";
@@ -94,6 +94,7 @@ export component TaskDialog inherits Overlay {
                     padding-bottom: 16px;
                     spacing: 14px;
                     alignment: start;
+                    // раскладка: в прокрутке (колонка окна прокручивается)
                     TextInput {
                         text: S.t-title;
                         font-size: 22px;
@@ -202,7 +203,7 @@ export component TaskDialog inherits Overlay {
                         height: 24px;
                         spacing: 14px;
                         alignment: start;
-                        Text { text: (root.more ? "▾" : "▸") + " ЕЩЁ"; font-family: G.mono; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; TouchArea { clicked => { root.more = !root.more; } mouse-cursor: pointer; } }
+                        Text { text: (root.more ? "− " : "+ ") + "ЕЩЁ"; font-family: G.mono; font-size: 10px; font-weight: 700; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; TouchArea { clicked => { root.more = !root.more; } mouse-cursor: pointer; } }
                         Text { text: "ПОВТОР · ЦВЕТ · КАРТИНКА"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
                     }
                     if root.more: TRow {
@@ -489,14 +490,13 @@ component TaskBody inherits Rectangle {
                 clip: true;
                 Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
                 Rectangle { y: 30px; height: 1px; background: G.line; }
-                TouchArea { clicked => { nt.focus(); root.sub-focus(); } mouse-cursor: text; }
+                TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
                 Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Ракурс, референсы…"; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
-                nt := TextInput {
+                nt := ScrollInput {
                     x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
-                    text: S.c-notes; font-size: 12.5px; color: G.ink;
-                    single-line: false; wrap: word-wrap;
-                    edited => { S.c-notes-set(self.text); root.sub-focus(); }
-                    key-pressed(e) => { if (e.text == Key.Escape) { root.grab-line(); return accept; } reject }
+                    text: S.c-notes;
+                    edited(t) => { S.c-notes-set(t); root.sub-focus(); }
+                    escape => { root.grab-line(); }
                 }
             }
         }
@@ -688,14 +688,13 @@ component NoteBox inherits Box {
     height: 124px;
     Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
     Rectangle { y: 30px; height: 1px; background: G.line; }
-    TouchArea { clicked => { nt.focus(); root.sub-focus(); } mouse-cursor: text; }
+    TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
     Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: root.hint; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
-    nt := TextInput {
+    nt := ScrollInput {
         x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
-        text: S.c-notes; font-size: 12.5px; color: G.ink;
-        single-line: false; wrap: word-wrap;
-        edited => { S.c-notes-set(self.text); root.sub-focus(); }
-        key-pressed(e) => { if (e.text == Key.Escape) { root.grab-line(); return accept; } reject }
+        text: S.c-notes;
+        edited(t) => { S.c-notes-set(t); root.sub-focus(); }
+        escape => { root.grab-line(); }
     }
 }
 
@@ -721,25 +720,6 @@ component EventBody inherits Rectangle {
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for q in S.c-quick: CChip { text: q.label; on: q.on; clicked => { S.c-quick-set(q.id); root.grab-line(); } }
-        }
-        Box {
-            height: dv.preferred-height;
-            opacity: root.dated ? 1 : 0.4;
-            dv := VerticalLayout {
-                padding: 12px;
-                HorizontalLayout {
-                    spacing: 6px; height: 50px;
-                    for d in S.c-strip: Rectangle {
-                        border-radius: 6px; border-width: 1px;
-                        border-color: d.on ? CK.accent : G.line;
-                        background: d.on ? CK.accent-wash : (sa.has-hover ? G.node-hover : G.node);
-                        Text { y: 7px; width: parent.width; text: d.label; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: d.on ? CK.accent : #A3A5AE; horizontal-alignment: center; }
-                        Text { y: 22px; width: parent.width; text: d.hint; font-size: 15px; color: d.on ? CK.accent : G.ink; horizontal-alignment: center; }
-                        if d.on: Rectangle { x: (parent.width - 6px) / 2; y: parent.height + 3px; width: 6px; height: 6px; border-radius: 3px; background: CK.accent; }
-                        sa := TouchArea { clicked => { S.c-strip-set(d.id); root.grab-line(); } mouse-cursor: pointer; }
-                    }
-                }
-            }
         }
         Cap { text: "ДЛИТСЯ"; }
         HorizontalLayout {
