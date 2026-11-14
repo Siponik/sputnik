@@ -365,7 +365,7 @@ component PipeLine inherits Rectangle {
         for st[i] in S.stages: StageChip {
             text: st;
             state: r.done || i < r.stage ? 0 : i == r.stage ? 1 : 2;
-            clicked => { S.move-card(r.list-id, r.id, i); }
+            clicked => { S.move-card(r.list-id, r.id, i, 999); }
         }
     }
     Text { x: parent.width - 196px; y: 16px; width: 60px; height: 30px; text: r.due; font-size: 13px; color: r.overdue ? G.red : G.accent; horizontal-alignment: right; vertical-alignment: center; }
