@@ -439,7 +439,8 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
 }
 
 /// Значки привычки в окне «Создать» (хранятся в поле `icon`; в списке значок — первая буква, §G_CreateHabit).
-pub const HABIT_ICONS: [&str; 7] = ["🏃", "💧", "✏️", "📖", "🧘", "🍎", "🌙"];
+/// Значки привычек — имена иконок из design/system-g/icons (эмодзи в интерфейсе не используем).
+pub const HABIT_ICONS: [&str; 7] = ["fire", "timer", "edit", "read", "focus", "star", "theme"];
 
 /// Частота привычки из строки или кнопок: {"kind": "daily"|"weekdays"|"days"|"week", "days"?, "perWeek"?}.
 /// `manual` — выбор кнопками в том же виде, что даёт разбор строки (`parse_habit`); Null — из строки.

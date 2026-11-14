@@ -190,3 +190,42 @@ pub fn pick_quick(id: &str, cur_slot: &Value, today: NaiveDate) -> Option<Picked
     };
     Some(Picked { day: q.2, slot })
 }
+
+/// Ввод времени в выборе времени (§21): «1730», «17», «17:30», «5pm», «+15»/«-15» (колесо — от `cur`),
+/// «hour» — через час от `now` (кратно 15 минутам). None — не понял.
+pub fn time_input(raw: &str, cur: &str, now: &str) -> Option<String> {
+    let t = raw.trim().to_lowercase().replace(['.', ' ', '-'], ":").replace("::", ":");
+    let fmt = |m: i64| { let m = m.rem_euclid(24 * 60); format!("{:02}:{:02}", m / 60, m % 60) };
+    if raw.trim() == "+15" || raw.trim() == "-15" {
+        let base = if cur.is_empty() { cr::to_min(now) / 15 * 15 } else { cr::to_min(cur) };
+        return Some(fmt(base + if raw.trim() == "+15" { 15 } else { -15 }));
+    }
+    // «h17» — час кнопкой (минуты остаются), «m30» — минуты кнопкой (час остаётся, без часа — 09)
+    if let Some(h) = t.strip_prefix('h').and_then(|x| x.parse::<i64>().ok()) {
+        let m = if cur.is_empty() { 0 } else { cr::to_min(cur) % 60 };
+        return (0..24).contains(&h).then(|| fmt(h * 60 + m));
+    }
+    if let Some(m) = t.strip_prefix('m').and_then(|x| x.parse::<i64>().ok()) {
+        let h = if cur.is_empty() { 9 } else { cr::to_min(cur) / 60 };
+        return (0..60).contains(&m).then(|| fmt(h * 60 + m));
+    }
+    if t == "hour" {
+        return Some(fmt((cr::to_min(now) + 60 + 14) / 15 * 15));
+    }
+    let (body, pm, am) = if let Some(b) = t.strip_suffix("pm") { (b.to_string(), true, false) } else if let Some(b) = t.strip_suffix("am") { (b.to_string(), false, true) } else { (t.clone(), false, false) };
+    let body = body.trim_matches(':').to_string();
+    let (h, m): (i64, i64) = if let Some((a, b)) = body.split_once(':') {
+        (a.parse().ok()?, if b.is_empty() { 0 } else { b.parse().ok()? })
+    } else {
+        if body.is_empty() || !body.chars().all(|c| c.is_ascii_digit()) { return None; }
+        match body.len() {
+            1 | 2 => (body.parse().ok()?, 0),
+            3 => (body[..1].parse().ok()?, body[1..].parse().ok()?),
+            4 => (body[..2].parse().ok()?, body[2..].parse().ok()?),
+            _ => return None,
+        }
+    };
+    let h = if pm && h < 12 { h + 12 } else if am && h == 12 { 0 } else { h };
+    if !(0..24).contains(&h) || !(0..60).contains(&m) { return None; }
+    Some(fmt(h * 60 + m))
+}

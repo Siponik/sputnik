@@ -649,6 +649,10 @@ pub fn wire(w: &AppWindow) {
         let day = x["day"].as_str().map(|v| v.to_string());
         c.m.when = Some(sputnik_core::compose::Picked { day, slot: Some((st, e)) });
     }));
+    g.on_c_tnorm(|raw, cur| {
+        let now = chrono::Local::now().format("%H:%M").to_string();
+        ss(sputnik_core::compose::time_input(&raw, &cur, &now).unwrap_or_default())
+    });
     g.on_c_cal_step(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal_step += k }));
     g.on_c_prop(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
         let k = str_(&k);

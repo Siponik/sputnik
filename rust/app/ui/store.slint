@@ -376,6 +376,7 @@ export global S {
     in property <string> c-pv-b;               // месяц «НОЯ» | часть дня «УТРО»
     in property <string> c-pv-sub;             // «Исполнится 32 · через 7 дней» | «15:00 – 16:00»
     in property <[string]> c-pv-hours;         // событие: часы вокруг начала
+    pure callback c-tnorm(string, string) -> string;   // ввод времени → «17:30» ("" — не понял); второе — текущее значение
     callback c-time-set(string);
     callback c-strip-set(string);
     callback c-prop(string);                   // открыть/закрыть выбор свойства
