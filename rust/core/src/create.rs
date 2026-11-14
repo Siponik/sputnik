@@ -439,7 +439,8 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
 }
 
 /// Значки привычки в окне «Создать» (хранятся в поле `icon`; в списке значок — первая буква, §G_CreateHabit).
-pub const HABIT_ICONS: [&str; 7] = ["🏃", "💧", "✏️", "📖", "🧘", "🍎", "🌙"];
+/// Значки привычек — имена иконок из design/system-g/icons (эмодзи в интерфейсе не используем).
+pub const HABIT_ICONS: [&str; 7] = ["fire", "timer", "edit", "read", "focus", "star", "theme"];
 
 /// Частота привычки из строки или кнопок: {"kind": "daily"|"weekdays"|"days"|"week", "days"?, "perWeek"?}.
 /// `manual` — выбор кнопками в том же виде, что даёт разбор строки (`parse_habit`); Null — из строки.
@@ -454,7 +455,9 @@ pub fn habit_freq_of(h: &Value, manual: &Value) -> Value {
         d.sort_unstable();
         d.dedup();
         if !d.is_empty() {
-            return json!({"kind": if d == [0, 1, 2, 3, 4] { "weekdays" } else { "days" }, "days": d});
+            // «Свои дни», выбранные кнопкой, остаются своими, даже если совпали с буднями
+            let custom = src["custom"] == true;
+            return json!({"kind": if d == [0, 1, 2, 3, 4] && !custom { "weekdays" } else { "days" }, "days": d});
         }
     }
     json!({"kind": "daily"})

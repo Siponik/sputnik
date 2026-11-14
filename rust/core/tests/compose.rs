@@ -168,3 +168,29 @@ fn bday_year_parse() {
     assert_eq!(cr::bday_year("1800"), None);
     assert_eq!(cr::bday_year("2999"), None);
 }
+
+#[test]
+fn habit_custom_days_stay_custom() {
+    use sputnik_core::create::habit_freq_of;
+    let h = json!({});
+    assert_eq!(habit_freq_of(&h, &json!({"freq": "days", "days": [0, 1, 2, 3, 4]}))["kind"], "weekdays");
+    assert_eq!(habit_freq_of(&h, &json!({"freq": "days", "custom": true, "days": [0, 1, 2, 3, 4]}))["kind"], "days");
+}
+
+#[test]
+fn time_input() {
+    let f = |r: &str| c::time_input(r, "", "14:07");
+    assert_eq!(f("1730").as_deref(), Some("17:30"));
+    assert_eq!(f("17").as_deref(), Some("17:00"));
+    assert_eq!(f("930").as_deref(), Some("09:30"));
+    assert_eq!(f("5pm").as_deref(), Some("17:00"));
+    assert_eq!(f("12am").as_deref(), Some("00:00"));
+    assert_eq!(f("17.45").as_deref(), Some("17:45"));
+    assert_eq!(f("25"), None);
+    assert_eq!(f("abc"), None);
+    assert_eq!(f("hour").as_deref(), Some("15:15"));
+    assert_eq!(c::time_input("+15", "23:50", "").as_deref(), Some("00:05"));
+    assert_eq!(c::time_input("-15", "", "14:07").as_deref(), Some("13:45"));
+    assert_eq!(c::time_input("h17", "09:30", "").as_deref(), Some("17:30"));
+    assert_eq!(c::time_input("m45", "", "").as_deref(), Some("09:45"));
+}

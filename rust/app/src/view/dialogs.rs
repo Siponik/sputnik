@@ -220,6 +220,37 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_hpart(model([("morning", "Утро"), ("day", "День"), ("evening", "Вечер"), ("any", "Любое")].iter().map(|(k, l)| opt(*k, *l, part_eff == *k && !custom_win)).collect()));
     g.set_c_hwin_s(ss(s(&win_eff["s"])));
     g.set_c_hwin_e(ss(s(&win_eff["e"])));
+    // превью по макетам
+    {
+        use chrono::Datelike;
+        const M3: [&str; 12] = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЯ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
+        let tdy = hb::now().date();
+        let (pa, pb, psub, hours): (String, String, String, Vec<String>) = match c.kind {
+            2 => ("0".into(), [("morning", "УТРО"), ("day", "ДЕНЬ"), ("evening", "ВЕЧЕР")].iter().find(|x| x.0 == part_eff).map(|x| x.1).unwrap_or("").into(), String::new(), vec![]),
+            3 => match x["day"].as_str().and_then(sputnik_core::dates::parse_ymd) {
+                Some(d) => {
+                    let mut next = chrono::NaiveDate::from_ymd_opt(tdy.year(), d.month(), d.day()).unwrap_or(d);
+                    if next < tdy { next = chrono::NaiveDate::from_ymd_opt(tdy.year() + 1, d.month(), d.day()).unwrap_or(next); }
+                    let left = (next - tdy).num_days();
+                    let when = match left { 0 => "сегодня".to_string(), 1 => "завтра".into(), n2 => format!("через {}", cr::plural(n2, "день", "дня", "дней")) };
+                    let age = cr::bday_year(&c.year).map(|y| format!("Исполнится {} · ", next.year() as i64 - y)).unwrap_or_default();
+                    (d.day().to_string(), M3[d.month0() as usize].into(), format!("{age}{when}"), vec![])
+                }
+                None => ("?".into(), String::new(), "дата?".into(), vec![]),
+            },
+            1 => {
+                let st = x["slot"]["s"].as_str().unwrap_or("");
+                let en = x["slot"]["e"].as_str().unwrap_or("");
+                let h0 = if st.is_empty() { 9 } else { (cr::to_min(st) / 60 - 1).clamp(0, 20) };
+                (String::new(), String::new(), if st.is_empty() { "весь день".into() } else { format!("{st} – {en}") }, (h0..h0 + 4).map(|h| format!("{h:02}:00")).collect())
+            }
+            _ => (String::new(), String::new(), String::new(), vec![]),
+        };
+        g.set_c_pv_a(ss(pa));
+        g.set_c_pv_b(ss(pb));
+        g.set_c_pv_sub(ss(psub));
+        g.set_c_pv_hours(strings(hours));
+    }
     props(app, c, g, &x, &dest, &mins, &every);
 }
 
@@ -233,6 +264,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         None => "Без срока".into(),
     }));
     g.set_c_times(strings(cr2::times()));
+    g.set_c_end(ss(if c.dur < 0 { "" } else { x["slot"]["e"].as_str().unwrap_or("") }));
     {
         use chrono::Datelike;
         let sel = sputnik_core::dates::parse_ymd(day);

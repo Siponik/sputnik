@@ -638,6 +638,21 @@ pub fn wire(w: &AppWindow) {
         c.m.when = Some(sputnik_core::compose::Picked { day: Some(str_(&d)), slot });
         c.cal_step = 0;
     }));
+    g.on_c_end_set(|e| act(|_, u| if let Some(c) = u.create.as_mut() {
+        let x = super::dialogs::resolved(c);
+        let st = x["slot"]["s"].as_str().unwrap_or("").to_string();
+        let e = str_(&e);
+        if st.is_empty() || e.is_empty() { return; }
+        let mut d = sputnik_core::create::to_min(&e) - sputnik_core::create::to_min(&st);
+        if d <= 0 { d += 24 * 60; } // конец за полночь
+        c.dur = d;
+        let day = x["day"].as_str().map(|v| v.to_string());
+        c.m.when = Some(sputnik_core::compose::Picked { day, slot: Some((st, e)) });
+    }));
+    g.on_c_tnorm(|raw, cur| {
+        let now = chrono::Local::now().format("%H:%M").to_string();
+        ss(sputnik_core::compose::time_input(&raw, &cur, &now).unwrap_or_default())
+    });
     g.on_c_cal_step(|k| act(|_, u| if let Some(c) = u.create.as_mut() { c.cal_step += k }));
     g.on_c_prop(|k| act(|_, u| if let Some(c) = u.create.as_mut() {
         let k = str_(&k);
@@ -673,7 +688,7 @@ pub fn wire(w: &AppWindow) {
         let f = cr::habit_freq_of(&cr::parse_habit(&c.text, &c.m.off_json()), &c.hfreq);
         c.hfreq = match k.as_str() {
             "weekdays" => json!({"freq": "days", "days": [0, 1, 2, 3, 4]}),
-            "days" => json!({"freq": "days", "days": if matches!(s(&f["kind"]), "days" | "weekdays") { f["days"].clone() } else { json!([0, 1, 2, 3, 4]) }}),
+            "days" => json!({"freq": "days", "custom": true, "days": if matches!(s(&f["kind"]), "days" | "weekdays") { f["days"].clone() } else { json!([0, 1, 2, 3, 4]) }}),
             "week" => json!({"freq": "week", "perWeek": if s(&f["kind"]) == "week" { f["perWeek"].as_i64().unwrap_or(3).max(2) } else { 3 }}),
             _ => json!({"freq": "daily"}),
         };
@@ -690,7 +705,7 @@ pub fn wire(w: &AppWindow) {
             Some(_) => {}
             None => { d.push(i as i64); d.sort_unstable(); }
         }
-        c.hfreq = json!({"freq": "days", "days": d});
+        c.hfreq = json!({"freq": "days", "custom": true, "days": d});
     }));
     g.on_c_hper_set(|n| act(|_, u| if let Some(c) = u.create.as_mut() {
         c.hfreq = json!({"freq": "week", "perWeek": str_(&n).parse::<i64>().unwrap_or(3).clamp(1, 6)});
