@@ -10,6 +10,7 @@ import { HabitsPage } from "habits.slint";
 import { SettingsPage } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { TaskDialog, CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
+import { HabitEditDialog } from "habitedit.slint";
 import { DatePicker } from "datetime.slint";
 import { ListSettings } from "listset.slint";
 import { CtxMenu } from "menu.slint";
@@ -399,6 +400,7 @@ export component AppWindow inherits Window {
 
         if S.task-open: TaskDialog { }
         if S.create-open: CreateDialog { }
+        if S.he-open: HabitEditDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
         if S.tp-open: Templates { }
         if S.ls-open: ListSettings { }

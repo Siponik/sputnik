@@ -62,3 +62,29 @@ fn habits() {
         })
     });
 }
+
+/// Патчи окна правки привычки (#193): расписание, «когда», цель.
+#[test]
+fn habit_edit_patches() {
+    h::set_clock(chrono::NaiveDate::from_ymd_opt(2026, 10, 21).unwrap().and_hms_opt(14, 0, 0));
+    // расписание: daily | weekdays | days (custom) | week
+    assert_eq!(h::edit_schedule("daily", &[], 0), json!({"days": [0, 1, 2, 3, 4, 5, 6], "perWeek": Value::Null, "custom": Value::Null}));
+    assert_eq!(h::edit_schedule("weekdays", &[], 0)["days"], json!([0, 1, 2, 3, 4]));
+    assert_eq!(h::edit_schedule("days", &[4, 2, 2, 9], 0), json!({"days": [2, 4], "perWeek": Value::Null, "custom": true}));
+    // пустые «свои дни» — сегодня (среда 21.10.2026 → 2), расписание не остаётся пустым
+    assert_eq!(h::edit_schedule("days", &[], 0)["days"], json!([2]));
+    assert_eq!(h::edit_schedule("week", &[], 8), json!({"days": [0, 1, 2, 3, 4, 5, 6], "perWeek": 6, "custom": Value::Null}));
+    // «когда»: обе границы — своё окно и часть дня сброшена; без границ — только часть дня
+    assert_eq!(h::edit_when("morning", &Value::Null, &Value::Null), json!({"part": "morning", "win": Value::Null, "time": Value::Null, "end": Value::Null}));
+    assert_eq!(h::edit_when("day", &json!("07:00"), &json!("09:00")), json!({"win": {"s": "07:00", "e": "09:00"}, "time": "07:00", "end": "09:00", "part": Value::Null}));
+    // конец «24:00» хранится в win, поле end пустое
+    assert_eq!(h::edit_when("any", &json!("21:00"), &json!("24:00")), json!({"win": {"s": "21:00", "e": "24:00"}, "time": "21:00", "end": Value::Null, "part": Value::Null}));
+    // кривое окно (конец раньше начала) — часть дня
+    assert_eq!(h::edit_when("evening", &json!("09:00"), &json!("07:00")), json!({"part": "evening", "win": Value::Null, "time": Value::Null, "end": Value::Null}));
+    // неизвестная часть дня — «когда угодно»
+    assert_eq!(h::edit_when("ночь", &Value::Null, &Value::Null)["part"], json!("any"));
+    // цель
+    assert_eq!(h::edit_goal(0), json!({"goal": Value::Null}));
+    assert_eq!(h::edit_goal(8), json!({"goal": {"n": 8, "unit": "раз"}}));
+    assert_eq!(h::edit_goal(1000)["goal"]["n"], json!(999));
+}

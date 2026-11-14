@@ -418,6 +418,117 @@ pub fn wire(w: &AppWindow) {
         ask(u, format!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), "Удалить", move |app, _| app.remove_habit(&id));
     }));
 
+    // ---------- Окно правки привычки (#193): каждое действие сразу пишется в слой ----------
+    g.on_habit_edit(|id| act(|_, u| u.hedit = Some(super::habitedit::HEdit { id: str_(&id) })));
+    g.on_he_close(|| act(|_, u| u.hedit = None));
+    g.on_he_name_set(|t| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        if !t.trim().is_empty() {
+            app.rename_habit(&he.id, t.trim());
+        }
+    }));
+    g.on_he_icon_set(|ic| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        // повторный клик по выбранному значку снимает его
+        let ic = str_(&ic);
+        app.save_habit(&he.id, json!({"icon": if s(&h["icon"]) == ic { Value::Null } else { json!(ic) }}));
+    }));
+    g.on_he_freq_set(|k| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let f = cr::habit_freq_of(&h, &Value::Null);
+        let days: Vec<i64> = a(&f["days"]).iter().filter_map(|x| x.as_i64()).collect();
+        let days = if days.is_empty() { vec![hb::dow(hb::now().date())] } else { days };
+        let per = n(&f["perWeek"]).unwrap_or(3.0) as i64;
+        app.save_habit(&he.id, hb::edit_schedule(&str_(&k), &days, per));
+    }));
+    g.on_he_day(|d| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let f = cr::habit_freq_of(&h, &Value::Null);
+        let mut days: Vec<i64> = a(&f["days"]).iter().filter_map(|x| x.as_i64()).collect();
+        if days.is_empty() {
+            days = vec![hb::dow(hb::now().date())];
+        }
+        if let Some(i) = days.iter().position(|x| *x == d as i64) {
+            if days.len() > 1 {
+                days.remove(i);
+            }
+        } else {
+            days.push(d as i64);
+            days.sort();
+        }
+        app.save_habit(&he.id, hb::edit_schedule("days", &days, 0));
+    }));
+    g.on_he_per_set(|p| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        app.save_habit(&he.id, hb::edit_schedule("week", &[], str_(&p).parse().unwrap_or(3)));
+    }));
+    g.on_he_part_set(|p| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        app.save_habit(&he.id, hb::edit_when(&str_(&p), &Value::Null, &Value::Null));
+    }));
+    g.on_he_win_s_set(|v| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let st = str_(&v);
+        if st.is_empty() {
+            // «Без времени» — обратно на часть дня
+            app.save_habit(&he.id, hb::edit_when(&hb::part_of(&h), &Value::Null, &Value::Null));
+            return;
+        }
+        let w = hb::habit_win(&h);
+        let mut e = s(&w["e"]).to_string();
+        if e.is_empty() || cr::to_min(&e) <= cr::to_min(&st) {
+            e = cr::from_min((cr::to_min(&st) + 60).min(1439));
+        }
+        app.save_habit(&he.id, hb::edit_when("", &json!(st), &json!(e)));
+    }));
+    g.on_he_win_e_set(|v| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let e = str_(&v);
+        if e.is_empty() {
+            return; // у поля «до» очистки нет
+        }
+        let w = hb::habit_win(&h);
+        let mut st = s(&w["s"]).to_string();
+        if st.is_empty() || cr::to_min(&st) >= cr::to_min(&e) {
+            st = cr::from_min((cr::to_min(&e) - 60).max(0));
+        }
+        app.save_habit(&he.id, hb::edit_when("", &json!(st), &json!(e)));
+    }));
+    g.on_he_goal_set(|v| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        app.save_habit(&he.id, hb::edit_goal(str_(&v).parse().unwrap_or(0)));
+    }));
+    g.on_he_remind(|k, on| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let k = str_(&k);
+        let tg = if k == "tg" { on } else { h["remind"]["tg"] != false };
+        let win = if k == "win" { on } else { h["remind"]["win"] != false };
+        app.save_habit(&he.id, json!({"remind": {"tg": tg, "win": win}}));
+    }));
+    g.on_he_notes_set(|t| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(l) = app.habit_list() else { return };
+        let lid = s(&l["id"]).to_string();
+        if let Some(tk) = task_of(app, &lid, &he.id) {
+            app.set_notes(&lid, &tk, &str_(&t));
+        }
+    }));
+    g.on_he_delete(|| act(|app, u| {
+        let Some(he) = u.hedit.clone() else { return };
+        let Some(h) = habit_by(app, &he.id) else { return };
+        let id = text(&h["id"]);
+        ask(u, format!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), "Удалить", move |app, u| {
+            app.remove_habit(&id);
+            u.hedit = None;
+        });
+    }));
+
     // ---------- Окно задачи ----------
     fn cur(u: &Ui) -> Option<(String, String)> {
         u.task.clone()

@@ -1,0 +1,355 @@
+// Окно правки привычки по макету G_HabitEdit (#193): слева название, значок, «Как часто»,
+// «Когда» и заметка; справа «Свойства» строками «название — значение». Подвала нет:
+// правки пишутся в слой сразу (серия не сбрасывается), высота окна — по содержимому.
+// Окно «Создать» (dialogs.slint) не тронуто — оно в другой ветке.
+import { G } from "theme.slint";
+import { Brackets, Field, Icon, Chev, Overlay, ScrollInput } from "kit.slint";
+import { S } from "store.slint";
+
+component Cap inherits Text {
+    font-family: G.mono;
+    font-size: 10px;
+    letter-spacing: 1.4px;
+    color: #9A9CA6;
+}
+
+// Чип выбора в цвете привычки (выбранный — залит оттенком цвета).
+component HChip inherits Rectangle {
+    in property <string> text;
+    in property <bool> on;
+    callback clicked;
+    height: 28px;
+    preferred-height: 28px;
+    width: ht.preferred-width + 22px;
+    border-radius: 7px;
+    border-width: 1px;
+    border-color: on ? S.he-hue : G.line;
+    background: on ? S.he-hue.transparentize(0.84) : (ha.has-hover ? G.node-hover : transparent);
+    ht := Text { text: root.text; font-size: 12.5px; font-weight: on ? 600 : 400; color: on ? G.ink : #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+    ha := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
+}
+
+// Поле времени «с … / до …» с выпадашкой: ввод («730»), часы 6×4 и минуты 00/15/30/45.
+// Нормализация ввода — общая с окном «Создать» (S.c-tnorm). clearable — пункт «Без времени».
+component HTime inherits Rectangle {
+    in property <string> val;
+    in property <bool> clearable;
+    callback picked(string);
+    out property <bool> open;
+    width: 104px;
+    height: 34px;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: open ? S.he-hue : G.line;
+    background: #2C2D33;
+    function put(raw: string) {
+        if (raw == "none") { root.picked(""); root.open = false; return; }
+        if (raw == "") { return; }
+        let t = S.c-tnorm(raw, root.val);
+        if (t != "") { root.picked(t); }
+    }
+    Icon { x: 10px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #9A9CA6; }
+    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
+    Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
+    TouchArea {
+        clicked => { root.open = !root.open; }
+        mouse-cursor: pointer;
+        // колесо: ±15 минут без открытия выпадашки
+        scroll-event(e) => {
+            if (e.delta-y > 0) { root.put("+15"); return accept; }
+            if (e.delta-y < 0) { root.put("-15"); return accept; }
+            reject
+        }
+    }
+    if root.open: Rectangle {
+        x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        TouchArea { }
+        inp := Field {
+            x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
+            placeholder: "730, 17, 19:30…";
+            accepted(t) => { root.put(t); root.open = false; }
+            escape => { root.open = false; }
+        }
+        HorizontalLayout {
+            x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
+            for q[i] in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"]: Rectangle {
+                visible: i < 3 || root.clearable;
+                border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
+                Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); root.open = false; } mouse-cursor: pointer; }
+            }
+        }
+        for h[i] in 24: Rectangle {
+            x: 12px + mod(i, 6) * 38px; y: 94px + floor(i / 6) * 30px; width: 35px; height: 27px; border-radius: 5px;
+            property <string> hs: (i < 10 ? "0" : "") + i;
+            property <string> nx: (i + 1 < 10 ? "0" : "") + (i + 1);
+            property <bool> on: root.val != "" && root.val >= hs + ":00" && root.val < nx + ":00";
+            background: on ? S.he-hue.transparentize(0.84) : (ha.has-hover ? G.node-hover : transparent);
+            border-width: 1px; border-color: on ? S.he-hue : G.line;
+            Text { text: parent.hs; font-family: G.mono; font-size: 12px; color: parent.on ? S.he-hue : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            ha := TouchArea { clicked => { root.put("h" + parent.hs); } mouse-cursor: pointer; }
+        }
+        for m[i] in ["00", "15", "30", "45"]: Rectangle {
+            x: parent.width - 12px - 46px; y: 94px + i * 30px; width: 46px; height: 27px; border-radius: 5px;
+            background: ma.has-hover ? G.node-hover : transparent;
+            border-width: 1px; border-color: G.line;
+            Text { text: ":" + m; font-family: G.mono; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            ma := TouchArea { clicked => { root.put("m" + m); root.open = false; } mouse-cursor: pointer; }
+        }
+        init => { inp.grab(); }
+    }
+}
+
+// Строка панели «Свойства»: значок, название, значение, стрелка; клик открывает выбор прямо в строке.
+component PropRow inherits Rectangle {
+    in property <string> icon;
+    in property <string> label;
+    in property <string> val;
+    in property <bool> can: true;          // false — строка-заглушка без выбора
+    in property <bool> danger;
+    in property <bool> open;
+    callback clicked;
+    height: 31px;
+    Rectangle { y: 0; height: 1px; background: G.line-soft; }
+    Rectangle { background: pa.has-hover && root.can ? G.node-hover : transparent; }
+    Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: root.icon; c: root.danger ? G.red : #8A8C96; }
+    Text { x: 30px; width: 84px; text: root.label; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; height: parent.height; overflow: elide; }
+    Text { x: 118px; width: parent.width - self.x - 22px; text: root.val; font-size: 12.5px; font-weight: root.val != "—" ? 600 : 400;
+        color: root.danger ? G.red : (root.val == "—" ? #55575F : G.ink); vertical-alignment: center; height: parent.height; overflow: elide; }
+    Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; visible: root.can; }
+    pa := TouchArea { clicked => { if (root.can) { root.clicked(); } } mouse-cursor: root.can ? pointer : default; }
+}
+
+export component HabitEditDialog inherits Overlay {
+    property <length> W: min(840px, self.width - 32px);
+    property <length> LW: root.W - 44px - 248px - 22px;
+    property <string> popen: "";           // открытое свойство: goal | tg | wrem
+    property <bool> side: self.width >= root.W + 330px;
+    close => { S.he-close(); }
+    function close-pop() -> bool {
+        if (ws.open) { ws.open = false; return true; }
+        if (we.open) { we.open = false; return true; }
+        if (root.popen != "") { root.popen = ""; return true; }
+        false
+    }
+    keys := FocusScope {
+        key-pressed(e) => {
+            if (e.text == Key.Escape) { if (!root.close-pop()) { S.he-close(); } return accept; }
+            if (e.text == Key.Return && e.modifiers.control) { S.he-close(); return accept; }
+            reject
+        }
+    win := Rectangle {
+        x: (parent.width - root.W - (root.side ? 270px : 0)) / 2;
+        y: max(20px, (parent.height - self.height) / 2 - 10px);
+        width: root.W;
+        height: 46px + 30px + 10px + 52px + 16px + body.height + 22px;
+        border-radius: 12px;
+        background: G.node;
+        border-width: 1px;
+        border-color: S.he-hue.mix(#1C1D21, 0.35);
+        drop-shadow-blur: 32px;
+        drop-shadow-color: #000c;
+        TouchArea { clicked => { if (!root.close-pop()) { keys.focus(); } } }
+        // шапка в цвете привычки
+        Rectangle {
+            height: 46px; y: 0;
+            border-top-left-radius: 12px; border-top-right-radius: 12px;
+            background: S.he-hue.mix(#1C1D21, 0.45);
+            Text { x: 18px; text: "Привычка · " + S.he-name; font-size: 14px; font-weight: 600; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 70px; }
+            Icon { x: parent.width - 38px; y: 15px; width: 16px; height: 16px; name: "close"; c: #fff; TouchArea { clicked => { S.he-close(); } mouse-cursor: pointer; } }
+        }
+        Text {
+            x: 22px; y: 46px; height: 30px;
+            text: S.he-streak > 0 ? "Серия " + S.he-streak + " дн. не сбросится · правки сохраняются сразу" : "Правки сохраняются сразу";
+            font-size: 12.5px; color: #9A9CA6; vertical-alignment: center;
+        }
+        // название
+        Rectangle {
+            x: 22px; y: 86px; width: root.W - 44px; height: 52px;
+            border-radius: 8px;
+            border-width: 1.5px;
+            border-color: nf.focused ? S.he-hue : S.he-hue.transparentize(0.35);
+            background: G.bg;
+            TouchArea { clicked => { nf.grab(); } mouse-cursor: text; }
+            nf := Field {
+                x: 16px; width: parent.width - 32px; height: parent.height;
+                bare: true;
+                font-size: 17px;
+                text: S.he-name;
+                placeholder: "Название привычки";
+                edited(t) => { S.he-name-set(t); }
+                accepted => { keys.focus(); }
+                escape => { if (!root.close-pop()) { S.he-close(); } }
+            }
+        }
+        body := Rectangle {
+            x: 22px; y: 154px; width: root.W - 44px;
+            height: max(lv.preferred-height, pp.preferred-height);
+            lv := VerticalLayout {
+                x: 0; y: 0;
+                width: root.LW;
+                spacing: 8px;
+                alignment: start;
+                Cap { text: "ЗНАЧОК"; }
+                HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    for ic in S.he-icons: Rectangle {
+                        width: 32px; height: 32px; border-radius: 8px; border-width: 1px;
+                        border-color: ic.on ? S.he-hue : G.line; background: ic.on ? S.he-hue.transparentize(0.84) : (ia.has-hover ? G.node-hover : transparent);
+                        Icon { x: 8px; y: 8px; width: 16px; height: 16px; name: ic.id; c: ic.on ? S.he-hue : G.ink; }
+                        ia := TouchArea { clicked => { S.he-icon-set(ic.id); keys.focus(); } mouse-cursor: pointer; }
+                    }
+                }
+                Cap { text: "КАК ЧАСТО"; }
+                HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    for fq in S.he-freq: HChip { text: fq.label; on: fq.on; clicked => { S.he-freq-set(fq.id); keys.focus(); } }
+                }
+                if S.he-freq.length > 2 && S.he-freq[2].on: HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    for d[i] in S.he-days: HChip { text: d.label; on: d.on; clicked => { S.he-day(i); keys.focus(); } }
+                }
+                if S.he-freq.length > 3 && S.he-freq[3].on: HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    for p in S.he-per: HChip { text: p.label; on: p.on; clicked => { S.he-per-set(p.id); keys.focus(); } }
+                    Text { height: 28px; text: "в неделю"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                }
+                Cap { text: "КОГДА"; }
+                HorizontalLayout {
+                    height: 34px; spacing: 8px; alignment: start;
+                    z: ws.open || we.open ? 20 : 0;
+                    ws := HTime { val: S.he-win-s; clearable: true; picked(t) => { S.he-win-s-set(t); keys.focus(); } }
+                    Text { text: "до"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; }
+                    we := HTime { val: S.he-win-e; picked(t) => { S.he-win-e-set(t); keys.focus(); } }
+                }
+                HorizontalLayout {
+                    spacing: 6px; alignment: start;
+                    for p in S.he-part: HChip { text: p.label; on: p.on; clicked => { S.he-part-set(p.id); keys.focus(); } }
+                }
+                Rectangle { height: 4px; }
+                Rectangle {
+                    height: 110px;
+                    border-radius: 8px; border-width: 1px; border-color: nt.focused ? S.he-hue.transparentize(0.35) : G.line;
+                    background: G.bg;
+                    Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
+                    Rectangle { y: 30px; height: 1px; background: G.line; }
+                    TouchArea { clicked => { nt.grab(); } mouse-cursor: text; }
+                    Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Зачем и как…"; font-size: 12.5px; color: #55575F; wrap: word-wrap; }
+                    nt := ScrollInput {
+                        x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
+                        text: S.he-notes;
+                        edited(t) => { S.he-notes-set(t); }
+                        escape => { keys.focus(); }
+                    }
+                }
+            }
+            // «Свойства» справа: пустые серые с прочерком, заданные белые, клик выбирает в строке
+            pp := Rectangle {
+                x: parent.width - 248px; y: 0; width: 248px;
+                height: pv.preferred-height;
+                border-radius: 8px; border-width: 1px; border-color: G.line; background: G.bg;
+                pv := VerticalLayout {
+                    alignment: start;
+                    Cap { height: 32px; text: "   СВОЙСТВА"; vertical-alignment: center; }
+                    PropRow {
+                        icon: "done"; label: "Цель"; val: S.he-goal;
+                        open: root.popen == "goal";
+                        clicked => { root.popen = root.popen == "goal" ? "" : "goal"; }
+                    }
+                    if root.popen == "goal": Rectangle {
+                        height: gg.preferred-height;
+                        gg := VerticalLayout {
+                            padding: 4px;
+                            for o[i] in [{ id: "0", l: "Сделать" }, { id: "2", l: "2 раза в день" }, { id: "3", l: "3 раза в день" }, { id: "4", l: "4 раза в день" }, { id: "5", l: "5 раз в день" }, { id: "8", l: "8 раз в день" }]: Rectangle {
+                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: S.he-goal-n == o.id.to-float() ? S.he-hue : transparent; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: S.he-goal-n == o.id.to-float() ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                oa := TouchArea { clicked => { S.he-goal-set(o.id); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                            }
+                        }
+                    }
+                    PropRow {
+                        icon: "telegram"; label: "Telegram"; val: S.he-tg ? "в начале окна" : "выкл";
+                        open: root.popen == "tg";
+                        clicked => { root.popen = root.popen == "tg" ? "" : "tg"; }
+                    }
+                    if root.popen == "tg": Rectangle {
+                        height: tgo.preferred-height;
+                        tgo := VerticalLayout {
+                            padding: 4px;
+                            for o[i] in [{ id: "on", l: "в начале окна" }, { id: "off", l: "выкл" }]: Rectangle {
+                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-tg ? S.he-hue : transparent; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-tg ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                oa := TouchArea { clicked => { S.he-remind("tg", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                            }
+                        }
+                    }
+                    PropRow {
+                        icon: "bell"; label: "Windows"; val: S.he-wrem ? "в окне приложения" : "выкл";
+                        open: root.popen == "wrem";
+                        clicked => { root.popen = root.popen == "wrem" ? "" : "wrem"; }
+                    }
+                    if root.popen == "wrem": Rectangle {
+                        height: wro.preferred-height;
+                        wro := VerticalLayout {
+                            padding: 4px;
+                            for o[i] in [{ id: "on", l: "в окне приложения" }, { id: "off", l: "выкл" }]: Rectangle {
+                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-wrem ? S.he-hue : transparent; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-wrem ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                oa := TouchArea { clicked => { S.he-remind("win", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                            }
+                        }
+                    }
+                    PropRow { icon: "calendar"; label: "До какого дня"; val: "—"; can: false; }
+                    Rectangle {
+                        height: 31px;
+                        Rectangle { y: 0; height: 1px; background: G.line-soft; }
+                        Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: "accent"; c: #8A8C96; }
+                        Text { x: 30px; width: 84px; text: "Цвет"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; height: parent.height; }
+                        Rectangle { x: 118px; y: 12px; width: 8px; height: 8px; border-radius: 4px; background: S.he-hue; }
+                    }
+                    PropRow {
+                        icon: "trash"; label: "Удалить"; val: "привычку"; danger: true;
+                        clicked => { S.he-delete(); }
+                    }
+                }
+            }
+        }
+    }
+    Brackets { x: win.x; y: win.y; width: win.width; height: win.height; c: S.he-hue; }
+    // превью карточки — отдельная нода справа, соединена проводом цвета привычки
+    if root.side: Rectangle {
+        x: win.x + win.width; y: win.y + 106px; width: 34px; height: 2px;
+        background: S.he-hue;
+        Rectangle { x: 30px; y: -3px; width: 8px; height: 8px; border-radius: 4px; background: S.he-hue; }
+    }
+    if root.side: Rectangle {
+        x: win.x + win.width + 34px; y: win.y + 66px; width: 230px; height: 148px;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 18px; drop-shadow-color: #0009;
+        Cap { x: 10px; y: 8px; text: "КАРТОЧКА ПРИВЫЧКИ"; }
+        Rectangle {
+            x: 8px; y: 30px; width: parent.width - 16px; height: 106px;
+            border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+            Rectangle {
+                height: 34px; y: 0;
+                Rectangle { x: 12px; y: 8px; width: 18px; height: 18px; border-radius: 4px; background: S.he-hue;
+                    Icon { x: 2px; y: 2px; width: 14px; height: 14px; name: S.he-icon == "" ? "habits" : S.he-icon; c: #1C1D21; }
+                }
+                Text { x: 38px; text: S.he-name; font-size: 13.5px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 100px; }
+                Text { x: parent.width - self.preferred-width - 12px;
+                    text: S.he-part.length > 0 && S.he-part[0].on ? "УТРО" : S.he-part.length > 1 && S.he-part[1].on ? "ДЕНЬ" : S.he-part.length > 2 && S.he-part[2].on ? "ВЕЧЕР" : "";
+                    font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+            }
+            Text { x: 14px; y: 42px; text: S.he-streak; font-size: 50px; font-weight: 200; color: S.he-streak == 0 ? #6E7079 : G.ink; }
+            Text { x: 16px; y: 92px; text: "ДН ПОДРЯД"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; }
+        }
+    }
+    }
+    init => { nf.grab(); }
+}
