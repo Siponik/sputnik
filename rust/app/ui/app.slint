@@ -93,8 +93,8 @@ export component AppWindow inherits Window {
             if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
             if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
-            if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }
-            if (e.text == "e" || e.text == "у") { S.go(S.tab >= 4 ? 0 : S.tab + 1); return accept; }
+            if (e.text == "q" || e.text == "й") { S.go(S.tab-step(S.tab, -1)); return accept; }
+            if (e.text == "e" || e.text == "у") { S.go(S.tab-step(S.tab, 1)); return accept; }
             if (S.tab == 1) {
                 if (e.text == Key.LeftArrow) { S.cal-shift(-1); return accept; }
                 if (e.text == Key.RightArrow) { S.cal-shift(1); return accept; }
