@@ -63,7 +63,7 @@ component CBox inherits Rectangle {
         border-color: o.on ? G.accent : (ca.has-hover ? G.ink : G.line-strong);
         background: o.on && !radio ? G.accent : transparent;
         animate background, border-color { duration: G.fast; }
-        Text { visible: o.on && !radio; text: "✓"; color: G.on-accent; font-size: 11px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+        Icon { name: "check"; width: 10px; x: 3px; y: 3px; visible: o.on && !radio; c: G.on-accent; stroke-width: 2.2px; }
         Rectangle { visible: o.on && radio; x: 4px; y: 4px; width: 8px; height: 8px; border-radius: 4px; background: G.accent; }
     }
     cl := Text { x: 28px; text: o.label; font-size: 13px; color: o.on ? G.ink : #A3A5AE; vertical-alignment: center; height: parent.height; }

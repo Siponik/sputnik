@@ -39,7 +39,7 @@ export component CtxMenu inherits Rectangle {
                         Text { text: m.label; font-size: 13px; color: m.red ? G.red : m.off ? G.dim : G.ink; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
                         if m.on: Icon { name: "check"; width: 14px; y: (parent.height - 14px) / 2; c: G.accent; }
                         if m.key != "": Text { text: m.key; font-family: G.mono; font-size: 10px; color: #7A7C86; vertical-alignment: center; }
-                        if m.sub: Text { text: "›"; font-size: 14px; color: #8A8C96; vertical-alignment: center; }
+                        if m.sub: Icon { name: "next"; width: 12px; y: (parent.height - 12px) / 2; c: #8A8C96; }
                     }
                     ia := TouchArea { enabled: !m.off; mouse-cursor: pointer; clicked => { S.menu-pick(m.id); } }
                 }

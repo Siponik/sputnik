@@ -157,11 +157,11 @@ export component Check inherits Rectangle {
     border-color: done ? hue : (ca.has-hover ? G.ink : G.line-strong);
     background: done ? hue : transparent;
     animate background, border-color { duration: G.fast; }
-    Text { text: "✓"; visible: done; color: G.on-accent; font-size: 12px; font-weight: 700; horizontal-alignment: center; vertical-alignment: center; }
+    Icon { name: "check"; width: 11px; x: (parent.width - 11px) / 2; y: (parent.height - 11px) / 2; visible: done; c: G.on-accent; stroke-width: 2.2px; }
     ca := TouchArea { clicked => { root.toggled(); } mouse-cursor: pointer; }
 }
 
-// Маленькая кнопка-значок (‹ › ✕ ⋯).
+// Маленькая кнопка-значок (иконка из icons.slint: "close", "prev", "next", "more"…).
 export component IconBtn inherits Rectangle {
     in property <string> icon;
     in property <string> tip;
@@ -173,7 +173,7 @@ export component IconBtn inherits Rectangle {
     preferred-height: 28px;
     border-radius: G.r-btn;
     background: on ? G.accent-wash : (ia.has-hover ? G.node-hover : transparent);
-    Text { text: icon; color: on ? G.accent-ink : (ia.has-hover ? G.ink : G.muted); font-size: 15px; horizontal-alignment: center; vertical-alignment: center; }
+    Icon { name: root.icon; width: 14px; x: (parent.width - 14px) / 2; y: (parent.height - 14px) / 2; c: on ? G.accent-ink : (ia.has-hover ? G.ink : G.muted); }
     ia := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 

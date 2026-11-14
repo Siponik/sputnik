@@ -6,17 +6,19 @@ import { S } from "store.slint";
 
 component Chip inherits Rectangle {
     in property <string> text;
+    in property <string> icon: "";
     in property <bool> on;
     in property <bool> busy;
     callback clicked;
     height: 28px;
-    min-width: ct.preferred-width + 20px;
+    min-width: root.icon != "" ? 28px : ct.preferred-width + 20px;
     border-radius: 4px;
     border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent.transparentize(0.85) : (ta.has-hover ? G.node-hover : transparent);
     if busy && !on: Rectangle { x: 3px; y: parent.height - 5px; width: parent.width - 6px; height: 2px; background: #55575F; }
-    ct := Text { text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+    ct := Text { visible: root.icon == ""; text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+    if root.icon != "": Icon { name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: on ? G.accent-ink : #A3A5AE; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -67,9 +69,9 @@ export component DatePicker inherits Node {
                 HorizontalLayout {
                     Text { text: S.dp-month; color: G.ink; font-size: 14px; font-weight: 600; vertical-alignment: center; }
                     Rectangle { }
-                    Chip { text: "‹"; width: 28px; clicked => { S.dp-month-step(-1); } }
+                    Chip { icon: "prev"; width: 28px; clicked => { S.dp-month-step(-1); } }
                     Rectangle { width: 4px; }
-                    Chip { text: "›"; width: 28px; clicked => { S.dp-month-step(1); } }
+                    Chip { icon: "next"; width: 28px; clicked => { S.dp-month-step(1); } }
                 }
                 HorizontalLayout { spacing: 2px;
                     for d in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Mono { text: d; width: 45px; horizontal-alignment: center; font-size: 10px; }

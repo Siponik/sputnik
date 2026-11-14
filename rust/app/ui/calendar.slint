@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя: сутки 0–24, пустые часы сжаты штрихованными полосами; задачи со временем тянутся мышью.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg, Icon } from "kit.slint";
 import { S, Day, Block, Chip, Opt } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -15,7 +15,7 @@ component Sq inherits Rectangle {
     border-width: 1px;
     border-color: G.line-strong.transparentize(0.4);
     background: qa.has-hover ? G.node-hover : transparent;
-    Text { text: root.icon; color: G.ink; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+    Icon { name: root.icon; width: 13px; x: (parent.width - 13px) / 2; y: (parent.height - 13px) / 2; c: G.ink; }
     qa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -289,7 +289,7 @@ component Month inherits Rectangle {
                 height: k < max(1, floor((root.ch - 44px) / 18px)) ? 16px : 0;
                 spacing: 5px;
                 Rectangle { width: 6px; height: 6px; y: 5px; border-radius: 3px; background: c.hue; }
-                if c.kind == 3: Text { text: "★"; font-size: 9px; color: #8A8C96; vertical-alignment: center; }
+                if c.kind == 3: Icon { name: "birthday"; width: 10px; y: (parent.height - 10px) / 2; c: #8A8C96; }
                 if c.time != "": Text { text: c.time; font-family: G.mono; font-size: 9.5px; color: #8A8C96; vertical-alignment: center; }
                 Text { text: c.title; font-size: 11.5px; color: c.done ? G.dim : G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
             }
@@ -324,7 +324,7 @@ component DayLine inherits Rectangle {
         border-width: 1px; border-color: c.done ? #7C7E88 : (next ? G.accent : #7C7E88);
         background: c.done ? #3D3E45 : transparent;
         visible: c.kind == 1;
-        Text { text: "✓"; visible: c.done; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+        Icon { name: "check"; width: 10px; x: 2px; y: 2px; visible: c.done; c: G.ink; stroke-width: 2.2px; }
         TouchArea { clicked => { S.toggle(c.list-id, c.id); } mouse-cursor: pointer; }
     }
     if c.kind != 1: Rectangle { x: 10px; y: 13px; width: 14px; height: 14px; border-radius: 3px; border-width: 1px; border-color: #55575F; }
@@ -369,8 +369,8 @@ export component CalendarPage inherits Rectangle {
             Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; horizontal-stretch: 0; }
             Text { text: S.cal-sub; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
             Rectangle { width: 2px; }
-            Sq { y: 9px; icon: "‹"; clicked => { S.cal-shift(-1); } }
-            Sq { y: 9px; icon: "›"; clicked => { S.cal-shift(1); } }
+            Sq { y: 9px; icon: "prev"; clicked => { S.cal-shift(-1); } }
+            Sq { y: 9px; icon: "next"; clicked => { S.cal-shift(1); } }
             Rectangle { width: 2px; }
             Button { y: 9px; height: 30px; text: "Сегодня"; clicked => { S.cal-today(); } }
             Rectangle { width: 1px; height: 28px; y: 10px; background: G.line; }

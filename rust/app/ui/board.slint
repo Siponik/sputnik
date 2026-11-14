@@ -194,8 +194,9 @@ component Kanban inherits Rectangle {
                                     if c.tag != "": Text { text: c.tag; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: G.blue; overflow: elide; }
                                     if c.who != "": Text { text: "● " + c.who; font-family: G.mono; font-size: 9.5px; color: G.accent; overflow: elide; }
                                     Rectangle { }
-                                    if !c.done && ci < S.columns.length - 1: Text {
-                                        text: "→"; font-size: 12px; color: na.has-hover ? G.accent : #8A8C96;
+                                    if !c.done && ci < S.columns.length - 1: Rectangle {
+                                        width: 14px;
+                                        Icon { name: "next"; width: 12px; y: (parent.height - 12px) / 2; c: na.has-hover ? G.accent : #8A8C96; }
                                         na := TouchArea { clicked => { S.next-stage(S.board-id, c.id); } mouse-cursor: pointer; }
                                     }
                                 }
@@ -320,16 +321,20 @@ component StageChip inherits Rectangle {
     background: state == 1 ? G.accent : state == 0 ? #2C3A2F : (ca.has-hover ? G.node-hover : transparent);
     border-width: state == 1 ? 0 : 1px;
     border-color: state == 0 ? #3F6B47 : #4A4B52;
-    Text {
-        text: (state == 0 ? "✓ " : "") + root.text;
-        font-size: 12.5px;
-        font-weight: state == 1 ? 600 : 400;
-        color: state == 1 ? #1C1D21 : state == 0 ? G.green : #62646E;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-        overflow: elide;
+    HorizontalLayout {
+        alignment: center;
+        spacing: 4px;
         width: parent.width - 8px;
         x: 4px;
+        if state == 0: Icon { name: "check"; width: 10px; y: (parent.height - 10px) / 2; c: G.green; }
+        Text {
+            text: root.text;
+            font-size: 12.5px;
+            font-weight: state == 1 ? 600 : 400;
+            color: state == 1 ? #1C1D21 : state == 0 ? G.green : #62646E;
+            vertical-alignment: center;
+            overflow: elide;
+        }
     }
     ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
@@ -354,7 +359,7 @@ component PipeLine inherits Rectangle {
         border-color: #4A3A2A;
         clip: true;
         if r.has-thumb: Image { width: parent.width; height: parent.height; source: r.thumb; image-fit: cover; }
-        if !r.has-thumb: Text { text: "◆"; font-size: 20px; color: G.accent.mix(#3A2E22, 0.6); horizontal-alignment: center; vertical-alignment: center; }
+        if !r.has-thumb: Icon { name: "image"; width: 20px; x: (parent.width - 20px) / 2; y: (parent.height - 20px) / 2; c: G.accent.mix(#3A2E22, 0.6); }
     }
     Text { x: 100px; y: 14px; width: 160px; text: r.title; font-size: 14.5px; font-weight: 600; color: r.done ? #62646E : G.ink; overflow: elide; }
     Text { x: 100px; y: 35px; width: 160px; text: r.meta; font-size: 12px; color: #8A8C96; overflow: elide; }
@@ -375,7 +380,11 @@ component PipeLine inherits Rectangle {
         background: open ? (na.has-hover ? G.accent-ink : G.accent) : (na.has-hover ? G.node-hover : transparent);
         border-width: open ? 0 : 1px;
         border-color: #55575F;
-        Text { text: r.next-name + " →"; font-size: 13px; font-weight: 600; color: open ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; overflow: elide; width: parent.width - 10px; x: 5px; }
+        HorizontalLayout {
+            alignment: center; spacing: 4px; width: parent.width - 10px; x: 5px;
+            Text { text: r.next-name; font-size: 13px; font-weight: 600; color: open ? #1C1D21 : G.ink; vertical-alignment: center; overflow: elide; }
+            Icon { name: "next"; width: 11px; y: (parent.height - 11px) / 2; c: open ? #1C1D21 : G.ink; }
+        }
         na := TouchArea { clicked => { S.next-stage(r.list-id, r.id); } mouse-cursor: pointer; }
     }
     if open: Rectangle {
@@ -396,7 +405,7 @@ component PipeLine inherits Rectangle {
                     x: 0; y: 8px; width: 14px; height: 14px; border-radius: 3px;
                     background: sb.done ? #45464D : transparent;
                     border-width: sb.done ? 0 : 1px; border-color: #8A8C96;
-                    Text { text: sb.done ? "✓" : ""; font-size: 9px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                    Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; visible: sb.done; c: G.ink; stroke-width: 2.2px; }
                 }
                 Text { x: 24px; text: sb.title; font-size: 13px; color: sb.done ? #62646E : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 30px; }
                 TouchArea { clicked => { S.toggle(r.list-id, sb.id); } mouse-cursor: pointer; }
@@ -541,14 +550,14 @@ component Stickers inherits Rectangle {
                                 x: 14px; y: parent.height - 32px; width: 18px; height: 18px; border-radius: 9px;
                                 border-width: 1.5px; border-color: lane.hue.mix(#ffffff, 0.45);
                                 background: c.done ? lane.hue.mix(#ffffff, 0.45) : transparent;
-                                Text { text: c.done ? "✓" : ""; font-size: 10px; color: tone; horizontal-alignment: center; vertical-alignment: center; }
+                                Icon { name: "check"; width: 10px; x: 4px; y: 4px; visible: c.done; c: tone; stroke-width: 2.2px; }
                                 TouchArea { clicked => { S.toggle(S.board-id, c.id); } mouse-cursor: pointer; }
                             }
                             Text { x: 42px; y: parent.height - 32px; height: 18px; text: c.due.to-lowercase(); font-size: 12px; color: c.overdue ? #FFB3A3 : lane.hue.mix(#ffffff, 0.45).transparentize(0.25); vertical-alignment: center; }
-                            Text {
-                                x: parent.width - 28px; y: parent.height - 32px; height: 18px;
-                                text: c.pin ? "★" : "☆"; font-size: 12px; color: lane.hue.mix(#ffffff, 0.45);
+                            Rectangle {
+                                x: parent.width - 28px; y: parent.height - 32px; width: 18px; height: 18px;
                                 opacity: c.pin || sa.has-hover || pa.has-hover ? 1 : 0;
+                                Icon { name: "pin"; width: 12px; x: 3px; y: 3px; c: lane.hue.mix(#ffffff, 0.45); }
                                 pa := TouchArea { clicked => { S.pin-card(S.board-id, c.id); } mouse-cursor: pointer; }
                             }
                         }
@@ -789,8 +798,9 @@ component Archive inherits Rectangle {
                 Text { text: "АРХИВ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
                 Rectangle { }
                 Text { text: S.arch-info; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; }
-                Text {
-                    text: "   ✕"; color: #ffffffd0; font-size: 12px; vertical-alignment: center;
+                Rectangle {
+                    width: 28px;
+                    Icon { name: "close"; width: 12px; x: 8px; y: (parent.height - 12px) / 2; c: #ffffffd0; }
                     TouchArea { clicked => { S.arch-close(); } mouse-cursor: pointer; }
                 }
             }
@@ -822,7 +832,7 @@ component Archive inherits Rectangle {
                     Rectangle {
                         height: 43px;
                         Rectangle { x: 10px; y: 14px; width: 14px; height: 14px; border-radius: 3px; background: #45464D;
-                            Text { text: "✓"; font-size: 9px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; } }
+                            Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; c: G.ink; stroke-width: 2.2px; } }
                         Text { x: 36px; width: parent.width - 400px; text: r.title; font-size: 13.5px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                         Rectangle { x: parent.width - 340px; y: 19px; width: 6px; height: 6px; border-radius: 2px; background: r.hue; }
                         Text { x: parent.width - 328px; width: 160px; text: r.list; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; overflow: elide; }
