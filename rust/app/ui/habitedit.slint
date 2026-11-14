@@ -35,7 +35,7 @@ component HTime inherits Rectangle {
     in property <string> val;
     in property <bool> clearable;
     callback picked(string);
-    out property <bool> open;
+    in-out property <bool> open;
     width: 104px;
     height: 34px;
     border-radius: 8px;
@@ -263,10 +263,10 @@ export component HabitEditDialog inherits Overlay {
                         gg := VerticalLayout {
                             padding: 4px;
                             for o[i] in [{ id: "0", l: "Сделать" }, { id: "2", l: "2 раза в день" }, { id: "3", l: "3 раза в день" }, { id: "4", l: "4 раза в день" }, { id: "5", l: "5 раз в день" }, { id: "8", l: "8 раз в день" }]: Rectangle {
-                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                height: 26px; border-radius: 5px; background: goa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: S.he-goal-n == o.id.to-float() ? S.he-hue : transparent; }
                                 Text { x: 24px; text: o.l; font-size: 12.5px; color: S.he-goal-n == o.id.to-float() ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
-                                oa := TouchArea { clicked => { S.he-goal-set(o.id); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                                goa := TouchArea { clicked => { S.he-goal-set(o.id); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
                     }
@@ -280,10 +280,10 @@ export component HabitEditDialog inherits Overlay {
                         tgo := VerticalLayout {
                             padding: 4px;
                             for o[i] in [{ id: "on", l: "в начале окна" }, { id: "off", l: "выкл" }]: Rectangle {
-                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                height: 26px; border-radius: 5px; background: toa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-tg ? S.he-hue : transparent; }
                                 Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-tg ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
-                                oa := TouchArea { clicked => { S.he-remind("tg", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                                toa := TouchArea { clicked => { S.he-remind("tg", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
                     }
@@ -297,10 +297,10 @@ export component HabitEditDialog inherits Overlay {
                         wro := VerticalLayout {
                             padding: 4px;
                             for o[i] in [{ id: "on", l: "в окне приложения" }, { id: "off", l: "выкл" }]: Rectangle {
-                                height: 26px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
+                                height: 26px; border-radius: 5px; background: woa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-wrem ? S.he-hue : transparent; }
                                 Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-wrem ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
-                                oa := TouchArea { clicked => { S.he-remind("win", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
+                                woa := TouchArea { clicked => { S.he-remind("win", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
                     }
