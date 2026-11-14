@@ -1,5 +1,6 @@
 // Выбор даты и времени (G_DateTime): слева — словами, быстрые, месяц; справа — час, минуты, «до».
 import { G } from "theme.slint";
+import { ScrollView } from "std-widgets.slint";
 import { Mono, Button, Node, Field, Icon } from "kit.slint";
 import { S } from "store.slint";
 
@@ -34,15 +35,18 @@ component HourRow inherits HorizontalLayout {
 }
 
 export component DatePicker inherits Node {
+    in property <length> max-h: 720px;
     num: "СРОК";
     title: "ВЫБОР ДАТЫ И ВРЕМЕНИ";
     aside: "ПРО «" + S.dp-title + "»";
     head: G.accent.darker(0.3);
     width: max(860px, body.preferred-width);
-    height: 34px + body.preferred-height;
+    height: min(34px + body.preferred-height, root.max-h);
     drop-shadow-blur: 24px;
     drop-shadow-color: #000b;
-    body := VerticalLayout {
+    body := ScrollView {
+        viewport-height: dpb.preferred-height;
+        dpb := VerticalLayout {
         padding: 14px;
         spacing: 12px;
         HorizontalLayout {
@@ -52,9 +56,13 @@ export component DatePicker inherits Node {
                 spacing: 8px;
                 Mono { text: "СЛОВАМИ"; }
                 Field { placeholder: "завтра в 15, в пятницу…"; edited(t) => { S.dp-words(t); } accepted(t) => { S.dp-words(t); } escape => { S.dp-cancel(); } }
-                Text { text: S.dp-said == "" ? " " : "Понял: " + S.dp-said; color: G.accent-ink; font-size: 12px; }
-                qr := HorizontalLayout { spacing: 4px; alignment: start;
-                    for q in S.dp-quick: Chip { text: q.label; on: q.on; clicked => { S.dp-quick-set(q.id); } }
+                Text { text: S.dp-said == "" ? " " : "Понял: " + S.dp-said; color: G.accent-ink; font-size: 12px; wrap: word-wrap; }
+                ScrollView {
+                    height: 30px;
+                    viewport-width: qr.preferred-width;
+                    qr := HorizontalLayout { spacing: 4px; alignment: start;
+                        for q in S.dp-quick: Chip { text: q.label; on: q.on; clicked => { S.dp-quick-set(q.id); } }
+                    }
                 }
                 HorizontalLayout {
                     Text { text: S.dp-month; color: G.ink; font-size: 14px; font-weight: 600; vertical-alignment: center; }
@@ -109,10 +117,11 @@ export component DatePicker inherits Node {
         HorizontalLayout {
             spacing: 8px;
             Icon { name: "calendar"; width: 16px; c: G.accent; }
-            Text { text: S.dp-summary; color: G.ink; font-size: 13px; vertical-alignment: center; }
+            Text { text: S.dp-summary; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; }
             Rectangle { }
             Button { text: "Отмена"; clicked => { S.dp-cancel(); } }
             Button { text: "Готово"; primary: true; clicked => { S.dp-done(); } }
+        }
         }
     }
 }

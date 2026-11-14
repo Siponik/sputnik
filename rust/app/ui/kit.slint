@@ -50,6 +50,8 @@ export component Node inherits Rectangle {
                     letter-spacing: 1.4px;
                     color: #ffffff;
                     vertical-alignment: center;
+                    overflow: elide;
+                    horizontal-stretch: 1;
                 }
                 Rectangle { }
                 Text {
@@ -58,6 +60,8 @@ export component Node inherits Rectangle {
                     font-size: 11px;
                     color: #ffffffb0;
                     vertical-alignment: center;
+                    width: min(self.preferred-width, (parent.width - 40px) / 2);
+                    overflow: elide;
                 }
             }
         }

@@ -180,7 +180,7 @@ component Kanban inherits Rectangle {
                                     spacing: 8px;
                                     Text { text: c.due; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: c.overdue ? G.red : lead ? G.accent-ink : #8A8C96; }
                                     if c.tag != "": Text { text: c.tag; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: G.blue; overflow: elide; }
-                                    if c.who != "": Text { text: "● " + c.who; font-family: G.mono; font-size: 9.5px; color: G.accent; }
+                                    if c.who != "": Text { text: "● " + c.who; font-family: G.mono; font-size: 9.5px; color: G.accent; overflow: elide; }
                                     Rectangle { }
                                     if !c.done && ci < S.columns.length - 1: Text {
                                         text: "→"; font-size: 12px; color: na.has-hover ? G.accent : #8A8C96;
@@ -360,10 +360,12 @@ component PipeLine inherits Rectangle {
         x: 0; y: 62px; width: parent.width; height: 290px;
         TouchArea { }
         // этап и подзадачи
-        Text { x: 110px; y: 16px; text: "Этап «" + r.stage-name + "»"; font-size: 13px; font-weight: 600; color: G.ink; }
+        Text { x: 110px; y: 16px; width: 290px; text: "Этап «" + r.stage-name + "»"; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
         Text { x: 110px + 160px; y: 17px; text: S.pipe-subs.length > 0 ? "" : ""; font-size: 12px; color: #8A8C96; }
-        VerticalLayout {
+        ScrollView {
             x: 110px; y: 44px; width: 282px; height: 200px;
+            viewport-height: sbvl.preferred-height;
+            sbvl := VerticalLayout {
             spacing: 2px;
             alignment: start;
             for sb in S.pipe-subs: Rectangle {
@@ -383,6 +385,7 @@ component PipeLine inherits Rectangle {
                 border-width: 1px;
                 border-color: #55575F;
                 Field { x: 4px; y: 1px; width: parent.width - 8px; height: 32px; bare: true; font-size: 12.5px; placeholder: "+ Подзадача этапа… Enter — добавить"; accepted(t) => { if (t != "") { S.pipe-sub-add(r.list-id, r.id, t); self.clear(); } } }
+            }
             }
         }
         // превью
@@ -405,7 +408,7 @@ component PipeLine inherits Rectangle {
                 height: 30px;
                 Text { text: d; font-size: 13px; color: #A3A5AE; width: 100px; vertical-alignment: center; }
                 if i == 0: Rectangle { width: dt.preferred-width + 24px; border-radius: 8px; border-width: 1px; border-color: G.accent-line; dt := Text { text: S.pipe-due; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; } TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
-                if i == 1: Rectangle { width: max(60px, ct.preferred-width + 24px); border-radius: 8px; border-width: 1px; border-color: G.line; ct := Text { text: S.pipe-client == "" ? "—" : S.pipe-client; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; } TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
+                if i == 1: Rectangle { width: min(max(60px, ct.preferred-width + 24px), 200px); border-radius: 8px; border-width: 1px; border-color: G.line; ct := Text { width: parent.width; text: S.pipe-client == "" ? "—" : S.pipe-client; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; overflow: elide; } TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
                 if i == 2: HorizontalLayout {
                     spacing: 6px;
                     for p[k] in ["!!!", "!!", "!"]: Rectangle {
@@ -593,7 +596,7 @@ component ListView inherits Rectangle {
             background: #9A5A22;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
-                Text { text: S.board-title.to-uppercase() + " · ВСЕ ЗАДАЧИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+                Text { text: S.board-title.to-uppercase() + " · ВСЕ ЗАДАЧИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 Rectangle { }
                 Text { text: S.board-open + " ОТКРЫТО"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; }
             }

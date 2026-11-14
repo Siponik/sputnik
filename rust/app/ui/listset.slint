@@ -1,5 +1,6 @@
 // Настройки списка (G_ListSettings): окно по центру поверх доски.
 import { G } from "theme.slint";
+import { ScrollView } from "std-widgets.slint";
 import { Mono, Button, Node, Field, Brackets, Overlay } from "kit.slint";
 import { S, Opt } from "store.slint";
 
@@ -52,22 +53,27 @@ export component ListSettings inherits Overlay {
     TouchArea { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
     dlg := Node {
         x: (parent.width - self.width) / 2;
-        y: max(60px, (parent.height - self.height) / 2);
+        y: max(8px, (parent.height - self.height) / 2);
         width: 640px;
-        height: 34px + body.preferred-height;
+        height: min(34px + body.preferred-height, parent.height - 16px);
         num: "НАСТРОЙКИ СПИСКА"; title: "CTRL .";
         aside: S.ls-tpl;
         head: G.accent.darker(0.3);
         border-color: G.accent-line;
         drop-shadow-blur: 30px; drop-shadow-color: #000c;
-        body := VerticalLayout {
+        body := ScrollView {
+            viewport-height: bl.preferred-height;
+            bl := VerticalLayout {
             padding: 22px; padding-bottom: 14px; spacing: 0;
             Text { text: "Название"; color: #A3A5AE; font-size: 13px; }
             Rectangle { height: 8px; }
             name := Field { height: 38px; font-size: 14px; text: S.ls-name; accepted(t) => { S.ls-set("name", t); } }
             Rectangle { height: 6px; }
             Row { label: "Сфера";
-                HorizontalLayout { spacing: 4px;
+                ScrollView {
+                    width: min(sph.preferred-width, 400px); height: 28px;
+                    viewport-width: sph.preferred-width;
+                    sph := HorizontalLayout { spacing: 4px;
                     for o in S.ls-spheres: Rectangle {
                         height: 28px; width: lt.preferred-width + (o.id == "" ? 20px : 32px);
                         border-radius: 4px; border-width: 1px;
@@ -76,6 +82,7 @@ export component ListSettings inherits Overlay {
                         if o.id != "": Rectangle { x: 10px; y: (parent.height - 7px) / 2; width: 7px; height: 7px; border-radius: 4px; background: o.hue; }
                         lt := Text { x: o.id == "" ? 10px : 22px; text: o.label; color: o.on ? G.ink : #A3A5AE; font-size: 12.5px; vertical-alignment: center; height: parent.height; }
                         oa := TouchArea { clicked => { S.ls-set("sphere", o.id); } mouse-cursor: pointer; }
+                    }
                     }
                 }
             }
@@ -97,6 +104,7 @@ export component ListSettings inherits Overlay {
                 spacing: 8px;
                 Rectangle { }
                 Button { text: "Готово"; primary: true; clicked => { S.ls-set("name", name.text); S.ls-close(); } }
+            }
             }
         }
     }

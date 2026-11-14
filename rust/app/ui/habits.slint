@@ -100,7 +100,7 @@ component Panel inherits Rectangle {
     Rectangle {
         height: 34px; y: 0;
         background: S.hp-hue.mix(#1C1D21, 0.5);
-        Text { x: 13px; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+        Text { x: 13px; width: parent.width - 26px; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; }
         Text { x: parent.width - self.preferred-width - 13px; text: S.hp-sched; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
     }
     // в низком окне панель прокручивается, а не теряет «Окно» и «Напомнить»
@@ -354,21 +354,29 @@ export component HabitsPage inherits Rectangle {
     Toolbar { x: root.mx; y: 8px; width: parent.width - 2 * root.mx; month: S.habit-mode == "month"; }
 
     if S.habit-mode != "month": Rectangle {
-        // ряд «Сегодня»
+        // ряд «Сегодня»: чипы прокручиваются внутри, не уезжая под кнопку «Отметить все»
         HorizontalLayout {
             x: root.mx; y: 64px; width: root.aw; height: 30px;
             spacing: 10px;
+            padding-right: 118px;
             alignment: start;
             Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.gold; vertical-alignment: center; }
-            for h in S.habits: Rectangle {
-                visible: !h.off;
-                width: h.off ? 0 : ht.preferred-width + 26px;
-                border-radius: 15px;
-                background: h.done ? h.hue : transparent;
-                border-width: h.done ? 0 : 1px;
-                border-color: h.hue;
-                ht := Text { text: (h.done ? "✓ " : "") + h.name; font-size: 13px; color: h.done ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
+            ScrollView {
+                horizontal-stretch: 1;
+                viewport-width: hc.preferred-width;
+                hc := HorizontalLayout {
+                    spacing: 10px;
+                    for h in S.habits: Rectangle {
+                        visible: !h.off;
+                        width: h.off ? 0 : ht.preferred-width + 26px;
+                        border-radius: 15px;
+                        background: h.done ? h.hue : transparent;
+                        border-width: h.done ? 0 : 1px;
+                        border-color: h.hue;
+                        ht := Text { text: (h.done ? "✓ " : "") + h.name; font-size: 13px; color: h.done ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        TouchArea { clicked => { S.habit-tap(h.id); } mouse-cursor: pointer; }
+                    }
+                }
             }
         }
         Rectangle {
