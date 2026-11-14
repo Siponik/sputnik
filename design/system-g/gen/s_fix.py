@@ -402,20 +402,21 @@ insp = f'''<div style="border-radius: 10px; border: 1px solid {LINE}; background
   {_pr("Список", "● 3D-ассеты", OR)}{_pr("Этап", "Рендер")}{_pr("Приоритет", "!!! Высокий", RED)}{_pr("Напомнить", "за час")}{_pr("Повтор")}{_pr("Цвет")}{_pr("Картинка")}{_pr("Исполнитель")}
 </div>'''
 _sub = lambda t, done=False: f'<div style="height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 13px; color: {MUT if done else INK}">{check(done) if done else check()}<span style="{"text-decoration: line-through" if done else ""}">{t}</span></div>'
-main_b = f'''<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 6px">
+land_b = f'<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #DADBE0"><span style="color: {OR}; font-weight: 600">→ Попадёт</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Доска · «Завтра»</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">«Сегодня» в пт 6 · 17:00</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Календарь · нед. 2–8 ноя</span></div>'
+main_b = f'''<div style="display: flex; flex-direction: column; gap: 10px; margin-top: 6px">
   <div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden">
     <div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ПОДЗАДАЧИ<span style="margin-left: auto; font: 400 11px {MONO}">0 / 2</span></div>
     {_sub("Свет и камера")}{_sub("Рендер 4K")}<div style="height: 30px; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px; color: {MUT}">＋ подзадача · Enter</div>
   </div>
   <div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">
     <div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА<span style="margin-left: auto; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font: 400 11.5px {SANS}; letter-spacing: 0; color: #C9CAD0">↗ из Знаний</span><span title="Развернуть" style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>
-    <div style="flex: 1; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">Ракурс как на референсе, фон нейтральный… Markdown, ссылки на «Знания» через [[</div>
+    <div style="flex: 1; min-height: 72px; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">Ракурс как на референсе, фон нейтральный… Markdown, ссылки на «Знания» через [[</div>
   </div>
 </div>'''
 _hdr = lambda t: f'<div style="font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">{t}</div>'
 rows_b = (_hdr("КОГДА") + f'<div style="display: flex; gap: 6px">{_fld("@clock", "17:00", 110, True)}{_fld("@calendar", "Пт, 6 ноября", 0).replace("width: 0px", "flex: 1")}</div>'
           + f'<div style="display: flex; gap: 6px; flex-wrap: wrap">{chip_("Сегодня") + chip_("Завтра", True) + chip_("Пн") + chip_("След. неделя") + chip_("Без срока")}</div>'
-          + when_land.replace("margin: 2px 0 4px 116px", "margin: 0") + main_b)
+          + land_b + main_b)
 prev_node = node(1022, 150, 230, 112, f'<div style="padding: 8px 10px 6px; font: 500 9.5px {MONO}; letter-spacing: .14em; color: {MUT}">ПОЯВИТСЯ НА ДОСКЕ</div><div style="padding: 0 8px 8px">'+f'''<div style="border-radius: 8px; background: {NODE}; border: 1px solid {LINE}; overflow: hidden">
   <div style="height: 26px; padding: 0 10px; background: {FILL[OR]}; display: flex; align-items: center; justify-content: space-between; font: 500 10px {MONO}; letter-spacing: .14em; color: #FFFFFF">3D-АССЕТЫ<span style="color: rgba(255,255,255,.72)">РЕНДЕР</span></div>
   <div style="padding: 10px; display: flex; gap: 10px; align-items: center">{art("shield", OR, 32, 32, 6)}<span style="flex: 1"><span style="display: block; font-weight: 600; font-size: 13px">Рендер щита</span><span style="font-size: 11.5px; color: {MUT}">Завтра 17:00 · !!! · 0 / 2</span></span></div>
