@@ -15,7 +15,7 @@ mod today;
 mod wire;
 
 use crate::state::App;
-use crate::{AppWindow, S};
+use crate::{AppWindow, Opt, S};
 use serde_json::Value;
 use slint::{Color, ComponentHandle, ModelRc, SharedString, VecModel};
 use sputnik_core::j::*;
@@ -188,6 +188,7 @@ fn shell(app: &App, u: &Ui, g: &S) {
         Some(t) => format!("Проверено в {t}."),
         None => "Проверяется само через 30 секунд после запуска и раз в 6 часов.".into(),
     }));
+    g.set_upd_rows(model(upd_rows(app)));
     match &app.toast {
         Some(t) => {
             g.set_toast(t.text.clone().into());
@@ -207,6 +208,36 @@ fn shell(app: &App, u: &Ui, g: &S) {
 
 // ---------- помощники ----------
 
+/// «Что нового» по версиям для карточки «Обновления» (#203): ждущее обновление первым,
+/// затем текущая и до двух прошлых из истории (updnotes.json). id "h" — заголовок, "i" — пункт.
+fn upd_rows(app: &App) -> Vec<Opt> {
+    use sputnik_core::updnotes as un;
+    let head = |ver: &str, date: &str| {
+        if date.len() == 10 { format!("{ver} · {}", sputnik_core::create::day_month(date)) } else { ver.to_string() }
+    };
+    let mut rows: Vec<Opt> = Vec::new();
+    let mut block = |rows: &mut Vec<Opt>, head: String, notes: &str| {
+        rows.push(Opt { id: ss("h"), label: ss(head), hint: ss(""), hue: hex(0), on: false });
+        rows.extend(un::items(notes, 5).into_iter().map(|it| Opt { id: ss("i"), label: ss(it), hint: ss(""), hue: hex(0), on: false }));
+    };
+    // ждущее обновление
+    if !app.update.version.is_empty() {
+        let date = s(&app.update.history[&app.update.version]["date"]);
+        block(&mut rows, format!("Вышла {}", head(&app.update.version, &date)), &app.update.notes);
+    }
+    // текущая и прошлые версии, свежие сверху
+    let pend = app.update.version.clone();
+    let mut vers: Vec<String> = app.update.history.as_object().map(|m| m.keys().cloned().collect()).unwrap_or_default();
+    vers.retain(|v| v != &pend);
+    vers.sort_by(|a, b| crate::state::update::newer(b, a).cmp(&crate::state::update::newer(a, b)));
+    let cur = crate::state::update::version();
+    for v in vers.into_iter().take(3) {
+        let e = &app.update.history[&v];
+        let h = head(&v, &s(&e["date"]));
+        block(&mut rows, if v == cur { format!("{h} · стоит сейчас") } else { h }, &s(&e["notes"]));
+    }
+    rows
+}
 pub fn short(t: &str, n: usize) -> String {
     if t.chars().count() <= n { t.to_string() } else { format!("{}…", t.chars().take(n).collect::<String>()) }
 }

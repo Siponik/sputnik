@@ -114,7 +114,7 @@ impl App {
             layer_dirty: false,
             shown: vec![],
             timers: Timers::default(),
-            update: Default::default(),
+            update: update::Update { history: crate::data::store::read("updnotes.json").filter(|v| v.is_object()).unwrap_or(json!({})), ..Default::default() },
             shared_q: Default::default(),
             shared_busy: false,
         };
