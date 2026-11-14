@@ -78,7 +78,7 @@ export component AppWindow inherits Window {
         key-pressed(e) => {
             if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
                 if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
-                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); return accept; }
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); S.card-key("esc"); return accept; }
                 return reject;
             }
             if (e.modifiers.control) {
@@ -105,6 +105,12 @@ export component AppWindow inherits Window {
             if (S.tab == 2) {
                 if (e.text == "[" || e.text == "х") { S.pick-list("<"); return accept; }
                 if (e.text == "]" || e.text == "ъ") { S.pick-list(">"); return accept; }
+                // канбан: ←/→ (A/D) — в соседнюю колонку, ↑/↓ — выбор соседней карточки, Enter — открыть
+                if (e.text == Key.LeftArrow || e.text == "a" || e.text == "ф") { S.card-key("left"); return accept; }
+                if (e.text == Key.RightArrow || e.text == "d" || e.text == "в") { S.card-key("right"); return accept; }
+                if (e.text == Key.UpArrow) { S.card-key("up"); return accept; }
+                if (e.text == Key.DownArrow) { S.card-key("down"); return accept; }
+                if (e.text == Key.Return) { S.card-key("open"); return accept; }
             }
             // Shift+1…9 — привычки (символы над цифрами в обеих раскладках)
             if (e.modifiers.shift) {

@@ -986,6 +986,13 @@ impl App {
         self.touch("tasks", &id, patch);
     }
 
+    /// Порядок карточек в колонке канбана: всем id по очереди пишется ord 0,1,2…
+    pub fn set_order(&mut self, ids: &[String]) {
+        for (i, id) in ids.iter().enumerate() {
+            self.touch("tasks", id, json!({"ord": i as i64}));
+        }
+    }
+
     pub fn set_due(&mut self, list: &str, t: &Value, day: Option<&str>) {
         let due = day.filter(|d| !d.is_empty()).and_then(ymd_to_due);
         self.send(list, s(&t["id"]), json!({ "due": due }));

@@ -190,6 +190,7 @@ pub fn wire(w: &AppWindow) {
         };
         if let Some(n0) = next {
             u.board = n0.clone();
+            u.board_sel.clear();
             app.set_setting("lastBoard", json!(n0));
         }
     }));
@@ -197,14 +198,85 @@ pub fn wire(w: &AppWindow) {
         let b = u.board.clone();
         app.set_list_field(&b, json!({"view": str_(&v)}));
     }));
-    g.on_move_card(|l, id, ci| act(|app, _| {
+    g.on_move_card(|l, id, ci, pos| act(|app, _| {
         let cols = app.columns(&l);
         let Some(c) = cols.get(ci.max(0) as usize) else { return };
         let col = text(&c.0["id"]);
-        if let Some(t) = task_of(app, &l, &id) {
-            if app.col_of(&t, &cols.iter().map(|x| x.0.clone()).collect::<Vec<_>>()) != col {
-                app.set_stage(&l, &t, &col);
+        let ids: Vec<String> = c.1.iter().map(|t| text(&t["id"])).collect();
+        let Some(t) = task_of(app, &l, &id) else { return };
+        let cur = app.col_of(&t, &cols.iter().map(|x| x.0.clone()).collect::<Vec<_>>());
+        let after = sputnik_core::kanban::insert_at(&ids, id.as_str(), pos.max(0) as usize);
+        if cur != col {
+            app.set_stage(&l, &t, &col);
+        }
+        app.set_order(&after);
+    }));
+    g.on_card_select(|_, id| act(|_, u| {
+        u.board_sel = str_(&id);
+    }));
+    g.on_card_key(|k| act(|app, u| {
+        let l = u.board.clone();
+        if l.is_empty() {
+            return;
+        }
+        let k = str_(&k);
+        if k == "esc" {
+            u.board_sel.clear();
+            return;
+        }
+        if k == "open" {
+            if !u.board_sel.is_empty() {
+                u.task = Some((l, u.board_sel.clone()));
+                u.saved.clear();
             }
+            return;
+        }
+        let cols = app.columns(&l);
+        let sel = u.board_sel.clone();
+        let mut pos: Option<(usize, usize)> = None;
+        for (ci, (_, ts)) in cols.iter().enumerate() {
+            if let Some(i) = ts.iter().position(|t| s(&t["id"]) == sel.as_str()) {
+                pos = Some((ci, i));
+                break;
+            }
+        }
+        let first_card = |u: &mut Ui| {
+            if let Some((_, ts)) = cols.iter().find(|c| !c.1.is_empty()) {
+                u.board_sel = text(&ts[0]["id"]);
+            }
+        };
+        match k.as_str() {
+            "left" | "right" => {
+                let dir = if k == "left" { -1 } else { 1 };
+                match pos {
+                    Some((ci, _)) => {
+                        let ids: Vec<String> = cols.iter().map(|c| text(&c.0["id"])).collect();
+                        let cur = text(&cols[ci].0["id"]);
+                        if let Some(nx) = sputnik_core::kanban::neighbor(&ids, &cur, dir) {
+                            if let Some(t) = task_of(app, &l, &sel) {
+                                app.set_stage(&l, &t, &nx);
+                                if let Some(nc) = cols.iter().find(|c| s(&c.0["id"]) == nx.as_str()) {
+                                    app.say(format!("→ {}", text(&nc.0["name"])));
+                                }
+                            }
+                        }
+                    }
+                    None => first_card(u),
+                }
+            }
+            "up" | "down" => {
+                let dir = if k == "up" { -1 } else { 1 };
+                match pos {
+                    Some((ci, i)) => {
+                        let ids: Vec<String> = cols[ci].1.iter().map(|t| text(&t["id"])).collect();
+                        if let Some(nx) = sputnik_core::kanban::neighbor_card(&ids, &sel, dir) {
+                            u.board_sel = nx;
+                        }
+                    }
+                    None => first_card(u),
+                }
+            }
+            _ => {}
         }
     }));
     g.on_next_stage(|l, id| act(|app, _| {
