@@ -12,6 +12,7 @@ pub mod graph;
 pub mod habits;
 pub mod inbox;
 pub mod j;
+pub mod kanban;
 pub mod layer;
 pub mod reminders;
 pub mod preview;

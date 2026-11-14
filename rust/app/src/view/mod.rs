@@ -32,6 +32,8 @@ pub struct Ui {
     pub tp: Option<tpl::Tp>,
     pub tab: i32,
     pub board: String,
+    /// Выбранная карточка канбана (id задачи), пусто — выбора нет.
+    pub board_sel: String,
     pub cal_sel: String,
     pub cal_mode: String,
     pub cal_off: Vec<String>,

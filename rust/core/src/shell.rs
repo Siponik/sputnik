@@ -616,6 +616,26 @@ pub fn tabs_default(order: &[String]) -> bool {
     order.join(",") == VIEWS.join(",")
 }
 
+/// Соседняя вкладка по порядку, который выбрал пользователь (#205): dir > 0 — следующая,
+/// dir < 0 — предыдущая, по кругу. `cur` вне списка (например, настройки) — шаг к краю:
+/// назад к последней, вперёд к первой.
+pub fn tab_step(order: &[i64], cur: i64, dir: i64) -> i64 {
+    let l = order.len() as i64;
+    if l == 0 {
+        return cur;
+    }
+    match order.iter().position(|&x| x == cur).map(|i| i as i64) {
+        Some(i) => order[((i + dir.signum() + l) % l) as usize],
+        None => {
+            if dir < 0 {
+                order[(l - 1) as usize]
+            } else {
+                order[0]
+            }
+        }
+    }
+}
+
 /// С какого раздела открыться: today | board | last.
 pub fn start_view(pref: &Value, last: &Value) -> String {
     if pref == "board" {

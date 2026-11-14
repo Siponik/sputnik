@@ -79,7 +79,7 @@ export component AppWindow inherits Window {
         key-pressed(e) => {
             if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
                 if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
-                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); return accept; }
+                if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); S.card-key("esc"); return accept; }
                 return reject;
             }
             if (e.modifiers.control) {
@@ -94,8 +94,8 @@ export component AppWindow inherits Window {
             if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
             if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
-            if (e.text == "q" || e.text == "й") { S.go(S.tab == 0 ? 4 : min(4, S.tab - 1)); return accept; }
-            if (e.text == "e" || e.text == "у") { S.go(S.tab >= 4 ? 0 : S.tab + 1); return accept; }
+            if (e.text == "q" || e.text == "й") { S.go(S.tab-step(S.tab, -1)); return accept; }
+            if (e.text == "e" || e.text == "у") { S.go(S.tab-step(S.tab, 1)); return accept; }
             if (S.tab == 1) {
                 if (e.text == Key.LeftArrow) { S.cal-shift(-1); return accept; }
                 if (e.text == Key.RightArrow) { S.cal-shift(1); return accept; }
@@ -106,6 +106,12 @@ export component AppWindow inherits Window {
             if (S.tab == 2) {
                 if (e.text == "[" || e.text == "х") { S.pick-list("<"); return accept; }
                 if (e.text == "]" || e.text == "ъ") { S.pick-list(">"); return accept; }
+                // канбан: ←/→ (A/D) — в соседнюю колонку, ↑/↓ — выбор соседней карточки, Enter — открыть
+                if (e.text == Key.LeftArrow || e.text == "a" || e.text == "ф") { S.card-key("left"); return accept; }
+                if (e.text == Key.RightArrow || e.text == "d" || e.text == "в") { S.card-key("right"); return accept; }
+                if (e.text == Key.UpArrow) { S.card-key("up"); return accept; }
+                if (e.text == Key.DownArrow) { S.card-key("down"); return accept; }
+                if (e.text == Key.Return) { S.card-key("open"); return accept; }
             }
             // Shift+1…9 — привычки (символы над цифрами в обеих раскладках)
             if (e.modifiers.shift) {
@@ -287,7 +293,7 @@ export component AppWindow inherits Window {
                             for a in [["Задачи", "читать и менять списки и задачи"], ["Календарь", "показывать события и создавать новые"], ["Контакты", "дни рождения, только чтение"], ["Скрытая папка Drive", "слой Спутника для второго компьютера"]]: Rectangle {
                                 height: 50px;
                                 Rectangle { x: 0; y: 8px; width: 14px; height: 14px; border-radius: 3px; background: #3D3E45; border-width: 1px; border-color: #7C7E88;
-                                    Text { text: "✓"; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; } }
+                                    Icon { name: "check"; width: 10px; x: 2px; y: 2px; c: G.ink; stroke-width: 2.2px; } }
                                 Text { x: 24px; y: 4px; text: a[0]; font-size: 13.5px; font-weight: 600; color: G.ink; }
                                 Text { x: 24px; y: 24px; text: a[1]; font-size: 12px; color: #A3A5AE; }
                                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
@@ -323,7 +329,7 @@ export component AppWindow inherits Window {
                             for c[i] in ["Мои задачи", "Основной календарь", "Праздники России", "Дни рождения", "Рабочий календарь"]: Rectangle {
                                 height: 36px;
                                 Rectangle { x: 0; y: 11px; width: 14px; height: 14px; border-radius: 3px; border-width: 1px; border-color: #7C7E88; background: i < 3 ? #3D3E45 : transparent;
-                                    Text { text: i < 3 ? "✓" : ""; color: G.ink; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; } }
+                                    Icon { name: "check"; width: 10px; x: 2px; y: 2px; visible: i < 3; c: G.ink; stroke-width: 2.2px; } }
                                 Text { x: 24px; text: c; font-size: 13.5px; color: G.ink; vertical-alignment: center; height: parent.height; }
                             }
                         }
@@ -375,7 +381,7 @@ export component AppWindow inherits Window {
         if S.toast != "": Rectangle {
             x: (parent.width - self.width) / 2;
             y: parent.height - 64px;
-            width: tr.preferred-width + 32px;
+            width: min(tr.preferred-width + 32px, parent.width - 32px);
             height: 40px;
             border-radius: G.r-node;
             background: G.node-hover;
@@ -385,8 +391,9 @@ export component AppWindow inherits Window {
             drop-shadow-color: #0009;
             tr := HorizontalLayout {
                 x: 16px;
+                width: parent.width - 32px;
                 spacing: 14px;
-                Text { text: S.toast; color: G.ink; font-size: 13px; vertical-alignment: center; }
+                Text { text: S.toast; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 if S.toast-label != "": Text {
                     text: S.toast-label;
                     color: G.accent;
@@ -407,7 +414,7 @@ export component AppWindow inherits Window {
         if S.menu-open: CtxMenu { }
         if S.dp-open: Rectangle {
             TouchArea { }
-            DatePicker { x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
+            DatePicker { max-h: parent.height - 16px; x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
         }
         // окно обновления (G_Status, слева)
         upd := Rectangle {

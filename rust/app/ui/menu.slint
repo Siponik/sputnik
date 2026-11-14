@@ -1,5 +1,6 @@
 // Меню по правому клику: у курсора, не выходит за окно. Пункты и подменю строит Rust.
 import { G } from "theme.slint";
+import { ScrollView } from "std-widgets.slint";
 import { Icon } from "kit.slint";
 import { S } from "store.slint";
 
@@ -11,13 +12,16 @@ export component CtxMenu inherits Rectangle {
         x: max(8px, min(S.menu-x, root.width - self.width - 8px));
         y: max(8px, min(S.menu-y, root.height - self.height - 8px));
         width: 260px;
-        height: mv.preferred-height;
+        height: min(mv.preferred-height, root.height - 16px);
         border-radius: 10px;
         background: G.node;
         border-width: 1px; border-color: G.line;
         drop-shadow-blur: 18px; drop-shadow-color: #000a;
+        clip: true;
         TouchArea { }
-        mv := VerticalLayout {
+        mv := ScrollView {
+            viewport-height: mvl.preferred-height;
+            mvl := VerticalLayout {
             padding: 4px; padding-top: 6px;
             if S.menu-title != "": HorizontalLayout { padding-left: 10px; padding-right: 10px; Text {
                 text: S.menu-title.to-uppercase(); height: 28px;
@@ -35,10 +39,11 @@ export component CtxMenu inherits Rectangle {
                         Text { text: m.label; font-size: 13px; color: m.red ? G.red : m.off ? G.dim : G.ink; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
                         if m.on: Icon { name: "check"; width: 14px; y: (parent.height - 14px) / 2; c: G.accent; }
                         if m.key != "": Text { text: m.key; font-family: G.mono; font-size: 10px; color: #7A7C86; vertical-alignment: center; }
-                        if m.sub: Text { text: "›"; font-size: 14px; color: #8A8C96; vertical-alignment: center; }
+                        if m.sub: Icon { name: "next"; width: 12px; y: (parent.height - 12px) / 2; c: #8A8C96; }
                     }
                     ia := TouchArea { enabled: !m.off; mouse-cursor: pointer; clicked => { S.menu-pick(m.id); } }
                 }
+            }
             }
         }
     }

@@ -31,7 +31,7 @@ component LiveLine inherits Rectangle {
     if (line.kind == "todo" || line.kind == "done") && !editing: Rectangle {
         x: 0; y: pad + fs * 0.62 - 6.5px; width: 13px; height: 13px; border-radius: 3px;
         border-width: 1.2px; border-color: line.kind == "done" ? G.accent : G.muted; background: line.kind == "done" ? G.accent : transparent;
-        if line.kind == "done": Text { text: "✓"; color: #1C1D21; font-size: 10px; horizontal-alignment: center; vertical-alignment: center; }
+        if line.kind == "done": Icon { name: "check"; width: 9px; x: 2px; y: 2px; c: #1C1D21; stroke-width: 2.4px; }
     }
     if line.kind == "img" && !editing: Rectangle {
         y: pad; height: parent.height - pad - 5px; border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
@@ -245,7 +245,8 @@ export component NotesPage inherits Rectangle {
                         border-width: t.cur ? 1px : 0;
                         border-color: G.line;
                         tt := Text { x: 10px; width: parent.width - 34px; text: t.title; font-size: 12.5px; color: t.cur ? G.ink : G.muted; vertical-alignment: center; overflow: elide; }
-                        Text { x: parent.width - 22px; width: 18px; text: t.cur && S.note-dirty ? "●" : "×"; font-size: t.cur && S.note-dirty ? 9px : 13px; color: ca.has-hover ? G.red : (t.cur && S.note-dirty ? G.accent : G.dim); vertical-alignment: center; horizontal-alignment: center; }
+                        if t.cur && S.note-dirty: Text { x: parent.width - 22px; width: 18px; text: "●"; font-size: 9px; color: G.accent; vertical-alignment: center; horizontal-alignment: center; }
+                        if !(t.cur && S.note-dirty): Icon { name: "close"; width: 11px; x: parent.width - 18px; y: (parent.height - 11px) / 2; c: ca.has-hover ? G.red : G.dim; }
                         ta := TouchArea { width: parent.width - 24px; mouse-cursor: pointer; clicked => { S.note-tab-open(t.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("tab", t.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                         ca := TouchArea { x: parent.width - 24px; width: 24px; mouse-cursor: pointer; clicked => { S.note-tab-close(t.path); } }
                     }
@@ -281,13 +282,17 @@ export component NotesPage inherits Rectangle {
                 Text { text: S.note-title; font-size: root.zen ? 30px : 26px; font-weight: 600; color: G.ink; wrap: word-wrap; }
                 // теги и свойства под заголовком
                 if S.note-props.length > 0: Rectangle { height: 12px; }
-                if S.note-props.length > 0: HorizontalLayout {
-                    height: 24px; spacing: 6px; alignment: start;
-                    for p in S.note-props: Rectangle {
-                        width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
-                        background: p.cur ? G.accent-wash : G.bg;
-                        border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
-                        pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                if S.note-props.length > 0: ScrollView {
+                    height: 24px;
+                    viewport-width: props.preferred-width;
+                    props := HorizontalLayout {
+                        spacing: 6px; alignment: start;
+                        for p in S.note-props: Rectangle {
+                            width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
+                            background: p.cur ? G.accent-wash : G.bg;
+                            border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
+                            pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
+                        }
                     }
                 }
                 Rectangle { height: 14px; }
@@ -341,7 +346,7 @@ export component NotesPage inherits Rectangle {
             y: parent.height - 34px; height: 34px;
             Rectangle { y: 0; height: 1px; background: G.line-soft; }
             Rectangle { x: 16px; y: 14px; width: 6px; height: 6px; border-radius: 3px; background: S.note-dirty ? G.accent : G.green; }
-            Text { x: 30px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; }
+            Text { x: 30px; width: parent.width - 140px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 16px; text: S.note-words + " СЛОВ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #62646E; vertical-alignment: center; }
         }
     }
