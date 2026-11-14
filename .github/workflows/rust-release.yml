@@ -66,6 +66,7 @@ jobs:
             fs.writeFileSync("latest.json", JSON.stringify({
               version: v,
               notes: fs.readFileSync("notes.txt", "utf8").trim(),
+              date: new Date().toISOString().slice(0, 10),
               url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/rust-${v}/sputnik.exe`,
               signature: fs.readFileSync("out/sputnik.exe.sig", "utf8").trim(),
               branch: process.env.GITHUB_REF_NAME,

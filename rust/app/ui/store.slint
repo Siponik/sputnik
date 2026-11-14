@@ -494,6 +494,7 @@ export global S {
     callback notes-pick();                   // выбрать папку заметок системным окном
     in property <string> upd-version;
     in property <string> upd-notes;
+    in property <[Opt]> upd-rows;            // «Что нового» по версиям: id "h" — заголовок «версия · дата», "i" — пункт
     in property <string> upd-info;
     in property <bool> upd-busy;
     callback upd-check();

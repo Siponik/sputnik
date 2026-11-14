@@ -28,4 +28,5 @@ pub mod stickers;
 pub mod taskpanel;
 pub mod templates;
 pub mod today;
+pub mod updnotes;
 pub mod when;

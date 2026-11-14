@@ -28,6 +28,8 @@ pub struct Update {
     pub sig: String,
     pub busy: bool,
     pub checked: Option<String>,
+    /// «Что нового» по версиям, которые приложение видело: version → {date, notes} (updnotes.json, #203).
+    pub history: Value,
 }
 
 fn b64(s: &str) -> Option<String> {
@@ -66,9 +68,22 @@ impl App {
                 match r {
                     Ok(v) => {
                         let ver = v["version"].as_str().unwrap_or("").to_string();
+                        let notes = v["notes"].as_str().unwrap_or("").to_string();
+                        // запоминаем «Что нового» каждой увиденной версии — карточка «Обновления» показывает списком
+                        if !ver.is_empty() && !notes.trim().is_empty() {
+                            let date = v["date"].as_str().map(String::from).unwrap_or_else(|| chrono::Local::now().format("%Y-%m-%d").to_string());
+                            app.update.history[&ver] = serde_json::json!({"date": date, "notes": notes});
+                            // держим 8 свежих версий
+                            let mut vers: Vec<String> = app.update.history.as_object().map(|m| m.keys().cloned().collect()).unwrap_or_default();
+                            vers.sort_by(|a2, b2| newer(b2, a2).cmp(&newer(a2, b2)));
+                            for old in vers.into_iter().skip(8) {
+                                app.update.history.as_object_mut().map(|m| m.remove(&old));
+                            }
+                            app.put("updnotes.json", app.update.history.clone());
+                        }
                         if newer(&ver, version()) {
                             app.update.version = ver;
-                            app.update.notes = v["notes"].as_str().unwrap_or("").to_string();
+                            app.update.notes = notes;
                             app.update.url = v["url"].as_str().unwrap_or("").to_string();
                             app.update.sig = v["signature"].as_str().unwrap_or("").to_string();
                         } else if manual {
