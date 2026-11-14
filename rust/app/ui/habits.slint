@@ -100,8 +100,12 @@ component Panel inherits Rectangle {
     Rectangle {
         height: 34px; y: 0;
         background: S.hp-hue.mix(#1C1D21, 0.5);
-        Text { x: 13px; width: parent.width - 26px; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; }
-        Text { x: parent.width - self.preferred-width - 13px; text: S.hp-sched; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        Text { x: 13px; width: parent.width - 150px; overflow: elide; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+        Text { x: parent.width - self.preferred-width - 46px; text: S.hp-sched; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        // правка привычки — окно G_HabitEdit
+        Icon { x: parent.width - 32px; y: 9px; width: 16px; height: 16px; name: "edit"; c: #fff;
+            TouchArea { clicked => { S.habit-edit(S.hp-id); } mouse-cursor: pointer; }
+        }
     }
     // в низком окне панель прокручивается, а не теряет «Окно» и «Напомнить»
     ScrollView {

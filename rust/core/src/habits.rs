@@ -791,3 +791,44 @@ pub fn total_done(h: &Value, log: &Value) -> usize {
     let pre = format!("{}|", text(&h["id"]));
     o(log).iter().filter(|(k, v)| k.starts_with(&pre) && v.is_object() && t(&v["done"]) && !t(&v["gone"])).count()
 }
+
+// ---------- окно правки (#193) ----------
+
+/// Патч слоя для смены расписания из окна правки: kind — daily | weekdays | days | week.
+/// «Свои дни» помечаются custom: выбранные кнопкой пн–пт не схлопываются в «по будням» (habit_freq_of).
+/// Пустой набор своих дней превращается в сегодняшний день — расписание без дней ломало бы подсчёты.
+pub fn edit_schedule(kind: &str, days: &[i64], per: i64) -> Value {
+    const ALL: [i64; 7] = [0, 1, 2, 3, 4, 5, 6];
+    match kind {
+        "weekdays" => json!({"days": [0, 1, 2, 3, 4], "perWeek": Value::Null, "custom": Value::Null}),
+        "days" => {
+            let mut d: Vec<i64> = days.iter().copied().filter(|x| (0..=6).contains(x)).collect();
+            d.sort_unstable();
+            d.dedup();
+            if d.is_empty() {
+                d.push(dow(today_d()));
+            }
+            json!({"days": d, "perWeek": Value::Null, "custom": true})
+        }
+        "week" => json!({"days": ALL, "perWeek": per.clamp(1, 6), "custom": Value::Null}),
+        _ => json!({"days": ALL, "perWeek": Value::Null, "custom": Value::Null}),
+    }
+}
+
+/// Патч «когда»: обе границы заданы — своё окно (win + time/end, часть дня сброшена),
+/// иначе — только часть дня (part, своего окна и времени нет).
+pub fn edit_when(part: &str, s: &Value, e: &Value) -> Value {
+    let w = clean_win(&json!({"s": s, "e": e}));
+    if !w.is_null() {
+        let mut f = o(&win_fields(&w)).clone();
+        f.insert("part".into(), Value::Null);
+        return Value::Object(f);
+    }
+    let p = if PART_IDS.contains(&part) { part } else { "any" };
+    json!({"part": p, "win": Value::Null, "time": Value::Null, "end": Value::Null})
+}
+
+/// Патч цели: до 1 — просто «сделать» (без счётчика), иначе n раз в день.
+pub fn edit_goal(n: i64) -> Value {
+    if n > 1 { json!({"goal": {"n": n.min(999), "unit": "раз"}}) } else { json!({"goal": Value::Null}) }
+}

@@ -4,6 +4,7 @@
 pub(crate) mod board;
 mod calendar;
 mod dialogs;
+mod habitedit;
 mod habits;
 mod notes;
 pub mod datetime;
@@ -43,6 +44,8 @@ pub struct Ui {
     pub task: Option<(String, String)>,
     pub saved: String,
     pub create: Option<dialogs::Create>,
+    /// Открытое окно правки привычки (#193).
+    pub hedit: Option<habitedit::HEdit>,
     pub search: Option<String>,
     pub found: Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)>,
     pub confirm: Option<(String, String, Box<dyn FnOnce(&mut App, &mut Ui)>)>,
@@ -110,6 +113,7 @@ pub fn start(app: App) -> AppWindow {
         match std::env::var("SPUTNIK_OPEN").unwrap_or_default().split(':').collect::<Vec<_>>().as_slice() {
             ["create", k, rest @ ..] => u.create = Some(dialogs::Create { kind: k.parse().unwrap_or(0), text: rest.join(":"), ..Default::default() }),
             ["task", l, id] => u.task = Some((l.to_string(), id.to_string())),
+            ["hedit", id] => u.hedit = Some(habitedit::HEdit { id: id.to_string() }),
             ["search", q] => {
                 u.search = Some(q.to_string());
                 u.found = wire::find(&app, q);
@@ -153,6 +157,7 @@ fn render(app: &App) {
             g.set_today_count(app.today_items().iter().filter(|x| !App::is_done(&x.1)).count() as i32);
         }
         dialogs::render(app, &mut u, &g);
+        habitedit::render(app, &mut u, &g);
         datetime::render(app, &u, &g);
         listset::render(app, &u, &g);
         tpl::render(app, &u, &g);

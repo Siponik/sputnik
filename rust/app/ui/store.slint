@@ -240,6 +240,38 @@ export global S {
     in property <[string]> hm-pct;
     in property <[string]> hm-sum;             // три карточки итога: заголовок|текст
     in property <int> hm-today;
+    // окно правки привычки (G_HabitEdit, #193): правки пишутся в слой сразу, серия не сбрасывается
+    in property <bool> he-open;
+    in property <string> he-name;
+    in property <color> he-hue;
+    in property <int> he-streak;               // «серия N дней не сбросится»
+    in property <[Opt]> he-icons;              // значки (id — имя иконки), on — выбран
+    in property <string> he-icon;              // текущий значок ("" — не выбран)
+    in property <[Opt]> he-freq;               // как часто: daily | weekdays | days | week
+    in property <[Opt]> he-days;               // свои дни Пн–Вс (id — номер дня 0–6)
+    in property <[Opt]> he-per;                // «N раз в неделю» (2..6)
+    in property <[Opt]> he-part;               // утро/день/вечер/любое (все off — своё окно)
+    in property <string> he-win-s;             // окно «с …»
+    in property <string> he-win-e;             // окно «до …»
+    in property <string> he-goal;              // цель строкой: «Сделать» | «8 раз»
+    in property <int> he-goal-n;               // цель числом: 0 — просто «сделать»
+    in property <bool> he-tg;                  // напомнить в Telegram
+    in property <bool> he-wrem;                // напомнить в Windows
+    in property <string> he-notes;
+    callback habit-edit(string);               // открыть правку привычки
+    callback he-close();
+    callback he-name-set(string);
+    callback he-icon-set(string);
+    callback he-freq-set(string);
+    callback he-day(int);                      // переключить свой день
+    callback he-per-set(string);
+    callback he-part-set(string);
+    callback he-win-s-set(string);             // "" — убрать своё окно, останется часть дня
+    callback he-win-e-set(string);
+    callback he-goal-set(string);              // "0" — без цели, иначе число раз в день
+    callback he-remind(string, bool);          // tg | win
+    callback he-notes-set(string);
+    callback he-delete();
 
     // ---------- Окно задачи ----------
     in property <bool> task-open;
