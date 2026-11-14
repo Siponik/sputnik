@@ -4,7 +4,7 @@
 
 export struct TaskRow { list-id: string, id: string, title: string, list: string, hue: color, when: string, overdue: bool, done: bool, prio: int, sub: string }
 export struct Chip { title: string, hue: color, done: bool, kind: int, list-id: string, id: string, time: string }
-export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool, sub-done: int, sub-total: int, tag: string }
+export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool, sub-done: int, sub-total: int, tag: string, sel: bool }
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
 export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool, thumb: image, has-thumb: bool, size: string }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
@@ -150,8 +150,10 @@ export global S {
     in property <int> archived;
     callback pick-list(string);
     callback set-view(string);
-    callback move-card(string, string, int);   // список, задача, номер колонки
+    callback move-card(string, string, int, int); // список, задача, номер колонки, место в ней
     callback next-stage(string, string);
+    callback card-select(string, string);      // список, задача — выбрать карточку
+    callback card-key(string);                 // left | right | up | down | open | esc
     callback add-card(string, string, string); // список, колонка, текст
     callback new-list(string);
     callback rename-list(string, string);

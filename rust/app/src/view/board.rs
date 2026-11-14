@@ -9,7 +9,7 @@ pub fn view_of(app: &App, list: &str) -> String {
     if v.is_empty() { "kanban".into() } else { v.into() }
 }
 
-fn card(app: &App, list: &str, t: &Value) -> Card {
+fn card(app: &App, list: &str, t: &Value, sel: &str) -> Card {
     let id = s(&t["id"]);
     let l = app.lt(id);
     let (due, late) = due_text(t, &l["slot"]);
@@ -35,6 +35,7 @@ fn card(app: &App, list: &str, t: &Value) -> Card {
         sub_done: subs.iter().filter(|x| App::is_done(x)).count() as i32,
         sub_total: subs.len() as i32,
         tag: ss({ let p = text(&l["project"]); if p.is_empty() { text(&l["client"]) } else { p } }.to_uppercase()),
+        sel: !sel.is_empty() && sel == id,
     }
 }
 
@@ -192,7 +193,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             let out: Vec<Column> = cols.iter().enumerate().map(|(i, (c, ts))| {
                 let limit = n(&c["limit"]).unwrap_or(0.0) as i32;
                 let done_col = i == last || c["id"] == "done";
-                let mut cards: Vec<Card> = ts.iter().map(|t| card(app, &id, t)).collect();
+                let mut cards: Vec<Card> = ts.iter().map(|t| card(app, &id, t, &u.board_sel)).collect();
                 if done_col && view == "kanban" && cards.len() > 6 {
                     cards.truncate(6);
                 }
@@ -230,10 +231,10 @@ fn stickers(app: &App, id: &str) -> Vec<Column> {
     }
     let mut out: Vec<Column> = lanes.into_iter().filter(|x| !x.1.is_empty()).map(|(tp, ts)| Column {
         id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: ts.len() as i32, limit: 0, over: false, done: false,
-        hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t)).collect()),
+        hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t, "")).collect()),
     }).collect();
     out.push(Column { id: ss(""), name: ss("Разное"), count: misc.len() as i32, limit: 0, over: false, done: false, hue: color(""),
-        cards: model(misc.iter().map(|t| card(app, id, t)).collect()) });
+        cards: model(misc.iter().map(|t| card(app, id, t, "")).collect()) });
     // пустые темы — тоже колонкой, чтобы было куда добавить
     for tp in &topics {
         if !out.iter().any(|c| c.id.as_str() == s(&tp["id"])) {
@@ -258,7 +259,7 @@ fn stickers_by_due(app: &App, id: &str) -> Vec<Column> {
             let b = if d.is_empty() { "none" } else if d < tdy && !App::is_done(t) { "late" } else if d <= tdy { "today" } else if d == tmr { "tmr" } else if d <= wk { "week" } else { "later" };
             b == *k
         }).collect();
-        Column { id: ss(*k), name: ss(*name), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t)).collect()) }
+        Column { id: ss(*k), name: ss(*name), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t, "")).collect()) }
     }).filter(|c| c.count > 0 || c.id.as_str() == "today").collect()
 }
 

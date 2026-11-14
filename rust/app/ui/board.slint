@@ -100,7 +100,8 @@ component SideCol inherits Rectangle {
     }
 }
 
-// Канбан: колонки фиксированной ширины, карточку тянут мышью в другую колонку.
+// Канбан: колонки фиксированной ширины; карточку тянут мышью в другую колонку или на другое
+// место в своей (полоска — куда встанет), клик выбирает (рамка), клик по названию открывает.
 component Kanban inherits Rectangle {
     property <length> colw: max(260px, (self.width - 8px) / max(1, S.columns.length));
     property <string> open-done;
@@ -110,6 +111,8 @@ component Kanban inherits Rectangle {
     property <string> drag-title;
     property <length> gx;
     property <length> gy;
+    property <int> drop-col;      // колонка под курсором
+    property <int> drop-i;        // место в ней (0 — перед первой)
     property <string> adding: "";
     fl := Flickable {
         content-width: max(self.width, S.columns.length * root.colw + 24px);
@@ -121,7 +124,7 @@ component Kanban inherits Rectangle {
             for col[ci] in S.columns: Rectangle {
                 width: root.colw;
                 property <bool> hot: col.limit > 0;
-                property <bool> drop-here: root.dragging && floor(root.gx / root.colw) == ci;
+                property <bool> drop-here: root.dragging && root.drop-col == ci;
                 property <color> head: ci == 0 ? #3D3E45 : hot ? #8A5320 : col.hue.mix(#1a1a1a, 0.5);
                 Rectangle {
                     x: 0; y: 0; width: root.colw - 8px; height: parent.height;
@@ -151,11 +154,20 @@ component Kanban inherits Rectangle {
                                 visible: !col.done || k < 2 || root.open-done == col.id;
                                 height: !self.visible ? 0 : max(60px, ct.preferred-height + 46px + (c.sub-total > 0 ? 12px : 0));
                                 property <bool> lead: hot && k == 0 && !c.done;
+                                // место вставки при перетаскивании: верхняя половина карточки — «перед ней», нижняя — «после»
+                                property <length> top: self.absolute-position.y - root.absolute-position.y;
+                                property <bool> ins-before: root.dragging && root.drop-col == ci && root.gy >= (k == 0 ? -10000px : top - 4px) && root.gy < top + self.height / 2;
+                                property <bool> ins-after: root.dragging && root.drop-col == ci && root.gy >= top + self.height / 2 && root.gy < (k == col.cards.length - 1 ? 100000px : top + self.height + 4px);
+                                changed ins-before => { if (self.ins-before && self.visible) { root.drop-i = k; } }
+                                changed ins-after => { if (self.ins-after && self.visible) { root.drop-i = k + 1; } }
                                 border-radius: 8px;
                                 background: lead ? #2E2722 : (ca.has-hover ? G.node-hover : #2A2B30);
                                 border-width: 1px;
-                                border-color: root.dragging && root.drag-id == c.id ? G.accent : lead ? G.accent : G.line;
+                                border-color: root.dragging && root.drag-id == c.id ? G.accent : c.sel ? G.accent : lead ? G.accent : G.line;
                                 opacity: root.dragging && root.drag-id == c.id ? 0.4 : 1;
+                                // подсветка места вставки: полоска над карточкой, у последней — и под ней
+                                Rectangle { visible: ins-before; x: 0; y: -5.5px; width: parent.width; height: 3px; border-radius: 1.5px; background: G.accent; }
+                                if k == col.cards.length - 1: Rectangle { visible: ins-after; x: 0; y: parent.height + 2.5px; width: parent.width; height: 3px; border-radius: 1.5px; background: G.accent; }
                                 ct := Text {
                                     x: 10px;
                                     y: 11px;
@@ -199,7 +211,7 @@ component Kanban inherits Rectangle {
                                         if (e.kind == PointerEventKind.up && root.dragging) {
                                             root.dragging = false;
                                             root.dropped = true;
-                                            S.move-card(S.board-id, c.id, floor(root.gx / root.colw));
+                                            S.move-card(S.board-id, root.drag-id, root.drop-col, root.drop-i);
                                         }
                                     }
                                     moved => {
@@ -211,9 +223,19 @@ component Kanban inherits Rectangle {
                                         if (root.dragging) {
                                             root.gx = self.absolute-position.x - cols.absolute-position.x + self.mouse-x - 12px;
                                             root.gy = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
+                                            root.drop-col = max(0, min(S.columns.length - 1, floor(root.gx / root.colw)));
                                         }
                                     }
-                                    clicked => { if (!root.dropped) { S.open-task(S.board-id, c.id); } }
+                                    // клик по названию открывает задачу, по остальному месту — выбирает карточку
+                                    clicked => {
+                                        if (!root.dropped) {
+                                            if (self.mouse-y >= 6px && self.mouse-y <= 16px + ct.preferred-height && self.mouse-x <= parent.width - 40px) {
+                                                S.open-task(S.board-id, c.id);
+                                            } else {
+                                                S.card-select(S.board-id, c.id);
+                                            }
+                                        }
+                                    }
                                 }
                             }
                             if col.done && col.count > 2 && root.open-done != col.id: Text {
@@ -343,7 +365,7 @@ component PipeLine inherits Rectangle {
         for st[i] in S.stages: StageChip {
             text: st;
             state: r.done || i < r.stage ? 0 : i == r.stage ? 1 : 2;
-            clicked => { S.move-card(r.list-id, r.id, i); }
+            clicked => { S.move-card(r.list-id, r.id, i, 999); }
         }
     }
     Text { x: parent.width - 196px; y: 16px; width: 60px; height: 30px; text: r.due; font-size: 13px; color: r.overdue ? G.red : G.accent; horizontal-alignment: right; vertical-alignment: center; }
