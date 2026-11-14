@@ -406,7 +406,7 @@ export component AppWindow inherits Window {
         if S.menu-open: CtxMenu { }
         if S.dp-open: Rectangle {
             TouchArea { }
-            DatePicker { x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
+            DatePicker { max-h: parent.height - 16px; x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
         }
         // окно обновления (G_Status, слева)
         upd := Rectangle {
