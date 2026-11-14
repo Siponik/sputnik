@@ -61,6 +61,7 @@ component LiveLine inherits Rectangle {
             if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы")) { root.commit(ed.text); return accept; }
             reject
         }
+        // раскладка: в прокрутке (колонка окна прокручивается)
         ed := TextInput {
             x: 0; y: 0; width: parent.width;
             text: line.raw;

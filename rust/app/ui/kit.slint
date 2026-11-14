@@ -321,3 +321,29 @@ export component Chev inherits Path {
     fill: transparent; stroke: root.c; stroke-width: 1.5px; stroke-line-cap: round; stroke-line-join: round;
     commands: root.up ? "M2 6.5 L5 3.5 L8 6.5" : "M2 3.5 L5 6.5 L8 3.5";
 }
+
+// Многострочный ввод, который не растёт за рамку: текст прокручивается внутри (колесо и за курсором).
+// Правило раскладки §1 (docs/layout.md): всё, что может переполниться, — прокрутка внутри своего места.
+export component ScrollInput inherits Flickable {
+    in-out property <string> text <=> ti.text;
+    in property <length> font-size: 12.5px;
+    in property <color> ink: G.ink;
+    out property <bool> focused: ti.has-focus;
+    callback edited(string);
+    callback escape();
+    public function grab() { ti.focus(); }
+    viewport-height: max(self.height, ti.preferred-height + 4px);
+    viewport-width: self.width;
+    ti := TextInput {
+        x: 0; y: 0; width: root.width; height: max(root.height, self.preferred-height + 4px);
+        font-size: root.font-size; color: root.ink;
+        single-line: false; wrap: word-wrap;
+        edited => { root.edited(self.text); }
+        key-pressed(e) => { if (e.text == Key.Escape) { root.escape(); return accept; } reject }
+        // курсор всегда виден
+        cursor-position-changed(p) => {
+            if (p.y + root.viewport-y < 0) { root.viewport-y = -p.y; }
+            if (p.y + root.font-size * 1.6 + root.viewport-y > root.height) { root.viewport-y = root.height - p.y - root.font-size * 1.6; }
+        }
+    }
+}

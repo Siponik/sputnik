@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { ScrollView } from "std-widgets.slint";
 
@@ -323,7 +323,7 @@ component PipeLine inherits Rectangle {
     animate height { duration: G.mid; easing: ease-out; }
     clip: true;
     ra := TouchArea { clicked => { S.pipe-toggle(r.id); } mouse-cursor: pointer; }
-    Text { x: 14px; y: 24px; text: open ? "▾" : "▸"; font-size: 10px; color: #8A8C96; }
+    Chev { x: 12px; y: 26px; up: !open; c: #8A8C96; }
     Rectangle {
         x: 34px; y: 6px; width: 50px; height: 50px;
         border-radius: 6px;
