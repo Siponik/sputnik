@@ -31,11 +31,12 @@ fn insert_moves_between_cols() {
 
 #[test]
 fn insert_reorders_inside_col() {
-    // внутри колонки: сначала убираем, потом вставляем по оставшимся
+    // позиция — «встать перед картой № at» в текущем списке
     let col = ids(&["a", "b", "c", "d"]);
-    assert_eq!(insert_at(&col, "a", 2), ids(&["b", "c", "a", "d"]));
-    assert_eq!(insert_at(&col, "d", 0), ids(&["d", "a", "b", "c"]));
-    // на своё место — порядок не меняется
+    assert_eq!(insert_at(&col, "a", 2), ids(&["b", "a", "c", "d"])); // перед c
+    assert_eq!(insert_at(&col, "a", 3), ids(&["b", "c", "a", "d"])); // перед d
+    assert_eq!(insert_at(&col, "d", 0), ids(&["d", "a", "b", "c"])); // перед a
+    // на своё место (перед собой или перед следующей) — порядок не меняется
     assert_eq!(insert_at(&col, "b", 1), ids(&["a", "b", "c", "d"]));
     assert_eq!(insert_at(&col, "b", 2), ids(&["a", "b", "c", "d"]));
 }

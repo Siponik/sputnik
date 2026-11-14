@@ -14,10 +14,16 @@ pub fn neighbor(ids: &[String], cur: &str, dir: i64) -> Option<String> {
 }
 
 /// Новый порядок колонки после переноса карточки `id` на позицию `at`.
-/// Карточка сначала убирается из списка (перенос внутри колонки),
-/// потом встаёт на место `at` (по оставшимся карточкам).
+/// Позиция считается по списку с карточкой («встать перед картой № at»):
+/// если карточка была левее `at`, после её убирания место сдвигается на 1.
+/// В другой колонке карточки ещё нет — сдвига нет.
 pub fn insert_at(ids: &[String], id: &str, at: usize) -> Vec<String> {
+    let old = ids.iter().position(|x| x == id);
     let mut v: Vec<String> = ids.iter().filter(|x| x.as_str() != id).cloned().collect();
+    let at = match old {
+        Some(i) if i < at => at - 1,
+        _ => at,
+    };
     v.insert(at.min(v.len()), id.to_string());
     v
 }
