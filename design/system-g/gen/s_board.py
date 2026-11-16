@@ -1,5 +1,6 @@
-import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import sys; sys.path.insert(0, '/tmp/claude-0/-home-user-sputnik/dd44854a-20bf-59ba-8acb-08028f2ab68c/scratchpad/gen')
 from kit import *
+from s_icons import svg_
 
 def sidebar(active, tip='В «В работе» уже 2 из 3. Закончи одну до новой.'):
     groups = [('3D И ЗАКАЗЫ', OR, [('3D-ассеты', 'К', 7), ('Иконки для клиента', 'К', 4), ('Заказы клиентов', 'К', 3)]),
@@ -17,8 +18,8 @@ def sidebar(active, tip='В «В работе» уже 2 из 3. Закончи 
     h += f'<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 40px; border-top: 1px solid {LINE}; display: flex; align-items: center; justify-content: space-around">{lbl("ШАБЛОНЫ", MUT, 10)}{lbl("АРХИВ", MUT, 10)}{lbl("ПОКАЗЫВАТЬ", MUT, 10)}</div>'
     return node(0, 0, 220, 700, nhead('', 'СФЕРЫ', '4', None) + h)
 
-def titlebar(name, color, view, extra=''):
-    inner = f'''<div style="height: 100%; display: flex; align-items: center; gap: 12px; padding: 0 12px">{dot(color, 8)}<span style="font-weight: 600; font-size: 15px">{name}</span><span style="color: {DIM}; font-size: 16px">⋯</span>{extra}<span style="flex: 1"></span>{seg(["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ"], view)}</div>'''
+def titlebar(name, color, view, extra='', sort='По приоритету'):
+    inner = f'''<div style="height: 100%; display: flex; align-items: center; gap: 12px; padding: 0 12px">{dot(color, 8)}<span style="font-weight: 600; font-size: 15px">{name}</span><span style="color: {DIM}; font-size: 16px">⋯</span>{extra}<span style="flex: 1"></span><span title="Порядок задач в колонках" style="height: 28px; padding: 0 10px; border-radius: 7px; border: 1px solid {LINE}; display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: #C9CAD0"><span style="display: grid; color: {MUT}">{svg_("sort", 14)}</span>{sort}<span style="color: {MUT}; font-size: 10px">▾</span></span>{seg(["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ"], view)}</div>'''
     return node(236, 0, 1012, 48, inner)
 
 def card(t, meta, prio='', bar=None, now=False, done=False, client=''):
