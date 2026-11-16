@@ -58,6 +58,19 @@ st += node(472, 0, 776, 700, nhead('', 'ШАБЛОН · РАБОТА', 'ВСТР
 save2('G_Templates.dc.html', page('Шаблоны досок', 'ДОСКА', st), 'Шаблоны досок и редактор')
 
 # ---------- LIST SETTINGS ----------
+from s_icons import svg_
+def _crow(n, c, lim, last=False, edit=False):
+    nm = (f'<span style="flex: 1; height: 30px; box-sizing: border-box; border-radius: 7px; border: 1.5px solid {OR}; background: {BG}; display: flex; align-items: center; padding: 0 10px">{n}<span style="display: inline-block; width: 1.5px; height: 16px; background: {OR}; margin-left: 2px"></span></span>' if edit
+          else f'<span style="flex: 1; padding: 0 10px">{n}</span>')
+    lm = f'<span title="Лимит задач" style="width: 64px; height: 28px; box-sizing: border-box; border-radius: 7px; border: 1px solid {LINE}; display: inline-flex; align-items: center; justify-content: center; gap: 4px; font: 400 12px {MONO}; color: {INK if lim != "—" else DIM}">{lim}</span>'
+    tail = (f'<span title="Сюда уходит сделанное" style="font: 500 10px {MONO}; letter-spacing: .08em; color: {GREEN}; width: 58px">ГОТОВО</span>' if last
+            else f'<span style="width: 58px; display: grid; justify-items: end; color: {MUT}">{svg_("trash", 15)}</span>')
+    return (f'<div style="height: 38px; display: flex; align-items: center; gap: 8px; border-radius: 8px; {"background: "+HOVER+";" if edit else ""} padding: 0 6px">'
+            f'<span style="color: {DIM}; display: grid">{svg_("drag", 15)}</span><span title="Цвет колонки" style="width: 16px; height: 16px; border-radius: 4px; background: {c}"></span>{nm}{lm}{tail}</div>')
+colrows = (_crow("Входящие", GREY, "—") + _crow("В работе", OR, "3") + _crow("На проверке", VIO, "—", edit=True) + _crow("Готово", GREEN, "—", last=True)
+           + f'<div style="height: 34px; margin-top: 4px; border-radius: 8px; border: 1px dashed {STRONG}; display: flex; align-items: center; justify-content: center; gap: 6px; color: {MUT}; font-size: 12.5px">＋ Колонка</div>'
+           + "")
+
 ls = f'''<div style="padding: 16px 22px; display: flex; flex-direction: column">
  {field("Название", f'<span style="width: 100%; height: 38px; box-sizing: border-box; border-radius: 8px; border: 1.5px solid {OR}; background: {BG}; display: flex; align-items: center; padding: 0 12px; font-size: 14px">Работа · клиенты</span>')}
  <div style="height: 10px"></div>
@@ -66,10 +79,13 @@ ls = f'''<div style="padding: 16px 22px; display: flex; flex-direction: column">
  {srow("Показывать в «Сегодня»", "Задачи с датой попадают на главный экран", toggle(True))}
  {srow("В сводке и боте", "Выключи, если список тихий: доска и напоминания останутся", toggle(True))}
  {srow("Сделанное в архив через", "", seg(["СРАЗУ", "3 ДНЯ", "7 ДНЕЙ"], "3 ДНЯ"))}
- {srow("Колонки", "Сейчас по шаблону «Работа»", btn("Колонки из другого шаблона…", sm=True))}
+ <div style="padding: 12px 0 0; border-top: 1px solid {SOFT}; margin-top: 4px">
+  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"><span style="font-weight: 600">Колонки</span><span style="font-size: 12px; color: {MUT}">перетащи за ⠿, чтобы поменять порядок</span><span style="flex: 1"></span>{btn("Из шаблона…", "ghost", sm=True)}</div>
+  {colrows}
+ </div>
 </div>
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 60px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 8px; padding: 0 22px">{btn("Вернуть как в шаблоне", "ghost")}<span style="flex: 1"></span>{btn("Сохранить как новый шаблон…")}{btn("Сохранить", "acc")}</div>'''
-st = K + pop(304, 40, 640, 560, 'НАСТРОЙКИ СПИСКА · CTRL .', ls, BLUE, 'ПО ШАБЛОНУ', hub=True)
+st = K + pop(304, 10, 640, 720, 'НАСТРОЙКИ СПИСКА · CTRL .', ls, BLUE, 'ПО ШАБЛОНУ', hub=True)
 save2('G_ListSettings.dc.html', page('Настройки списка', 'ДОСКА', st), 'Настройки списка')
 
 # ---------- ARCHIVE ----------
