@@ -1,5 +1,6 @@
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import *
+import kit
 from s_icons import svg_
 from s_board import sidebar
 
@@ -42,10 +43,11 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
         subs = (fold(GREEN, "✓ Скетч", "3 из 3 · 2 дн · 10–12.11", "#232A25", "#2F4A35") + f'<div style="height: 6px"></div>' + cur
                 + f'<div style="height: 6px"></div>' + fold(MUT, "Хайполи", "заготовлено 2 подзадачи", "transparent", LINE))
 
-        det = '<div style="display: flex; gap: 24px">' + ''.join(f'<div style="height: 30px; display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; color: {GREY}">{k}</span>{v}</div>' for k, v in [
-            ("Срок", f'<span style="padding: 5px 12px; border-radius: 8px; border: 1px solid {ORL}; font-size: 13px">пт 20 ноя</span>'),
-            ("Приоритет", ''.join(f'<span style="width: 34px; height: 28px; margin-right: 6px; border-radius: 8px; box-sizing: border-box; display: inline-grid; place-items: center; font: 400 12px {MONO}; {"border: 1px solid " + OR + "; background: " + WASH if p == "!!" else "border: 1px solid " + LINE}">{p}</span>' for p in ["!!!", "!!", "!"]))]) + '</div>'
-        det += (f'<div style="margin-top: 12px; height: 222px; box-sizing: border-box; border-radius: 8px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">'
+        fld = lambda ic, t, w='': f'<span style="height: 32px; {w}box-sizing: border-box; border-radius: 8px; border: 1px solid {ORL}; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 13px; background: {BG}"><span style="display: grid; color: {MUT}">{svg_(ic, 14)}</span><span style="flex: 1; white-space: nowrap">{t}</span><span style="color: {MUT}; font-size: 10px">▾</span></span>'
+        pri = ''.join(f'<span style="width: 34px; height: 28px; margin-left: 6px; border-radius: 8px; box-sizing: border-box; display: inline-grid; place-items: center; font: 400 12px {MONO}; {"border: 1px solid " + OR + "; background: " + WASH if p == "!!" else "border: 1px solid " + LINE}">{p}</span>' for p in ["!!!", "!!", "!"])
+        det = (f'<div style="display: flex; gap: 6px; align-items: center">{fld("calendar", "Пт 20 ноя", "flex: 1; ")}{fld("clock", "Весь день", "width: 128px; ")}{pri}</div>'
+               f'<div style="margin-top: 8px; display: flex; gap: 6px; align-items: center"><span style="display: grid; color: {MUT}">{svg_("bell", 14)}</span>{kit.chip("за день ×", True)}{kit.chip("утром в 10:00 ×", True)}{kit.chip("＋")}</div>')
+        det += (f'<div style="margin-top: 12px; height: 188px; box-sizing: border-box; border-radius: 8px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">'
                 f'<div style="height: 28px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid {SOFT}; font-size: 12px; color: {MUT}">Заметка<span style="font: 400 10px {MONO}; color: {DIM}">MARKDOWN</span><span style="flex: 1"></span><span>⤢</span></div>'
                 f'<div style="flex: 1; padding: 8px 10px; font-size: 13px; line-height: 1.5">Броня в стиле «Кузни»: тяжёлая, потёртая.<br><span style="color: {MUT}">— наплечники крупнее, как на рефе 3</span><br><span style="color: {OR}">[[Референсы Кузня]]</span></div></div>')
         TIMES = (f'<span style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: {MUT}"><span style="display: grid; color: {MUT}">{svg_("timer", 14)}</span><span style="color: {INK}; font-weight: 600">5 дн</span><span>всего</span>'
