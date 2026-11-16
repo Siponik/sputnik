@@ -7,8 +7,8 @@ pub fn show(title: &str, body: &str) {
         "[Windows.UI.Notifications.ToastNotificationManager,Windows.UI.Notifications,ContentType=WindowsRuntime]>$null;\
          $x=[Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(1);\
          $t=$x.GetElementsByTagName('text');$t.Item(0).InnerText='{}';$t.Item(1).InnerText='{}';\
-         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('Спутник').Show([Windows.UI.Notifications.ToastNotification]::new($x))",
-        esc(title), esc(body));
+         [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier('{}').Show([Windows.UI.Notifications.ToastNotification]::new($x))",
+        esc(title), esc(body), sputnik_core::shortcut::APP_ID);
     let _ = std::process::Command::new("powershell").args(["-NoProfile", "-Command", &script]).creation_flags(0x0800_0000).spawn();
 }
 

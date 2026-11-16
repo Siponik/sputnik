@@ -1,6 +1,5 @@
-# Ярлык Спутника в меню «Пуск» (для текущего пользователя), с AppUserModelID — по нему Windows
-# связывает ярлык с окном и уведомлениями. Пути и id — из переменных окружения SP_LNK, SP_EXE, SP_ID.
-# Использует приложение (src/pin.rs, если установщик ярлык не оставил) и tools/sputnik-start-menu.bat.
+# Ярлык Спутника в меню «Пуск» (для текущего пользователя) с AppUserModelID — по нему Windows
+# связывает ярлык с окном и уведомлениями. Пути и id — из SP_LNK, SP_EXE, SP_ID (app/src/startmenu.rs).
 $ErrorActionPreference = 'Stop'
 $s = (New-Object -ComObject WScript.Shell).CreateShortcut($env:SP_LNK)
 $s.TargetPath = $env:SP_EXE

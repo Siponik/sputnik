@@ -20,6 +20,7 @@ pub mod repeat;
 pub mod route;
 pub mod rx;
 pub mod search;
+pub mod shortcut;
 pub mod sharedbot;
 pub mod sharedcore;
 pub mod shell;
