@@ -100,11 +100,18 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_cols(model(if cols.len() <= 1 { vec![] } else {
         cols.iter().map(|(c, ts)| {
             let lim = n(&c["limit"]).unwrap_or(0.0) as usize;
-            Opt { id: ss(text(&c["id"])), label: ss(text(&c["name"])), hint: ss(if lim > 0 { format!("{}/{lim}", ts.len()) } else { String::new() }),
+            let days = sputnik_core::stagelog::days_in(&l["stageLog"], s(&c["id"]), crate::state::now_ms());
+            let hint = if c["id"] == cur.as_str() { format!("{} ДН · ИДЁТ", days.max(1)) } else if days > 0 { format!("{days} ДН") } else if lim > 0 { format!("{}/{lim}", ts.len()) } else { String::new() };
+            Opt { id: ss(text(&c["id"])), label: ss(text(&c["name"])), hint: ss(hint),
                 hue: color(&sputnik_core::templates::col_color(c)), on: c["id"] == cur.as_str() }
         }).collect()
     }));
-    g.set_t_subs(model(app.subtasks(list, id).iter().map(|x| Sub { id: ss(text(&x["id"])), title: ss(text(&x["title"])), done: App::is_done(x) }).collect()));
+    let subs: Vec<Sub> = app.subtasks(list, id).iter().map(|x| Sub { id: ss(text(&x["id"])), title: ss(text(&x["title"])), done: App::is_done(x) }).collect();
+    g.set_t_subs_done(subs.iter().filter(|x| x.done).count() as i32);
+    g.set_t_subs_open(model(subs.iter().filter(|x| !x.done).cloned().collect()));
+    g.set_t_subs_donelist(model(subs.iter().filter(|x| x.done).cloned().collect()));
+    g.set_t_subs(model(subs));
+    task_extra(app, g, list, t0, &cols, &cur);
     let mins = lead_mins(&l["remind"]);
     g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).collect()));
     let every = s(&l["repeat"]["every"]);
@@ -365,4 +372,42 @@ fn line_md(raw: &str, marks: &Value) -> slint::StyledText {
     }
     md.push_str(&esc(&chars[at..].iter().collect::<String>()));
     slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(raw))
+}
+
+/// Шапка, мета-строка, история и «Следующая колонка» окна задачи (п.34).
+fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Value>)], cur: &str) {
+    use sputnik_core::stagelog as sl;
+    let id = s(&t0["id"]);
+    let l = app.lt(id);
+    let now = crate::state::now_ms();
+    g.set_t_hue(super::list_hue(app, list));
+    let sphere = app.sphere_of(list).and_then(|sp| app.spheres().iter().find(|x| x["id"] == sp.as_str()).map(|x| text(&x["name"]))).unwrap_or_default();
+    let cname = cols.iter().find(|c| c.0["id"] == cur).map(|c| text(&c.0["name"])).unwrap_or_default();
+    let mut path = vec![];
+    if !sphere.is_empty() { path.push(sphere.to_uppercase()); }
+    path.push(app.list_name(list).to_uppercase());
+    g.set_t_path(ss(if cname.is_empty() || cols.len() <= 1 { path.join(" · ") } else { format!("{} › {}", path.join(" · "), cname.to_uppercase()) }));
+    let log = &l["stageLog"];
+    let dm = |d: &str| if d.len() >= 10 { format!("{}.{}", &d[8..10], &d[5..7]) } else { String::new() };
+    let spans = sl::spans(log, now);
+    let mut meta = vec![];
+    if let Some(f) = spans.first() { meta.push(format!("создана {}", dm(s(&f["from"])))); }
+    if let Some(c) = spans.last().filter(|x| s(&x["stage"]) == cur) { meta.push(format!("в этой колонке {} дн", c["days"])); }
+    let tot = sl::total_days(log, now);
+    if tot > 0 { meta.push(format!("всего {tot} дн")); }
+    g.set_t_meta(ss(meta.join(" · ")));
+    // история: переходы по колонкам, новые сверху
+    let name_of = |sid: &str| cols.iter().find(|c| s(&c.0["id"]) == sid).map(|c| text(&c.0["name"])).unwrap_or_else(|| sid.to_string());
+    let mut hist: Vec<crate::Opt> = a(log).iter().enumerate().map(|(i, e)| {
+        let at = n(&e["at"]).unwrap_or(0.0) as i64;
+        let when = <chrono::Local as chrono::TimeZone>::timestamp_millis_opt(&chrono::Local, at).single().map(|d| d.format("%d.%m %H:%M").to_string()).unwrap_or_default();
+        crate::Opt { id: ss(""), label: ss(if i == 0 { format!("Создана в «{}»", name_of(s(&e["stage"]))) } else { format!("→ {}", name_of(s(&e["stage"]))) }), hint: ss(when), hue: if i == 0 { color("") } else { color("green") }, on: false }
+    }).collect();
+    hist.reverse();
+    g.set_t_hist(model(hist));
+    let idx = cols.iter().position(|c| c.0["id"] == cur);
+    match idx.and_then(|i| cols.get(i + 1)) {
+        Some(nx) if !App::is_done(t0) => { g.set_t_next_id(ss(text(&nx.0["id"]))); g.set_t_next_name(ss(text(&nx.0["name"]))); }
+        _ => { g.set_t_next_id(ss("")); g.set_t_next_name(ss("")); }
+    }
 }
