@@ -27,8 +27,8 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
     chips = ''.join(chip(s, 0 if done or i < stage else 1 if i == stage else 2) for i, s in enumerate(STAGES))
     nb = '' if done else f'<span style="width: 104px; height: 32px; flex: none; border-radius: 8px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 13px; font-weight: 600; {"background: " + OR + "; color: #1C1D21" if open_ else "border: 1px solid #55575F"}">{nxt} →</span>'
     head = (f'<div style="height: 62px; display: flex; align-items: center; gap: 12px; padding: 0 14px 0 12px">'
-            f'<span style="color: {MUT}; font-size: 10px; width: 10px">{"▴" if open_ else "▾"}</span>{thumb()}'
-            f'<div style="width: 160px; flex: none"><div style="font-size: 14.5px; font-weight: 600; color: {"#62646E" if done else INK}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{title}</div><div style="font-size: 12px; color: {MUT}; margin-top: 3px">{meta}</div></div>'
+            f'<span style="color: {MUT}; font-size: 10px; width: 10px">{"▴" if open_ else "▾"}</span>'
+            f'<div style="width: 200px; flex: none"><div style="font-size: 14.5px; font-weight: 600; color: {"#62646E" if done else INK}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{title}</div><div style="font-size: 12px; color: {MUT}; margin-top: 3px">{meta}</div></div>'
             f'<div style="flex: 1; display: flex; gap: 4px; min-width: 0">{chips}</div>'
             f'<span style="width: 60px; text-align: right; font-size: 13px; color: {RED if overdue else OR}">{due}</span>{nb}</div>')
     body = ''
@@ -37,22 +37,20 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
         subs += f'<div style="height: 34px; margin-top: 4px; border-radius: 8px; border: 1px solid #55575F; display: flex; align-items: center; padding: 0 10px; font-size: 12.5px; color: {DIM}">+ Подзадача этапа… Enter — добавить</div>'
         det = ''.join(f'<div style="height: 30px; display: flex; align-items: center"><span style="width: 100px; font-size: 13px; color: {GREY}">{k}</span>{v}</div>' for k, v in [
             ("Срок", f'<span style="padding: 5px 12px; border-radius: 8px; border: 1px solid {ORL}; font-size: 13px">пт 20 ноя</span>'),
-            ("Клиент", f'<span style="padding: 5px 12px; border-radius: 8px; border: 1px solid {LINE}; font-size: 13px">Кузня</span>'),
             ("Приоритет", ''.join(f'<span style="width: 34px; height: 28px; margin-right: 6px; border-radius: 8px; box-sizing: border-box; display: inline-grid; place-items: center; font: 400 12px {MONO}; {"border: 1px solid " + OR + "; background: " + WASH if p == "!!" else "border: 1px solid " + LINE}">{p}</span>' for p in ["!!!", "!!", "!"]))])
         det += f'<div style="margin-top: 6px; padding: 10px; border-radius: 8px; background: {HOVER}; font-size: 12.5px; line-height: 1.45">Броня в стиле «Кузни»: тяжёлая, потёртая. Референсы в папке клиента.</div>'
-        body = (f'<div style="position: relative; height: 290px">'
-                f'<div style="position: absolute; left: 110px; top: 16px; width: 282px"><div style="font-size: 13px; font-weight: 600; margin-bottom: 12px">Этап «Блокинг»</div>{subs}</div>'
-                f'<div style="position: absolute; left: 414px; top: 16px"><div style="font-size: 13px; font-weight: 600; margin-bottom: 12px">Превью</div><div style="width: 300px; height: 164px; border-radius: 6px; background: #2B2520; border: 1px solid #3F352B; display: grid; place-items: center; font: 400 9.5px {MONO}; letter-spacing: 1.4px; color: {MUT}">КАРТИНКА · В ОКНЕ ЗАДАЧИ</div></div>'
-                f'<div style="position: absolute; left: 736px; right: 20px; top: 16px"><div style="font-size: 13px; font-weight: 600; margin-bottom: 8px">Детали</div>{det}</div>'
-                f'<div style="position: absolute; left: 0; right: 0; top: 236px; height: 54px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 16px; padding: 0 20px 0 110px"><span style="font-size: 12.5px; color: {GREY}">← Скетч</span><span style="flex: 1"></span><span style="font: 400 10px {MONO}; color: {MUT}">ESC СВЕРНУТЬ &nbsp; ENTER ОКНО ЗАДАЧИ</span><span style="font-size: 12.5px; color: {OR}">Открыть полностью ↗</span></div></div>')
+        body = (f'<div style="position: relative; height: 274px">'
+                f'<div style="position: absolute; left: 40px; top: 16px; width: 520px"><div style="font-size: 13px; font-weight: 600; margin-bottom: 12px">Этап «Блокинг»</div>{subs}</div>'
+                f'<div style="position: absolute; left: 600px; right: 20px; top: 16px"><div style="font-size: 13px; font-weight: 600; margin-bottom: 8px">Детали</div>{det}</div>'
+                f'<div style="position: absolute; left: 0; right: 0; top: 220px; height: 54px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 16px; padding: 0 20px 0 40px"><span style="font-size: 12.5px; color: {GREY}">← Скетч</span><span style="flex: 1"></span><span style="font: 400 10px {MONO}; color: {MUT}">ESC СВЕРНУТЬ &nbsp; ENTER ОКНО ЗАДАЧИ</span><span style="font-size: 12.5px; color: {OR}">Открыть полностью ↗</span></div></div>')
     return f'<div style="position: relative; border-radius: 8px; background: {NODE}; border: 1px solid {ORL if open_ else LINE}">{head}{body}</div>'
 
 def grp(name, info):
     return f'<div style="height: 22px; display: flex; align-items: center; gap: 8px"><span style="width: 6px; height: 6px; border-radius: 2px; background: {OR}"></span><span style="font-size: 13px; font-weight: 600">{name}</span><span style="font-size: 12px; color: {MUT}">{info}</span></div>'
 
-rows = (grp("В работе", "3 ассета") + prow("Броня «Кузня»", "Кузня · 3D", 1, "ПТ 20", "Хайполи", open_=True)
-        + prow("Меч рыцаря", "Таверна · 3D", 3, "ВТ 17", "Текстуры", overdue=True) + prow("Сундук", "для портфолио", 0, "—", "Блокинг")
-        + grp("Сдано", "2 за неделю") + prow("Щит v1", "Кузня · 3D", 5, "ПН 09", "", done=True))
+rows = (grp("В работе", "3 ассета") + prow("Броня «Кузня»", "3D", 1, "ПТ 20", "Хайполи", open_=True)
+        + prow("Меч рыцаря", "3D", 3, "ВТ 17", "Текстуры", overdue=True) + prow("Сундук", "для портфолио", 0, "—", "Блокинг")
+        + grp("Сдано", "2 за неделю") + prow("Щит v1", "3D", 5, "ПН 09", "", done=True))
 rows += f'<div style="height: 40px; border-radius: 8px; border: 1px solid #55575F; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: {DIM}">+ Новый ассет · Enter</div>'
 st = sidebar('3D-ассеты') + tbar('3D-ассеты', OR, 'КОНВЕЙЕР') + ab(X, 64, f'<div style="display: flex; flex-direction: column; gap: 8px">{rows}</div>', w=W)
 save2('G_Conveyor.dc.html', page('Доска · конвейер', 'ДОСКА', st), 'Доска · конвейер')
