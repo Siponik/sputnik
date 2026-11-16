@@ -1,4 +1,4 @@
-//! Проверка client_secret.json и тексты ошибок входа. Порт app/lib/core/authcheck.dart.
+//! Проверка client_secret.json и тексты ошибок входа. Порт tracker/src/lib/authcheck.js.
 use crate::j::*;
 use crate::rx;
 

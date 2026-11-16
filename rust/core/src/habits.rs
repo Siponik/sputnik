@@ -1,4 +1,4 @@
-//! Серии привычек, календарь месяца, окно времени, отметки, советы. Порт app/lib/core/habits.dart.
+//! Серии привычек, календарь месяца, окно времени, отметки, советы. Порт tracker/src/lib/habits.js.
 //! Отметки: log["<habitId>|ГГГГ-ММ-ДД"] = { done, rest, skip, n, t }. Привычка — запись слоя habits[id] с полем id.
 //! «Сейчас» — [now()], в тестах подменяется [set_clock].
 use crate::dates::{add_days, js_date, parse_ymd, ymd};

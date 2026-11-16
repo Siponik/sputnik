@@ -1,4 +1,4 @@
-//! Повторяющиеся задачи: правило в слое tasks[id].repeat = { every }. Порт app/lib/core/repeat.dart.
+//! Повторяющиеся задачи: правило в слое tasks[id].repeat = { every }. Порт tracker/src/lib/repeat.js.
 use crate::dates::{add_days, js_date, parse_ymd, ymd};
 use crate::j::*;
 use crate::rx;

@@ -1,4 +1,4 @@
-//! Календарь: раскладка событий, задач и привычек по дням. Порт app/lib/core/calendar.dart.
+//! Календарь: раскладка событий, задач и привычек по дням. Порт tracker/src/lib/calendar.js.
 //! «Сейчас» — общий [habits::now].
 use crate::dates::{add_days, js_date, parse_ymd, ymd};
 use crate::habits::{dow, habit_span, is_done, now, scheduled_on, MONTH_GEN, MONTH_NAMES};

@@ -1,4 +1,4 @@
-//! Общий Telegram-бот Спутника — чистая часть (запросы к боту — в data). Порт app/lib/core/sharedbot.dart.
+//! Общий Telegram-бот Спутника — чистая часть (запросы к боту — в data). Порт tracker/src/lib/sharedbot.js.
 use crate::dates::{add_days, ymd};
 use crate::habits::now;
 use crate::j::*;

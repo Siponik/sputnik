@@ -1,5 +1,5 @@
 //! Маленькие модули: fresh (ответ Google не затирает свежие правки), dupes (дубли задач),
-//! timer (учёт времени), meta (тип и приоритет). Порт app/lib/core/{fresh,dupes,timer,meta}.dart.
+//! timer (учёт времени), meta (тип и приоритет). Порт tracker/src/lib/{fresh,dupes,timer,meta}.js.
 use crate::j::*;
 use std::collections::{HashMap, HashSet};
 
