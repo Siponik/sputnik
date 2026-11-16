@@ -1076,6 +1076,25 @@ pub fn wire(w: &AppWindow) {
         };
         g.set_link_found(model(found));
     });
+    g.on_md_rows(|t| {
+        // [[ссылка]] показываем акцентом, без скобок
+        let re = |l: &str| {
+            let mut out = String::new(); let mut rest = l;
+            while let Some(a) = rest.find("[[") {
+                match rest[a + 2..].find("]]") {
+                    Some(b) => { out.push_str(&rest[..a]); let inner = &rest[a + 2..a + 2 + b];
+                        let shown = inner.split('|').next_back().unwrap_or(inner);
+                        out.push_str(&format!("<font color=\"#F0A04B\">{shown}</font>")); rest = &rest[a + 4 + b..]; }
+                    None => break,
+                }
+            }
+            out.push_str(rest); out
+        };
+        let body = t.lines().map(re).collect::<Vec<_>>().join("\n");
+        model(crate::notes::line_blocks(&body).into_iter().map(|(k, raw, md)| {
+            crate::MdRow { kind: ss(k), raw: ss(raw), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)) }
+        }).collect())
+    });
     g.on_link_chips(|t| model(crate::state::peek(|app| sputnik_core::wikilink::links(t.as_str()).into_iter().map(|title| {
         let path = app.notes.notes.iter().find(|n| n.title.to_lowercase() == title.to_lowercase()).map(|n| n.path.clone()).unwrap_or_default();
         crate::Opt { id: ss(path), label: ss(title), hint: ss(""), hue: color(""), on: false }
