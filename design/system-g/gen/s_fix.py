@@ -1,4 +1,4 @@
-# Правки по комментариям 06.11: конвейер, стикеры, одно окно «Создать», сферы, поиск, анимации.
+import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 # Запуск последним: python3 s_fix.py
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import *
@@ -399,7 +399,7 @@ PI = {'Список': 'board', 'Этап': 'stage', 'Приоритет': 'prior
 _pr = lambda k, v='', c=None: f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px"><span style="display: grid; color: {MUT}">{svg_(PI.get(k, "circle"), 15)}</span><span style="width: 84px; flex: none; color: {MUT}; white-space: nowrap">{k}</span>' + (f'<span style="flex: 1; min-width: 0; font-weight: 600; color: {c or INK}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{v}</span><span style="color: {MUT}">▾</span>' if v else f'<span style="flex: 1; color: #55575F">—</span>') + '</div>'
 insp = f'''<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; overflow: hidden">
   <div style="height: 30px; display: flex; align-items: center; padding: 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">СВОЙСТВА</div>
-  {_pr("Список", "● 3D-ассеты", OR)}{_pr("Этап", "Рендер")}{_pr("Приоритет", "!!! Высокий", RED)}{_pr("Напомнить", "за час")}{_pr("Повтор")}{_pr("Цвет")}{_pr("Картинка")}{_pr("Исполнитель")}
+  {_pr("Список", "● 3D-ассеты", OR)}{_pr("Этап", "Рендер")}{_pr("Приоритет", "!!! Высокий", RED)}{_pr("Напомнить", "за час")}{_pr("Повтор")}{_pr("Исполнитель")}
 </div>'''
 _sub = lambda t, done=False: f'<div style="height: 30px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 13px; color: {MUT if done else INK}">{check(done) if done else check()}<span style="{"text-decoration: line-through" if done else ""}">{t}</span></div>'
 land_b = f'<div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12.5px; color: #DADBE0"><span style="color: {OR}; font-weight: 600">→ Попадёт</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Доска · «Завтра»</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">«Сегодня» в пт 6 · 17:00</span><span style="padding: 2px 8px; border-radius: 6px; background: {HOVER}">Календарь · нед. 2–8 ноя</span></div>'
@@ -462,7 +462,7 @@ ev_left = (_hdr("КОГДА") + frow2(_fld("@clock", "15:00", 110, True), fflex(
            + f'<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: {GREEN}">{dot(GREEN, 6)}Свободно до 17:00 · в календаре 15:00–16:00</div>'
            + _hdr("МЕСТО") + f'<span style="height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid {STRONG}; display: flex; align-items: center; padding: 0 12px; color: {MUT}">Адрес или ссылка на созвон</span>'
            + notebox("Повестка, ссылки… Markdown, «Знания» через [[", 88))
-ev_right = props([("Календарь", "● Основной", BLUE), ("Напомнить", "за 15 мин"), ("Повтор",), ("Участники",), ("Цвет",)])
+ev_right = props([("Календарь", "● Основной", BLUE), ("Напомнить", "за 15 мин"), ("Повтор",), ("Участники",)])
 ev_prev = ev_r.split('</span>', 1)[1]
 st = W + bwin(1, f'Встреча с заказчиком {mark("в пятницу 15:00", BLUE)} {mark("час", BLUE)}', ev_left, ev_right, ev_prev, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить событие', 620, ph=232)
 save('G_CreateEvent.dc.html', page('Создать · событие', 'КАЛЕНДАРЬ', st), 'Создать · событие', 1360, 1120, 'task')
@@ -474,7 +474,7 @@ def hab_left():
             + _hdr("КОГДА") + frow2(_fld("@clock", "07:00", 104, True), f'<span style="align-self: center; color: {MUT}">до</span>', _fld("@clock", "09:00", 104, True))
             + chips(GOLD, ["Утро", "День", "Вечер", "Любое"], ["Утро"])
             + notebox("Зачем и как… Markdown, «Знания» через [[", 80))
-hab_right = lambda edit: props([("Цель", "Сделать"), ("Telegram", "в 07:00"), ("Windows", "в окне"), ("До какого дня",), ("Цвет",)] + ([("Удалить", "…", RED)] if edit else []))
+hab_right = lambda edit: props([("Цель", "Сделать"), ("Telegram", "в 07:00"), ("Windows", "в окне"), ("До какого дня",)] + ([("Удалить", "…", RED)] if edit else []))
 hcard = hprev.split('</span>', 1)[1]
 st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 620, ph=150)
 save('G_CreateHabit.dc.html', page('Создать · привычка', 'ПРИВЫЧКИ', st), 'Создать · привычка', 2720, 1120, 'task')
@@ -488,7 +488,7 @@ bd_left = (_hdr("КОГДА") + frow2(fflex("@calendar", "12 ноября"), _fl
            + f'<div style="font-size: 12px; color: {MUT}">Повторяется каждый год · год можно не указывать, он нужен, чтобы показать возраст («исполнится 32»)</div>'
            + _hdr("ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ") + chips(VIO, ["Не надо", "За неделю", "За 2 недели", "За месяц"], ["За неделю"])
            + notebox("Идеи подарков, размеры, что любит… Markdown, «Знания» через [[", 120))
-bd_right = props([("Календарь", "● Основной", VIO), ("Напомнить", "в день, за день"), ("Контакт",), ("Цвет",)])
+bd_right = props([("Календарь", "● Основной", VIO), ("Напомнить", "в день, за день"), ("Контакт",)])
 bcard = bd_r.split('</span>', 1)[1]
 st = K + bwin(3, f'Оля {mark("12 ноября", VIO)} {mark("1994", VIO)}', bd_left, bd_right, bcard, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить день рождения', 620, ph=112)
 save('G_CreateBday.dc.html', page('Создать · день рождения', 'КАЛЕНДАРЬ', st), 'Создать · день рождения', 4080, 1120, 'task')
