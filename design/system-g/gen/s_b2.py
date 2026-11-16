@@ -73,16 +73,16 @@ colrows = (_crow("Входящие", GREY, "—") + _crow("В работе", OR,
 
 ls = f'''<div style="padding: 16px 22px; display: flex; flex-direction: column">
  {field("Название", f'<span style="width: 100%; height: 38px; box-sizing: border-box; border-radius: 8px; border: 1.5px solid {OR}; background: {BG}; display: flex; align-items: center; padding: 0 12px; font-size: 14px">Работа · клиенты</span>')}
- <div style="height: 10px"></div>
+
  {srow("Сфера", "", ddtrig(dot(BLUE) + "Работа"))}
+ <div style="padding: 6px 0 10px; border-bottom: 1px solid {SOFT}; margin: 0 0 2px">
+  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"><span style="font-weight: 600">Колонки</span><span style="font-size: 12px; color: {MUT}">перетащи за ⠿, чтобы поменять порядок</span><span style="flex: 1"></span>{btn("Из шаблона…", "ghost", sm=True)}</div>
+  {colrows}
+ </div>
  {srow("Порядок задач", "Как сортировать карточки в колонках", seg(["СВОЙ", "ПО СРОКУ", "ПО ПРИОРИТЕТУ"], "ПО ПРИОРИТЕТУ"))}
  {srow("Показывать в «Сегодня»", "Задачи с датой попадают на главный экран", toggle(True))}
  {srow("В сводке и боте", "Выключи, если список тихий: доска и напоминания останутся", toggle(True))}
  {srow("Сделанное в архив через", "", seg(["СРАЗУ", "3 ДНЯ", "7 ДНЕЙ"], "3 ДНЯ"))}
- <div style="padding: 12px 0 0; border-top: 1px solid {SOFT}; margin-top: 4px">
-  <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px"><span style="font-weight: 600">Колонки</span><span style="font-size: 12px; color: {MUT}">перетащи за ⠿, чтобы поменять порядок</span><span style="flex: 1"></span>{btn("Из шаблона…", "ghost", sm=True)}</div>
-  {colrows}
- </div>
 </div>
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 60px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 8px; padding: 0 22px">{btn("Вернуть как в шаблоне", "ghost")}<span style="flex: 1"></span>{btn("Сохранить как новый шаблон…")}{btn("Сохранить", "acc")}</div>'''
 st = K + pop(304, 10, 640, 720, 'НАСТРОЙКИ СПИСКА · CTRL .', ls, BLUE, 'ПО ШАБЛОНУ', hub=True)
