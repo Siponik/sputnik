@@ -117,7 +117,7 @@ export global S {
     in property <string> board-tip;
     in property <string> board-flow;
     in property <int> side-spheres;
-    in property <length> board-colw: 288px;     // ширина колонок канбана, 200–360 (п.26)
+    in property <length> board-colw: 232px;     // ширина колонок канбана, 200–360 (п.26)
     callback board-colw-set(length);
     in property <string> board-view;           // kanban | pipe | stickers | list
     in property <[Column]> columns;
@@ -297,6 +297,10 @@ export global S {
     in property <[Opt]> t-cols;
     in property <[Sub]> t-subs;
     in property <[Opt]> t-reminds;
+    in property <int> t-remind-n;
+    // открытый выпадающий список: одновременно только один (номер выдаёт drop-n)
+    in-out property <int> drop;
+    in-out property <int> drop-n;             // сколько напоминаний включено
     in property <[Opt]> t-repeats;
     in property <[Opt]> t-lists;
     in property <string> t-saved;

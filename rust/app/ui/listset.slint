@@ -167,6 +167,13 @@ export component ListSettings inherits Overlay {
             Rectangle { height: 6px; }
             ColEditor { }
             Rectangle { height: 6px; }
+            Row { label: "Ширина колонок"; hint: "Для вида «Канбан»";
+                Seg3 {
+                    items: [{ id: "200", label: "Узкие", on: S.board-colw < 216px }, { id: "232", label: "Обычные", on: S.board-colw >= 216px && S.board-colw < 260px }, { id: "288", label: "Широкие", on: S.board-colw >= 260px }];
+                    picked(id) => { S.board-colw-set(id.to-float() * 1px); }
+                }
+            }
+            Rectangle { height: 6px; }
             Row { label: "Порядок задач"; hint: "Как сортировать карточки в колонках";
                 Seg3 {
                     items: [{ id: "own", label: "Свой", on: S.ls-sort == "own" }, { id: "due", label: "По сроку", on: S.ls-sort == "due" }, { id: "prio", label: "По приоритету", on: S.ls-sort == "prio" }];

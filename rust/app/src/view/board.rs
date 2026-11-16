@@ -25,7 +25,7 @@ fn card(app: &App, list: &str, t: &Value, sel: &str) -> Card {
         hue: list_hue(app, list),
         due: ss(if due.is_empty() { "БЕЗ СРОКА".to_string() } else { due.replace("просрочено · ", "").replace("сегодня, ", "").to_uppercase() }),
         overdue: late && !App::is_done(t),
-        prio: n(&l["priority"]).unwrap_or(2.0) as i32,
+        prio: n(&l["priority"]).unwrap_or(0.0) as i32,
         subs: ss(if subs.is_empty() { String::new() } else { format!("{}/{}", subs.iter().filter(|x| App::is_done(x)).count(), subs.len()) }),
         note: !s(&t["notes"]).trim().is_empty(),
         done: App::is_done(t),
@@ -96,7 +96,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_side_spheres(side(app, &id).iter().filter(|r| r.header).count() as i32);
     let view = view_of(app, &id);
     g.set_board_view(ss(view.clone()));
-    g.set_board_colw(n(&app.ll(&id)["colw"]).unwrap_or(288.0).clamp(200.0, 360.0) as f32);
+    g.set_board_colw(n(&app.ll(&id)["colw"]).unwrap_or(232.0).clamp(200.0, 360.0) as f32);
     g.set_archived(app.archived(&id).len() as i32);
     let cols = app.columns(&id);
     g.set_board_tip(ss("Стрелка на строке переводит задачу на следующий этап.".to_string()));

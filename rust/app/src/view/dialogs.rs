@@ -117,7 +117,15 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
         Opt { id: ss(path), label: ss(title), hint: ss(""), hue: color(""), on: false }
     }).collect()));
     let mins = lead_mins(&l["remind"]);
-    g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).collect()));
+    // hint — порядковый номер среди включённых: в окне видны первые два чипа, остальные — «+N»
+    let mut k = 0;
+    g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| {
+        let on = mins.contains(m);
+        let mut o = opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), on);
+        if on { o.hint = ss(k.to_string()); k += 1; }
+        o
+    }).collect()));
+    g.set_t_remind_n(k);
     let every = s(&l["repeat"]["every"]);
     let mut reps = vec![opt("", "Нет", every.is_empty())];
     reps.extend([("day", "Каждый день"), ("weekdays", "По будням"), ("week", "Каждую неделю"), ("month", "Каждый месяц"), ("year", "Каждый год")].iter().map(|(id2, lab)| opt(*id2, *lab, every == *id2)));
