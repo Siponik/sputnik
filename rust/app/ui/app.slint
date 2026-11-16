@@ -41,7 +41,16 @@ component Tab inherits Rectangle {
             vertical-alignment: center;
         }
     }
-    Rectangle { y: parent.height / 2 + 10px; height: 1px; background: active ? G.accent : transparent; animate background { duration: G.fast; } }
+    // активная вкладка сообщает, где она: общая черта под вкладками плавно едет к ней (как плашка в «Создать»)
+    if active: Rectangle {
+        property <length> ax: root.absolute-position.x;
+        property <length> ay: root.absolute-position.y + root.height / 2 + 10px;
+        property <length> aw: root.width;
+        init => { S.ul-x = ax; S.ul-y = ay; S.ul-w = aw; }
+        changed ax => { S.ul-x = ax; }
+        changed ay => { S.ul-y = ay; }
+        changed aw => { S.ul-w = aw; }
+    }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -92,6 +101,8 @@ export component AppWindow inherits Window {
                 return reject;
             }
             if (e.modifiers.control) {
+                // Ctrl+Shift+L — к поиску списка на доске
+                if (e.modifiers.shift && (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д" || e.text == "\u{0c}")) { if (S.tab != 2) { S.go(2); } S.list-find += 1; return accept; }
                 if (e.text == "k" || e.text == "л") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
@@ -415,6 +426,12 @@ export component AppWindow inherits Window {
         }
 
         if S.task-open: TaskDialog { }
+        // черта под активной вкладкой — едет при переключении
+        if S.ul-w > 0: Rectangle {
+            x: S.ul-x - parent.absolute-position.x; y: S.ul-y - parent.absolute-position.y; width: S.ul-w; height: 1px;
+            background: G.accent;
+            animate x, width { duration: 220ms; easing: ease-out; }
+        }
         if S.create-open: CreateDialog { }
         if S.he-open: HabitEditDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }

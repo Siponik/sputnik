@@ -1,8 +1,35 @@
 // Заметка со ссылками на «Знания»: после «[[» — подсказка (Enter или клик вставляет),
 // ниже — плашки ссылок, клик открывает заметку. Одна на все окна с заметкой.
+// Пока поле не в фокусе, текст показан как markdown (заголовки, списки, жирный, ссылки); клик — правка.
+
+component MdLine inherits Rectangle {
+    in property <MdRow> line;
+    in property <length> fs;
+    property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
+    property <length> size: line.kind == "h1" ? fs * 1.45 : line.kind == "h2" ? fs * 1.25 : line.kind == "h3" ? fs * 1.1 : fs;
+    property <length> ind: line.kind == "quote" ? 12px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 16px : 0);
+    height: line.kind == "empty" ? fs * 0.8 : (line.kind == "hr" ? 12px : (line.kind == "fence" ? 2px : st.preferred-height + (h ? 4px : 2px)));
+    if line.kind == "hr": Rectangle { y: 6px; height: 1px; background: G.line; }
+    if line.kind == "quote": Rectangle { x: 0; width: 3px; border-radius: 1.5px; background: G.accent; }
+    if line.kind == "li": Rectangle { x: 4px; y: size * 0.6 - 2px; width: 5px; height: 5px; border-radius: 2.5px; background: G.muted; }
+    if line.kind == "todo" || line.kind == "done": Rectangle {
+        x: 0; y: size * 0.6 - 5.5px; width: 11px; height: 11px; border-radius: 2px;
+        border-width: 1.2px; border-color: line.kind == "done" ? G.accent : G.muted; background: line.kind == "done" ? G.accent : transparent;
+    }
+    if line.kind == "code": Rectangle { background: G.bg; border-radius: 4px; }
+    st := StyledText {
+        visible: line.kind != "empty" && line.kind != "hr" && line.kind != "fence";
+        x: root.ind + (line.kind == "code" ? 6px : 0); y: h ? 2px : 1px; width: parent.width - self.x;
+        text: line.md;
+        default-font-size: root.size;
+        default-font-family: line.kind == "code" ? G.mono : G.sans;
+        default-color: line.kind == "done" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : G.ink));
+    }
+}
 import { G } from "theme.slint";
 import { ScrollInput, Icon } from "kit.slint";
-import { S, Opt } from "store.slint";
+import { S, Opt, MdRow } from "store.slint";
+import { ScrollView } from "kit.slint";
 
 export component LinkNote inherits Rectangle {
     in-out property <string> text <=> nb.text;
@@ -21,13 +48,25 @@ export component LinkNote inherits Rectangle {
         nb.grab();
         nb.to-end();
     }
+    property <bool> preview: !nb.focused && nb.text != "";
+    property <[MdRow]> rows: preview ? S.md-rows(nb.text) : [];
     nb := ScrollInput {
         x: 0; y: 0; width: parent.width; height: parent.height - root.lk-h;
+        opacity: root.preview ? 0 : 1;
         font-size: root.font-size;
         enter-grab: S.link-found.length > 0 && self.focused;
         edited(t) => { root.edited(t); S.link-search(t); }
         enter => { root.pick(S.link-found[0].label); }
         escape => { root.escape(); }
+    }
+    if root.preview: ScrollView {
+        x: 0; y: 0; width: parent.width; height: parent.height - root.lk-h;
+        content-height: mv.preferred-height;
+        mv := VerticalLayout {
+            alignment: start;
+            for l in root.rows: MdLine { line: l; fs: root.font-size; }
+        }
+        TouchArea { width: parent.width; height: max(parent.height, mv.preferred-height); clicked => { nb.grab(); nb.to-end(); } mouse-cursor: MouseCursor.text; }
     }
     if chips.length > 0: HorizontalLayout {
         x: 0; y: parent.height - 24px; height: 22px; width: parent.width;

@@ -299,6 +299,10 @@ export global S {
     in property <[Opt]> t-reminds;
     in property <int> t-remind-n;
     // открытый выпадающий список: одновременно только один (номер выдаёт drop-n)
+    in-out property <length> ul-x;            // черта под активной вкладкой шапки
+    in-out property <length> ul-y;
+    in-out property <length> ul-w;
+    in-out property <int> list-find;          // Ctrl+Shift+L: +1 — фокус в поле «Список…» на доске
     in-out property <int> drop;
     in-out property <int> drop-n;             // сколько напоминаний включено
     in property <[Opt]> t-repeats;
@@ -318,7 +322,8 @@ export global S {
     in property <[Opt]> link-found;           // подсказка после «[[»: label — название, id — путь
     callback link-search(string);             // текст заметки — ищет по набранному после «[[»
     pure callback link-insert(string, string) -> string;
-    pure callback link-chips(string) -> [Opt];   // ссылки [[…]] из текста: label — название, id — путь ("" — нет такой)
+    pure callback link-chips(string) -> [Opt];
+    pure callback md-rows(string) -> [MdRow];      // текст заметки по строкам для показа markdown   // ссылки [[…]] из текста: label — название, id — путь ("" — нет такой)
     callback pipe-notes-set(string, string, string); // список, задача, текст заметки в конвейере
     callback t-close();
     callback t-title-set(string);
