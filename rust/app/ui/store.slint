@@ -358,6 +358,7 @@ export global S {
     in property <bool> ls-today;
     in property <bool> ls-quiet;
     in property <string> ls-tpl;
+    in property <[Opt]> ls-cols;                // колонки: label имя, id лимит, hint задач, on — «Готово»
     callback ls-show();
     callback ls-set(string, string);
     callback ls-close();

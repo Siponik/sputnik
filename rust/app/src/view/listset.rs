@@ -19,6 +19,19 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_ls_today(ll["hidden"] != true);
     g.set_ls_quiet(ll["quiet"] == true);
     g.set_ls_tpl(g.get_board_tpl());
+    // п.24: колонки списка; последняя — «Готово», её не удалить и не двигать
+    let cols = app.columns(id);
+    let n = cols.len();
+    g.set_ls_cols(model(cols.iter().enumerate().map(|(i, (c, ts))| {
+        let lim = int(&c["limit"]).unwrap_or(0);
+        Opt { id: ss(lim.to_string()), label: ss(text(&c["name"])), hint: ss(ts.len().to_string()),
+            hue: color(&sputnik_core::templates::col_color(c)), on: i + 1 == n }
+    }).collect()));
+}
+
+fn save_cols(app: &mut App, id: &str, cols: Vec<Value>) {
+    let d = json!({"cols": cols});
+    app.set_list_field(id, json!({"cols": sputnik_core::templates::own_patch(&d)["cols"]}));
 }
 
 pub fn set(app: &mut App, u: &mut Ui, key: &str, v: &str) {
@@ -30,6 +43,36 @@ pub fn set(app: &mut App, u: &mut Ui, key: &str, v: &str) {
         "sort" => app.set_list_field(&id, json!({"sort": v})),
         "today" => { let h = app.ll(&id)["hidden"] == true; app.set_list_field(&id, json!({"hidden": !h})); }
         "quiet" => { let q = app.ll(&id)["quiet"] == true; app.set_list_field(&id, json!({"quiet": !q})); }
+        _ if key.starts_with("col-") => col_edit(app, &id, key, v),
         _ => {}
     }
+}
+
+/// Правки колонок из окна настроек: v — «номер» или «номер|значение».
+fn col_edit(app: &mut App, id: &str, key: &str, v: &str) {
+    use sputnik_core::boardedit as be;
+    let cols: Vec<Value> = a(&app.board(id)["cols"]).to_vec();
+    let (i, rest) = match v.split_once('|') { Some((a, b)) => (a, b), None => (v, "") };
+    let i: i64 = i.parse().unwrap_or(-1);
+    let ok = i >= 0 && (i as usize) < cols.len();
+    let mut out = cols.clone();
+    match key {
+        "col-add" => { let at = out.len().saturating_sub(1); out.insert(at, be::new_col(crate::state::now_ms() as u64)); }
+        "col-name" if ok => { let nm = rest.trim(); if nm.is_empty() { return; } out[i as usize]["name"] = json!(nm); }
+        "col-color" if ok => out[i as usize] = be::recolor(&cols[i as usize]),
+        "col-limit" if ok => out[i as usize] = be::relimit(&cols[i as usize], rest.parse().unwrap_or(0)),
+        "col-move" if ok => out = be::move_col(&cols, i, rest.parse().unwrap_or(i)),
+        "col-del" if ok => {
+            let r = be::drop_col(&cols, i, &[], 0);
+            if r.is_null() { return; }
+            // задачи удалённой колонки уходят в соседнюю
+            let from = text(&cols[i as usize]["id"]);
+            let to = text(&r["removed"][0]["to"]);
+            let moving: Vec<Value> = app.columns(id).into_iter().find(|c| text(&c.0["id"]) == from).map(|c| c.1).unwrap_or_default();
+            for t in moving { app.set_stage(id, &t, &to); }
+            out = a(&r["cols"]).to_vec();
+        }
+        _ => return,
+    }
+    save_cols(app, id, out);
 }
