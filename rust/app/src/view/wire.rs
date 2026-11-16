@@ -376,6 +376,7 @@ pub fn wire(w: &AppWindow) {
     g.on_stk_by_set(|v| act(|_, u| u.stk_by = str_(&v)));
     g.on_open_archive(|| act(|_, u| { u.tab = 2; u.arch = true; }));
     g.on_arch_close(|| act(|_, u| u.arch = false));
+    g.on_today_fold(|i| act(|_, u| if i == 0 { u.today_more = !u.today_more } else { u.today_done = !u.today_done }));
     g.on_arch_tab_set(|i| act(|_, u| u.arch_tab = i));
     // ---------- Сферы (п.40) и архив сфер и списков (п.41) ----------
     g.on_sph_show(|id| act(|_, u| { u.tab = 2; u.arch = false; u.sph_add = false; u.sph = Some(str_(&id)); }));

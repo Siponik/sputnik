@@ -71,6 +71,9 @@ pub struct Ui {
     pub sph: Option<String>,
     /// Вкладка архива: 0 — задачи, 1 — сферы и списки (п.41).
     pub arch_tab: i32,
+    /// «Сегодня» при многих задачах (п.39): раскрыты «Ещё N задач» и «Сделано».
+    pub today_more: bool,
+    pub today_done: bool,
     /// Открыть в правке сферы поле нового списка.
     pub sph_add: bool,
     pub pipe_gallery: bool,

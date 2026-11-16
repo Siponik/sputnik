@@ -47,7 +47,7 @@ pub fn fill(app: &mut App) {
                  task("w5", "Обновить договор", None, false)],
         "icons": [task("i1", "Иконка «Сундук»", Some(1), false), task("i2", "Иконка «Меч»", Some(3), false),
                   task("i3", "Иконка «Зелье»", None, false), task("i4", "Иконка «Щит»", None, false), task("i5", "Иконка «Карта»", Some(-2), true)],
-        "home": [task("h1", "Купить корм коту", Some(0), false), task("h2", "Позвонить в управляющую", Some(1), false),
+        "home": [task("h1", "Купить корм коту", Some(0), false), task("h4", "Сдать показания счётчиков", Some(0), false), task("h5", "Пропс «Бочка»", Some(-2), false), task("h2", "Позвонить в управляющую", Some(1), false),
                  task("h3", "Записаться к врачу", Some(5), false), task("h4", "Оплатить интернет", Some(0), false)],
         "study": [task("s1", "Урок 12: скульптинг", Some(0), false), task("s2", "Урок 13: ретопология", Some(4), false)],
         "hab": [task("hb1", "Вода", None, false), task("hb2", "Зарядка", None, false), task("hb3", "Чтение", None, false)],

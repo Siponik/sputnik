@@ -42,7 +42,19 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_done_count(done as i32);
     g.set_total_count(items.len() as i32);
     g.set_today_count((items.len() - done) as i32);
-    let rows: Vec<TaskRow> = over.iter().chain(now.iter()).cloned().collect();
+    let all_rows: Vec<TaskRow> = over.iter().chain(now.iter()).cloned().collect();
+    // п.39: много задач или списков — видно не больше 6 открытых, остальные под «Ещё N», сделанные — в «Сделано · N»
+    let lists_n = { let mut v: Vec<&String> = items.iter().map(|x| &x.0).collect(); v.sort(); v.dedup(); v.len() };
+    let open_rows: Vec<TaskRow> = all_rows.iter().filter(|r| !r.done).cloned().collect();
+    let done_rows: Vec<TaskRow> = all_rows.iter().filter(|r| r.done).cloned().collect();
+    let many = open_rows.len() > 6 || lists_n > 4;
+    g.set_today_many(many);
+    let (rows, more_n, fold_n, k_open) = if !many { (all_rows.clone(), 0, 0, all_rows.len()) } else {
+        let k = if u.today_more { open_rows.len() } else { open_rows.len().min(6) };
+        let mut v: Vec<TaskRow> = open_rows[..k].to_vec();
+        if u.today_done { v.extend(done_rows.iter().cloned()); }
+        (v, open_rows.len() - k, done_rows.len(), k)
+    };
     g.set_overdue(model(over));
     g.set_today(model(now));
     let d = sputnik_core::dates::parse_ymd(&tdy).unwrap();
@@ -57,8 +69,30 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let open0: Vec<Value> = items.iter().filter(|x| !App::is_done(&x.1)).map(|x| json!({"task": x.1, "list": x.0})).collect();
     let nx0 = sputnik_core::small::pick_next(&open0, &app.layer["tasks"], &tdy);
     let next_at = rows.iter().position(|r| nx0.is_object() && r.id.as_str() == text(&nx0["task"]["id"]));
-    let row_y = |i: usize| rows_top + i as f32 * 46.0 + if next_at.is_some_and(|n| i > n) { 46.0 } else { 0.0 } + 20.0;
-    let rows_end = rows_top + if rows.is_empty() { 160.0 } else { rows.len() as f32 * 46.0 } + if next_at.is_some() { 46.0 } else { 0.0 };
+    // место каждой строки: строка 40 + 6, «Дальше» выше на 46, свёртки по 41 (G_TodayMany)
+    let mut ys: Vec<f32> = vec![];
+    let mut yy = rows_top;
+    let (mut more_y, mut fold_y) = (-1.0f32, -1.0f32);
+    for i in 0..rows.len() {
+        if many && i == k_open {
+            if more_n > 0 || u.today_more { more_y = yy; yy += 41.0; }
+            if fold_n > 0 { fold_y = yy; yy += 41.0; }
+        }
+        ys.push(yy);
+        yy += if Some(i) == next_at { 92.0 } else { 46.0 };
+    }
+    if many && k_open >= rows.len() {
+        if more_n > 0 || (u.today_more && open_rows.len() > 6) { more_y = yy; yy += 41.0; }
+        if fold_n > 0 { fold_y = yy; yy += 41.0; }
+    }
+    let row_y = |i: usize| ys[i] + 20.0;
+    let rows_end = if rows.is_empty() && more_y < 0.0 && fold_y < 0.0 { rows_top + 160.0 } else { yy };
+    g.set_row_ys(model(ys.clone()));
+    g.set_more_y(more_y);
+    g.set_more_n(if u.today_more { 0 } else { more_n as i32 });
+    g.set_fold_y(fold_y);
+    g.set_fold_n(fold_n as i32);
+    g.set_fold_open(u.today_done);
     let node_h = |n: usize| 30.0 + n as f32 * 28.0 + 2.0;
     let mut src: Vec<SrcNode> = vec![];
     let mut wires: Vec<Wire> = vec![];
@@ -67,13 +101,32 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     for (l, _) in &items {
         if !order.contains(l) { order.push(l.clone()) }
     }
-    for l in &order {
+    // п.39: много — одна нода «СПИСКИ»: строка на список «осталось / всего», все провода в один вход (hub)
+    const HUB: f32 = 48.0;
+    g.set_hub_y(HUB);
+    if many {
+        let mut srows: Vec<SrcRow> = vec![];
+        for (j, l) in order.iter().enumerate() {
+            let its: Vec<&(String, Value)> = items.iter().filter(|x| &x.0 == l).collect();
+            let left = its.iter().filter(|x| !App::is_done(&x.1)).count();
+            srows.push(SrcRow { title: ss(app.list_name(l)), right: ss(format!("{left} / {}", its.len())), done: false, accent: false, fold: false, hue: list_hue(app, l) });
+            wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + HUB, hue: list_hue(app, l), dashed: false });
+        }
+        let empty = app.board_lists().iter().filter(|l| !order.iter().any(|o| o == s(&l["id"]))).count();
+        if empty > 0 {
+            srows.push(SrcRow { title: ss(format!("Ещё {} · сегодня пусто", super::spheres::plural(empty, "список", "списка", "списков"))), right: ss(""), done: false, accent: false, fold: true, hue: Color::default() });
+        }
+        let h = node_h(srows.len());
+        src.push(SrcNode { title: ss("СПИСКИ"), label: ss("ОСТАЛОСЬ / ВСЕГО"), hue: color(""), y, h, rows: model(srows), dashed: false });
+        y += h + 20.0;
+    }
+    for l in order.iter().filter(|_| !many) {
         let idx: Vec<usize> = rows.iter().enumerate().filter(|(_, r)| r.list_id.as_str() == l).map(|(i, _)| i).collect();
         let hue = list_hue(app, l);
         let label = match board::view_of(app, l).as_str() { "pipe" => "КОНВЕЙЕР", "stickers" => "СТИКЕРЫ", "list" => "СПИСОК", _ => "КАНБАН" };
         let srows: Vec<SrcRow> = idx.iter().map(|&i| {
             let r = &rows[i];
-            SrcRow { title: r.title.clone(), right: if r.when.is_empty() { ss("ДЕНЬ") } else { r.when.clone() }, done: r.done, accent: Some(i) == next_at }
+            SrcRow { title: r.title.clone(), right: if r.when.is_empty() { ss("ДЕНЬ") } else { r.when.clone() }, done: r.done, accent: Some(i) == next_at, fold: false, hue: Color::default() }
         }).collect();
         for (j, &i) in idx.iter().enumerate() {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + row_y(i), hue: if rows[i].done { color("#7C7E88") } else { hue }, dashed: Some(i) == next_at });
@@ -85,28 +138,29 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let ib = app.inbox_items();
     let claude_y = rows_end + 2.0 + 19.0;
     if !ib.is_empty() {
-        let srows: Vec<SrcRow> = ib.iter().take(4).map(|x| SrcRow { title: ss(text(&x["task"]["title"])), right: ss(format!("→ {}", short(&app.list_name(&text(&x["listId"])), 8).to_uppercase())), done: false, accent: false }).collect();
+        let srows: Vec<SrcRow> = if many { vec![SrcRow { title: ss(format!("{} без дня", super::spheres::plural(ib.len(), "задача", "задачи", "задач"))), right: ss(""), done: false, accent: false, fold: false, hue: Color::default() }] } else { ib.iter().take(4).map(|x| SrcRow { title: ss(text(&x["task"]["title"])), right: ss(format!("→ {}", short(&app.list_name(&text(&x["listId"])), 8).to_uppercase())), done: false, accent: false, fold: false, hue: Color::default() }).collect() };
         for j in 0..srows.len() {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + claude_y, hue: color("#A3A5AE"), dashed: true });
         }
         let h = node_h(srows.len());
-        src.push(SrcNode { title: ss("ОТ CLAUDE"), label: ss("ЖДУТ"), hue: color("#A3A5AE"), y, h, rows: model(srows), dashed: true });
-        y += h + 28.0;
+        src.push(SrcNode { title: ss("ОТ CLAUDE"), label: ss(if many { format!("ЖДУТ {}", ib.len()) } else { "ЖДУТ".into() }), hue: color("#A3A5AE"), y, h, rows: model(srows), dashed: true });
+        y += h + if many { 20.0 } else { 28.0 };
     }
     let log0 = app.habit_log();
     let hs0: Vec<Value> = app.habits().iter().filter(|h| hb::scheduled_on(h, log0, &tdy)).cloned().collect();
     let habits_top = if ib.is_empty() { rows_end + 6.0 } else { rows_end + 52.0 };
     let habits_y = habits_top + 38.0;
     if !hs0.is_empty() {
-        let srows: Vec<SrcRow> = hs0.iter().map(|h| {
+        let hd = hs0.iter().filter(|h| hb::is_done(log0, &h["id"], &tdy)).count();
+        let srows: Vec<SrcRow> = if many { vec![SrcRow { title: ss(hs0.iter().map(|h| text(&h["name"])).collect::<Vec<_>>().join(", ")), right: ss(""), done: false, accent: false, fold: false, hue: Color::default() }] } else { hs0.iter().map(|h| {
             let c = habit_chip(h, log0, &tdy);
-            SrcRow { title: c.name.clone(), right: ss(if c.goal > 1 { format!("{}/{}", c.count, c.goal) } else if c.done { "✓".into() } else { String::new() }), done: false, accent: c.done }
-        }).collect();
+            SrcRow { title: c.name.clone(), right: ss(if c.goal > 1 { format!("{}/{}", c.count, c.goal) } else if c.done { "✓".into() } else { String::new() }), done: false, accent: c.done, fold: false, hue: Color::default() }
+        }).collect() };
         for j in 0..srows.len() {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + habits_y, hue: color("gold"), dashed: false });
         }
         let h = node_h(srows.len());
-        src.push(SrcNode { title: ss("ПРИВЫЧКИ"), label: ss("СЕГОДНЯ"), hue: color("gold"), y, h, rows: model(srows), dashed: false });
+        src.push(SrcNode { title: ss("ПРИВЫЧКИ"), label: ss(if many { format!("{hd} / {}", hs0.len()) } else { "СЕГОДНЯ".into() }), hue: color("gold"), y, h, rows: model(srows), dashed: false });
     }
     g.set_center_h(habits_top + if hs0.is_empty() { 0.0 } else { 92.0 } + 16.0);
     let src_end = src.iter().map(|n| n.y + n.h).fold(0.0f32, f32::max);
