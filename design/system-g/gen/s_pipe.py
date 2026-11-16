@@ -57,9 +57,9 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
 def grp(name, info):
     return f'<div style="height: 22px; display: flex; align-items: center; gap: 8px"><span style="width: 6px; height: 6px; border-radius: 2px; background: {OR}"></span><span style="font-size: 13px; font-weight: 600">{name}</span><span style="font-size: 12px; color: {MUT}">{info}</span></div>'
 
-rows = (grp("В работе", "3 ассета") + prow("Броня «Кузня»", "3D", 1, "ПТ 20", "Хайполи", open_=True)
-        + prow("Меч рыцаря", "3D", 3, "ВТ 17", "Текстуры", overdue=True) + prow("Сундук", "для портфолио", 0, "—", "Блокинг")
-        + grp("Сдано", "2 за неделю") + prow("Щит v1", "3D", 5, "ПН 09", "", done=True))
+rows = (grp("В работе", "3 ассета") + prow("Броня «Кузня»", "блокинг 3 дн", 1, "ПТ 20", "Хайполи", open_=True)
+        + prow("Меч рыцаря", "ретопо 6 дн", 3, "ВТ 17", "Текстуры", overdue=True) + prow("Сундук", "скетч 1 дн", 0, "—", "Блокинг")
+        + grp("Сдано", "2 за неделю") + prow("Щит v1", "сдан 09.11", 5, "ПН 09", "", done=True))
 rows += f'<div style="height: 40px; border-radius: 8px; border: 1px solid #55575F; display: flex; align-items: center; padding: 0 12px; font-size: 13px; color: {DIM}">+ Новый ассет · Enter</div>'
 st = sidebar('3D-ассеты') + tbar('3D-ассеты', OR, 'КОНВЕЙЕР') + ab(X, 64, f'<div style="display: flex; flex-direction: column; gap: 8px">{rows}</div>', w=W)
 save2('G_Conveyor.dc.html', page('Доска · конвейер', 'ДОСКА', st), 'Доска · конвейер')
