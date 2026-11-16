@@ -22,8 +22,12 @@ export struct Block { title: string, sub: string, y: float, h: float, x: float, 
 export struct Label { text: string, y: float, small: bool }
 export struct Band { y: float, h: float, text: string, a: int }
 export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
+export struct SphList { id: string, name: string, letter: string, count: int }
+export struct SphCard { id: string, name: string, head: color, aside: string, sel: bool, lists: [SphList] }
+export struct ArchSph { kind: string, id: string, name: string, meta: string, date: string, head: color, letter: string, group: string, first: bool }
 export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
+export struct SphRow { items: [Opt], last: bool }
 export struct Sub { id: string, title: string, done: bool }
 // блок подзадач этапа в раскрытой строке конвейера (п.32): state 0 пройден, 1 сейчас, 2 следующий
 export struct PipeBlock { stage-id: string, name: string, state: int, info: string, done-n: int, total: int, subs: [Sub] }
@@ -428,6 +432,34 @@ export global S {
     in property <length> menu-x;
     in property <length> menu-y;
     in property <string> menu-title;
+    in property <color> menu-head;
+    // Сферы (G_Spheres, п.40) и архив сфер и списков (G_Archive, п.41)
+    in property <bool> sph-open;
+    in property <string> sph-info;
+    in property <[SphCard]> sph-cards-l;
+    in property <[SphCard]> sph-cards-r;
+    in property <[ArchSph]> sph-arch3;
+    in property <[SphRow]> sph-erows;
+    in property <string> sph-edit;
+    in property <string> sph-ename;
+    in property <int> sph-ecolor;
+    in property <[color]> sph-colors;
+    in property <color> sph-ehead;
+    in property <bool> sph-shared;
+    in property <string> sph-people;
+    in property <bool> sph-add;
+    in property <[ArchSph]> sph-arch;
+    in property <int> arch-tab;
+    in property <int> arch-n;
+    in property <int> arch-tn;
+    callback sph-show(string);              // открыть экран «Сферы»: "" — без правки, id — правка
+    callback sph-close();
+    callback sph-save(string, int);         // название, цвет
+    callback sph-new();
+    callback sph-add-list(string, string);  // сфера, название
+    callback sph-archive(string, string, bool); // sphere | list, id, в архив / вернуть
+    callback sph-delete(string, string);    // sphere | list, id — «удалить навсегда»
+    callback arch-tab-set(int);
     in property <[MItem]> menu-items;
     callback menu-ctx(string, string, length, length);   // что, id, x, y
     callback menu-pick(string);

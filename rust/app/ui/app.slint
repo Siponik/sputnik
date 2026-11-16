@@ -97,6 +97,9 @@ export component AppWindow inherits Window {
         key-pressed(e) => {
             if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
                 if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
+                // меню сферы: Enter — править, Ctrl+E — в архив (п.40)
+                if (S.menu-open && S.menu-head.alpha > 0 && e.text == Key.Return) { S.menu-pick("sph-edit"); return accept; }
+                if (S.menu-open && S.menu-head.alpha > 0 && e.modifiers.control && (e.text == "e" || e.text == "у" || e.text == "\u{05}")) { S.menu-pick("sph-arch"); return accept; }
                 if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); S.card-key("esc"); return accept; }
                 return reject;
             }
@@ -108,8 +111,10 @@ export component AppWindow inherits Window {
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
                 if ((e.text == "." || e.text == "ю") && S.tab == 2) { S.ls-show(); return accept; }
                 if (e.text == "w" || e.text == "ц") { S.win-close(); return accept; }
+                if ((e.text == "e" || e.text == "у" || e.text == "\u{05}") && S.tab == 2 && S.sph-open && S.sph-edit != "") { S.sph-archive("sphere", S.sph-edit, true); return accept; }
                 return reject;
             }
+            if (e.text == Key.Escape && S.tab == 2 && S.sph-open) { if (S.sph-edit != "") { S.sph-show(""); } else { S.sph-close(); } return accept; }
             if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
             if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }

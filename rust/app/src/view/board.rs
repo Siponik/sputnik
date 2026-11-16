@@ -84,6 +84,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     if u.arch {
         archive(app, u, g);
     }
+    super::spheres::render(app, u, g);
     g.set_board_id(ss(id.clone()));
     if id.is_empty() {
         g.set_board_title("".into());
@@ -295,10 +296,14 @@ fn archive(app: &App, u: &Ui, g: &S) {
         rows.push(ArchRow { list_id: ss(lid.clone()), id: ss(text(&t["id"])), title: ss(text(&t["title"])), list: ss(app.list_name(lid)), hue: list_hue(app, lid),
             date: ss(if d.len() == 10 { format!("{}.{}", &d[8..10], &d[5..7]) } else { d.clone() }), group: ss(grp), first });
     }
-    g.set_arch_info(ss(format!("{} ЗАДАЧ", rows.len())));
+    let (asp, alst) = (sputnik_core::spheres::archived_spheres(&app.layer).len(), app.lists.iter().filter(|l| sputnik_core::spheres::is_archived(app.ll(s(&l["id"])))).count());
+    g.set_arch_info(ss(format!("{}{}{}", super::spheres::plural(rows.len(), "ЗАДАЧА", "ЗАДАЧИ", "ЗАДАЧ"),
+        if asp > 0 { format!(" · {}", super::spheres::plural(asp, "СФЕРА", "СФЕРЫ", "СФЕР")) } else { String::new() },
+        if alst > 0 { format!(" · {}", super::spheres::plural(alst, "СПИСОК", "СПИСКА", "СПИСКОВ")) } else { String::new() })));
+    g.set_arch_tn(rows.len() as i32);
     let mut sp = vec![Opt { id: ss(""), label: ss("Все списки"), hint: ss(""), hue: color(""), on: u.arch_sphere.is_empty() }];
     sp.extend(app.spheres().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["name"])), hint: ss(""), hue: color(&sputnik_core::spheres::sphere_color(x)), on: u.arch_sphere == s(&x["id"]) }));
-    g.set_arch_spheres(model(sp));
+    g.set_arch_spheres(model(if u.arch_tab == 0 { sp } else { vec![] }));
     g.set_arch_rows(model(rows));
 }
 

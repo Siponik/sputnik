@@ -27,6 +27,9 @@ pub const ICONS: [(&str, &str, &str); 8] = [
 
 pub fn sphere_color(sp: &Value) -> String {
     let c = &sp["color"];
+    if c == "red" || c == "grey" {
+        return s(c).to_string(); // цвета правки сферы (п.40), которых не было в старом трекере
+    }
     let cs = sphere_colors();
     let x = a(&cs).iter().find(|x| x["id"] == *c).unwrap_or(&cs[0]);
     s(&x["v"]).to_string()
@@ -41,8 +44,33 @@ fn removed(sp: &Value) -> bool {
     sp.is_object() && !sp["removed"].is_null() && sp["removed"] != Value::Bool(false)
 }
 
-/// Сферы по порядку, без удалённых: [{id, …}].
+/// Цвета в правке сферы, по порядку макета G_Spheres.
+pub const PICKER: [&str; 7] = ["clay", "work", "personal", "study", "gold", "red", "grey"];
+
+/// Сфера или список в архиве (п.41): отметка в слое, в Google ничего не удаляется.
+pub fn is_archived(rec: &Value) -> bool {
+    rec["archived"] == true
+}
+
+/// Список скрыт архивом: сам в архиве или его сфера в архиве.
+pub fn list_archived(list_id: &str, lay: &Value) -> bool {
+    let ll = &lay["lists"][list_id];
+    is_archived(ll) || (t(&ll["sphere"]) && is_archived(&lay["spheres"][s(&ll["sphere"])]))
+}
+
+/// Сферы в архиве (без удалённых), свежие сверху.
+pub fn archived_spheres(lay: &Value) -> Vec<Value> {
+    let mut v: Vec<Value> = all_spheres(lay).into_iter().filter(is_archived).collect();
+    v.sort_by(|x, y| n(&y["archivedAt"]).unwrap_or(0.0).partial_cmp(&n(&x["archivedAt"]).unwrap_or(0.0)).unwrap());
+    v
+}
+
+/// Сферы по порядку, без удалённых и без архива: [{id, …}].
 pub fn spheres_from(lay: &Value) -> Vec<Value> {
+    all_spheres(lay).into_iter().filter(|x| !is_archived(x)).collect()
+}
+
+fn all_spheres(lay: &Value) -> Vec<Value> {
     let mut out: Vec<Value> = o(&lay["spheres"])
         .iter()
         .filter(|(_, v)| v.is_object() && !removed(v))

@@ -22,10 +22,16 @@ export component CtxMenu inherits Rectangle {
             viewport-height: mvl.preferred-height;
             mvl := VerticalLayout {
             padding: 4px; padding-top: 6px;
-            if S.menu-title != "": HorizontalLayout { padding-left: 10px; padding-right: 10px; Text {
+            if S.menu-title != "" && S.menu-head.alpha == 0: HorizontalLayout { padding-left: 10px; padding-right: 10px; Text {
                 text: S.menu-title.to-uppercase(); height: 28px;
                 font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; overflow: elide;
             } }
+            // шапка цвета сферы (G_Spheres): во всю ширину, над пунктами
+            if S.menu-head.alpha > 0: Rectangle { height: 32px;
+                Rectangle { x: -4px; y: -6px; width: parent.width + 8px; height: 32px; background: S.menu-head;
+                    Text { x: 12px; text: S.menu-title.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 40px; }
+                    Text { x: parent.width - 24px; text: "···"; font-size: 13px; color: #ffffffd0; vertical-alignment: center; height: parent.height; }
+                } }
             for m in S.menu-items: VerticalLayout {
                 if m.sep: Rectangle { height: 9px; Rectangle { y: 4px; height: 1px; background: G.line; } }
                 Rectangle {

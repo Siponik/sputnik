@@ -12,6 +12,7 @@ pub mod listset;
 pub mod menu;
 pub mod tpl;
 mod settings;
+pub mod spheres;
 mod today;
 mod wire;
 
@@ -66,6 +67,12 @@ pub struct Ui {
     pub pipe_by: String,
     pub stk_by: String,
     pub arch: bool,
+    /// Экран «Сферы» (п.40): Some("") — без правки, Some(id) — правка сферы.
+    pub sph: Option<String>,
+    /// Вкладка архива: 0 — задачи, 1 — сферы и списки (п.41).
+    pub arch_tab: i32,
+    /// Открыть в правке сферы поле нового списка.
+    pub sph_add: bool,
     pub pipe_gallery: bool,
     pub pipe_stage: i32,
     pub arch_q: String,
@@ -121,6 +128,8 @@ pub fn start(app: App) -> AppWindow {
             ["note", p] => u.note_path = p.to_string(),
             ["pipe", p] => u.pipe_open = p.to_string(),
             ["listset"] => u.ls = true,
+            ["sph", id] => u.sph = Some(id.to_string()),
+            ["arch", k] => { u.arch = true; u.arch_tab = k.parse().unwrap_or(0); }
             ["templates"] => u.tp = Some(tpl::open(&app, "work")),
             ["menu", k, id] => u.menu = Some(menu::Menu { kind: k.to_string(), id: id.to_string(), x: 250.0, y: 200.0, sub: String::new() }),
             ["archive"] => u.arch = true,
