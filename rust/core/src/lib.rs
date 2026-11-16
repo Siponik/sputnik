@@ -32,3 +32,4 @@ pub mod templates;
 pub mod today;
 pub mod updnotes;
 pub mod when;
+pub mod wikilink;

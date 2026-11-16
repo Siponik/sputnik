@@ -1064,6 +1064,18 @@ pub fn wire(w: &AppWindow) {
     // ---------- Знания ----------
     g.on_note_search(|q| act(|_, u| u.note_q = str_(&q)));
     g.on_note_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
+    // [[ в заметке задачи (п.37): подсказка по «Знаниям» и вставка ссылки
+    let ww2 = w.as_weak();
+    g.on_link_search(move |t| {
+        let Some(w2) = ww2.upgrade() else { return };
+        let g = w2.global::<S>();
+        let found: Vec<crate::Opt> = match sputnik_core::wikilink::query(t.as_str()) {
+            Some(q) => crate::state::peek(|app| app.notes.search(&q).into_iter().take(8).map(|n| crate::Opt { id: ss(n.path.clone()), label: ss(n.title.clone()), hint: ss(""), hue: color(""), on: false }).collect()).unwrap_or_default(),
+            None => vec![],
+        };
+        g.set_link_found(model(found));
+    });
+    g.on_link_insert(|t, title| ss(sputnik_core::wikilink::insert(t.as_str(), title.as_str())));
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
