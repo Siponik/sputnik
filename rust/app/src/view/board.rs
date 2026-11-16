@@ -96,6 +96,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_side_spheres(side(app, &id).iter().filter(|r| r.header).count() as i32);
     let view = view_of(app, &id);
     g.set_board_view(ss(view.clone()));
+    g.set_board_colw(n(&app.ll(&id)["colw"]).unwrap_or(288.0).clamp(200.0, 360.0) as f32);
     g.set_archived(app.archived(&id).len() as i32);
     let cols = app.columns(&id);
     g.set_board_tip(ss("Стрелка на строке переводит задачу на следующий этап.".to_string()));

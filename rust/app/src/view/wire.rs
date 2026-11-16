@@ -202,6 +202,12 @@ pub fn wire(w: &AppWindow) {
             app.set_setting("lastBoard", json!(n0));
         }
     }));
+    g.on_board_colw_set(|w| act(|app, u| {
+        let b = u.board.clone();
+        if !b.is_empty() {
+            app.set_list_field(&b, json!({"colw": (w.clamp(200.0, 360.0)).round()}));
+        }
+    }));
     g.on_set_view(|v| act(|app, u| {
         let b = u.board.clone();
         app.set_list_field(&b, json!({"view": str_(&v)}));
