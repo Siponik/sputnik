@@ -225,6 +225,24 @@ pub fn wire(w: &AppWindow) {
         }
         app.set_order(&after);
     }));
+    // стикер бросили в другую колонку: по темам — меняем тему, по срокам — срок
+    g.on_stk_drop(|l, id, lane| act(|app, u| {
+        let Some(t) = task_of(app, &l, &id) else { return };
+        if u.stk_by == "due" {
+            let d0 = sputnik_core::dates::parse_ymd(&crate::view::today_s()).unwrap();
+            let day = |k| sputnik_core::dates::ymd(sputnik_core::dates::add_days(d0, k));
+            match lane.as_str() {
+                "today" => app.set_due(&l, &t, Some(&day(0))),
+                "tmr" => app.set_due(&l, &t, Some(&day(1))),
+                "week" => app.set_due(&l, &t, Some(&day(3))),
+                "later" => app.set_due(&l, &t, Some(&day(14))),
+                "none" => app.set_due(&l, &t, None),
+                _ => {}
+            }
+        } else {
+            app.touch("tasks", &id, serde_json::json!({ "topic": lane.as_str() }));
+        }
+    }));
     g.on_card_select(|_, id| act(|_, u| {
         u.board_sel = str_(&id);
     }));

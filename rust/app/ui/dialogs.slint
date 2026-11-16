@@ -175,12 +175,83 @@ component DateBox inherits Box {
     }
 }
 
+// Поле времени с выпадающим списком (шаг 15 минут); пустое — «—:—». clearable — строка «без времени».
+component TimeBox inherits Box {
+    callback picked(string);
+    in property <string> val;
+    in property <bool> clearable;
+    property <int> my;
+    out property <bool> open: root.my > 0 && S.drop == root.my;
+    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
+    width: 104px;
+    border-color: root.open ? CK.accent : G.line;
+    function put(raw: string) {
+        if (raw == "") { return; }
+        if (raw == "none") { root.picked(""); S.drop = 0; return; }
+        let t = S.c-tnorm(raw, root.val);
+        if (t != "") { root.picked(t); }
+    }
+    Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
+    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13.5px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
+    Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
+    TouchArea {
+        clicked => { root.toggle(); }
+        mouse-cursor: pointer;
+        // колесо: ±15 минут без открытия выбора
+        scroll-event(e) => {
+            if (e.delta-y > 0) { root.put("+15"); return accept; }
+            if (e.delta-y < 0) { root.put("-15"); return accept; }
+            reject
+        }
+    }
+    // клик мимо закрывает выпадающий список
+    if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
+    if root.open: Rectangle {
+        x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        TouchArea { }
+        inp := Field {
+            x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
+            placeholder: "1730, 17, 5pm…";
+            accepted(t) => { root.put(t); S.drop = 0; }
+            escape => { S.drop = 0; }
+        }
+        HorizontalLayout {
+            x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
+            for q[i] in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"]: Rectangle {
+                visible: i < 3 || root.clearable;
+                border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
+                Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); S.drop = 0; } mouse-cursor: pointer; }
+            }
+        }
+        // часы 6×4 и минуты
+        for h[i] in 24: Rectangle {
+            x: 12px + mod(i, 6) * 38px; y: 94px + floor(i / 6) * 30px; width: 35px; height: 27px; border-radius: 5px;
+            property <string> hs: (i < 10 ? "0" : "") + i;
+            property <string> nx: (i + 1 < 10 ? "0" : "") + (i + 1);
+            property <bool> on: root.val != "" && root.val >= hs + ":00" && root.val < nx + ":00";
+            background: on ? CK.accent-wash : (ha.has-hover ? G.node-hover : transparent);
+            border-width: 1px; border-color: on ? CK.accent : G.line;
+            Text { text: parent.hs; font-family: G.mono; font-size: 12px; color: parent.on ? CK.accent : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            ha := TouchArea { clicked => { root.put("h" + parent.hs); } mouse-cursor: pointer; }
+        }
+        for m[i] in ["00", "15", "30", "45"]: Rectangle {
+            x: parent.width - 12px - 46px; y: 94px + i * 30px; width: 46px; height: 27px; border-radius: 5px;
+            background: ma.has-hover ? G.node-hover : transparent;
+            border-width: 1px; border-color: G.line;
+            Text { text: ":" + m; font-family: G.mono; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            ma := TouchArea { clicked => { root.put("m" + m); S.drop = 0; } mouse-cursor: pointer; }
+        }
+        init => { inp.grab(); }
+    }
+}
+
 // Тело окна задачи (§18–19): «Когда», полоса дней, «Попадёт», подзадачи и заметка; справа «Свойства».
 component TaskBody inherits Rectangle {
     callback sub-focus;
     callback grab-line;
-    property <int> tmy;
-    property <bool> topen: root.tmy > 0 && S.drop == root.tmy;
     property <length> LW: self.width - 248px - 22px;
     property <bool> dated: S.c-day != "Без срока";
     lv := VerticalLayout {
@@ -190,15 +261,9 @@ component TaskBody inherits Rectangle {
         Cap { text: "КОГДА"; }
         HorizontalLayout {
             height: 36px; spacing: 8px;
-            z: wdate1.open ? 20 : 0;
-            Box {
-                width: 104px;
-                border-color: root.topen ? CK.accent : G.line;
-                Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
-                Text { x: 32px; text: S.c-time == "" ? "—:—" : S.c-time; font-family: G.mono; font-size: 13.5px; color: S.c-time == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
-                Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
-                TouchArea { clicked => { if (root.topen) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.tmy = S.drop-n; S.drop = root.tmy; } } mouse-cursor: pointer; }
-            }
+            z: wdate1.open || wtime0.open ? 20 : 0;
+            // время — то же поле, что у события: ввод с клавиатуры, быстрые варианты, колесо ±15 мин
+            wtime0 := TimeBox { width: 112px; val: S.c-time; clearable: true; picked(t) => { S.c-time-set(t); root.grab-line(); } }
             wdate1 := DateBox { dated: root.dated; }
         }
         HorizontalLayout {
@@ -271,30 +336,7 @@ component TaskBody inherits Rectangle {
             }
         }
     }
-    // время — шаг 15 минут
     // клик мимо закрывает выпадающий список
-    if root.topen: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
-    if root.topen: Rectangle {
-        x: 0; y: 54px; width: 130px; height: 260px;
-        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
-        TouchArea { }
-        ScrollView {
-            VerticalLayout {
-                padding: 5px;
-                Rectangle {
-                    height: 28px; border-radius: 5px; background: na.has-hover ? G.node-hover : transparent;
-                    Text { x: 10px; text: "без времени"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
-                    na := TouchArea { clicked => { S.c-time-set(""); S.drop = 0; root.grab-line(); } mouse-cursor: pointer; }
-                }
-                for tm in S.c-times: Rectangle {
-                    height: 28px; border-radius: 5px; background: ta.has-hover ? G.node-hover : (tm == S.c-time ? CK.accent-wash : transparent);
-                    Text { x: 10px; text: tm; font-family: G.mono; font-size: 12.5px; color: tm == S.c-time ? CK.accent : G.ink; vertical-alignment: center; height: parent.height; }
-                    ta := TouchArea { clicked => { S.c-time-set(tm); S.drop = 0; root.grab-line(); } mouse-cursor: pointer; }
-                }
-            }
-        }
-    }
     // «Свойства»
     Rectangle {
         x: root.width - 248px; y: 0; width: 248px; height: pv.preferred-height;
@@ -385,78 +427,6 @@ component PropsPanel inherits Rectangle {
     }
 }
 
-// Поле времени с выпадающим списком (шаг 15 минут); пустое — «—:—». clearable — строка «без времени».
-component TimeBox inherits Box {
-    callback picked(string);
-    in property <string> val;
-    in property <bool> clearable;
-    property <int> my;
-    out property <bool> open: root.my > 0 && S.drop == root.my;
-    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
-    width: 104px;
-    border-color: root.open ? CK.accent : G.line;
-    function put(raw: string) {
-        if (raw == "") { return; }
-        if (raw == "none") { root.picked(""); S.drop = 0; return; }
-        let t = S.c-tnorm(raw, root.val);
-        if (t != "") { root.picked(t); }
-    }
-    Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
-    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13.5px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
-    Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
-    TouchArea {
-        clicked => { root.toggle(); }
-        mouse-cursor: pointer;
-        // колесо: ±15 минут без открытия выбора
-        scroll-event(e) => {
-            if (e.delta-y > 0) { root.put("+15"); return accept; }
-            if (e.delta-y < 0) { root.put("-15"); return accept; }
-            reject
-        }
-    }
-    // клик мимо закрывает выпадающий список
-    if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
-    if root.open: Rectangle {
-        x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
-        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
-        TouchArea { }
-        inp := Field {
-            x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
-            placeholder: "1730, 17, 5pm…";
-            accepted(t) => { root.put(t); S.drop = 0; }
-            escape => { S.drop = 0; }
-        }
-        HorizontalLayout {
-            x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
-            for q[i] in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"]: Rectangle {
-                visible: i < 3 || root.clearable;
-                border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
-                Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); S.drop = 0; } mouse-cursor: pointer; }
-            }
-        }
-        // часы 6×4 и минуты
-        for h[i] in 24: Rectangle {
-            x: 12px + mod(i, 6) * 38px; y: 94px + floor(i / 6) * 30px; width: 35px; height: 27px; border-radius: 5px;
-            property <string> hs: (i < 10 ? "0" : "") + i;
-            property <string> nx: (i + 1 < 10 ? "0" : "") + (i + 1);
-            property <bool> on: root.val != "" && root.val >= hs + ":00" && root.val < nx + ":00";
-            background: on ? CK.accent-wash : (ha.has-hover ? G.node-hover : transparent);
-            border-width: 1px; border-color: on ? CK.accent : G.line;
-            Text { text: parent.hs; font-family: G.mono; font-size: 12px; color: parent.on ? CK.accent : G.ink; horizontal-alignment: center; vertical-alignment: center; }
-            ha := TouchArea { clicked => { root.put("h" + parent.hs); } mouse-cursor: pointer; }
-        }
-        for m[i] in ["00", "15", "30", "45"]: Rectangle {
-            x: parent.width - 12px - 46px; y: 94px + i * 30px; width: 46px; height: 27px; border-radius: 5px;
-            background: ma.has-hover ? G.node-hover : transparent;
-            border-width: 1px; border-color: G.line;
-            Text { text: ":" + m; font-family: G.mono; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-            ma := TouchArea { clicked => { root.put("m" + m); S.drop = 0; } mouse-cursor: pointer; }
-        }
-        init => { inp.grab(); }
-    }
-}
 
 // Заметка во всю ширину левой колонки (событие, привычка, день рождения).
 component NoteBox inherits Box {

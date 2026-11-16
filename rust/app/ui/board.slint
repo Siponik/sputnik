@@ -109,6 +109,23 @@ component Kanban inherits Rectangle {
     property <length> colw: S.board-colw;
     property <length> gap: 28px;              // зазор между колонками — в нём провод (G_Kanban)
     property <length> pitch: colw + gap;
+    // перелёт выбранной карточки по ←/→: где она была (sel-*), призрак едет к новому месту
+    property <length> sel-x; property <length> sel-y; property <length> sel-h: 60px; property <string> sel-title;
+    property <bool> fly-on; property <bool> snap;
+    property <length> fly-x; property <length> fly-y;
+    property <int> fly: S.fly-n;
+    changed fly => {
+        if (root.sel-title == "") { return; }
+        root.snap = true; root.fly-on = true;
+        root.fly-x = root.sel-x; root.fly-y = root.sel-y;
+        t1.running = true;
+    }
+    t1 := Timer { interval: 20ms; running: false; triggered => {
+        self.running = false; root.snap = false;
+        root.fly-x = root.sel-x; root.fly-y = root.sel-y;   // уже новое место после переноса
+        t2.running = true;
+    } }
+    t2 := Timer { interval: 240ms; running: false; triggered => { self.running = false; root.fly-on = false; } }
     property <string> open-done;
     property <bool> dragging;
     property <bool> dropped;
@@ -169,6 +186,15 @@ component Kanban inherits Rectangle {
                                 visible: !col.done || k < 2 || root.open-done == col.id;
                                 height: !self.visible ? 0 : max(60px, ct.preferred-height + 46px + (c.sub-total > 0 ? 12px : 0));
                                 property <bool> lead: hot && k == 0 && !c.done;
+                                // выбранная карточка сообщает, где она — для перелёта по ←/→
+                                property <length> me-x: self.absolute-position.x - root.absolute-position.x;
+                                property <length> me-y: self.absolute-position.y - root.absolute-position.y;
+                                property <bool> me: c.sel;
+                                function report() { if (c.sel) { root.sel-x = me-x; root.sel-y = me-y; root.sel-h = self.height; root.sel-title = c.title; } }
+                                init => { report(); }
+                                changed me => { report(); }
+                                changed me-x => { report(); }
+                                changed me-y => { report(); }
                                 // место вставки при перетаскивании: верхняя половина карточки — «перед ней», нижняя — «после»
                                 property <length> top: self.absolute-position.y - root.absolute-position.y;
                                 property <bool> ins-before: root.dragging && root.drop-col == ci && root.gy >= (k == 0 ? -10000px : top - 4px) && root.gy < top + self.height / 2;
@@ -179,7 +205,7 @@ component Kanban inherits Rectangle {
                                 background: lead ? #2E2722 : (ca.has-hover ? G.node-hover : #2A2B30);
                                 border-width: 1px;
                                 border-color: root.dragging && root.drag-id == c.id ? G.accent : c.sel ? G.accent : lead ? G.accent : G.line;
-                                opacity: root.dragging && root.drag-id == c.id ? 0.4 : 1;
+                                opacity: root.dragging && root.drag-id == c.id ? 0.4 : (c.sel && root.fly-on ? 0 : 1);
                                 // подсветка места вставки: полоска над карточкой, у последней — и под ней
                                 Rectangle { visible: ins-before; x: 0; y: -5.5px; width: parent.width; height: 3px; border-radius: 1.5px; background: G.accent; }
                                 if k == col.cards.length - 1: Rectangle { visible: ins-after; x: 0; y: parent.height + 2.5px; width: parent.width; height: 3px; border-radius: 1.5px; background: G.accent; }
@@ -310,6 +336,14 @@ component Kanban inherits Rectangle {
             }
         }
     }
+    // призрак перелёта по ←/→
+    if root.fly-on: Rectangle {
+        x: root.fly-x; y: root.fly-y; width: root.colw - 20px; height: root.sel-h;
+        animate x, y { duration: root.snap ? 0ms : 220ms; easing: ease-out; }
+        border-radius: 8px; background: G.node-hover; border-width: 1px; border-color: G.accent;
+        drop-shadow-blur: 14px; drop-shadow-color: #0008;
+        Text { x: 10px; y: 11px; width: parent.width - 20px; text: root.sel-title; color: G.ink; font-size: 13.5px; wrap: word-wrap; }
+    }
     // «призрак» перетаскиваемой карточки
     if root.dragging: Rectangle {
         x: root.gx - fl.content-x + 12px - 110px;
@@ -328,68 +362,110 @@ component Kanban inherits Rectangle {
 
 // Стикеры: темы — колонки, дела — квадратные листочки; галочка — сделано (уходит в баночку).
 component Stickers inherits Rectangle {
+    // перетаскивание стикера между колонками: как на канбане — тянуть за любое место, клик по названию открывает
+    property <bool> dragging;
+    property <bool> dropped;
+    property <string> drag-id;
+    property <length> dx; property <length> dy;     // смещение призрака от исходного места
+    property <int> drop-lane: -1;
+    property <length> pitch: 236px + 22px;
     ScrollView {
+        content-width: max(self.visible-width, S.columns.length * root.pitch);
         VerticalLayout {
             padding-bottom: 16px;
             spacing: 16px;
-            HorizontalLayout {
-                spacing: 22px;
-                alignment: start;
-                for lane in S.columns: VerticalLayout {
-                    width: 236px;
-                    spacing: 12px;
-                    alignment: start;
+            Rectangle {
+                height: S.stk-h;
+                // шапки тем и поле «+ Стикер»
+                for lane[li] in S.columns: Rectangle {
+                    x: li * root.pitch; y: 0; width: 236px; height: S.stk-h;
+                    Rectangle { visible: root.dragging && root.drop-lane == li; border-radius: 6px; background: G.accent.with-alpha(0.06); border-width: 1px; border-color: G.accent-line; }
                     HorizontalLayout {
-                        height: 22px;
+                        y: 0; height: 22px;
                         spacing: 8px;
                         Rectangle { width: 7px; height: 7px; y: 8px; border-radius: 2px; background: lane.hue; }
                         Text { text: lane.name; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; overflow: elide; }
                         Text { text: lane.count; font-family: G.mono; font-size: 11px; color: #8A8C96; vertical-alignment: center; }
                         Rectangle { }
                     }
-                    for c in lane.cards: Rectangle {
-                        height: max(118px, st.preferred-height + 70px);
-                        property <color> tone: lane.hue.mix(#1C1D21, 0.17);
-                        Rectangle {
-                            y: 6px;
-                            height: parent.height - 6px;
-                            border-radius: 4px;
-                            background: tone;
-                            border-width: c.pin ? 2px : 0;
-                            border-color: G.accent;
-                            drop-shadow-blur: 10px;
-                            drop-shadow-offset-y: 4px;
-                            drop-shadow-color: #00000066;
-                            opacity: c.done ? 0.55 : 1;
-                            st := Text { x: 14px; y: 20px; width: parent.width - 28px; text: c.title; wrap: word-wrap; font-size: 14.5px; font-weight: 500; color: lane.hue.mix(#ffffff, 0.45); }
-                            if c.done: Rectangle { x: 14px; y: 30px; height: 1.5px; width: min(st.preferred-width, parent.width - 28px); background: lane.hue.mix(#ffffff, 0.45); }
-                            sa := TouchArea { clicked => { S.open-task(S.board-id, c.id); } mouse-cursor: pointer; }
-                            Rectangle {
-                                x: 14px; y: parent.height - 32px; width: 18px; height: 18px; border-radius: 9px;
-                                border-width: 1.5px; border-color: lane.hue.mix(#ffffff, 0.45);
-                                background: c.done ? lane.hue.mix(#ffffff, 0.45) : transparent;
-                                Icon { name: "check"; width: 10px; x: 4px; y: 4px; visible: c.done; c: tone; stroke-width: 2.2px; }
-                                TouchArea { clicked => { S.toggle(S.board-id, c.id); } mouse-cursor: pointer; }
-                            }
-                            Text { x: 42px; y: parent.height - 32px; height: 18px; text: c.due.to-lowercase(); font-size: 12px; color: c.overdue ? #FFB3A3 : lane.hue.mix(#ffffff, 0.45).transparentize(0.25); vertical-alignment: center; }
-                            Rectangle {
-                                x: parent.width - 28px; y: parent.height - 32px; width: 18px; height: 18px;
-                                opacity: c.pin || sa.has-hover || pa.has-hover ? 1 : 0;
-                                Icon { name: "pin"; width: 12px; x: 3px; y: 3px; c: lane.hue.mix(#ffffff, 0.45); }
-                                pa := TouchArea { clicked => { S.pin-card(S.board-id, c.id); } mouse-cursor: pointer; }
-                            }
-                        }
-                        // скотч или кнопка
-                        if !c.pin: Rectangle { x: (parent.width - 54px) / 2; y: 0; width: 54px; height: 12px; background: #ffffff26; border-radius: 1px; }
-                        if c.pin: Rectangle { x: (parent.width - 12px) / 2; y: 0; width: 12px; height: 12px; border-radius: 6px; background: G.red; }
-                    }
                     Rectangle {
-                        height: 46px;
+                        y: 34px; height: 46px;
                         border-radius: 4px;
                         border-width: 1px;
                         border-color: #55575F;
                         Field { x: 8px; y: 6px; width: parent.width - 16px; bare: true; font-size: 13px; placeholder: "+ Стикер"; accepted(t) => { if (t != "") { S.add-card(S.board-id, lane.id, t); self.clear(); } } }
                     }
+                }
+                // стикеры: одно место на каждый, x/y едут при смене раскладки
+                for it in S.stk-items: Rectangle {
+                    property <bool> me: root.dragging && root.drag-id == it.card.id;
+                    x: it.x + (me ? root.dx : 0); y: it.y + (me ? root.dy : 0); width: 236px; height: it.h;
+                    z: me ? 10 : 0;
+                    animate x, y { duration: me ? 0ms : 320ms; easing: ease-in-out; }
+                    property <color> tone: it.hue.mix(#1C1D21, 0.17);
+                    property <color> ink: it.hue.mix(#ffffff, 0.45);
+                    Rectangle {
+                        y: 6px;
+                        height: parent.height - 6px;
+                        border-radius: 4px;
+                        background: tone;
+                        border-width: it.card.sel ? 2px : (it.card.pin ? 2px : 0);
+                        border-color: it.card.sel ? G.ink : G.accent;
+                        drop-shadow-blur: me ? 18px : 10px;
+                        drop-shadow-offset-y: me ? 10px : 4px;
+                        drop-shadow-color: #00000066;
+                        opacity: it.card.done ? 0.55 : 1;
+                        st := Text { x: 14px; y: 20px; width: parent.width - 28px; text: it.card.title; wrap: word-wrap; font-size: 14.5px; font-weight: 500; color: title-hot ? #ffffff : ink; }
+                        property <bool> title-hot: sa.has-hover && !root.dragging && sa.mouse-y >= 14px && sa.mouse-y <= 24px + st.preferred-height && sa.mouse-x <= self.width - 14px;
+                        if title-hot: Rectangle { x: 14px; y: 20px + st.preferred-height + 1px; height: 1px; width: min(st.preferred-width, parent.width - 28px); background: #ffffff; }
+                        if it.card.done: Rectangle { x: 14px; y: 30px; height: 1.5px; width: min(st.preferred-width, parent.width - 28px); background: ink; }
+                        sa := TouchArea {
+                            mouse-cursor: pointer;
+                            pointer-event(e) => {
+                                if (e.kind == PointerEventKind.down) { root.dropped = false; }
+                                if (e.kind == PointerEventKind.up && root.dragging) {
+                                    root.dragging = false; root.dropped = true;
+                                    if (root.drop-lane >= 0 && root.drop-lane < S.columns.length && S.columns[root.drop-lane].id != it.lane) {
+                                        S.stk-drop(S.board-id, it.card.id, S.columns[root.drop-lane].id);
+                                    }
+                                    root.dx = 0; root.dy = 0;
+                                }
+                            }
+                            moved => {
+                                if (!root.dragging && (abs(self.mouse-x - self.pressed-x) > 6px || abs(self.mouse-y - self.pressed-y) > 6px)) {
+                                    root.dragging = true; root.drag-id = it.card.id;
+                                }
+                                if (root.dragging) {
+                                    root.dx = self.mouse-x - self.pressed-x; root.dy = self.mouse-y - self.pressed-y;
+                                    root.drop-lane = max(0, min(S.columns.length - 1, floor((it.x + root.dx + 118px) / root.pitch)));
+                                }
+                            }
+                            // клик по названию открывает, по остальному месту — выбирает
+                            clicked => {
+                                if (!root.dropped) {
+                                    if (self.mouse-y >= 14px && self.mouse-y <= 24px + st.preferred-height) { S.open-task(S.board-id, it.card.id); }
+                                    else { S.card-select(S.board-id, it.card.id); }
+                                }
+                            }
+                        }
+                        Rectangle {
+                            x: 14px; y: parent.height - 32px; width: 18px; height: 18px; border-radius: 9px;
+                            border-width: 1.5px; border-color: ink;
+                            background: it.card.done ? ink : transparent;
+                            Icon { name: "check"; width: 10px; x: 4px; y: 4px; visible: it.card.done; c: tone; stroke-width: 2.2px; }
+                            TouchArea { clicked => { S.toggle(S.board-id, it.card.id); } mouse-cursor: pointer; }
+                        }
+                        Text { x: 42px; y: parent.height - 32px; height: 18px; text: it.card.due.to-lowercase(); font-size: 12px; color: it.card.overdue ? #FFB3A3 : ink.transparentize(0.25); vertical-alignment: center; }
+                        Rectangle {
+                            x: parent.width - 28px; y: parent.height - 32px; width: 18px; height: 18px;
+                            opacity: it.card.pin || sa.has-hover || pa.has-hover ? 1 : 0;
+                            Icon { name: "pin"; width: 12px; x: 3px; y: 3px; c: ink; }
+                            pa := TouchArea { clicked => { S.pin-card(S.board-id, it.card.id); } mouse-cursor: pointer; }
+                        }
+                    }
+                    // скотч или кнопка
+                    if !it.card.pin: Rectangle { x: (parent.width - 54px) / 2; y: 0; width: 54px; height: 12px; background: #ffffff26; border-radius: 1px; }
+                    if it.card.pin: Rectangle { x: (parent.width - 12px) / 2; y: 0; width: 12px; height: 12px; border-radius: 6px; background: G.red; }
                 }
             }
             // баночка сделанного
