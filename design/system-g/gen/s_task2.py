@@ -31,10 +31,9 @@ head = (f'<div style="height: 40px; background: {FILL[C]}; display: flex; align-
         f'{dot("#fff", 6)}РАБОТА · КЛИЕНТЫ<span style="opacity: .6">›</span>В РАБОТЕ<span style="flex: 1"></span>'
         + ''.join(f'<span style="width: 28px; height: 28px; border-radius: 6px; display: grid; place-items: center; color: #fff; font-size: 14px">{g}</span>' for g in ['⋯', '⤢', '✕']) + '</div>')
 title = (f'<div style="display: flex; align-items: center; gap: 14px; padding: 18px 22px 4px">'
-         f'<span style="width: 22px; height: 22px; box-sizing: border-box; border-radius: 6px; border: 1.5px solid {STRONG}"></span>'
-         f'<span style="font-size: 24px; font-weight: 600; letter-spacing: -.01em">Созвон с клиентом «Таверна»</span>'
+                  f'<span style="font-size: 24px; font-weight: 600; letter-spacing: -.01em">Созвон с клиентом «Таверна»</span>'
          f'<span style="font: 600 13px {MONO}; color: {OR}; padding: 2px 8px; border-radius: 6px; background: {WASH}">!!</span></div>'
-         f'<div style="padding: 0 22px 0 58px; font-size: 12.5px; color: {MUT}">создана 02.11 · в работе 3 дн · всего 4 дн</div>')
+         f'<div style="padding: 0 22px; font-size: 12.5px; color: {MUT}">создана 02.11 · в работе 3 дн · всего 4 дн</div>')
 stages = f'<div style="display: flex; gap: 6px; padding: 14px 22px 0">{stage("Входящие", 0, "1 ДН") + stage("В работе", 1, "3 ДН · ИДЁТ") + stage("Проверка", 2, "—") + stage("Готово", 2, "—")}</div>'
 
 subs = box(H("ПОДЗАДАЧИ", "1 / 3") + f'<div style="height: 3px; margin: 0 10px 8px; border-radius: 2px; background: #45464D; position: relative"><span style="position: absolute; left: 0; top: 0; width: 33%; height: 3px; border-radius: 2px; background: {VIO}"></span></div>'
