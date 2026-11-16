@@ -8,13 +8,13 @@ component Chip inherits Rectangle {
     in property <string> text;
     in property <bool> on;
     callback clicked;
-    height: 28px;
-    width: ct.preferred-width + 22px;
-    border-radius: 4px;
+    height: 26px;
+    width: ct.preferred-width + 20px;
+    border-radius: 7px;
     border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent-wash : (ca.has-hover ? G.node-hover : transparent);
-    ct := Text { x: 11px; text: root.text; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: on ? G.accent-ink : #A3A5AE; vertical-alignment: center; height: parent.height; }
+    ct := Text { x: 10px; text: root.text; font-size: 12px; color: on ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
     ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -22,25 +22,60 @@ component Cap inherits Text {
     font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.4px; color: #A3A5AE;
 }
 
-// полоса колонок: пройденные зелёные с днями, текущая оранжевая «N ДН · ИДЁТ», впереди серые; клик переносит
+// карточка-рамка из макета: radius 10, тонкая линия, фон темнее окна
+component Card inherits Rectangle {
+    border-radius: 10px; border-width: 1px; border-color: G.line; background: G.bg; clip: true;
+}
+
+// заголовок карточки: «ПОДЗАДАЧИ» слева, счётчик справа
+component CardHead inherits Rectangle {
+    in property <string> text;
+    in property <string> right;
+    height: 30px;
+    Text { x: 10px; text: root.text; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; height: parent.height; }
+    Text { x: parent.width - 10px - self.preferred-width; text: root.right; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; height: parent.height; }
+}
+
+// строка свойства: значок, название, значение и ▾ (как в макете)
+component PRow inherits Rectangle {
+    in property <string> icon;
+    in property <string> key;
+    in property <string> val;
+    in property <color> c: G.ink;
+    in property <bool> arrow: true;
+    callback clicked;
+    height: 32px;
+    background: pa.has-hover && arrow ? G.node-hover : transparent;
+    Rectangle { y: 0; height: 1px; background: G.line-soft; }
+    Icon { x: 10px; y: 8px; width: 15px; height: 15px; name: root.icon; c: G.muted; }
+    Text { x: 33px; width: 92px; text: root.key; font-size: 12.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
+    Text { x: 133px; width: parent.width - 133px - 28px; text: root.val == "" ? "—" : root.val; font-size: 12.5px; font-weight: root.val == "" ? 400 : 600; color: root.val == "" ? #55575F : root.c; vertical-alignment: center; height: parent.height; overflow: elide; }
+    if arrow && val != "": Text { x: parent.width - 20px; text: "▾"; font-size: 11px; color: G.muted; vertical-alignment: center; height: parent.height; }
+    pa := TouchArea { enabled: root.arrow; clicked => { root.clicked(); } mouse-cursor: root.arrow ? pointer : default; }
+}
+
+// полоса колонок: пройденные зелёные с «✓», текущая оранжевая «N ДН · ИДЁТ», впереди серые; клик переносит.
+// Прокрутка появляется, только когда колонок больше, чем влезает (больше 6).
 component StageBar inherits Rectangle {
     property <int> cur: -1;
     property <int> n: S.t-cols.length;
-    property <length> cw: n > 6 ? max(130px, (self.width - (n - 1) * 4px) / max(1, n)) : (self.width - (n - 1) * 4px) / max(1, n);
-    height: n * (cw + 4px) > self.width + 4px ? 54px : 42px;
+    property <length> gap: 6px;
+    property <length> cw: max(110px, (self.width - (n - 1) * gap) / max(1, n));
+    property <bool> over: n * cw + (n - 1) * gap > self.width + 1px;
+    height: over ? 54px : 42px;
     sv := ScrollView {
-        content-width: n * (root.cw + 4px);
+        content-width: root.n * root.cw + (root.n - 1) * root.gap;
         content-height: root.height;
         for c[i] in S.t-cols: Rectangle {
             property <int> st: c.on ? 1 : (i < root.cur ? 0 : 2);
             init => { if (c.on) { root.cur = i; } }
-            x: i * (root.cw + 4px); y: 0; width: root.cw; height: 40px;
-            border-radius: 6px;
-            background: st == 1 ? G.accent : st == 0 ? #2C3A2F : (ca.has-hover ? G.node-hover : transparent);
+            x: i * (root.cw + root.gap); y: 0; width: root.cw; height: 42px;
+            border-radius: 8px;
+            background: st == 1 ? G.accent : st == 0 ? #232A25 : (ca.has-hover ? G.node-hover : transparent);
             border-width: st == 1 ? 0 : 1px;
-            border-color: st == 0 ? #3F6B47 : #4A4B52;
-            Text { x: 10px; y: 5px; width: parent.width - 20px; text: c.label; font-size: 13px; font-weight: st == 1 ? 600 : 400; color: st == 1 ? #1C1D21 : st == 0 ? G.green : #8A8C96; overflow: elide; }
-            Text { x: 10px; y: 23px; width: parent.width - 20px; text: c.hint; font-family: G.mono; font-size: 9px; letter-spacing: 1.1px; color: st == 1 ? #1C1D21 : st == 0 ? G.green.transparentize(0.3) : #62646E; overflow: elide; }
+            border-color: st == 0 ? #2F4A35 : #4A4B52;
+            Text { x: 8px; y: 6px; width: parent.width - 16px; horizontal-alignment: center; text: (st == 0 ? "✓ " : "") + c.label; font-size: 13px; font-weight: st == 1 ? 600 : 400; color: st == 1 ? #1C1D21 : st == 0 ? G.green : #62646E; overflow: elide; }
+            Text { x: 8px; y: 24px; width: parent.width - 16px; horizontal-alignment: center; text: c.hint == "" ? "—" : c.hint; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: st == 1 ? #1C1D21 : st == 0 ? G.green : #55575F; opacity: 0.85; overflow: elide; }
             ca := TouchArea { clicked => { S.t-col(c.id); } mouse-cursor: pointer; }
         }
     }
@@ -51,12 +86,19 @@ export component TaskDialog inherits Overlay {
     property <bool> note-full;    // ⤢ у заметки — заметка на всё окно
     property <bool> menu;
     property <bool> lists-open;
+    property <int> pop;           // 1 напоминания, 2 приоритет, 3 повтор
+    property <string> repeat-label: S.t-repeats.length == 0 ? "" : S.t-repeats[0].on ? "" : S.t-repeats[1].on ? S.t-repeats[1].label : S.t-repeats.length > 2 && S.t-repeats[2].on ? S.t-repeats[2].label : S.t-repeats.length > 3 && S.t-repeats[3].on ? S.t-repeats[3].label : S.t-repeats.length > 4 && S.t-repeats[4].on ? S.t-repeats[4].label : S.t-repeats.length > 5 && S.t-repeats[5].on ? S.t-repeats[5].label : "";
+    property <[Opt]> pop-items: pop == 1 ? S.t-reminds : pop == 3 ? S.t-repeats : [
+        { id: "1", label: "!!! Высокий", on: S.t-prio == 1 }, { id: "2", label: "!! Средний", on: S.t-prio == 2 },
+        { id: "3", label: "! Низкий", on: S.t-prio == 3 }, { id: "0", label: "Нет", on: S.t-prio == 0 }];
     property <bool> done-open;
+    property <int> drag-i: -1;
+    property <int> drag-to: -1;
     property <bool> narrow: self.width < 1000px;
     property <length> W: big ? self.width - 48px : max(min(840px, self.width - 16px), min(1200px, self.width * 0.82));
     property <length> H: big ? self.height - 48px : max(min(560px, self.height - 16px), min(860px, self.height * 0.86));
     property <length> RW: 340px;
-    property <length> top: S.t-cols.length > 1 ? 172px : 116px;
+    property <length> top: S.t-cols.length > 1 ? 176px : 118px;
     property <length> mid-h: root.H - root.top - 56px;
     property <length> lw: root.narrow || root.note-full ? root.W - 48px : root.W - 48px - root.RW - 24px;
     close => { S.t-close(); }
@@ -100,90 +142,123 @@ export component TaskDialog inherits Overlay {
                     }
                 }
             }
-            // заголовок
+            // заголовок и значок приоритета сразу за ним
             Rectangle {
-                x: 24px; y: 48px; width: parent.width - 48px; height: 36px;
+                x: 24px; y: 52px; width: parent.width - 48px; height: 34px;
                 ti := TextInput {
-                    x: 0; width: parent.width - 60px; height: parent.height;
+                    x: 0; width: min(self.preferred-width + 4px, parent.width - 60px); height: parent.height;
                     text: S.t-title; font-size: 24px; font-weight: 600; color: G.ink;
                     single-line: true; vertical-alignment: center;
                     selection-background-color: G.accent-line;
                     edited => { S.t-title-set(self.text); }
                 }
-                if S.t-prio > 0: Text { x: parent.width - self.preferred-width; text: S.t-prio == 1 ? "!!!" : S.t-prio == 2 ? "!!" : "!"; font-family: G.mono; font-size: 16px; font-weight: 700; color: S.t-prio == 1 ? G.accent : G.ink; vertical-alignment: center; height: parent.height; }
+                if S.t-prio > 0: Rectangle {
+                    x: ti.width + 14px; y: 6px; height: 22px; width: pt.preferred-width + 16px;
+                    border-radius: 6px; background: G.accent-wash;
+                    pt := Text { text: S.t-prio == 1 ? "!!!" : S.t-prio == 2 ? "!!" : "!"; font-family: G.mono; font-size: 13px; font-weight: 600; color: G.accent; horizontal-alignment: center; vertical-alignment: center; }
+                }
             }
-            Text { x: 24px; y: 86px; width: parent.width - 48px; text: S.t-meta; font-family: G.mono; font-size: 10px; letter-spacing: 1.1px; color: #8A8C96; overflow: elide; }
+            Text { x: 24px; y: 88px; width: parent.width - 48px; text: S.t-meta; font-size: 12.5px; color: G.muted; overflow: elide; }
             // полоса колонок
-            if S.t-cols.length > 1: StageBar { x: 24px; y: 110px; width: parent.width - 48px; }
+            if S.t-cols.length > 1: StageBar { x: 24px; y: 118px; width: parent.width - 48px; }
             // середина
             mid := ScrollView {
                 x: 0; y: root.top; width: parent.width; height: root.mid-h;
-                content-height: root.narrow && !root.note-full ? 300px + 24px + 640px : root.mid-h;
+                content-height: root.narrow && !root.note-full ? 320px + 10px + 560px : root.mid-h;
                 // левая колонка: подзадачи (не больше 40 %) и заметка до подвала
-                property <length> lh: root.narrow && !root.note-full ? 300px : root.mid-h - 8px;
-                property <length> sub-h: root.note-full ? 0px : min(lh * 0.4, 36px + max(1, S.t-subs-open.length) * 30px + 30px + (S.t-subs-done > 0 ? 28px : 0px) + (root.done-open ? S.t-subs-donelist.length * 30px : 0px));
-                if !root.note-full: Rectangle {
+                property <length> lh: root.narrow && !root.note-full ? 320px : root.mid-h - 12px;
+                property <length> sub-h: root.note-full ? 0px : min(lh * 0.4, 30px + (S.t-subs.length > 0 ? 11px : 0px) + S.t-subs-open.length * 32px + 32px + (S.t-subs-done > 0 ? 32px : 0px) + (root.done-open ? S.t-subs-donelist.length * 32px : 0px) + 2px);
+                if !root.note-full: Card {
                     x: 24px; y: 0; width: root.lw; height: sub-h;
-                    Cap { x: 0; y: 0; height: 20px; text: "ПОДЗАДАЧИ" + (S.t-subs.length > 0 ? " · " + S.t-subs-done + " ИЗ " + S.t-subs.length : ""); }
+                    CardHead { y: 0; text: "ПОДЗАДАЧИ"; right: S.t-subs.length > 0 ? S.t-subs-done + " / " + S.t-subs.length : ""; }
                     if S.t-subs.length > 0: Rectangle {
-                        x: 0; y: 24px; width: parent.width; height: 3px; border-radius: 1.5px; background: #45464D;
-                        Rectangle { x: 0; width: parent.width * S.t-subs-done / max(1, S.t-subs.length); border-radius: 1.5px; background: G.green; }
+                        x: 10px; y: 30px; width: parent.width - 20px; height: 3px; border-radius: 1.5px; background: #45464D;
+                        Rectangle { x: 0; width: parent.width * S.t-subs-done / max(1, S.t-subs.length); border-radius: 1.5px; background: G.violet; }
                     }
+                    property <length> sy: S.t-subs.length > 0 ? 41px : 30px;
                     ScrollView {
-                        x: 0; y: 34px; width: parent.width; height: parent.height - 34px;
+                        x: 0; y: sy; width: parent.width; height: parent.height - sy - 1px;
                         content-height: sl.preferred-height;
                         sl := VerticalLayout {
                             spacing: 0; alignment: start;
-                            for sb in S.t-subs-open: Rectangle {
-                                height: 30px;
-                                Icon { x: 0; y: 7px; width: 16px; height: 16px; name: "drag"; c: #55575F; }
+                            for sb[si] in S.t-subs-open: Rectangle {
+                                height: 32px;
+                                background: root.drag-i >= 0 && root.drag-to == si && root.drag-to != root.drag-i ? G.accent-wash : transparent;
+                                Rectangle { y: 0; height: 1px; background: G.line-soft; }
+                                // ручка: потянуть вверх или вниз — подзадача встанет на новое место
                                 Rectangle {
-                                    x: 22px; y: 8px; width: 14px; height: 14px; border-radius: 3px;
-                                    border-width: 1px; border-color: #7C7E88;
+                                    x: 4px; width: 22px;
+                                    Icon { x: 6px; y: 10px; width: 12px; height: 12px; name: "drag"; c: hda.has-hover || root.drag-i == si ? G.ink : G.dim; }
+                                    hda := TouchArea {
+                                        mouse-cursor: move;
+                                        pointer-event(e) => {
+                                            if (e.kind == PointerEventKind.down) { root.drag-i = si; root.drag-to = si; }
+                                            if (e.kind == PointerEventKind.up && root.drag-i >= 0) {
+                                                if (root.drag-to != root.drag-i) {
+                                                    S.sub-move(S.t-list, S.t-id, sb.id, root.drag-to > root.drag-i
+                                                        ? (root.drag-to + 1 < S.t-subs-open.length ? S.t-subs-open[root.drag-to + 1].id : "")
+                                                        : S.t-subs-open[root.drag-to].id);
+                                                }
+                                                root.drag-i = -1; root.drag-to = -1;
+                                            }
+                                        }
+                                        moved => { if (root.drag-i >= 0) { root.drag-to = max(0, min(S.t-subs-open.length - 1, si + round((self.mouse-y - self.pressed-y) / 32px))); } }
+                                    }
+                                }
+                                Rectangle {
+                                    x: 32px; y: 9px; width: 14px; height: 14px; border-radius: 3px;
+                                    border-width: 1px; border-color: #8A8C96;
                                     TouchArea { clicked => { S.t-sub-toggle(sb.id); } mouse-cursor: pointer; }
                                 }
-                                Text { x: 46px; width: parent.width - 56px; text: sb.title; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+                                Text { x: 56px; width: parent.width - 66px; text: sb.title; color: G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; overflow: elide; }
                             }
-                            Field { height: 30px; bare: true; font-size: 13px; placeholder: "+ подзадача · Enter"; accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
+                            Rectangle {
+                                height: 32px;
+                                Rectangle { y: 0; height: 1px; background: G.line-soft; }
+                                Field { x: 4px; width: parent.width - 8px; height: 32px; bare: true; font-size: 12.5px; placeholder: "＋ подзадача · Enter"; accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
+                            }
                             if S.t-subs-done > 0: Rectangle {
-                                height: 28px;
+                                height: 32px;
+                                Rectangle { y: 0; height: 1px; background: G.line-soft; }
                                 HorizontalLayout {
-                                    spacing: 6px; alignment: start;
-                                    Icon { y: 7px; width: 14px; height: 14px; name: "check"; c: G.green; }
-                                    Text { text: "сделано " + S.t-subs-done; font-size: 12.5px; color: #8A8C96; vertical-alignment: center; }
-                                    Chev { y: 9px; up: root.done-open; c: #8A8C96; }
+                                    padding-left: 10px; spacing: 6px; alignment: start;
+                                    Icon { y: 9px; width: 14px; height: 14px; name: "check"; c: G.green; }
+                                    Text { text: "сделано " + S.t-subs-done; font-size: 12.5px; color: G.muted; vertical-alignment: center; }
+                                    Chev { y: 11px; up: root.done-open; c: G.muted; }
                                 }
                                 TouchArea { clicked => { root.done-open = !root.done-open; } mouse-cursor: pointer; }
                             }
                             if root.done-open: VerticalLayout {
                                 for sb in S.t-subs-donelist: Rectangle {
-                                    height: 30px;
+                                    height: 32px;
+                                    Rectangle { y: 0; height: 1px; background: G.line-soft; }
                                     Rectangle {
-                                        x: 22px; y: 8px; width: 14px; height: 14px; border-radius: 3px; background: #3D3E45;
-                                        Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; c: G.ink; }
+                                        x: 32px; y: 9px; width: 14px; height: 14px; border-radius: 3px; background: G.green;
+                                        Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; c: #1C1D21; }
                                         TouchArea { clicked => { S.t-sub-toggle(sb.id); } mouse-cursor: pointer; }
                                     }
-                                    dn := Text { x: 46px; width: parent.width - 56px; text: sb.title; color: G.dim; font-size: 13.5px; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                    Rectangle { x: 46px; y: 15px; height: 1px; width: min(dn.preferred-width, parent.width - 56px); background: G.dim; }
+                                    dn := Text { x: 56px; width: parent.width - 66px; text: sb.title; color: G.muted; font-size: 13px; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                    Rectangle { x: 56px; y: 16px; height: 1px; width: min(dn.preferred-width, parent.width - 66px); background: G.muted; }
                                 }
                             }
                         }
                     }
                 }
                 // заметка
-                Rectangle {
-                    x: 24px; y: sub-h + (root.note-full ? 0 : 12px); width: root.lw; height: lh - sub-h - (root.note-full ? 0 : 12px);
-                    border-radius: 8px; background: #2A2B30; border-width: 1px; border-color: nb.focused ? G.accent-line : G.line;
-                    Cap { x: 12px; y: 0; height: 32px; vertical-alignment: center; text: "ЗАМЕТКА"; }
+                Card {
+                    x: 24px; y: sub-h + (root.note-full ? 0 : 10px); width: root.lw; height: lh - sub-h - (root.note-full ? 0 : 10px);
+                    border-color: nb.focused ? G.accent-line : G.line;
+                    Text { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; }
+                    Text { x: 84px; y: 0; height: 30px; text: "MARKDOWN"; font-family: G.mono; font-size: 10px; color: G.dim; vertical-alignment: center; }
                     Rectangle {
-                        x: parent.width - 32px; y: 4px; width: 24px; height: 24px;
-                        Icon { x: 4px; y: 4px; width: 16px; height: 16px; name: root.note-full ? "minimize" : "expand"; c: na.has-hover ? G.ink : #8A8C96; }
+                        x: parent.width - 28px; y: 4px; width: 22px; height: 22px;
+                        border-radius: 6px; border-width: 1px; border-color: G.line;
+                        Icon { x: 4px; y: 4px; width: 14px; height: 14px; name: root.note-full ? "minimize" : "expand"; c: na.has-hover ? G.ink : #C9CAD0; }
                         na := TouchArea { clicked => { root.note-full = !root.note-full; } mouse-cursor: pointer; }
                     }
                     property <length> lk-h: S.t-links.length > 0 ? 34px : 0px;
                     nb := ScrollInput {
-                        x: 12px; y: 32px; width: parent.width - 24px; height: parent.height - 40px - lk-h;
+                        x: 12px; y: 34px; width: parent.width - 24px; height: parent.height - 46px - lk-h;
                         text: S.t-notes; font-size: 13.5px;
                         enter-grab: S.link-found.length > 0;
                         edited(t) => { S.t-notes-set(t); S.link-search(t); }
@@ -191,129 +266,92 @@ export component TaskDialog inherits Overlay {
                     }
                     // ссылки на «Знания» плашками: клик открывает заметку
                     if S.t-links.length > 0: HorizontalLayout {
-                        x: 12px; y: parent.height - 32px; height: 24px; width: parent.width - 24px;
+                        x: 12px; y: parent.height - 32px; height: 22px; width: parent.width - 24px;
                         spacing: 6px; alignment: start;
                         for lk in S.t-links: Rectangle {
-                            width: min(220px, lt.preferred-width + 34px);
-                            border-radius: 4px;
+                            width: min(220px, lt.preferred-width + 30px);
+                            border-radius: 5px;
                             background: lka.has-hover ? G.accent-line : G.accent-wash;
-                            Icon { x: 7px; y: 5px; width: 14px; height: 14px; name: "read"; c: G.accent; }
-                            lt := Text { x: 26px; width: parent.width - 32px; text: lk.label; font-size: 12px; color: lk.id == "" ? #8A8C96 : G.accent; vertical-alignment: center; height: parent.height; overflow: elide; }
+                            Icon { x: 6px; y: 5px; width: 12px; height: 12px; name: "read"; c: G.accent; }
+                            lt := Text { x: 22px; width: parent.width - 28px; text: lk.label; font-size: 12.5px; color: lk.id == "" ? G.muted : G.accent; vertical-alignment: center; height: parent.height; overflow: elide; }
                             lka := TouchArea { clicked => { if (lk.id != "") { S.t-close(); S.note-open(lk.id); } } mouse-cursor: pointer; }
                         }
                     }
                     // подсказка после «[[»: поиск по «Знаниям», Enter или клик вставляет ссылку
                     if S.link-found.length > 0 && nb.focused: Rectangle {
-                        x: 12px; y: 32px; width: min(320px, parent.width - 24px); height: min(5, S.link-found.length) * 30px + 10px;
-                        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.accent-line;
-                        drop-shadow-blur: 16px; drop-shadow-color: #0009;
-                        VerticalLayout {
-                            padding: 5px;
-                            for f[i] in S.link-found: Rectangle {
-                                visible: i < 5;
-                                height: i < 5 ? 30px : 0px;
-                                border-radius: 5px;
-                                background: i == 0 || fa.has-hover ? G.node-hover : transparent;
-                                Icon { x: 8px; y: 8px; width: 14px; height: 14px; name: "read"; c: G.accent; }
-                                Text { x: 30px; width: parent.width - 40px; text: f.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                fa := TouchArea { clicked => { root.pick-link(f.label); } mouse-cursor: pointer; }
-                            }
+                        x: 12px; y: 40px; width: min(300px, parent.width - 24px); height: 26px + min(5, S.link-found.length) * 30px;
+                        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+                        drop-shadow-blur: 28px; drop-shadow-offset-y: 12px; drop-shadow-color: #00000080;
+                        clip: true;
+                        Text { x: 10px; height: 26px; text: "ЗНАНИЯ · ENTER — ВСТАВИТЬ"; font-family: G.mono; font-size: 9.5px; font-weight: 500; letter-spacing: 1.3px; color: G.muted; vertical-alignment: center; }
+                        for f[i] in S.link-found: Rectangle {
+                            visible: i < 5;
+                            y: 26px + i * 30px; height: 30px;
+                            background: i == 0 || fa.has-hover ? G.accent-wash : transparent;
+                            Icon { x: 10px; y: 8.5px; width: 13px; height: 13px; name: "read"; c: i == 0 ? G.accent : G.muted; }
+                            Text { x: 31px; width: parent.width - 90px; text: f.label; font-size: 12.5px; font-weight: i == 0 ? 600 : 400; color: i == 0 ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
+                            Text { x: parent.width - self.preferred-width - 10px; text: f.hint.to-uppercase(); font-family: G.mono; font-size: 10px; color: G.dim; vertical-alignment: center; height: parent.height; }
+                            fa := TouchArea { clicked => { root.pick-link(f.label); } mouse-cursor: pointer; }
                         }
                     }
                 }
                 // правая колонка (в узком окне — под левой)
                 if !root.note-full: VerticalLayout {
                     x: root.narrow ? 24px : root.W - 24px - root.RW;
-                    y: root.narrow ? 324px : 0;
+                    y: root.narrow ? 330px : 0;
                     width: root.narrow ? root.W - 48px : root.RW;
-                    height: root.narrow ? 620px : root.mid-h - 8px;
-                    spacing: 14px;
-                    // Когда
-                    VerticalLayout {
-                        spacing: 8px;
-                        Cap { text: "КОГДА"; }
-                        HorizontalLayout {
-                            spacing: 6px; alignment: start;
-                            Rectangle {
-                                height: 32px; width: dl.preferred-width + 44px;
-                                border-radius: 6px; border-width: 1px; border-color: da.has-hover ? G.accent : G.line;
-                                Icon { x: 10px; y: 8px; width: 16px; height: 16px; name: "calendar"; c: #A3A5AE; }
-                                dl := Text { x: 32px; text: S.t-due-label == "" ? "Без срока" : S.t-due-label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
-                                da := TouchArea { clicked => { S.dp-open-task(); } mouse-cursor: pointer; }
-                            }
-                        }
-                        Cap { text: "НАПОМНИТЬ"; color: #7A7C86; }
+                    height: root.narrow ? 540px : root.mid-h - 12px;
+                    spacing: 10px;
+                    // Когда: срок и напоминания чипами
+                    Card {
+                        height: 108px;
+                        CardHead { y: 0; text: "КОГДА"; }
                         Rectangle {
-                            height: ceil(S.t-reminds.length / 3) * 32px;
-                            for r[i] in S.t-reminds: Chip {
-                                x: mod(i, 3) * (parent.width / 3); y: floor(i / 3) * 32px; width: parent.width / 3 - 4px;
-                                text: r.label.to-uppercase(); on: r.on;
-                                clicked => { S.t-remind(r.id); }
+                            x: 10px; y: 30px; width: parent.width - 20px; height: 34px;
+                            border-radius: 8px; border-width: 1px; border-color: da.has-hover ? G.accent : G.accent-line; background: G.bg;
+                            Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
+                            Text { x: 32px; width: parent.width - 60px; text: S.t-due-label == "" ? "Без срока" : S.t-due-label; font-size: 13px; color: S.t-due-label == "" ? G.muted : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                            Text { x: parent.width - 20px; text: "▾"; font-size: 10px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                            da := TouchArea { clicked => { S.dp-open-task(); } mouse-cursor: pointer; }
+                        }
+                        HorizontalLayout {
+                            x: 10px; y: 72px; height: 26px; width: parent.width - 20px; spacing: 0; alignment: start;
+                            Rectangle { width: 22px; Icon { x: 0; y: 6px; width: 14px; height: 14px; name: "bell"; c: G.muted; } }
+                            for r in S.t-reminds: Rectangle {
+                                visible: r.on; width: r.on ? rc.width + 6px : 0px;
+                                rc := Chip { x: 0; text: r.label + " ×"; on: true; clicked => { S.t-remind(r.id); } }
                             }
+                            Chip { text: "＋"; on: root.pop == 1; clicked => { root.pop = root.pop == 1 ? 0 : 1; } }
                         }
                     }
-                    Rectangle { height: 1px; background: G.line; }
-                    // Свойства
-                    VerticalLayout {
-                        spacing: 8px;
-                        Cap { text: "СВОЙСТВА"; }
-                        HorizontalLayout {
-                            height: 30px; spacing: 8px;
-                            Icon { y: 7px; width: 16px; height: 16px; name: "board"; c: #8A8C96; }
-                            Text { width: 84px; text: "Список"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; }
-                            Rectangle {
-                                border-radius: 6px; border-width: 1px; border-color: la.has-hover || root.lists-open ? G.accent : G.line;
-                                Text { x: 10px; width: parent.width - 34px; text: S.t-list-name; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                Chev { x: parent.width - 20px; y: 10px; up: root.lists-open; }
-                                la := TouchArea { clicked => { root.lists-open = !root.lists-open; } mouse-cursor: pointer; }
-                            }
-                        }
-                        HorizontalLayout {
-                            height: 30px; spacing: 8px;
-                            Icon { y: 7px; width: 16px; height: 16px; name: "priority"; c: #8A8C96; }
-                            Text { width: 84px; text: "Приоритет"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; }
-                            HorizontalLayout {
-                                spacing: 4px; alignment: start;
-                                for p[i] in ["!!!", "!!", "!", "—"]: Chip {
-                                    y: 1px; width: 40px;
-                                    text: p; on: (i < 3 && S.t-prio == i + 1) || (i == 3 && S.t-prio == 0);
-                                    clicked => { S.t-prio-set(i == 3 ? 0 : i + 1); }
-                                }
-                            }
-                        }
-                        HorizontalLayout {
-                            spacing: 8px;
-                            Icon { y: 7px; width: 16px; height: 16px; name: "repeat"; c: #8A8C96; }
-                            Text { width: 84px; height: 30px; text: "Повтор"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; }
-                            Rectangle {
-                                height: ceil(S.t-repeats.length / 3) * 32px;
-                                for r[i] in S.t-repeats: Chip {
-                                    x: mod(i, 3) * (parent.width / 3); y: floor(i / 3) * 32px; width: parent.width / 3 - 4px;
-                                    text: r.label.to-uppercase(); on: r.on;
-                                    clicked => { S.t-repeat(r.id); }
-                                }
-                            }
+                    // Свойства: строки с выпадающими списками
+                    Card {
+                        height: 30px + 4 * 32px + 2px;
+                        VerticalLayout {
+                            CardHead { text: "СВОЙСТВА"; }
+                            PRow { icon: "board"; key: "Список"; val: "● " + S.t-list-name; c: S.t-hue; clicked => { root.pop = 0; root.lists-open = !root.lists-open; } }
+                            PRow { icon: "priority"; key: "Приоритет"; val: ["", "!!! Высокий", "!! Средний", "! Низкий"][S.t-prio]; clicked => { root.pop = root.pop == 2 ? 0 : 2; } }
+                            PRow { icon: "repeat"; key: "Повтор"; val: root.repeat-label; clicked => { root.pop = root.pop == 3 ? 0 : 3; } }
+                            PRow { icon: "share"; key: "Исполнитель"; val: "Я"; arrow: false; }
                         }
                     }
-                    Rectangle { height: 1px; background: G.line; }
                     // История
-                    VerticalLayout {
-                        spacing: 8px;
+                    Card {
                         vertical-stretch: 1;
-                        Cap { text: "ИСТОРИЯ"; }
+                        min-height: 80px;
+                        CardHead { y: 0; text: "ИСТОРИЯ"; }
                         ScrollView {
-                            min-height: 60px;
-                            vertical-stretch: 1;
+                            y: 30px; height: parent.height - 36px;
                             content-height: hl.preferred-height;
                             hl := VerticalLayout {
                                 alignment: start; spacing: 0;
                                 for h in S.t-hist: Rectangle {
                                     height: 26px;
-                                    Rectangle { x: 2px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: h.hue; }
-                                    Text { x: 16px; width: parent.width - 120px; text: h.label; font-size: 12.5px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                    Text { x: parent.width - self.preferred-width - 16px; text: h.hint; font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                                    Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: h.hue; }
+                                    Text { x: 24px; width: parent.width - 80px; text: h.label; font-size: 12px; color: #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                    Text { x: parent.width - self.preferred-width - 10px; text: h.hint; font-family: G.mono; font-size: 10px; color: G.dim; vertical-alignment: center; height: parent.height; }
                                 }
-                                if S.t-hist.length == 0: Text { text: "Пока пусто"; font-size: 12.5px; color: #62646E; }
+                                if S.t-hist.length == 0: Text { x: 10px; height: 26px; text: "Пока пусто"; font-size: 12px; color: #62646E; vertical-alignment: center; }
                             }
                         }
                     }
@@ -359,10 +397,37 @@ export component TaskDialog inherits Overlay {
                     }
                 }
             }
+            // выпадающий список: напоминания, приоритет или повтор — под своей строкой
+            if root.pop > 0: Rectangle {
+                property <length> base: root.top + (root.narrow ? 330px - mid.viewport-y * -1 : 0px);
+                x: root.narrow ? 24px + 133px : root.W - 24px - root.RW + 133px;
+                y: base + (root.pop == 1 ? 102px : root.pop == 2 ? 118px + 30px + 64px : 118px + 30px + 96px);
+                width: min(200px, root.W - self.x - 16px);
+                height: root.pop-items.length * 30px + 10px;
+                border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+                drop-shadow-blur: 16px; drop-shadow-color: #0009;
+                VerticalLayout {
+                    padding: 5px;
+                    for o in root.pop-items: Rectangle {
+                        height: 30px; border-radius: 5px;
+                        background: poa.has-hover ? G.node-hover : transparent;
+                        Text { x: 10px; width: parent.width - 36px; text: o.label; font-size: 13px; color: o.on ? G.accent-ink : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                        if o.on: Icon { x: parent.width - 24px; y: 8px; width: 14px; height: 14px; name: "check"; c: G.accent; }
+                        poa := TouchArea {
+                            clicked => {
+                                if (root.pop == 1) { S.t-remind(o.id); }
+                                else if (root.pop == 2) { S.t-prio-set(o.id.to-float()); root.pop = 0; }
+                                else { S.t-repeat(o.id); root.pop = 0; }
+                            }
+                            mouse-cursor: pointer;
+                        }
+                    }
+                }
+            }
             // выбор списка — под полем «Список», прижат к окну
             if root.lists-open: Rectangle {
                 x: max(8px, root.W - 24px - root.RW + 100px - max(0px, 100px + 300px - root.RW));
-                y: root.top + 150px;
+                y: root.top + 118px + 30px + 32px;
                 width: min(300px, root.W - 16px);
                 height: min(260px, S.t-lists.length * 30px + 10px);
                 border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;

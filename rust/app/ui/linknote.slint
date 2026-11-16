@@ -1,0 +1,59 @@
+// Заметка со ссылками на «Знания»: после «[[» — подсказка (Enter или клик вставляет),
+// ниже — плашки ссылок, клик открывает заметку. Одна на все окна с заметкой.
+import { G } from "theme.slint";
+import { ScrollInput, Icon } from "kit.slint";
+import { S, Opt } from "store.slint";
+
+export component LinkNote inherits Rectangle {
+    in-out property <string> text <=> nb.text;
+    in property <length> font-size: 13px;
+    out property <bool> focused: nb.focused;
+    callback edited(string);
+    callback escape();
+    callback opened();
+    public function grab() { nb.grab(); }
+    property <[Opt]> chips: S.link-chips(nb.text);
+    property <length> lk-h: chips.length > 0 ? 28px : 0px;
+    function pick(title: string) {
+        nb.text = S.link-insert(nb.text, title);
+        root.edited(nb.text);
+        S.link-search(nb.text);
+        nb.grab();
+        nb.to-end();
+    }
+    nb := ScrollInput {
+        x: 0; y: 0; width: parent.width; height: parent.height - root.lk-h;
+        font-size: root.font-size;
+        enter-grab: S.link-found.length > 0 && self.focused;
+        edited(t) => { root.edited(t); S.link-search(t); }
+        enter => { root.pick(S.link-found[0].label); }
+        escape => { root.escape(); }
+    }
+    if chips.length > 0: HorizontalLayout {
+        x: 0; y: parent.height - 24px; height: 22px; width: parent.width;
+        spacing: 6px; alignment: start;
+        for lk in chips: Rectangle {
+            width: min(200px, lt.preferred-width + 30px);
+            border-radius: 5px;
+            background: lka.has-hover ? G.accent-line : G.accent-wash;
+            Icon { x: 6px; y: 5px; width: 12px; height: 12px; name: "read"; c: G.accent; }
+            lt := Text { x: 22px; width: parent.width - 28px; text: lk.label; font-size: 12px; color: lk.id == "" ? G.muted : G.accent; vertical-alignment: center; height: parent.height; overflow: elide; }
+            lka := TouchArea { clicked => { if (lk.id != "") { root.opened(); S.note-open(lk.id); } } mouse-cursor: pointer; }
+        }
+    }
+    if S.link-found.length > 0 && nb.focused: Rectangle {
+        x: 0; y: 22px; width: min(300px, parent.width); height: 26px + min(5, S.link-found.length) * 30px;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 28px; drop-shadow-offset-y: 12px; drop-shadow-color: #00000080;
+        clip: true;
+        Text { x: 10px; y: 0; height: 26px; text: "ЗНАНИЯ · ENTER — ВСТАВИТЬ"; font-family: G.mono; font-size: 9.5px; font-weight: 500; letter-spacing: 1.3px; color: G.muted; vertical-alignment: center; }
+        for f[i] in S.link-found: Rectangle {
+            visible: i < 5;
+            y: 26px + i * 30px; height: 30px;
+            background: i == 0 || fa.has-hover ? G.accent-wash : transparent;
+            Icon { x: 10px; y: 8.5px; width: 13px; height: 13px; name: "read"; c: i == 0 ? G.accent : G.muted; }
+            Text { x: 31px; width: parent.width - 42px; text: f.label; font-size: 12.5px; font-weight: i == 0 ? 600 : 400; color: i == 0 ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
+            fa := TouchArea { clicked => { root.pick(f.label); } mouse-cursor: pointer; }
+        }
+    }
+}

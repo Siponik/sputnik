@@ -314,6 +314,8 @@ export global S {
     in property <[Opt]> link-found;           // подсказка после «[[»: label — название, id — путь
     callback link-search(string);             // текст заметки — ищет по набранному после «[[»
     pure callback link-insert(string, string) -> string;
+    pure callback link-chips(string) -> [Opt];   // ссылки [[…]] из текста: label — название, id — путь ("" — нет такой)
+    callback pipe-notes-set(string, string, string); // список, задача, текст заметки в конвейере
     callback t-close();
     callback t-title-set(string);
     callback t-notes-set(string);
@@ -322,6 +324,7 @@ export global S {
     callback t-due-set(string);
     callback t-sub-add(string);
     callback t-sub-toggle(string);
+    callback sub-move(string, string, string, string); // список, задача, подзадача, перед какой ("" — в конец)
     callback t-remind(string);
     callback t-repeat(string);
     callback t-move(string);
