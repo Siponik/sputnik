@@ -41,8 +41,8 @@ export component DatePicker inherits Node {
     title: "ВЫБОР ДАТЫ И ВРЕМЕНИ";
     aside: "ПРО «" + S.dp-title + "»";
     head: G.accent.darker(0.3);
-    width: max(860px, body.preferred-width);
-    height: min(34px + body.preferred-height, root.max-h);
+    width: max(860px, dpb.preferred-width);
+    height: min(34px + dpb.preferred-height, root.max-h);   // у ScrollView нет своей высоты — меряем содержимое
     drop-shadow-blur: 24px;
     drop-shadow-color: #000b;
     body := ScrollView {
