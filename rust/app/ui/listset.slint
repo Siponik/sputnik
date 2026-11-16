@@ -169,7 +169,7 @@ export component ListSettings inherits Overlay {
             Rectangle { height: 6px; }
             Row { label: "Ширина колонок"; hint: "Для вида «Канбан»";
                 Seg3 {
-                    items: [{ id: "220", label: "Узкие", on: S.board-colw < 250px }, { id: "288", label: "Обычные", on: S.board-colw >= 250px && S.board-colw < 320px }, { id: "340", label: "Широкие", on: S.board-colw >= 320px }];
+                    items: [{ id: "200", label: "Узкие", on: S.board-colw < 216px }, { id: "232", label: "Обычные", on: S.board-colw >= 216px && S.board-colw < 260px }, { id: "288", label: "Широкие", on: S.board-colw >= 260px }];
                     picked(id) => { S.board-colw-set(id.to-float() * 1px); }
                 }
             }

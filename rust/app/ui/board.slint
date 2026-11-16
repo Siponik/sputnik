@@ -105,6 +105,8 @@ component SideCol inherits Rectangle {
 component Kanban inherits Rectangle {
     // п.26: общая ширина колонок 200–360, своя у каждого списка; тянется за правый край колонки
     property <length> colw: S.board-colw;
+    property <length> gap: 28px;              // зазор между колонками — в нём провод (G_Kanban)
+    property <length> pitch: colw + gap;
     property <string> open-done;
     property <bool> dragging;
     property <bool> dropped;
@@ -118,10 +120,10 @@ component Kanban inherits Rectangle {
     fl := Flickable {
         // тащить мышью можно только карточки; доска листается колесом
         interactive: false;
-        content-width: max(self.width, S.columns.length * root.colw + 24px + 140px);
+        content-width: max(self.width, S.columns.length * root.pitch + 140px);
         // справа от колонок — «＋ Колонка» (открывает настройки списка)
         Rectangle {
-            x: S.columns.length * root.colw + 4px; y: 0; width: 124px; height: 40px;
+            x: S.columns.length * root.pitch; y: 0; width: 124px; height: 40px;
             border-radius: 8px; border-width: 1px; border-color: addc.has-hover ? G.accent : G.line;
             Text { text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: addc.has-hover ? G.accent : #8A8C96; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
             addc := TouchArea { clicked => { S.ls-show(); } mouse-cursor: pointer; }
@@ -132,12 +134,13 @@ component Kanban inherits Rectangle {
             spacing: 0px;
             alignment: start;
             for col[ci] in S.columns: Rectangle {
-                width: root.colw;
+                width: root.pitch;
                 property <bool> hot: col.limit > 0;
                 property <bool> drop-here: root.dragging && root.drop-col == ci;
                 property <color> head: ci == 0 ? #3D3E45 : hot ? #8A5320 : col.hue.mix(#1a1a1a, 0.5);
                 Rectangle {
-                    x: 0; y: 0; width: root.colw - 8px; height: parent.height;
+                    // «Готово» — по содержимому, остальные — во всю высоту
+                    x: 0; y: 0; width: root.colw; height: col.done ? min(parent.height, 30px + vl.preferred-height + 2px) : parent.height;
                     border-radius: 8px;
                     background: G.node;
                     border-width: 1px;
@@ -157,7 +160,7 @@ component Kanban inherits Rectangle {
                     ScrollView {
                         y: 30px;
                         height: parent.height - 30px;
-                        VerticalLayout {
+                        vl := VerticalLayout {
                             padding: 10px;
                             spacing: 8px;
                             for c[k] in col.cards: Rectangle {
@@ -193,9 +196,9 @@ component Kanban inherits Rectangle {
                                 if c.done: Rectangle { x: 10px; y: 20px; height: 1px; width: min(ct.preferred-width, parent.width - 44px); background: #62646E; }
                                 Text {
                                     x: parent.width - self.preferred-width - 10px; y: 11px;
-                                    text: c.prio == 1 ? "!!!" : c.prio == 2 ? "" : "!";
+                                    text: c.prio == 1 ? "!!!" : c.prio == 2 ? "!!" : c.prio == 3 ? "!" : "";
                                     font-family: G.mono; font-size: 12px; font-weight: 600;
-                                    color: c.prio == 1 ? G.accent : G.ink;
+                                    color: c.prio == 1 ? G.accent : #8A8C96;
                                 }
                                 HorizontalLayout {
                                     x: 10px;
@@ -237,7 +240,7 @@ component Kanban inherits Rectangle {
                                         if (root.dragging) {
                                             root.gx = self.absolute-position.x - cols.absolute-position.x + self.mouse-x - 12px;
                                             root.gy = self.absolute-position.y - root.absolute-position.y + self.mouse-y;
-                                            root.drop-col = max(0, min(S.columns.length - 1, floor(root.gx / root.colw)));
+                                            root.drop-col = max(0, min(S.columns.length - 1, floor(root.gx / root.pitch)));
                                         }
                                     }
                                     // клик по названию открывает задачу, по остальному месту — выбирает карточку
@@ -269,11 +272,7 @@ component Kanban inherits Rectangle {
                             if col.over: Text { text: "Больше лимита — сначала доделай начатое"; color: G.red; font-size: 11px; wrap: word-wrap; }
                             if col.cards.length == 0: Rectangle {
                                 height: 110px;
-                                Rectangle {
-                                    x: (parent.width - 42px) / 2; y: 16px; width: 42px; height: 42px; border-radius: 21px;
-                                    border-width: 1px; border-color: #8A8C96;
-                                    Text { text: "ВЫГЛ."; font-family: G.mono; font-size: 8px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
-                                }
+                                Sat { x: (parent.width - 40px) / 2; y: 16px; width: 40px; height: 40px; c: G.grey; opacity: 0.8; }
                                 Text { y: 68px; width: parent.width; text: "ТУТ ПОКА ПУСТОВАТО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; horizontal-alignment: center; }
                             }
                             // добавить в колонку
@@ -288,23 +287,22 @@ component Kanban inherits Rectangle {
                                 height: 36px;
                                 border-radius: 8px;
                                 border-width: 1px;
-                                border-color: aa.has-hover ? #8A8C96 : #55575F;
-                                Text { x: 12px; text: "+ Добавить задачу"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                                border-color: aa.has-hover ? G.accent : G.line-strong;
+                                Text { x: 12px; text: "＋ Добавить задачу"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
                                 Text { x: parent.width - 20px; text: "N"; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; }
                                 aa := TouchArea { clicked => { root.adding = col.id; } mouse-cursor: pointer; }
                             }
                         }
                     }
                 }
-                if hot: Brackets { x: 0; y: 0; width: root.colw - 8px; height: parent.height; }
-                // провод к следующей колонке: по зазору 8 px между колонками, на высоте шапки;
-                // сокеты 10 px сидят центром на краях нод (правая грань этой — colw-8, левая следующей — colw)
+                if hot: Brackets { x: 0; y: 0; width: root.colw; height: parent.height; }
+                // провод к следующей колонке через зазор 28 px на высоте шапки; сокеты сидят центром на краях нод
                 if ci < S.columns.length - 1: Rectangle {
                     property <color> hu: head == #3D3E45 ? #A3A5AE : col.hue;
-                    x: root.colw - 13px; y: 10px; width: 18px; height: 10px;
-                    Wire { x: 0; y: 0; width: 18px; height: 10px; viewbox-width: 18; viewbox-height: 10; x1: 5; y1: 5; x2: 13; y2: 5; k: 3; hue: hu; }
+                    x: root.colw - 5px; y: 10px; width: root.gap + 10px; height: 10px;
+                    Wire { x: 0; y: 0; width: parent.width; height: 10px; viewbox-width: parent.width / 1px; viewbox-height: 10; x1: 5; y1: 5; x2: parent.width / 1px - 5; y2: 5; k: 10; hue: hu; }
                     Socket { x: 0; y: 0; hue: hu; ring: false; }
-                    Socket { x: 8px; y: 0; hue: hu; }
+                    Socket { x: root.gap; y: 0; hue: hu; }
                 }
             }
         }
