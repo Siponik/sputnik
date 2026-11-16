@@ -11,15 +11,32 @@ export component Mono inherits Text {
     color: G.muted;
 }
 
-// Квадрат 10px на краю ноды — сюда приходит провод.
+// Гнездо и провод — единые правила docs/design-g-wires.md (п.25).
+// Гнездо: квадрат 10×10, скругление 3. Полное (выход) — заливка цветом источника, обводка GROUND;
+// пустое (ring, вход или необязательная связь) — заливка GROUND, обводка цветом источника.
 export component Socket inherits Rectangle {
     in property <color> hue: G.line-strong;
+    in property <bool> ring: true;
     width: 10px;
     height: 10px;
     border-radius: 3px;
-    background: G.node;
+    background: ring ? #191A1E : hue;
     border-width: 1.5px;
-    border-color: hue;
+    border-color: ring ? hue : #191A1E;
+}
+
+// Провод: безье M x1 y1 C x1+k y1, x2-k y2, x2 y2, толщина 1.5, цвет источника.
+// Координаты — в единицах viewbox (обычно 1 = 1 px слоя, где рисуются провода).
+export component Wire inherits Path {
+    in property <float> x1;
+    in property <float> y1;
+    in property <float> x2;
+    in property <float> y2;
+    in property <float> k: 10;
+    in property <color> hue: G.accent;
+    stroke: hue;
+    stroke-width: 1.5px;
+    commands: "M " + x1 + " " + y1 + " C " + (x1 + k) + " " + y1 + " " + (x2 - k) + " " + y2 + " " + x2 + " " + y2;
 }
 
 // Нода: шапка «NN · НАЗВАНИЕ» на заливке, тело — содержимое. main — главная нода (крупнее, скобки по углам).

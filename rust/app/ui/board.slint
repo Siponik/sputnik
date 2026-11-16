@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { Pipe } from "pipe.slint";
 
@@ -333,10 +333,11 @@ component Kanban inherits Rectangle {
                 // провод к следующей колонке: по зазору 8 px между колонками, на высоте шапки;
                 // сокеты 10 px сидят центром на краях нод (правая грань этой — colw-8, левая следующей — colw)
                 if ci < S.columns.length - 1: Rectangle {
+                    property <color> hu: head == #3D3E45 ? #A3A5AE : col.hue;
                     x: root.colw - 13px; y: 10px; width: 18px; height: 10px;
-                    Rectangle { x: 5px; y: 4.25px; width: 8px; height: 1.5px; background: head == #3D3E45 ? #7C7E88 : col.hue; }
-                    Rectangle { x: 0; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
-                    Rectangle { x: 8px; y: 0; width: 10px; height: 10px; border-radius: 3px; background: head == #3D3E45 ? #7C7E88 : col.hue; border-width: 1.5px; border-color: G.bg; }
+                    Wire { x: 0; y: 0; width: 18px; height: 10px; viewbox-width: 18; viewbox-height: 10; x1: 5; y1: 5; x2: 13; y2: 5; k: 3; hue: hu; }
+                    Socket { x: 0; y: 0; hue: hu; ring: false; }
+                    Socket { x: 8px; y: 0; hue: hu; }
                 }
             }
         }
