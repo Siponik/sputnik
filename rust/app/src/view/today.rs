@@ -44,10 +44,11 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_today_count((items.len() - done) as i32);
     let all_rows: Vec<TaskRow> = over.iter().chain(now.iter()).cloned().collect();
     // п.39: много задач или списков — видно не больше 6 открытых, остальные под «Ещё N», сделанные — в «Сделано · N»
-    let lists_n = { let mut v: Vec<&String> = items.iter().map(|x| &x.0).collect(); v.sort(); v.dedup(); v.len() };
+    let _lists_n = { let mut v: Vec<&String> = items.iter().map(|x| &x.0).collect(); v.sort(); v.dedup(); v.len() };
     let open_rows: Vec<TaskRow> = all_rows.iter().filter(|r| !r.done).cloned().collect();
     let done_rows: Vec<TaskRow> = all_rows.iter().filter(|r| r.done).cloned().collect();
-    let many = open_rows.len() > 6 || lists_n > 4;
+    // новый вид «Сегодня» (G_TodayMany) — всегда; свёртки появляются, только когда есть что прятать
+    let many = true;
     g.set_today_many(many);
     let (rows, more_n, fold_n, k_open) = if !many { (all_rows.clone(), 0, 0, all_rows.len()) } else {
         let k = if u.today_more { open_rows.len() } else { open_rows.len().min(6) };
@@ -75,7 +76,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let (mut more_y, mut fold_y) = (-1.0f32, -1.0f32);
     for i in 0..rows.len() {
         if many && i == k_open {
-            if more_n > 0 || u.today_more { more_y = yy; yy += 41.0; }
+            if more_n > 0 || (u.today_more && open_rows.len() > 6) { more_y = yy; yy += 41.0; }
             if fold_n > 0 { fold_y = yy; yy += 41.0; }
         }
         ys.push(yy);
