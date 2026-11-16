@@ -317,11 +317,13 @@ export component TaskDialog inherits Overlay {
                         HorizontalLayout {
                             x: 10px; y: 72px; height: 26px; width: parent.width - 20px; spacing: 0; alignment: start;
                             Rectangle { width: 22px; Icon { x: 0; y: 6px; width: 14px; height: 14px; name: "bell"; c: G.muted; } }
+                            // первые два чипа, остальные прячутся в «+N» — ряд не вылезает за край
                             for r in S.t-reminds: Rectangle {
-                                visible: r.on; width: r.on ? rc.width + 6px : 0px;
+                                property <bool> show: r.on && r.hint.to-float() < 2;
+                                visible: show; width: show ? rc.width + 6px : 0px;
                                 rc := Chip { x: 0; text: r.label + " ×"; on: true; clicked => { S.t-remind(r.id); } }
                             }
-                            Chip { text: "＋"; on: root.pop == 1; clicked => { root.pop = root.pop == 1 ? 0 : 1; } }
+                            Chip { text: S.t-remind-n > 2 ? "+" + (S.t-remind-n - 2) : "＋"; on: root.pop == 1; clicked => { root.pop = root.pop == 1 ? 0 : 1; } }
                         }
                     }
                     // Свойства: строки с выпадающими списками
@@ -379,6 +381,8 @@ export component TaskDialog inherits Overlay {
                 }
             }
             // меню ⋯
+            // клик мимо закрывает выпадающий список
+            if root.menu || root.pop > 0 || root.lists-open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { root.menu = false; root.pop = 0; root.lists-open = false; } }
             if root.menu: Rectangle {
                 x: root.W - 200px; y: 34px; width: 176px; height: 84px;
                 border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;

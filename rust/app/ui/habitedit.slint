@@ -35,7 +35,9 @@ component HTime inherits Rectangle {
     in property <string> val;
     in property <bool> clearable;
     callback picked(string);
-    in-out property <bool> open;
+    property <int> my;
+    out property <bool> open: root.my > 0 && S.drop == root.my;
+    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
     width: 104px;
     height: 34px;
     border-radius: 8px;
@@ -43,7 +45,7 @@ component HTime inherits Rectangle {
     border-color: open ? S.he-hue : G.line;
     background: #2C2D33;
     function put(raw: string) {
-        if (raw == "none") { root.picked(""); root.open = false; return; }
+        if (raw == "none") { root.picked(""); S.drop = 0; return; }
         if (raw == "") { return; }
         let t = S.c-tnorm(raw, root.val);
         if (t != "") { root.picked(t); }
@@ -52,7 +54,7 @@ component HTime inherits Rectangle {
     Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
     Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
     TouchArea {
-        clicked => { root.open = !root.open; }
+        clicked => { root.toggle(); }
         mouse-cursor: pointer;
         // колесо: ±15 минут без открытия выпадашки
         scroll-event(e) => {
@@ -61,6 +63,8 @@ component HTime inherits Rectangle {
             reject
         }
     }
+    // клик мимо закрывает выпадающий список
+    if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
     if root.open: Rectangle {
         x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
@@ -69,8 +73,8 @@ component HTime inherits Rectangle {
         inp := Field {
             x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
             placeholder: "730, 17, 19:30…";
-            accepted(t) => { root.put(t); root.open = false; }
-            escape => { root.open = false; }
+            accepted(t) => { root.put(t); S.drop = 0; }
+            escape => { S.drop = 0; }
         }
         HorizontalLayout {
             x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
@@ -78,7 +82,7 @@ component HTime inherits Rectangle {
                 visible: i < 3 || root.clearable;
                 border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
                 Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); root.open = false; } mouse-cursor: pointer; }
+                qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); S.drop = 0; } mouse-cursor: pointer; }
             }
         }
         for h[i] in 24: Rectangle {
@@ -96,7 +100,7 @@ component HTime inherits Rectangle {
             background: ma.has-hover ? G.node-hover : transparent;
             border-width: 1px; border-color: G.line;
             Text { text: ":" + m; font-family: G.mono; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-            ma := TouchArea { clicked => { root.put("m" + m); root.open = false; } mouse-cursor: pointer; }
+            ma := TouchArea { clicked => { root.put("m" + m); S.drop = 0; } mouse-cursor: pointer; }
         }
         init => { inp.grab(); }
     }
@@ -129,8 +133,7 @@ export component HabitEditDialog inherits Overlay {
     property <bool> side: self.width >= root.W + 330px;
     close => { S.he-close(); }
     function close-pop() -> bool {
-        if (ws.open) { ws.open = false; return true; }
-        if (we.open) { we.open = false; return true; }
+        if (S.drop != 0) { S.drop = 0; return true; }
         if (root.popen != "") { root.popen = ""; return true; }
         false
     }

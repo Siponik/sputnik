@@ -297,6 +297,10 @@ export global S {
     in property <[Opt]> t-cols;
     in property <[Sub]> t-subs;
     in property <[Opt]> t-reminds;
+    in property <int> t-remind-n;
+    // открытый выпадающий список: одновременно только один (номер выдаёт drop-n)
+    in-out property <int> drop;
+    in-out property <int> drop-n;             // сколько напоминаний включено
     in property <[Opt]> t-repeats;
     in property <[Opt]> t-lists;
     in property <string> t-saved;
