@@ -1,5 +1,6 @@
 //! Спутник в меню «Пуск»: id приложения для Windows и ярлык «Спутник» в меню пользователя.
 //! Проверки — `sputnik_core::shortcut`, создание ярлыка — PowerShell (`startmenu.ps1`).
+#[cfg(windows)]
 use sputnik_core::shortcut::{needs_link, APP_ID, LINK_NAME};
 
 /// Id приложения процессу — до создания окна, чтобы окно на панели задач совпало с закреплённым ярлыком.
