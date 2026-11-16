@@ -91,13 +91,11 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(google::Google::default())
-        .setup(|app| {
-            // Значок на панели задач после обновления и ярлык в «Пуске» (src/pin.rs) — в фоне, запуск не ждёт.
-            let id = app.config().identifier.clone();
-            std::thread::spawn(move || {
+        .setup(|_| {
+            // Значок на панели задач после обновления (src/pin.rs) — в фоне, запуск не ждёт.
+            std::thread::spawn(|| {
                 std::thread::sleep(std::time::Duration::from_secs(5));
                 pin::heal();
-                pin::start_menu(&id);
             });
             Ok(())
         })
