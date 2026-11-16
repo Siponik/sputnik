@@ -115,6 +115,8 @@ component Kanban inherits Rectangle {
     property <int> drop-i;        // место в ней (0 — перед первой)
     property <string> adding: "";
     fl := Flickable {
+        // тащить мышью можно только карточки; доска листается колесом
+        interactive: false;
         content-width: max(self.width, S.columns.length * root.colw + 24px);
         cols := HorizontalLayout {
             padding: 0px;
@@ -175,8 +177,11 @@ component Kanban inherits Rectangle {
                                     text: c.title;
                                     wrap: word-wrap;
                                     font-size: 13.5px;
-                                    color: c.done ? #62646E : G.ink;
+                                    color: c.done ? #62646E : title-hot ? G.accent-ink : G.ink;
                                 }
+                                // наведение на название: подчёркивание, клик откроет задачу
+                                property <bool> title-hot: ca.has-hover && !root.dragging && ca.mouse-y >= 6px && ca.mouse-y <= 16px + ct.preferred-height && ca.mouse-x <= self.width - 40px;
+                                if title-hot: Rectangle { x: 10px; y: 11px + ct.preferred-height + 1px; height: 1px; width: min(ct.preferred-width, parent.width - 44px); background: G.accent; }
                                 if c.done: Rectangle { x: 10px; y: 20px; height: 1px; width: min(ct.preferred-width, parent.width - 44px); background: #62646E; }
                                 Text {
                                     x: parent.width - self.preferred-width - 10px; y: 11px;
