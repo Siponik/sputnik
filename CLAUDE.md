@@ -22,7 +22,7 @@
 | `docs/` | Короткие описания подсистем (список ниже) | |
 | `archive/` | Старый дизайн и заметки о старом трекере. **Не читать без прямой просьбы пользователя** | архив |
 
-Документы: `rust-architecture.md` (устройство Rust-версии), `design-g.md` + `design-g-fixes.md` (вид), `knowledge.md` («Знания»), `shared-sphere.md` (общие сферы), `claude-inbox.md` (очередь «Входящих от Claude»).
+Документы: `rust-architecture.md` (устройство Rust-версии), `design-g.md` + `design-g-fixes.md` (вид), `knowledge.md` («Знания»), `shared-sphere.md` (общие сферы), `claude-inbox.md` (очередь «Входящих от Claude»), `design-g-wires.md` (гнёзда и провода).
 
 ## Проверки
 
