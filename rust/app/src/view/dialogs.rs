@@ -119,8 +119,8 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     let mins = lead_mins(&l["remind"]);
     g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).collect()));
     let every = s(&l["repeat"]["every"]);
-    let mut reps = vec![opt("", "нет", every.is_empty())];
-    reps.extend([("day", "день"), ("weekdays", "будни"), ("week", "неделя"), ("month", "месяц"), ("year", "год")].iter().map(|(id2, lab)| opt(*id2, *lab, every == *id2)));
+    let mut reps = vec![opt("", "Нет", every.is_empty())];
+    reps.extend([("day", "Каждый день"), ("weekdays", "По будням"), ("week", "Каждую неделю"), ("month", "Каждый месяц"), ("year", "Каждый год")].iter().map(|(id2, lab)| opt(*id2, *lab, every == *id2)));
     g.set_t_repeats(model(reps));
     g.set_t_lists(model(list_opts(app, list)));
     let pending = app.outbox.pending_for(id);
@@ -399,6 +399,10 @@ fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Valu
     if let Some(c) = spans.last().filter(|x| s(&x["stage"]) == cur) { meta.push(format!("в этой колонке {} дн", c["days"])); }
     let tot = sl::total_days(log, now);
     if tot > 0 { meta.push(format!("всего {tot} дн")); }
+    if meta.is_empty() {
+        let u = s(&t0["updated"]);
+        if u.len() >= 10 { meta.push(format!("изменена {}", dm(u))); }
+    }
     g.set_t_meta(ss(meta.join(" · ")));
     // история: переходы по колонкам, новые сверху
     let name_of = |sid: &str| cols.iter().find(|c| s(&c.0["id"]) == sid).map(|c| text(&c.0["name"])).unwrap_or_else(|| sid.to_string());

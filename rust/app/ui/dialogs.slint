@@ -2,6 +2,7 @@
 import { G } from "theme.slint";
 import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView } from "kit.slint";
 import { Sat } from "kit.slint";
+import { LinkNote } from "linknote.slint";
 import { S, Opt, Sub, Found, DpCell } from "store.slint";
 import { TextEdit } from "std-widgets.slint";
 
@@ -254,11 +255,12 @@ component TaskBody inherits Rectangle {
                 Rectangle { y: 30px; height: 1px; background: G.line; }
                 TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
                 Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Ракурс, референсы…"; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
-                nt := ScrollInput {
+                nt := LinkNote {
                     x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
                     text: S.c-notes;
                     edited(t) => { S.c-notes-set(t); root.sub-focus(); }
                     escape => { root.grab-line(); }
+                    opened => { S.c-close(); }
                 }
             }
         }
@@ -452,11 +454,12 @@ component NoteBox inherits Box {
     Rectangle { y: 30px; height: 1px; background: G.line; }
     TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
     Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: root.hint; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
-    nt := ScrollInput {
+    nt := LinkNote {
         x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
         text: S.c-notes;
         edited(t) => { S.c-notes-set(t); root.sub-focus(); }
         escape => { root.grab-line(); }
+        opened => { S.c-close(); }
     }
 }
 

@@ -563,6 +563,9 @@ impl App {
     pub fn subtasks(&self, list: &str, id: &str) -> Vec<Value> {
         let mut v: Vec<Value> = self.tasks_of(list).iter().filter(|t| t["parent"] == id && t["deleted"] != true).cloned().collect();
         v.sort_by(|a0, b0| s(&a0["position"]).cmp(s(&b0["position"])));
+        // свой порядок из слоя (перетаскивание за ручку) — поверх порядка Google
+        let ord = |x: &Value| self.lt(s(&x["id"]))["ord"].as_i64().unwrap_or(i64::MAX);
+        v.sort_by_key(|x| ord(x));
         v
     }
 
@@ -986,6 +989,16 @@ impl App {
             }
         }
         self.touch("tasks", &id, patch);
+    }
+
+    /// Переставить подзадачу id на место before (пусто — в конец), порядок пишется в слой.
+    pub fn move_subtask(&mut self, list: &str, parent: &str, id: &str, before: &str) {
+        let mut ids: Vec<String> = self.subtasks(list, parent).iter().map(|x| text(&x["id"])).collect();
+        let Some(i) = ids.iter().position(|x| x == id) else { return };
+        let it = ids.remove(i);
+        let at = ids.iter().position(|x| x == before).unwrap_or(ids.len());
+        ids.insert(at, it);
+        self.set_order(&ids);
     }
 
     /// Порядок карточек в колонке канбана: всем id по очереди пишется ord 0,1,2…

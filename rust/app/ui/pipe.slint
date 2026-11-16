@@ -1,6 +1,7 @@
 // Конвейер: строка — ассет, дорожка этапов; клик по этапу переносит, «→» — следующий.
 import { G } from "theme.slint";
 import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView } from "kit.slint";
+import { LinkNote } from "linknote.slint";
 import { S, PipeRow } from "store.slint";
 
 component StageChip inherits Rectangle {
@@ -42,6 +43,9 @@ component PipeLine inherits Rectangle {
     in property <PipeRow> r;
     property <bool> open: S.pipe-open == r.id;
     property <int> past-open: -1;     // раскрытый пройденный этап
+    property <int> drag-b: -1;
+    property <int> drag-i: -1;
+    property <int> drag-to: -1;
     height: open ? 62px + 340px : 62px;
     border-radius: 8px;
     background: G.node;
@@ -108,9 +112,28 @@ component PipeLine inherits Rectangle {
                     if expanded: VerticalLayout {
                         x: 8px; y: hd.height; width: parent.width - 16px;
                         spacing: 0;
-                        for sb in b.subs: Rectangle {
+                        for sb[si] in b.subs: Rectangle {
                             height: 28px;
-                            Icon { x: 0; y: 7px; width: 14px; height: 14px; name: "drag"; c: #55575F; }
+                            background: root.drag-b == bi && root.drag-to == si && root.drag-to != root.drag-i ? G.accent-wash : transparent;
+                            Rectangle {
+                                x: 0; width: 18px;
+                                Icon { x: 0; y: 7px; width: 14px; height: 14px; name: "drag"; c: hda.has-hover || (root.drag-b == bi && root.drag-i == si) ? G.ink : #55575F; }
+                                hda := TouchArea {
+                                    mouse-cursor: move;
+                                    pointer-event(e) => {
+                                        if (e.kind == PointerEventKind.down) { root.drag-b = bi; root.drag-i = si; root.drag-to = si; }
+                                        if (e.kind == PointerEventKind.up && root.drag-i >= 0) {
+                                            if (root.drag-to != root.drag-i) {
+                                                S.sub-move(r.list-id, r.id, sb.id, root.drag-to > root.drag-i
+                                                    ? (root.drag-to + 1 < b.subs.length ? b.subs[root.drag-to + 1].id : "")
+                                                    : b.subs[root.drag-to].id);
+                                            }
+                                            root.drag-b = -1; root.drag-i = -1; root.drag-to = -1;
+                                        }
+                                    }
+                                    moved => { if (root.drag-i >= 0) { root.drag-to = max(0, min(b.subs.length - 1, si + round((self.mouse-y - self.pressed-y) / 28px))); } }
+                                }
+                            }
                             Rectangle {
                                 x: 20px; y: 7px; width: 14px; height: 14px; border-radius: 3px;
                                 background: sb.done ? #45464D : transparent;
@@ -119,7 +142,7 @@ component PipeLine inherits Rectangle {
                             }
                             st := Text { x: 42px; text: sb.title; font-size: 13px; color: sb.done ? #62646E : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 48px; }
                             if sb.done: Rectangle { x: 42px; y: 14px; height: 1px; width: min(st.preferred-width, parent.width - 48px); background: #62646E; }
-                            TouchArea { clicked => { S.toggle(r.list-id, sb.id); } mouse-cursor: pointer; }
+                            TouchArea { x: 20px; width: parent.width - 20px; clicked => { S.toggle(r.list-id, sb.id); } mouse-cursor: pointer; }
                         }
                         Field { height: 30px; bare: true; font-size: 12.5px; placeholder: "+ подзадача · Enter"; accepted(t) => { if (t != "") { S.pipe-sub-add(r.list-id, r.id, b.stage-id, t); self.clear(); } } }
                     }
@@ -149,10 +172,12 @@ component PipeLine inherits Rectangle {
             border-radius: 8px; background: #2C2D33; border-width: 1px; border-color: G.line;
             Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
             IconBtn { x: parent.width - 30px; y: 4px; icon: "expand"; clicked => { S.open-task(r.list-id, r.id); } }
-            ScrollView {
+            if S.pipe-note == "" && !pn.focused: Text { x: 10px; y: 30px; text: "Заметка… [[ — ссылка на «Знания»"; font-size: 12.5px; color: #62646E; }
+            pn := LinkNote {
                 x: 10px; y: 30px; width: parent.width - 20px; height: parent.height - 38px;
-                viewport-height: nt.preferred-height + 4px;
-                nt := Text { width: parent.width - 12px; text: S.pipe-note == "" ? "Заметки нет — открой задачу, чтобы написать" : S.pipe-note; font-size: 12.5px; color: S.pipe-note == "" ? #62646E : G.ink; wrap: word-wrap; }
+                font-size: 12.5px;
+                text: S.pipe-note;
+                edited(t) => { S.pipe-notes-set(r.list-id, r.id, t); }
             }
         }
         // низ: назад, время по этапам, «Открыть полностью»

@@ -363,6 +363,7 @@ pub fn wire(w: &AppWindow) {
     g.on_pipe_gallery_set(|v| act(|_, u| u.pipe_gallery = v));
     g.on_pipe_stage_set(|v| act(|_, u| u.pipe_stage = v + 1));
     g.on_pipe_by_set(|v| act(|_, u| u.pipe_by = str_(&v)));
+    g.on_sub_move(|l, p, id, before| act(|app, _| app.move_subtask(&l, &p, &id, &before)));
     // подзадача этапа (п.32): помечается этапом в слое
     g.on_pipe_sub_add(|l, id, st, t| act(|app, _| {
         let sid = app.add_subtask(&l, &id, &t);
@@ -1075,6 +1076,13 @@ pub fn wire(w: &AppWindow) {
         };
         g.set_link_found(model(found));
     });
+    g.on_link_chips(|t| model(crate::state::peek(|app| sputnik_core::wikilink::links(t.as_str()).into_iter().map(|title| {
+        let path = app.notes.notes.iter().find(|n| n.title.to_lowercase() == title.to_lowercase()).map(|n| n.path.clone()).unwrap_or_default();
+        crate::Opt { id: ss(path), label: ss(title), hint: ss(""), hue: color(""), on: false }
+    }).collect()).unwrap_or_default()));
+    g.on_pipe_notes_set(|l, id, t| act(move |app, _| {
+        if let Some(tk) = task_of(app, &l, &id) { app.set_notes(&l, &tk, &t); }
+    }));
     g.on_link_insert(|t, title| ss(sputnik_core::wikilink::insert(t.as_str(), title.as_str())));
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
