@@ -312,6 +312,16 @@ export global S {
     in property <string> t-list-name;
     in property <string> t-due;
     in property <string> t-due-label;
+    in property <string> t-time;        // начало «12:30» или пусто — весь день
+    in property <string> t-time-label;  // «12:30–13:30»
+    callback t-time-set(string);
+    in property <string> pipe-time;
+    in property <string> pipe-time-label;
+    in property <[Opt]> pipe-reminds;
+    in property <int> pipe-remind-n;
+    callback w-time(string, string, string);   // список, задача, «12:30» или ""
+    callback w-date(string, string);           // открыть выбор даты для задачи
+    callback w-remind(string, string, string); // список, задача, минуты
     in property <int> t-prio;
     in property <[Opt]> t-cols;
     in property <[Sub]> t-subs;

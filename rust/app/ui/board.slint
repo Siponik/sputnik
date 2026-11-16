@@ -123,12 +123,17 @@ component Kanban inherits Rectangle {
     property <bool> fly-on; property <bool> snap;
     property <length> fly-x; property <length> fly-y;
     property <int> fly: S.fly-n;
-    changed fly => {
-        if (root.sel-title == "") { return; }
+    // где карточка стояла до последнего переноса: перенос и нажатие клавиши приходят в разном порядке,
+    // поэтому перелёт стартует через миг, когда новое место уже известно
+    property <length> prev-x; property <length> prev-y;
+    changed fly => { t0.running = true; }
+    t0 := Timer { interval: 16ms; running: false; triggered => {
+        self.running = false;
+        if (root.sel-title == "" || (root.prev-x == root.sel-x && root.prev-y == root.sel-y)) { return; }
         root.snap = true; root.fly-on = true;
-        root.fly-x = root.sel-x; root.fly-y = root.sel-y;
+        root.fly-x = root.prev-x; root.fly-y = root.prev-y;
         t1.running = true;
-    }
+    } }
     t1 := Timer { interval: 20ms; running: false; triggered => {
         self.running = false; root.snap = false;
         root.fly-x = root.sel-x; root.fly-y = root.sel-y;   // уже новое место после переноса
@@ -199,7 +204,7 @@ component Kanban inherits Rectangle {
                                 property <length> me-x: self.absolute-position.x - root.absolute-position.x;
                                 property <length> me-y: self.absolute-position.y - root.absolute-position.y;
                                 property <bool> me: c.sel;
-                                function report() { if (c.sel) { root.sel-x = me-x; root.sel-y = me-y; root.sel-h = self.height; root.sel-title = c.title; } }
+                                function report() { if (c.sel) { if (c.title == root.sel-title && (me-x != root.sel-x || me-y != root.sel-y)) { root.prev-x = root.sel-x; root.prev-y = root.sel-y; } root.sel-x = me-x; root.sel-y = me-y; root.sel-h = self.height; root.sel-title = c.title; } }
                                 init => { report(); }
                                 changed me => { report(); }
                                 changed me-x => { report(); }
@@ -445,7 +450,9 @@ component Stickers inherits Rectangle {
                                     root.dragging = true; root.drag-id = it.card.id;
                                 }
                                 if (root.dragging) {
-                                    root.dx = self.mouse-x - self.pressed-x; root.dy = self.mouse-y - self.pressed-y;
+                                    // стикер едет вместе с мышью, а mouse-x считается от его нового места — копим сдвиг,
+                                    // иначе призрак дёргается и отстаёт от курсора
+                                    root.dx += self.mouse-x - self.pressed-x; root.dy += self.mouse-y - self.pressed-y;
                                     root.drop-lane = max(0, min(S.columns.length - 1, floor((it.x + root.dx + 118px) / root.pitch)));
                                 }
                             }

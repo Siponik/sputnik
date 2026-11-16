@@ -176,9 +176,11 @@ component DateBox inherits Box {
 }
 
 // Поле времени с выпадающим списком (шаг 15 минут); пустое — «—:—». clearable — строка «без времени».
-component TimeBox inherits Box {
+export component TimeBox inherits Box {
     callback picked(string);
     in property <string> val;
+    in property <string> label;          // что показать вместо val (например, интервал «12:30–13:30»)
+    in property <string> empty: "—:—";
     in property <bool> clearable;
     property <int> my;
     out property <bool> open: root.my > 0 && S.drop == root.my;
@@ -192,7 +194,7 @@ component TimeBox inherits Box {
         if (t != "") { root.picked(t); }
     }
     Icon { x: 12px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #A3A5AE; }
-    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13.5px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
+    Text { x: 32px; width: parent.width - 52px; overflow: elide; text: root.val == "" ? root.empty : root.label != "" ? root.label : root.val; font-family: root.empty != "—:—" ? G.sans : G.mono; font-size: root.empty != "—:—" ? 13px : 13.5px; color: root.val == "" ? (root.empty != "—:—" ? G.ink : #6E7079) : G.ink; vertical-alignment: center; height: parent.height; }
     Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
     TouchArea {
         clicked => { root.toggle(); }

@@ -3,6 +3,7 @@ import { G } from "theme.slint";
 import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView } from "kit.slint";
 import { LinkNote } from "linknote.slint";
 import { S, PipeRow } from "store.slint";
+import { TimeBox } from "dialogs.slint";
 
 component StageChip inherits Rectangle {
     in property <string> text;
@@ -41,6 +42,7 @@ component StageChip inherits Rectangle {
 // внизу время по этапам.
 component PipeLine inherits Rectangle {
     in property <PipeRow> r;
+    property <bool> rpop;   // выпадающий список напоминаний
     property <bool> open: S.pipe-open == r.id;
     property <int> past-open: -1;     // раскрытый пройденный этап
     property <int> drag-b: -1;
@@ -55,7 +57,10 @@ component PipeLine inherits Rectangle {
     clip: true;
     ra := TouchArea { clicked => { S.pipe-toggle(r.id); } mouse-cursor: pointer; }
     Chev { x: 12px; y: 26px; up: !open; c: #8A8C96; }
-    Text { x: 36px; y: 14px; width: 224px; text: r.title; font-size: 14.5px; font-weight: 600; color: r.done ? #62646E : G.ink; overflow: elide; }
+    // клик по названию открывает задачу целиком (как на канбане и в стикерах), по остальному месту — раскрывает строку
+    rt := Text { x: 36px; y: 14px; width: min(224px, self.preferred-width); text: r.title; font-size: 14.5px; font-weight: 600; color: r.done ? #62646E : (rta.has-hover ? #ffffff : G.ink); overflow: elide;
+        rta := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
+    if rta.has-hover: Rectangle { x: 36px; y: 14px + rt.preferred-height; width: rt.width; height: 1px; background: #ffffff; }
     Text { x: 36px; y: 35px; width: 224px; text: r.meta; font-size: 12px; color: #8A8C96; overflow: elide; }
     HorizontalLayout {
         x: 276px; y: 16px; height: 30px;
@@ -151,13 +156,19 @@ component PipeLine inherits Rectangle {
         }
         // справа — срок и приоритет в одну строку, под ними заметка
         property <length> rx: 36px + min(440px, parent.width * 0.5) + 24px;
+        // п.42 (G_Conveyor): дата, время и приоритет в ряд, ниже напоминания — те же поля, что в окне задачи
+        Rectangle {
+            x: rx; y: 12px; width: min(196px, (parent.width - rx - 20px) * 0.4); height: 34px;
+            border-radius: 8px; border-width: 1px; border-color: dta.has-hover ? G.accent : G.accent-line; background: G.bg;
+            Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
+            Text { x: 32px; width: parent.width - 56px; text: S.pipe-due; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+            Chev { x: parent.width - 20px; y: 12px; c: G.muted; }
+            dta := TouchArea { clicked => { S.w-date(r.list-id, r.id); } mouse-cursor: pointer; }
+        }
+        ptb := TimeBox { x: rx + min(196px, (parent.width - rx - 20px) * 0.4) + 6px; y: 12px; width: 128px; height: 34px; z: self.open ? 20 : 0; border-radius: 8px;
+            val: S.pipe-time; label: S.pipe-time-label; empty: "Весь день"; clearable: true; picked(t) => { S.w-time(r.list-id, r.id, t); } }
         HorizontalLayout {
-            x: rx; y: 12px; width: parent.width - rx - 20px; height: 30px;
-            spacing: 8px;
-            Text { text: "Срок"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
-            Rectangle { width: dt.preferred-width + 24px; border-radius: 8px; border-width: 1px; border-color: G.accent-line; dt := Text { text: S.pipe-due; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; } TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
-            Rectangle { width: 8px; }
-            Text { text: "Приоритет"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
+            x: ptb.x + ptb.width + 16px; y: 12px; height: 34px; spacing: 6px;
             for p[k] in ["!!!", "!!", "!"]: Rectangle {
                 width: 34px; border-radius: 8px;
                 border-width: 1px; border-color: S.pipe-prio == k + 1 ? G.accent : G.line;
@@ -165,10 +176,26 @@ component PipeLine inherits Rectangle {
                 Text { text: p; font-family: G.mono; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                 TouchArea { clicked => { S.pipe-prio-set(r.list-id, r.id, k + 1); } mouse-cursor: pointer; }
             }
-            Rectangle { }
+        }
+        HorizontalLayout {
+            x: rx; y: 54px; height: 26px; width: parent.width - rx - 20px; spacing: 6px; alignment: start;
+            Rectangle { width: 16px; Icon { x: 0; y: 6px; width: 14px; height: 14px; name: "bell"; c: G.muted; } }
+            for o in S.pipe-reminds: Rectangle {
+                property <bool> show: o.on && o.hint.to-float() < 2;
+                visible: show; width: show ? rct.preferred-width + 20px : 0px;
+                border-radius: 7px; border-width: 1px; border-color: G.accent; background: G.accent-wash;
+                rct := Text { text: o.label + " ×"; font-family: G.mono; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                TouchArea { clicked => { S.w-remind(r.list-id, r.id, o.id); } mouse-cursor: pointer; }
+            }
+            Rectangle {
+                width: rpt.preferred-width + 20px; border-radius: 7px; border-width: 1px; border-color: root.rpop ? G.accent : G.line;
+                background: rpa.has-hover ? G.node-hover : transparent;
+                rpt := Text { text: S.pipe-remind-n > 2 ? "+" + (S.pipe-remind-n - 2) : "＋"; font-size: 12px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+                rpa := TouchArea { clicked => { root.rpop = !root.rpop; } mouse-cursor: pointer; }
+            }
         }
         Rectangle {
-            x: rx; y: 52px; width: parent.width - rx - 20px; height: 222px;
+            x: rx; y: 90px; width: parent.width - rx - 20px; height: 184px;
             border-radius: 8px; background: #2C2D33; border-width: 1px; border-color: G.line;
             Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
             IconBtn { x: parent.width - 30px; y: 4px; icon: "expand"; clicked => { S.open-task(r.list-id, r.id); } }
@@ -210,9 +237,28 @@ component PipeLine inherits Rectangle {
                 Text { text: S.pipe-caption; font-family: G.mono; font-size: 9px; letter-spacing: 1.1px; color: #8A8C96; overflow: elide; }
             }
             if S.pipe-segs.length == 0: Rectangle { }
-            Text {
-                text: "Открыть полностью"; font-size: 12.5px; color: G.accent; vertical-alignment: center;
-                TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; }
+            Rectangle { width: oft.preferred-width; }   // место под «Открыть полностью»
+        }
+        // «Открыть полностью» всегда у правого края, есть полоса этапов или нет
+        oft := Text {
+            x: parent.width - 20px - self.preferred-width; y: 287px; height: 52px;
+            text: "Открыть полностью"; font-size: 12.5px; color: ofa.has-hover ? G.accent-ink : G.accent; vertical-alignment: center;
+            ofa := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; }
+        }
+    }
+    if open && root.rpop: TouchArea { x: 0; y: 0; width: parent.width; height: parent.height; z: 29; clicked => { root.rpop = false; } }
+    if open && root.rpop: Rectangle {
+        x: 36px + min(440px, parent.width * 0.5) + 24px; y: 82px + 4px; width: 200px; height: S.pipe-reminds.length * 30px + 10px; z: 30;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        VerticalLayout {
+            padding: 5px;
+            for o in S.pipe-reminds: Rectangle {
+                height: 30px; border-radius: 5px;
+                background: ra2.has-hover ? G.node-hover : transparent;
+                Text { x: 10px; text: o.label; font-size: 13px; color: o.on ? G.accent-ink : G.ink; vertical-alignment: center; height: parent.height; }
+                if o.on: Icon { x: parent.width - 24px; y: 8px; width: 14px; height: 14px; name: "check"; c: G.accent; }
+                ra2 := TouchArea { clicked => { S.w-remind(r.list-id, r.id, o.id); } mouse-cursor: pointer; }
             }
         }
     }
