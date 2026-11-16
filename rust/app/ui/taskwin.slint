@@ -36,7 +36,7 @@ component CardHead inherits Rectangle {
     Text { x: parent.width - 10px - self.preferred-width; text: root.right; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; height: parent.height; }
 }
 
-// строка свойства: значок, название, значение и ▾ (как в макете)
+// строка свойства: значок, название, значение и стрелка (как в макете)
 component PRow inherits Rectangle {
     in property <string> icon;
     in property <string> key;
@@ -50,7 +50,7 @@ component PRow inherits Rectangle {
     Icon { x: 10px; y: 8px; width: 15px; height: 15px; name: root.icon; c: G.muted; }
     Text { x: 33px; width: 92px; text: root.key; font-size: 12.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
     Text { x: 133px; width: parent.width - 133px - 28px; text: root.val == "" ? "—" : root.val; font-size: 12.5px; font-weight: root.val == "" ? 400 : 600; color: root.val == "" ? #55575F : root.c; vertical-alignment: center; height: parent.height; overflow: elide; }
-    if arrow && val != "": Text { x: parent.width - 20px; text: "▾"; font-size: 11px; color: G.muted; vertical-alignment: center; height: parent.height; }
+    if arrow && val != "": Chev { x: parent.width - 20px; y: 13px; c: G.muted; }
     pa := TouchArea { enabled: root.arrow; clicked => { root.clicked(); } mouse-cursor: root.arrow ? pointer : default; }
 }
 
@@ -311,7 +311,7 @@ export component TaskDialog inherits Overlay {
                             border-radius: 8px; border-width: 1px; border-color: da.has-hover ? G.accent : G.accent-line; background: G.bg;
                             Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
                             Text { x: 32px; width: parent.width - 60px; text: S.t-due-label == "" ? "Без срока" : S.t-due-label; font-size: 13px; color: S.t-due-label == "" ? G.muted : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                            Text { x: parent.width - 20px; text: "▾"; font-size: 10px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                            Chev { x: parent.width - 20px; y: 14px; c: G.muted; }
                             da := TouchArea { clicked => { S.dp-open-task(); } mouse-cursor: pointer; }
                         }
                         HorizontalLayout {
