@@ -2,7 +2,7 @@
 // Слева «01 · Источники» — ноды списков, «От Claude» и привычек; провода к строкам «Сборки дня» в середине;
 // справа «03 · Вывод» — «Дальше» и «Итог дня». Координаты проводов считает Rust (view/today.rs).
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Empty, Icon, ScrollView, Wire } from "kit.slint";
+import { Mono, Brackets, Button, Field, Empty, Icon, ScrollView, Wire, Chev } from "kit.slint";
 import { S, TaskRow, SrcNode, Wire } from "store.slint";
 
 component SecLabel inherits HorizontalLayout {
@@ -55,7 +55,8 @@ component Source inherits Rectangle {
             padding-left: 12px;
             padding-right: 16px;
             spacing: 8px;
-            Text { text: (r.fold ? "▸  " : "") + r.title; font-size: 13px; color: r.done || r.fold ? G.dim : (r.accent ? G.accent-ink : G.ink); vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            if r.fold: Icon { name: "next"; width: 9px; y: 9.5px; c: G.dim; }
+            Text { text: r.title; font-size: 13px; color: r.done || r.fold ? G.dim : (r.accent ? G.accent-ink : G.ink); vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
             Text { text: r.right; font-family: G.mono; font-size: 11px; color: r.accent ? G.accent : #8A8C96; vertical-alignment: center; }
         }
         if r.done: Rectangle { x: 12px; y: 14px; height: 1px; width: min(parent.width - 80px, 140px); background: G.dim; }
@@ -261,7 +262,8 @@ export component TodayPage inherits Rectangle {
                 x: 12px; y: S.more-y * 1px; width: parent.width - 24px; height: 41px;
                 background: ma.has-hover ? G.node-hover : transparent;
                 Text { x: 10px; text: S.more-n > 0 ? "+" + S.more-n : "−"; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; height: parent.height; }
-                Text { x: 38px; text: S.more-n > 0 ? "▸" : "▾"; font-size: 10px; color: #62646E; vertical-alignment: center; height: parent.height; }
+                if S.more-n > 0: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
+                if S.more-n == 0: Chev { x: 34px; y: 15px; up: true; }
                 Text { x: 64px; text: S.more-n > 0 ? "Ещё " + S.more-n + (Math.mod(S.more-n, 10) == 1 && Math.mod(S.more-n, 100) != 11 ? " задача" : Math.mod(S.more-n, 10) >= 2 && Math.mod(S.more-n, 10) <= 4 && (Math.mod(S.more-n, 100) < 12 || Math.mod(S.more-n, 100) > 14) ? " задачи" : " задач") + " на день" : "Свернуть"; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 ma := TouchArea { clicked => { S.today-fold(0); } mouse-cursor: pointer; }
@@ -270,7 +272,8 @@ export component TodayPage inherits Rectangle {
                 x: 12px; y: S.fold-y * 1px; width: parent.width - 24px; height: 41px;
                 background: fa.has-hover ? G.node-hover : transparent;
                 Icon { name: "check"; x: 10px; width: 10px; y: 15.5px; c: #62646E; }
-                Text { x: 38px; text: S.fold-open ? "▾" : "▸"; font-size: 10px; color: #62646E; vertical-alignment: center; height: parent.height; }
+                if !S.fold-open: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
+                if S.fold-open: Chev { x: 34px; y: 15px; up: true; }
                 Text { x: 64px; text: "Сделано · " + S.fold-n; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 fa := TouchArea { clicked => { S.today-fold(1); } mouse-cursor: pointer; }
