@@ -127,8 +127,8 @@ export component AppWindow inherits Window {
                 if (e.text == "[" || e.text == "х") { S.pick-list("<"); return accept; }
                 if (e.text == "]" || e.text == "ъ") { S.pick-list(">"); return accept; }
                 // канбан: ←/→ (A/D) — в соседнюю колонку, ↑/↓ — выбор соседней карточки, Enter — открыть
-                if (e.text == Key.LeftArrow || e.text == "a" || e.text == "ф") { S.card-key("left"); return accept; }
-                if (e.text == Key.RightArrow || e.text == "d" || e.text == "в") { S.card-key("right"); return accept; }
+                if (e.text == Key.LeftArrow || e.text == "a" || e.text == "ф") { S.fly-dir = -1; S.fly-n += 1; S.card-key("left"); return accept; }
+                if (e.text == Key.RightArrow || e.text == "d" || e.text == "в") { S.fly-dir = 1; S.fly-n += 1; S.card-key("right"); return accept; }
                 if (e.text == Key.UpArrow) { S.card-key("up"); return accept; }
                 if (e.text == Key.DownArrow) { S.card-key("down"); return accept; }
                 if (e.text == Key.Return) { S.card-key("open"); return accept; }

@@ -5,6 +5,8 @@
 export struct TaskRow { list-id: string, id: string, title: string, list: string, hue: color, when: string, overdue: bool, done: bool, prio: int, sub: string }
 export struct Chip { title: string, hue: color, done: bool, kind: int, list-id: string, id: string, time: string }
 export struct Card { list-id: string, id: string, title: string, hue: color, due: string, overdue: bool, prio: int, subs: string, note: bool, done: bool, who: string, topic: string, pin: bool, sub-done: int, sub-total: int, tag: string, sel: bool }
+// стикер, разложенный по месту: x/y/h считает Rust, Slint только едет к ним (перелёт при смене раскладки)
+export struct StkItem { card: Card, lane: string, hue: color, x: length, y: length, h: length }
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
 export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool, thumb: image, has-thumb: bool, size: string }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
@@ -130,6 +132,9 @@ export global S {
     callback pipe-stage-set(int);
     in property <string> stk-by;               // topic | due
     in property <int> stk-jar;
+    in property <[StkItem]> stk-items;
+    in property <length> stk-h;                // высота поля стикеров (до баночки)
+    callback stk-drop(string, string, string); // список, задача, тема/срок — бросили стикер в колонку
     in property <string> stk-last;
     callback stk-by-set(string);
     callback open-archive();
@@ -302,6 +307,8 @@ export global S {
     in-out property <length> ul-x;            // черта под активной вкладкой шапки
     in-out property <length> ul-y;
     in-out property <length> ul-w;
+    in-out property <int> fly-n;              // ←/→ на канбане: карточка «перелетает» в соседнюю колонку
+    in-out property <int> fly-dir;
     in-out property <int> list-find;          // Ctrl+Shift+L: +1 — фокус в поле «Список…» на доске
     in-out property <int> drop;
     in-out property <int> drop-n;             // сколько напоминаний включено

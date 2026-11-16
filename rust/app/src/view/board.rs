@@ -1,6 +1,6 @@
 //! Модели «Доски»: колонка списков по сферам, доска в одном из четырёх видов.
 use super::*;
-use crate::{ArchRow, Card, Column, Opt, PipeBlock, PipeRow, PipeSeg, SideRow, Sub};
+use crate::{ArchRow, Card, Column, StkItem, Opt, PipeBlock, PipeRow, PipeSeg, SideRow, Sub};
 use sputnik_core::{stickers as stk, templates as tpl};
 
 pub fn view_of(app: &App, list: &str) -> String {
@@ -115,7 +115,9 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         }
         "stickers" => {
             g.set_stk_by(ss(if u.stk_by == "due" { "due" } else { "topic" }));
-            g.set_columns(model(if u.stk_by == "due" { stickers_by_due(app, &id) } else { stickers(app, &id) }));
+            let cols = if u.stk_by == "due" { stickers_by_due(app, &id) } else { stickers(app, &id) };
+            stk_place(g, &cols);
+            g.set_columns(model(cols));
             let week = sputnik_core::dates::ymd(sputnik_core::dates::add_days(sputnik_core::dates::parse_ymd(&today_s()).unwrap(), -7));
             let mut done: Vec<Value> = app.tasks_of(&id).iter().filter(|t| App::top(t) && App::is_done(t) && day10(&t["completed"]) >= week).cloned().collect();
             done.sort_by(|a0, b0| s(&b0["completed"]).cmp(s(&a0["completed"])));
@@ -365,4 +367,49 @@ fn pipe_detail(app: &App, list: &str, t: &Value, cols: &[(Value, Vec<Value>)], c
             _ => String::new(),
         }
     }).collect()));
+}
+
+// Раскладка стикеров одним списком (по id): при смене «по темам / по срокам» или переносе строки
+// модели не пересоздаются, а меняют x/y — Slint плавно ведёт стикер на новое место.
+thread_local! {
+    static STK: std::rc::Rc<slint::VecModel<StkItem>> = std::rc::Rc::new(slint::VecModel::default());
+}
+
+/// Ширина колонки стикеров и зазор (как в board.slint).
+const STK_W: f32 = 236.0;
+const STK_GAP: f32 = 22.0;
+/// Верх первого стикера: шапка темы 22 + 12, поле «+ Стикер» 46 + 12.
+const STK_TOP: f32 = 92.0;
+
+/// Высота стикера по длине названия (строки ~22 знака при 14.5 px).
+pub fn stk_height(title: &str) -> f32 {
+    let lines = (title.chars().count() as f32 / 22.0).ceil().max(1.0);
+    (lines * 20.0 + 76.0).max(118.0)
+}
+
+fn stk_place(g: &S, cols: &[Column]) {
+    use slint::Model;
+    let mut items: Vec<StkItem> = vec![];
+    let mut bottom: f32 = STK_TOP;
+    for (li, c) in cols.iter().enumerate() {
+        let mut y = STK_TOP;
+        for k in 0..c.cards.row_count() {
+            let Some(card) = c.cards.row_data(k) else { continue };
+            let h = stk_height(card.title.as_str());
+            items.push(StkItem { card, lane: c.id.clone(), hue: c.hue, x: li as f32 * (STK_W + STK_GAP), y, h });
+            y += h + 12.0;
+        }
+        bottom = bottom.max(y);
+    }
+    items.sort_by(|a, b| a.card.id.cmp(&b.card.id));
+    STK.with(|m| {
+        let same = m.row_count() == items.len() && (0..items.len()).all(|i| m.row_data(i).map(|r| r.card.id == items[i].card.id).unwrap_or(false));
+        if same {
+            for (i, it) in items.into_iter().enumerate() { m.set_row_data(i, it); }
+        } else {
+            m.set_vec(items);
+        }
+        g.set_stk_items(slint::ModelRc::from(m.clone()));
+    });
+    g.set_stk_h(bottom + 8.0);
 }
