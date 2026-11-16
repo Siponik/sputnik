@@ -45,7 +45,7 @@ left = f'<div style="position: absolute; left: 22px; top: 116px; width: 620px; b
 
 when = box(extra='flex: none', inner=H("КОГДА") + f'<div style="padding: 0 10px 10px; display: flex; flex-direction: column; gap: 8px"><div style="display: flex; gap: 6px">{fld("clock", "12:30–13:30", "width: 140px; ")}{fld("calendar", "Сегодня, чт 5", "flex: 1; ")}</div>'
            f'<div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center"><span style="display: grid; color: {MUT}">{svg_("bell", 14)}</span>{chip("за 15 мин ×", True)}{chip("за час ×", True)}{chip("＋")}</div></div>')
-props = box(extra='flex: none', inner=H("СВОЙСТВА") + pr("Список", "● Работа · клиенты", BLUE) + pr("Колонка", "В работе · 3 дн", OR) + pr("Приоритет", "!! Обычный") + pr("Повтор") + pr("Цвет") + pr("Исполнитель", "Я"))
+props = box(extra='flex: none', inner=H("СВОЙСТВА") + pr("Список", "● Работа · клиенты", BLUE) + pr("Колонка", "В работе · 3 дн", OR) + pr("Приоритет", "!! Обычный") + pr("Повтор") + pr("Исполнитель", "Я"))
 hist = box(extra='flex: 1; min-height: 0', inner=H("ИСТОРИЯ") + ''.join(f'<div style="height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 10px; font-size: 12px; color: #C9CAD0">{dot(c, 6)}<span style="flex: 1">{t}</span><span style="font: 400 10px {MONO}; color: {DIM}">{d}</span></div>' for c, t, d in [(OR, "Перенесена в «В работе»", "02.11"), (GREEN, "Подзадача выполнена", "04.11")]) + '<div style="height: 6px"></div>')
 right = f'<div style="position: absolute; left: 660px; right: 22px; top: 116px; bottom: 76px; display: flex; flex-direction: column; gap: 10px">{when}{props}{hist}</div>'
 
