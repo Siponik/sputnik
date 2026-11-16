@@ -1,7 +1,7 @@
 // Настройки списка (G_ListSettings): окно по центру поверх доски.
 import { G } from "theme.slint";
 import { ScrollView } from "std-widgets.slint";
-import { Mono, Button, Node, Field, Brackets, Overlay } from "kit.slint";
+import { Mono, Button, Node, Field, Brackets, Overlay, Icon } from "kit.slint";
 import { S, Opt } from "store.slint";
 
 component Seg3 inherits Rectangle {
@@ -48,14 +48,93 @@ component Row inherits Rectangle {
     Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
 }
 
+
+// п.24: строка на колонку — ручка, цвет, имя по клику, лимит, корзина. «Готово» последняя и не удаляется.
+component ColEditor inherits VerticalLayout {
+    property <int> drag-from: -1;
+    property <int> drag-to: -1;
+    property <int> editing: -1;
+    spacing: 0;
+    Rectangle {
+        height: 40px;
+        Text { x: 0; text: "Колонки"; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; }
+        Text { x: parent.width - self.preferred-width; text: "ИЗ ШАБЛОНА…"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: tpa.has-hover ? G.accent : #8A8C96; vertical-alignment: center; height: parent.height;
+            tpa := TouchArea { clicked => { S.ls-close(); S.tp-show(); } mouse-cursor: pointer; }
+        }
+    }
+    for c[i] in S.ls-cols: Rectangle {
+        height: 44px;
+        background: root.drag-from >= 0 && root.drag-to == i ? G.accent.transparentize(0.9) : transparent;
+        border-radius: 6px;
+        Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+        // ручка
+        Rectangle {
+            x: 0; width: 24px;
+            Icon { x: 4px; y: 14px; width: 16px; height: 16px; name: "drag"; c: c.on ? #45464D : (ha.has-hover || root.drag-from == i ? G.ink : #6E7079); }
+            ha := TouchArea {
+                enabled: !c.on;
+                mouse-cursor: c.on ? default : move;
+                pointer-event(e) => {
+                    if (e.kind == PointerEventKind.down) { root.drag-from = i; root.drag-to = i; }
+                    if (e.kind == PointerEventKind.up && root.drag-from >= 0) {
+                        if (root.drag-to != root.drag-from) { S.ls-set("col-move", root.drag-from + "|" + root.drag-to); }
+                        root.drag-from = -1; root.drag-to = -1;
+                    }
+                }
+                moved => { if (root.drag-from >= 0) { root.drag-to = max(0, min(S.ls-cols.length - 2, i + round((self.mouse-y - self.pressed-y) / 44px))); } }
+            }
+        }
+        // цвет
+        Rectangle {
+            x: 30px; y: 13px; width: 18px; height: 18px; border-radius: 4px; background: c.hue;
+            border-width: 1px; border-color: cla.has-hover ? G.ink : transparent;
+            cla := TouchArea { clicked => { S.ls-set("col-color", i); } mouse-cursor: pointer; }
+        }
+        // имя
+        if root.editing != i: Text {
+            x: 60px; width: parent.width - 60px - 190px; height: parent.height;
+            text: c.label; color: G.ink; font-size: 13.5px; vertical-alignment: center; overflow: elide;
+            TouchArea { clicked => { root.editing = i; } mouse-cursor: text; }
+        }
+        if root.editing == i: Field {
+            x: 56px; y: 6px; width: parent.width - 56px - 190px; height: 32px; font-size: 13.5px;
+            text: c.label;
+            init => { self.grab(); }
+            escape => { root.editing = -1; }
+            accepted(t) => { S.ls-set("col-name", i + "|" + t); root.editing = -1; }
+        }
+        if c.on: Text { x: parent.width - 182px; text: "ГОТОВО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.green; vertical-alignment: center; height: parent.height; }
+        // задач в колонке
+        Text { x: parent.width - 120px - self.preferred-width; text: c.hint; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; height: parent.height; }
+        // лимит: − N +
+        HorizontalLayout {
+            x: parent.width - 108px; width: 74px; height: parent.height; spacing: 0;
+            Rectangle { width: 22px; Text { text: "−"; color: ma.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } ma := TouchArea { clicked => { S.ls-set("col-limit", i + "|-1"); } mouse-cursor: pointer; } }
+            Text { width: 30px; text: c.id == "0" ? "НЕТ" : c.id; font-family: G.mono; font-size: 9.5px; color: c.id == "0" ? #62646E : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            Rectangle { width: 22px; Text { text: "+"; color: pa.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } pa := TouchArea { clicked => { S.ls-set("col-limit", i + "|1"); } mouse-cursor: pointer; } }
+        }
+        // корзина
+        if !c.on && S.ls-cols.length > 2: Rectangle {
+            x: parent.width - 26px; width: 22px;
+            Icon { x: 3px; y: 14px; width: 16px; height: 16px; name: "trash"; c: da.has-hover ? G.red : #6E7079; }
+            da := TouchArea { clicked => { S.ls-set("col-del", i); } mouse-cursor: pointer; }
+        }
+    }
+    Rectangle {
+        height: 40px;
+        Text { x: 4px; text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: aa.has-hover ? G.accent : #A3A5AE; vertical-alignment: center; height: parent.height; }
+        aa := TouchArea { width: 120px; x: 0; clicked => { S.ls-set("col-add", ""); } mouse-cursor: pointer; }
+    }
+}
+
 export component ListSettings inherits Overlay {
     close => { S.ls-close(); }
     TouchArea { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
     dlg := Node {
         x: (parent.width - self.width) / 2;
         y: max(8px, (parent.height - self.height) / 2);
-        width: 640px;
-        height: min(34px + body.preferred-height, parent.height - 16px);
+        width: min(640px, parent.width - 16px);
+        height: min(720px, 34px + bl.preferred-height, parent.height - 16px);
         num: "НАСТРОЙКИ СПИСКА"; title: "CTRL .";
         aside: S.ls-tpl;
         head: G.accent.darker(0.3);
@@ -86,6 +165,9 @@ export component ListSettings inherits Overlay {
                     }
                 }
             }
+            Rectangle { height: 6px; }
+            ColEditor { }
+            Rectangle { height: 6px; }
             Row { label: "Порядок задач"; hint: "Как сортировать карточки в колонках";
                 Seg3 {
                     items: [{ id: "own", label: "Свой", on: S.ls-sort == "own" }, { id: "due", label: "По сроку", on: S.ls-sort == "due" }, { id: "prio", label: "По приоритету", on: S.ls-sort == "prio" }];
@@ -98,7 +180,6 @@ export component ListSettings inherits Overlay {
             Row { label: "В сводке и боте"; hint: "Выключи, если список тихий: доска и напоминания останутся";
                 Switch { on: !S.ls-quiet; clicked => { S.ls-set("quiet", ""); } }
             }
-            Row { label: "Колонки"; hint: S.ls-tpl.to-lowercase(); }
             Rectangle { height: 14px; }
             HorizontalLayout {
                 spacing: 8px;
