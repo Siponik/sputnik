@@ -39,7 +39,7 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
                f'<div style="display: flex; align-items: center; gap: 8px; height: 22px"><span style="color: {OR}; font-size: 9px">▾</span><span style="font-size: 13px; font-weight: 600; color: {ORI}">Блокинг</span><span style="font: 400 10px {MONO}; color: {MUT}">СЕЙЧАС · 2 ИЗ 4</span><span style="flex: 1"></span><span style="width: 90px; height: 3px; border-radius: 2px; background: #45464D; position: relative"><span style="position: absolute; left: 0; top: 0; width: 45px; height: 3px; border-radius: 2px; background: {OR}"></span></span></div>'
                + ''.join(it(t, d) for t, d in [("Силуэт и пропорции", True), ("Крупные формы шлема", True), ("Наплечники", False), ("Проверка в позе", False)])
                + f'<div style="height: 28px; display: flex; align-items: center; padding-left: 26px; font-size: 12.5px; color: {DIM}">＋ подзадача · Enter</div></div>')
-        subs = (fold(GREEN, "✓ Скетч", "3 из 3 · готово 12.11", "#232A25", "#2F4A35") + f'<div style="height: 6px"></div>' + cur
+        subs = (fold(GREEN, "✓ Скетч", "3 из 3 · 2 дн · 10–12.11", "#232A25", "#2F4A35") + f'<div style="height: 6px"></div>' + cur
                 + f'<div style="height: 6px"></div>' + fold(MUT, "Хайполи", "заготовлено 2 подзадачи", "transparent", LINE))
 
         det = '<div style="display: flex; gap: 24px">' + ''.join(f'<div style="height: 30px; display: flex; align-items: center; gap: 10px"><span style="font-size: 13px; color: {GREY}">{k}</span>{v}</div>' for k, v in [
@@ -48,11 +48,15 @@ def prow(title, meta, stage, due, nxt, overdue=False, done=False, open_=False):
         det += (f'<div style="margin-top: 12px; height: 222px; box-sizing: border-box; border-radius: 8px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">'
                 f'<div style="height: 28px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-bottom: 1px solid {SOFT}; font-size: 12px; color: {MUT}">Заметка<span style="font: 400 10px {MONO}; color: {DIM}">MARKDOWN</span><span style="flex: 1"></span><span>↗ из Знаний</span><span>⤢</span></div>'
                 f'<div style="flex: 1; padding: 8px 10px; font-size: 13px; line-height: 1.5">Броня в стиле «Кузни»: тяжёлая, потёртая.<br><span style="color: {MUT}">— наплечники крупнее, как на рефе 3</span><br><span style="color: {OR}">[[Референсы Кузня]]</span></div></div>')
+        TIMES = (f'<span style="display: flex; align-items: center; gap: 10px; font-size: 12px; color: {MUT}"><span style="display: grid; color: {MUT}">{svg_("timer", 14)}</span><span style="color: {INK}; font-weight: 600">5 дн</span><span>всего</span>'
+                 f'<span style="display: flex; height: 8px; width: 220px; border-radius: 2px; overflow: hidden; gap: 2px"><span style="flex: 2; background: {GREEN}"></span><span style="flex: 3; background: {OR}"></span><span style="flex: 4; background: #3A3B42"></span></span>'
+                 f'<span style="font: 400 10px {MONO}; letter-spacing: 1px">СКЕТЧ 2 · <span style="color: {ORI}">БЛОКИНГ 3 ИДЁТ</span> · ДО СРОКА 4</span></span>')
         body = (f'<div style="position: relative; height: 340px">'
                 f'<div style="position: absolute; left: 40px; top: 12px; width: 440px">{subs}</div>'
                 f'<div style="position: absolute; left: 520px; right: 20px; top: 12px">{det}</div>'
-                f'<div style="position: absolute; left: 0; right: 0; top: 286px; height: 54px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 16px; padding: 0 20px 0 40px"><span style="font-size: 12.5px; color: {GREY}">← Скетч</span><span style="flex: 1"></span><span style="font-size: 12.5px; color: {OR}">Открыть полностью ↗</span></div></div>')
-    return f'<div style="position: relative; border-radius: 8px; background: {NODE}; border: 1px solid {ORL if open_ else LINE}">{head}{body}</div>'
+                f'<div style="position: absolute; left: 0; right: 0; top: 286px; height: 54px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 16px; padding: 0 20px 0 40px"><span style="font-size: 12.5px; color: {GREY}">← Скетч</span><span style="width: 1px; height: 20px; background: {LINE}"></span>{TIMES}<span style="flex: 1"></span><span style="font-size: 12.5px; color: {OR}">Открыть полностью ↗</span></div></div>')
+    tip = f'<div style="position: absolute; left: 246px; top: -34px; padding: 6px 10px; border-radius: 6px; background: {DARK}; border: 1px solid #3F6B47; font: 500 10.5px {MONO}; color: {GREEN}; white-space: nowrap; box-shadow: 0 8px 20px rgba(0,0,0,.4); z-index: 3">СКЕТЧ · 2 ДН · 10.11 → 12.11</div>' if open_ else ''
+    return f'<div style="position: relative; border-radius: 8px; background: {NODE}; border: 1px solid {ORL if open_ else LINE}">{tip}{head}{body}</div>'
 
 def grp(name, info):
     return f'<div style="height: 22px; display: flex; align-items: center; gap: 8px"><span style="width: 6px; height: 6px; border-radius: 2px; background: {OR}"></span><span style="font-size: 13px; font-weight: 600">{name}</span><span style="font-size: 12px; color: {MUT}">{info}</span></div>'
