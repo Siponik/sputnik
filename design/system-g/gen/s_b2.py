@@ -86,6 +86,8 @@ ls = f'''<div style="padding: 16px 22px; display: flex; flex-direction: column">
 </div>
 <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 60px; border-top: 1px solid {LINE}; display: flex; align-items: center; gap: 8px; padding: 0 22px">{btn("Вернуть как в шаблоне", "ghost")}<span style="flex: 1"></span>{btn("Сохранить как новый шаблон…")}{btn("Сохранить", "acc")}</div>'''
 st = K + pop(304, 10, 640, 720, 'НАСТРОЙКИ СПИСКА · CTRL .', ls, BLUE, 'ПО ШАБЛОНУ', hub=True)
+# полоса прокрутки: дорожка 6px, ползунок скруглённый, без стрелок
+st += ab(304 + 640 - 10, 52, f'<div style="position: relative; width: 6px; height: 600px; border-radius: 3px; background: rgba(255,255,255,.04)"><div style="position: absolute; left: 0; top: 0; width: 6px; height: 470px; border-radius: 3px; background: {STRONG}"></div></div>')
 save2('G_ListSettings.dc.html', page('Настройки списка', 'ДОСКА', st), 'Настройки списка')
 
 # ---------- ARCHIVE ----------
