@@ -566,11 +566,12 @@ impl App {
         v
     }
 
-    pub fn add_subtask(&mut self, list: &str, parent: &str, title: &str) {
+    pub fn add_subtask(&mut self, list: &str, parent: &str, title: &str) -> String {
         let tmp = self.tmp_id();
         self.tasks_mut(list).push(json!({"id": tmp, "title": title, "status": "needsAction", "parent": parent}));
         self.outbox.add(json!({"op": "create", "list": list, "tmp": tmp, "body": {"title": title}, "parent": parent}));
         self.after_outbox();
+        tmp
     }
 
     // ---------- события и дни рождения (сразу в Google: событие без связи создать нельзя) ----------
@@ -974,7 +975,8 @@ impl App {
         let mut stage_at = o(&self.lt(&id)["stageAt"]).clone();
         stage_at.insert(col.into(), num(now_ms()));
         stage_at.shift_remove("t");
-        let mut patch = json!({"status": col, "stageAt": stage_at});
+        let log = sputnik_core::stagelog::push(&self.lt(&id)["stageLog"], col, now_ms());
+        let mut patch = json!({"status": col, "stageAt": stage_at, "stageLog": log});
         if id.starts_with("tmp-") || list.starts_with("sh:") {
             let from = self.col_of(t, a(&self.board(list)["cols"]));
             if list.starts_with("sh:") && from != col {

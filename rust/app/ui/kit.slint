@@ -351,3 +351,62 @@ export component ScrollInput inherits Flickable {
         }
     }
 }
+
+// п.29: одна полоса прокрутки на всё приложение. Без стрелок, дорожка 6 px, ползунок от 32 px,
+// видна, только когда содержимое не помещается. Заменяет ScrollView из std-widgets.
+component Bar inherits Rectangle {
+    in property <bool> vertical;
+    in property <length> track;      // длина дорожки
+    in property <length> view;       // видимая часть
+    in property <length> full;       // всё содержимое
+    in-out property <length> pos;    // сдвиг содержимого (<= 0)
+    property <length> thumb: max(32px, track * view / max(1px, full));
+    property <length> room: max(1px, full - view);
+    property <length> at: (track - thumb) * min(1, max(0, -pos / room));
+    border-radius: 3px;
+    background: #ffffff0a;
+    Rectangle {
+        x: root.vertical ? 0 : root.at; y: root.vertical ? root.at : 0;
+        width: root.vertical ? parent.width : root.thumb; height: root.vertical ? root.thumb : parent.height;
+        border-radius: 3px;
+        background: ta.has-hover || ta.pressed ? #8A8C96 : #6E7079;
+        ta := TouchArea {
+            property <length> start;
+            pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.start = root.pos; } }
+            moved => {
+                if (self.pressed) {
+                    let d = root.vertical ? self.mouse-y - self.pressed-y : self.mouse-x - self.pressed-x;
+                    root.pos = max(-root.room, min(0, self.start - d * root.room / max(1px, root.track - root.thumb)));
+                }
+            }
+        }
+    }
+}
+
+export component ScrollView inherits Rectangle {
+    in-out property <length> viewport-width <=> f.viewport-width;
+    in-out property <length> viewport-height <=> f.viewport-height;
+    in-out property <length> content-width <=> f.viewport-width;
+    in-out property <length> content-height <=> f.viewport-height;
+    in-out property <length> viewport-x <=> f.viewport-x;
+    in-out property <length> viewport-y <=> f.viewport-y;
+    out property <length> visible-width: f.width;
+    out property <length> visible-height: f.height;
+    in property <bool> mouse-drag-pan-enabled: false;
+    f := Flickable {
+        x: 0; y: 0; width: root.width; height: root.height;
+        interactive: root.mouse-drag-pan-enabled;
+        @children
+    }
+    if f.viewport-height > f.height + 1px: Bar {
+        vertical: true;
+        x: root.width - 10px; y: 4px; width: 6px; height: root.height - 8px;
+        track: self.height; view: f.height; full: f.viewport-height;
+        pos <=> f.viewport-y;
+    }
+    if f.viewport-width > f.width + 1px: Bar {
+        x: 4px; y: root.height - 10px; height: 6px; width: root.width - 8px - (f.viewport-height > f.height + 1px ? 10px : 0);
+        track: self.width; view: f.width; full: f.viewport-width;
+        pos <=> f.viewport-x;
+    }
+}

@@ -2,9 +2,8 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя: сутки 0–24, пустые часы сжаты штрихованными полосами; задачи со временем тянутся мышью.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg, Icon } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg, Icon, ScrollView } from "kit.slint";
 import { S, Day, Block, Chip, Opt } from "store.slint";
-import { ScrollView } from "std-widgets.slint";
 
 component Sq inherits Rectangle {
     in property <string> icon;

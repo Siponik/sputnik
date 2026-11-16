@@ -1,7 +1,7 @@
 // Главное окно Спутника: шапка с вкладками, разделы, плашка внизу и окна поверх.
 // Вся логика — в Rust (src/view, src/state); окно только показывает модели из глобала S.
 import { G } from "theme.slint";
-import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon } from "kit.slint";
+import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon, ScrollView } from "kit.slint";
 import { S } from "store.slint";
 import { TodayPage } from "today.slint";
 import { BoardPage } from "board.slint";
@@ -15,7 +15,6 @@ import { DatePicker } from "datetime.slint";
 import { ListSettings } from "listset.slint";
 import { CtxMenu } from "menu.slint";
 import { Templates } from "templates.slint";
-import { ScrollView } from "std-widgets.slint";
 export { S }
 export { G }
 

@@ -23,6 +23,10 @@ export struct Day { ymd: string, label: string, num: string, today: bool, sel: b
 export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct Sub { id: string, title: string, done: bool }
+// блок подзадач этапа в раскрытой строке конвейера (п.32): state 0 пройден, 1 сейчас, 2 следующий
+export struct PipeBlock { stage-id: string, name: string, state: int, info: string, done-n: int, total: int, subs: [Sub] }
+// отрезок полоски времени (п.33): kind 0 пройден, 1 сейчас, 2 до срока; w — доля
+export struct PipeSeg { w: float, kind: int, tip: string }
 export struct DpCell { n: int, day: string, other: bool, today: bool, sel: bool }
 export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string, mark: styled-text, hue: color, due: string }
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
@@ -144,9 +148,14 @@ export global S {
     in property <string> pipe-due;
     in property <int> pipe-prio;
     in property <string> pipe-prev;
+    in property <[PipeBlock]> pipe-blocks;
+    in property <[PipeSeg]> pipe-segs;
+    in property <string> pipe-total;     // «5 дн всего»
+    in property <string> pipe-caption;   // «СКЕТЧ 2 · БЛОКИНГ 3 ИДЁТ · ДО СРОКА 4»
+    in property <[string]> pipe-tips;    // подсказки на чипах этапов открытой строки
     callback pipe-toggle(string);
     callback pipe-by-set(string);
-    callback pipe-sub-add(string, string, string);
+    callback pipe-sub-add(string, string, string, string); // список, задача, этап, текст
     callback pipe-prio-set(string, string, int);
     callback pipe-back(string, string);
     in property <int> archived;
