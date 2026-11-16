@@ -270,7 +270,7 @@ impl App {
             .iter()
             .filter(|l| {
                 let ll = self.ll(s(&l["id"]));
-                ll["hidden"] != true && ll["gone"] != true && !tpl::is_habit_list(l, &self.layer)
+                ll["hidden"] != true && ll["gone"] != true && !tpl::is_habit_list(l, &self.layer) && !sph::list_archived(s(&l["id"]), &self.layer)
             })
             .cloned()
             .collect()
@@ -890,6 +890,13 @@ impl App {
             f["order"] = num(order);
         }
         self.touch("spheres", &sid, f);
+    }
+
+    /// Архив сфер и списков (п.41): только отметка в слое, задачи в Google остаются.
+    pub fn set_archived(&mut self, kind: &str, id: &str, on: bool) {
+        let sec = if kind == "sphere" { "spheres" } else { "lists" };
+        let patch = if on { json!({"archived": true, "archivedAt": now_ms()}) } else { json!({"archived": null, "archivedAt": null}) };
+        self.touch(sec, id, patch);
     }
 
     pub fn delete_sphere(&mut self, id: &str) {

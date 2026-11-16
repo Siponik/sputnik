@@ -187,7 +187,7 @@ pub fn wire(w: &AppWindow) {
 
     // ---------- Доска ----------
     g.on_pick_list(|id| act(|app, u| {
-        u.arch = false;
+        u.arch = false; u.sph = None;
         let ls = app.board_lists();
         let id = str_(&id);
         let i = ls.iter().position(|l| l["id"] == u.board.as_str()).unwrap_or(0);
@@ -376,6 +376,38 @@ pub fn wire(w: &AppWindow) {
     g.on_stk_by_set(|v| act(|_, u| u.stk_by = str_(&v)));
     g.on_open_archive(|| act(|_, u| { u.tab = 2; u.arch = true; }));
     g.on_arch_close(|| act(|_, u| u.arch = false));
+    g.on_arch_tab_set(|i| act(|_, u| u.arch_tab = i));
+    // ---------- Сферы (п.40) и архив сфер и списков (п.41) ----------
+    g.on_sph_show(|id| act(|_, u| { u.tab = 2; u.arch = false; u.sph_add = false; u.sph = Some(str_(&id)); }));
+    g.on_sph_close(|| act(|_, u| { u.sph = None; u.sph_add = false; }));
+    g.on_sph_save(|name, ci| act(|app, u| {
+        let Some(id) = u.sph.clone().filter(|x| !x.is_empty()) else { return };
+        let name = name.trim().to_string();
+        if name.is_empty() { app.say("Нужно название сферы"); return; }
+        let c = sputnik_core::spheres::PICKER.get(ci.max(0) as usize).copied().unwrap_or("clay");
+        let keep = ci < 0;  // старый бирюзовый цвет, которого нет в правке: не трогаем
+        app.save_sphere(Some(&id), if keep { json!({"name": name}) } else { json!({"name": name, "color": c}) });
+        app.say("Сфера сохранена");
+    }));
+    g.on_sph_new(|| act(|app, u| {
+        let n0 = app.spheres().len();
+        app.save_sphere(None, json!({"name": "Новая сфера", "color": sputnik_core::spheres::PICKER[n0 % 7]}));
+        let id = app.spheres().iter().filter(|x| x["name"] == "Новая сфера").filter_map(|x| x["id"].as_str().map(String::from)).max();
+        u.sph = Some(id.unwrap_or_default());
+    }));
+    g.on_sph_add_list(|sp, t| act(|app, u| {
+        u.sph_add = false;
+        let t = t.trim().to_string();
+        if t.is_empty() { return; }
+        app.create_list(&t, "work", Some(str_(&sp)), None, Some(Box::new(|app: &mut App, _id: String| { app.say("Список создан"); })));
+    }));
+    g.on_sph_archive(|k, id, on| act(|app, u| super::spheres::archive(app, u, &k, &id, on)));
+    g.on_sph_delete(|k, id| act(|app, u| {
+        let id = str_(&id);
+        if k == "sphere" { super::spheres::ask_delete(app, u, id); return; }
+        let n0 = app.tasks_of(&id).len();
+        ask(u, format!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&id), n0), "Удалить навсегда", move |app, _| app.delete_list(&id));
+    }));
     g.on_arch_q_set(|q| act(|_, u| u.arch_q = str_(&q)));
     g.on_arch_sphere_set(|v| act(|_, u| u.arch_sphere = str_(&v)));
     g.on_pipe_gallery_set(|v| act(|_, u| u.pipe_gallery = v));
