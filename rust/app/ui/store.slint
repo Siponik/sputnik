@@ -10,7 +10,7 @@ export struct StkItem { card: Card, lane: string, hue: color, x: length, y: leng
 export struct Column { id: string, name: string, count: int, limit: int, over: bool, done: bool, hue: color, cards: [Card] }
 export struct PipeRow { list-id: string, id: string, title: string, stage: int, stage-name: string, project: string, due: string, overdue: bool, prio: int, done: bool, meta: string, next-name: string, group: string, group-info: string, first: bool, thumb: image, has-thumb: bool, size: string }
 export struct SideRow { id: string, name: string, count: int, header: bool, hue: color, active: bool, view: string }
-export struct SrcRow { title: string, right: string, done: bool, accent: bool }
+export struct SrcRow { title: string, right: string, done: bool, accent: bool, fold: bool, hue: color }
 export struct SrcNode { title: string, label: string, hue: color, y: float, h: float, rows: [SrcRow], dashed: bool }
 export struct Wire { y1: float, y2: float, hue: color, dashed: bool }
 export struct ArchRow { list-id: string, id: string, title: string, list: string, hue: color, date: string, group: string, first: bool }
@@ -89,6 +89,16 @@ export global S {
     in property <float> today-h;
     in property <[color]> hour-cells;
     in property <float> claude-y;
+    // п.39 (G_TodayMany): когда задач и списков много — свёрнутые строки «Ещё N задач» и «Сделано · N»
+    in property <bool> today-many;
+    in property <float> more-y: -1;
+    in property <int> more-n;
+    in property <float> fold-y: -1;
+    in property <int> fold-n;
+    in property <bool> fold-open;
+    in property <float> hub-y;
+    in property <[float]> row-ys;
+    callback today-fold(int);   // 0 — «Ещё N задач», 1 — «Сделано»
     in property <int> habits-done;
     in property <string> now-label;
     in property <bool> status-ok: true;

@@ -2,7 +2,7 @@
 // Слева «01 · Источники» — ноды списков, «От Claude» и привычек; провода к строкам «Сборки дня» в середине;
 // справа «03 · Вывод» — «Дальше» и «Итог дня». Координаты проводов считает Rust (view/today.rs).
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Empty, Icon, ScrollView, Wire } from "kit.slint";
+import { Mono, Brackets, Button, Field, Empty, Icon, ScrollView, Wire, Chev } from "kit.slint";
 import { S, TaskRow, SrcNode, Wire } from "store.slint";
 
 component SecLabel inherits HorizontalLayout {
@@ -37,13 +37,13 @@ component Source inherits Rectangle {
         x: 0; y: 0;
         height: 30px;
         border-radius: 7px;
-        background: n.dashed ? #3D3E45 : n.hue.mix(#1a1a1a, 0.5);
+        background: n.dashed || n.title == "СПИСКИ" ? #3D3E45 : n.hue.mix(#1a1a1a, 0.5);
         Rectangle { y: parent.height - 7px; height: 7px; background: parent.background; }
         HorizontalLayout {
             padding-left: 12px;
             padding-right: 10px;
             spacing: 8px;
-            Text { text: (num < 10 ? "0" + num : num) + "  " + n.title; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            Text { text: (S.today-many ? "" : (num < 10 ? "0" + num : num) + "  ") + n.title; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
             Text { text: n.label; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffb8; vertical-alignment: center; overflow: elide; }
         }
     }
@@ -55,11 +55,13 @@ component Source inherits Rectangle {
             padding-left: 12px;
             padding-right: 16px;
             spacing: 8px;
-            Text { text: r.title; font-size: 13px; color: r.done ? G.dim : (r.accent ? G.accent-ink : G.ink); vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            if r.fold: Icon { name: "next"; width: 9px; y: 9.5px; c: G.dim; }
+            Text { text: r.title; font-size: 13px; color: r.done || r.fold ? G.dim : (r.accent ? G.accent-ink : G.ink); vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
             Text { text: r.right; font-family: G.mono; font-size: 11px; color: r.accent ? G.accent : #8A8C96; vertical-alignment: center; }
         }
         if r.done: Rectangle { x: 12px; y: 14px; height: 1px; width: min(parent.width - 80px, 140px); background: G.dim; }
-        Sock { x: parent.width - 6px; y: 9px; fill: n.dashed ? #A3A5AE : (r.done ? #7C7E88 : n.hue); hollow: n.dashed; }
+        if !r.fold && (!S.today-many || n.title == "СПИСКИ"): Sock { x: parent.width - 6px; y: 9px; fill: n.dashed ? #A3A5AE : (r.done ? #7C7E88 : r.hue.alpha > 0 ? r.hue : n.hue); hollow: n.dashed; }
+        if j > 0: Rectangle { y: 0; height: 1px; background: G.line-soft; visible: S.today-many; }
     }
 }
 
@@ -157,7 +159,7 @@ export component TodayPage inherits Rectangle {
         if S.next-at >= 0: Wire {
             x: 0; y: 0; width: cv.width; height: cv.height; viewbox-width: cv.VW; viewbox-height: cv.height / 1px;
             hue: G.accent;
-            x1: cv.M1; y1: 20 + S.rows-top + S.next-at * 46 + 20; x2: cv.R0; y2: 70; k: 30;
+            x1: cv.M1; y1: 20 + S.row-ys[S.next-at] + 20; x2: cv.R0; y2: 70; k: 30;
         }
         if S.today-habits.length > 0: Wire {
             x: 0; y: 0; width: cv.width; height: cv.height; viewbox-width: cv.VW; viewbox-height: cv.height / 1px;
@@ -243,17 +245,39 @@ export component TodayPage inherits Rectangle {
             for t[i] in S.day-rows: DayRow {
                 x: 12px;
                 width: parent.width - 24px;
-                y: (S.rows-top + i * 46 + (S.next-at >= 0 && i > S.next-at ? 46 : 0)) * 1px;
+                y: S.row-ys[i] * 1px;
                 item: t;
                 n: i + 1;
                 next: i == S.next-at;
             }
-            for t[i] in S.day-rows: Sock {
+            for t[i] in S.today-many ? [] : S.day-rows: Sock {
                 x: -6px;
-                y: (S.rows-top + i * 46 + (S.next-at >= 0 && i > S.next-at ? 46 : 0) + 15) * 1px;
+                y: (S.row-ys[i] + 15) * 1px;
                 fill: t.done ? #7C7E88 : t.hue;
             }
-            if S.next-at >= 0: Sock { x: parent.width - 4px; y: (S.rows-top + S.next-at * 46 + 15) * 1px; fill: G.accent; }
+            if S.today-many: Sock { x: -6px; y: (S.hub-y - 5) * 1px; fill: G.ink; }
+            if S.next-at >= 0: Sock { x: parent.width - 4px; y: (S.row-ys[S.next-at] + 15) * 1px; fill: G.accent; }
+            // свёртки (G_TodayMany): «Ещё N задач на день» и «Сделано · N»
+            if S.more-y >= 0: Rectangle {
+                x: 12px; y: S.more-y * 1px; width: parent.width - 24px; height: 41px;
+                background: ma.has-hover ? G.node-hover : transparent;
+                Text { x: 10px; text: S.more-n > 0 ? "+" + S.more-n : "−"; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; height: parent.height; }
+                if S.more-n > 0: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
+                if S.more-n == 0: Chev { x: 34px; y: 15px; up: true; }
+                Text { x: 64px; text: S.more-n > 0 ? "Ещё " + S.more-n + (Math.mod(S.more-n, 10) == 1 && Math.mod(S.more-n, 100) != 11 ? " задача" : Math.mod(S.more-n, 10) >= 2 && Math.mod(S.more-n, 10) <= 4 && (Math.mod(S.more-n, 100) < 12 || Math.mod(S.more-n, 100) > 14) ? " задачи" : " задач") + " на день" : "Свернуть"; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+                ma := TouchArea { clicked => { S.today-fold(0); } mouse-cursor: pointer; }
+            }
+            if S.fold-y >= 0: Rectangle {
+                x: 12px; y: S.fold-y * 1px; width: parent.width - 24px; height: 41px;
+                background: fa.has-hover ? G.node-hover : transparent;
+                Icon { name: "check"; x: 10px; width: 10px; y: 15.5px; c: #62646E; }
+                if !S.fold-open: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
+                if S.fold-open: Chev { x: 34px; y: 15px; up: true; }
+                Text { x: 64px; text: "Сделано · " + S.fold-n; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+                fa := TouchArea { clicked => { S.today-fold(1); } mouse-cursor: pointer; }
+            }
             if S.inbox.length > 0: Rectangle {
                 x: 12px; y: (S.claude-y - 19) * 1px; width: parent.width - 24px; height: 38px;
                 border-radius: 8px;
