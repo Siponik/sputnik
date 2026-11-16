@@ -1,9 +1,8 @@
 // «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat } from "kit.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView } from "kit.slint";
 import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
-import { ScrollView } from "std-widgets.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
 component LiveLine inherits Rectangle {

@@ -1,6 +1,6 @@
 //! Модели «Доски»: колонка списков по сферам, доска в одном из четырёх видов.
 use super::*;
-use crate::{ArchRow, Card, Column, Opt, PipeRow, SideRow, Sub};
+use crate::{ArchRow, Card, Column, Opt, PipeBlock, PipeRow, PipeSeg, SideRow, Sub};
 use sputnik_core::{stickers as stk, templates as tpl};
 
 pub fn view_of(app: &App, list: &str) -> String {
@@ -182,6 +182,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 g.set_pipe_due(ss(if d.is_empty() { "без срока".to_string() } else { sputnik_core::create::day_month(&d) }));
                 g.set_pipe_prio(n(&l["priority"]).unwrap_or(2.0) as i32);
                 let ci = rows.iter().find(|r| r.id.as_str() == tid).map(|r| r.stage as usize).unwrap_or(0);
+                pipe_detail(app, &id, &t, &cols, ci, g);
                 g.set_pipe_prev(ss(if ci > 0 { format!("{} назад к {}", names[ci], names[ci - 1]) } else { String::new() }));
             }
             if u.pipe_gallery && u.pipe_stage > 0 {
@@ -297,4 +298,71 @@ fn archive(app: &App, u: &Ui, g: &S) {
     sp.extend(app.spheres().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["name"])), hint: ss(""), hue: color(&sputnik_core::spheres::sphere_color(x)), on: u.arch_sphere == s(&x["id"]) }));
     g.set_arch_spheres(model(sp));
     g.set_arch_rows(model(rows));
+}
+
+/// Раскрытая строка конвейера: подзадачи по этапам (п.32) и время по этапам (п.33).
+fn pipe_detail(app: &App, list: &str, t: &Value, cols: &[(Value, Vec<Value>)], ci: usize, g: &S) {
+    use sputnik_core::stagelog as sl;
+    let tid = s(&t["id"]);
+    let now = crate::state::now_ms();
+    let log = &app.lt(tid)["stageLog"];
+    let spans = sl::spans(log, now);
+    let ids: Vec<String> = cols.iter().map(|c| text(&c.0["id"])).collect();
+    let name_of = |id: &str| cols.iter().find(|c| s(&c.0["id"]) == id).map(|c| text(&c.0["name"])).unwrap_or_else(|| id.to_string());
+    let dm = |d: &str| if d.len() >= 10 { format!("{}.{}", &d[8..10], &d[5..7]) } else { String::new() };
+    let subs = app.subtasks(list, tid);
+    let cur_id = ids.get(ci).cloned().unwrap_or_default();
+    let stage_of = |x: &Value| { let st = text(&app.lt(s(&x["id"]))["stage"]); if st.is_empty() || !ids.contains(&st) { cur_id.clone() } else { st } };
+    let mut blocks = vec![];
+    for (i, sid) in ids.iter().enumerate() {
+        // показываем прошлый, текущий и следующий этап (последняя колонка «Готово» — без подзадач)
+        if i + 1 == ids.len() || (i + 1 < ci) || i > ci + 1 { continue; }
+        let state = if i < ci { 0 } else if i == ci { 1 } else { 2 };
+        let mine: Vec<Sub> = subs.iter().filter(|x| stage_of(x) == *sid).map(|x| Sub { id: ss(text(&x["id"])), title: ss(text(&x["title"])), done: App::is_done(x) }).collect();
+        let done_n = mine.iter().filter(|x| x.done).count() as i32;
+        let total = mine.len() as i32;
+        let sp: Vec<&Value> = spans.iter().filter(|x| s(&x["stage"]) == sid.as_str()).collect();
+        let days: i64 = sp.iter().map(|x| x["days"].as_i64().unwrap_or(0)).sum();
+        let info = match state {
+            0 => {
+                let mut v = vec![format!("{done_n} из {total}")];
+                if days > 0 { v.push(format!("{days} дн")); }
+                if let (Some(a0), Some(b0)) = (sp.first(), sp.last()) { v.push(format!("{}–{}", dm(s(&a0["from"])), dm(s(&b0["to"])))); }
+                v.join(" · ")
+            }
+            1 => format!("СЕЙЧАС · {done_n} ИЗ {total}"),
+            _ => if total > 0 { format!("заготовлено {total}") } else { "можно накидать заранее".into() },
+        };
+        blocks.push(PipeBlock { stage_id: ss(sid.clone()), name: ss(name_of(sid)), state, info: ss(info), done_n, total, subs: model(mine) });
+    }
+    g.set_pipe_blocks(model(blocks));
+    // полоска времени
+    let total = sl::total_days(log, now);
+    let left = sputnik_core::dates::parse_ymd(&day10(&t["due"])).zip(sputnik_core::dates::parse_ymd(&today_s())).map(|(d, n0)| (d - n0).num_days()).filter(|x| *x > 0).unwrap_or(0);
+    let full = (total + left).max(1) as f32;
+    let mut segs = vec![];
+    let mut cap = vec![];
+    for x in &spans {
+        let cur = x["cur"] == true;
+        let d = x["days"].as_i64().unwrap_or(0);
+        let nm = name_of(s(&x["stage"]));
+        segs.push(PipeSeg { w: d as f32 / full, kind: if cur { 1 } else { 0 }, tip: ss(format!("{} · {} ДН · {} → {}", nm.to_uppercase(), d, dm(s(&x["from"])), dm(s(&x["to"])))) });
+        cap.push(format!("{} {}{}", nm.to_uppercase(), d, if cur { " ИДЁТ" } else { "" }));
+    }
+    if left > 0 {
+        segs.push(PipeSeg { w: left as f32 / full, kind: 2, tip: ss(format!("ДО СРОКА {left} ДН")) });
+        cap.push(format!("ДО СРОКА {left}"));
+    }
+    g.set_pipe_segs(model(segs));
+    g.set_pipe_total(ss(if total > 0 { format!("{total} дн всего") } else { String::new() }));
+    g.set_pipe_caption(ss(cap.join(" · ")));
+    // подсказки на чипах этапов: пройденный — «СКЕТЧ · 2 ДН · 10.11 → 12.11»
+    g.set_pipe_tips(strings(ids.iter().map(|sid| {
+        let sp: Vec<&Value> = spans.iter().filter(|x| s(&x["stage"]) == sid.as_str()).collect();
+        let days: i64 = sp.iter().map(|x| x["days"].as_i64().unwrap_or(0)).sum();
+        match (sp.first(), sp.last()) {
+            (Some(a0), Some(b0)) => format!("{} · {} ДН · {} → {}", name_of(sid).to_uppercase(), days, dm(s(&a0["from"])), dm(s(&b0["to"]))),
+            _ => String::new(),
+        }
+    }).collect()));
 }

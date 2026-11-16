@@ -25,6 +25,7 @@ pub mod sharedcore;
 pub mod shell;
 pub mod small;
 pub mod spheres;
+pub mod stagelog;
 pub mod stickers;
 pub mod taskpanel;
 pub mod templates;

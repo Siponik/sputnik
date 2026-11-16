@@ -2,9 +2,8 @@
 // Слева «01 · Источники» — ноды списков, «От Claude» и привычек; провода к строкам «Сборки дня» в середине;
 // справа «03 · Вывод» — «Дальше» и «Итог дня». Координаты проводов считает Rust (view/today.rs).
 import { G } from "theme.slint";
-import { Mono, Brackets, Button, Field, Empty, Icon } from "kit.slint";
+import { Mono, Brackets, Button, Field, Empty, Icon, ScrollView } from "kit.slint";
 import { S, TaskRow, SrcNode, Wire } from "store.slint";
-import { ScrollView } from "std-widgets.slint";
 
 component SecLabel inherits HorizontalLayout {
     in property <string> text;

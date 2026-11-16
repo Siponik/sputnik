@@ -1,9 +1,8 @@
 // «Привычки» по макетам G_Habits и G_HabitsMonth: панель-нода сверху, ряд «Сегодня», карточки 3 в ряд,
 // справа — панель выбранной привычки; «Месяц» — таблица привычка × день с меню дня.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg, Icon } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg, Icon, ScrollView } from "kit.slint";
 import { S, HabitCard, Opt } from "store.slint";
-import { ScrollView } from "std-widgets.slint";
 
 component Circ inherits Sat {
     in property <string> text;

@@ -363,7 +363,13 @@ pub fn wire(w: &AppWindow) {
     g.on_pipe_gallery_set(|v| act(|_, u| u.pipe_gallery = v));
     g.on_pipe_stage_set(|v| act(|_, u| u.pipe_stage = v + 1));
     g.on_pipe_by_set(|v| act(|_, u| u.pipe_by = str_(&v)));
-    g.on_pipe_sub_add(|l, id, t| act(|app, _| app.add_subtask(&l, &id, &t)));
+    // подзадача этапа (п.32): помечается этапом в слое
+    g.on_pipe_sub_add(|l, id, st, t| act(|app, _| {
+        let sid = app.add_subtask(&l, &id, &t);
+        if !st.is_empty() {
+            app.touch("tasks", &sid, json!({"stage": st.as_str()}));
+        }
+    }));
     g.on_pipe_prio_set(|_, id, p| act(|app, _| app.set_priority(&id, Some(p as i64))));
     g.on_pipe_back(|l, id| act(|app, _| {
         let cols = app.columns(&l);

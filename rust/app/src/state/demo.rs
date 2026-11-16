@@ -75,7 +75,7 @@ pub fn fill(app: &mut App) {
         "w2": {"status": "doing", "t": t},
         "w3": {"status": "review", "t": t},
         "i1": {"status": "model", "project": "RPG-набор", "t": t},
-        "i2": {"status": "sculpt", "project": "RPG-набор", "t": t},
+        "i2": {"status": "sculpt", "project": "RPG-набор", "t": t, "stageLog": [{"stage": "refs", "at": super::now_ms() - 6.0 * 864e5}, {"stage": "blockout", "at": super::now_ms() - 4.0 * 864e5}, {"stage": "sculpt", "at": super::now_ms() - 2.0 * 864e5}]},
         "h1": {"topic": "buy", "t": t}, "h4": {"topic": "docs", "t": t}, "h2": {"topic": "call", "t": t}, "h3": {"topic": "health", "t": t},
         "s1": {"slot": {"s": "18:00", "e": "19:30"}, "t": t},
     });
