@@ -409,8 +409,8 @@ main_b = f'''<div style="display: flex; flex-direction: column; gap: 10px; margi
     {_sub("Свет и камера")}{_sub("Рендер 4K")}<div style="height: 30px; display: flex; align-items: center; padding: 0 10px; border-top: 1px solid {SOFT}; font-size: 12.5px; color: {MUT}">＋ подзадача · Enter</div>
   </div>
   <div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; display: flex; flex-direction: column">
-    <div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА<span style="margin-left: auto; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font: 400 11.5px {SANS}; letter-spacing: 0; color: #C9CAD0">↗ из Знаний</span><span title="Развернуть" style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>
-    <div style="flex: 1; min-height: 72px; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">Ракурс как на референсе, фон нейтральный… Markdown, ссылки на «Знания» через [[</div>
+    <div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА<span style="margin-left: auto"></span><span title="Развернуть" style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>
+    <div style="flex: 1; min-height: 72px; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">Ракурс как на референсе, фон нейтральный… Markdown, [[ — ссылка на «Знания»</div>
   </div>
 </div>'''
 _hdr = lambda t: f'<div style="font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">{t}</div>'
@@ -438,7 +438,7 @@ frow2 = lambda *a: f'<div style="display: flex; gap: 6px">{"".join(a)}</div>'
 def notebox(ph, h=96):
     return (f'<div style="border-radius: 10px; border: 1px solid {LINE}; background: {BG}; min-height: {h}px; display: flex; flex-direction: column">'
             f'<div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 10px; font: 500 10px {MONO}; letter-spacing: .14em; color: {MUT}">ЗАМЕТКА'
-            f'<span style="margin-left: auto; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid {LINE}; display: inline-flex; align-items: center; font: 400 11.5px {SANS}; letter-spacing: 0; color: #C9CAD0">↗ из Знаний</span>'
+            f'<span style="margin-left: auto"></span>'
             f'<span style="width: 22px; height: 22px; border-radius: 6px; border: 1px solid {LINE}; display: inline-grid; place-items: center; font-size: 12px; letter-spacing: 0; color: #C9CAD0">⤢</span></div>'
             f'<div style="flex: 1; padding: 2px 10px 10px; font-size: 12.5px; line-height: 18px; color: #55575F">{ph}</div></div>')
 
@@ -461,7 +461,7 @@ ev_left = (_hdr("КОГДА") + frow2(_fld("@clock", "15:00", 110, True), fflex(
            + _hdr("ДЛИТСЯ") + chips(BLUE, ["30 мин", "1 час", "2 часа", "Весь день"], ["1 час"])
            + f'<div style="display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: {GREEN}">{dot(GREEN, 6)}Свободно до 17:00 · в календаре 15:00–16:00</div>'
            + _hdr("МЕСТО") + f'<span style="height: 34px; box-sizing: border-box; border-radius: 8px; border: 1px solid {STRONG}; display: flex; align-items: center; padding: 0 12px; color: {MUT}">Адрес или ссылка на созвон</span>'
-           + notebox("Повестка, ссылки… Markdown, «Знания» через [[", 88))
+           + notebox("Повестка, ссылки… Markdown, [[ — ссылка на «Знания»", 88))
 ev_right = props([("Календарь", "● Основной", BLUE), ("Напомнить", "за 15 мин"), ("Повтор",), ("Участники",)])
 ev_prev = ev_r.split('</span>', 1)[1]
 st = W + bwin(1, f'Встреча с заказчиком {mark("в пятницу 15:00", BLUE)} {mark("час", BLUE)}', ev_left, ev_right, ev_prev, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить событие', 620, ph=232)
@@ -473,7 +473,7 @@ def hab_left():
             + _hdr("КАК ЧАСТО") + chips(GOLD, ["Каждый день", "По будням", "Свои дни", "N раз в неделю"], ["Каждый день"])
             + _hdr("КОГДА") + frow2(_fld("@clock", "07:00", 104, True), f'<span style="align-self: center; color: {MUT}">до</span>', _fld("@clock", "09:00", 104, True))
             + chips(GOLD, ["Утро", "День", "Вечер", "Любое"], ["Утро"])
-            + notebox("Зачем и как… Markdown, «Знания» через [[", 80))
+            + notebox("Зачем и как… Markdown, [[ — ссылка на «Знания»", 80))
 hab_right = lambda edit: props([("Цель", "Сделать"), ("Telegram", "в 07:00"), ("Windows", "в окне"), ("До какого дня",)] + ([("Удалить", "…", RED)] if edit else []))
 hcard = hprev.split('</span>', 1)[1]
 st = dim(s_b4.HM, .2) + bwin(2, f'Зарядка {mark("каждый день", GOLD)} {mark("утром", GOLD)}', hab_left(), hab_right(False), hcard, 'ПОЯВИТСЯ В «ПРИВЫЧКАХ»', 'Добавить привычку', 620, ph=150)
@@ -487,7 +487,7 @@ save('G_HabitEdit.dc.html', page('Окно привычки', 'ПРИВЫЧКИ'
 bd_left = (_hdr("КОГДА") + frow2(fflex("@calendar", "12 ноября"), _fld("", "1994", 110, True).replace('<span style="color: #8A8C94"></span>', ''))
            + f'<div style="font-size: 12px; color: {MUT}">Повторяется каждый год · год можно не указывать, он нужен, чтобы показать возраст («исполнится 32»)</div>'
            + _hdr("ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ") + chips(VIO, ["Не надо", "За неделю", "За 2 недели", "За месяц"], ["За неделю"])
-           + notebox("Идеи подарков, размеры, что любит… Markdown, «Знания» через [[", 120))
+           + notebox("Идеи подарков, размеры, что любит… Markdown, [[ — ссылка на «Знания»", 120))
 bd_right = props([("Календарь", "● Основной", VIO), ("Напомнить", "в день, за день"), ("Контакт",)])
 bcard = bd_r.split('</span>', 1)[1]
 st = K + bwin(3, f'Оля {mark("12 ноября", VIO)} {mark("1994", VIO)}', bd_left, bd_right, bcard, 'ПОЯВИТСЯ В КАЛЕНДАРЕ', 'Добавить день рождения', 620, ph=112)
