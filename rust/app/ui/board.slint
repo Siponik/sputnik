@@ -102,8 +102,27 @@ component SideCol inherits Rectangle {
 
 // Канбан: колонки фиксированной ширины; карточку тянут мышью в другую колонку или на другое
 // место в своей (полоска — куда встанет), клик выбирает (рамка), клик по названию открывает.
+// ползунок ширины колонок в шапке доски (п.26): 200–360 px
+component ColWidth inherits Rectangle {
+    width: 120px; height: 20px;
+    property <float> k: (S.board-colw - 200px) / 160px;
+    Icon { x: 0; y: 3px; width: 14px; height: 14px; name: "expand"; c: #8A8C96; }
+    Rectangle { x: 22px; y: 9px; width: 90px; height: 2px; background: #45464D; }
+    Rectangle { x: 22px; y: 9px; width: 90px * k; height: 2px; background: G.accent; }
+    Rectangle { x: 22px + 90px * k - 6px; y: 4px; width: 12px; height: 12px; border-radius: 6px; background: sa.has-hover || sa.pressed ? G.accent : G.ink; }
+    sa := TouchArea {
+        x: 16px; width: 102px;
+        mouse-cursor: ew-resize;
+        clicked => { S.board-colw-set(200px + 160px * max(0, min(1, (self.mouse-x - 6px) / 90px))); }
+        moved => { if (self.pressed) { S.board-colw-set(200px + 160px * max(0, min(1, (self.mouse-x - 6px) / 90px))); } }
+    }
+}
+
 component Kanban inherits Rectangle {
-    property <length> colw: max(260px, (self.width - 8px) / max(1, S.columns.length));
+    // п.26: общая ширина колонок 200–360, своя у каждого списка; тянется за правый край колонки
+    property <length> colw: root.resizing ? root.live-w : S.board-colw;
+    property <bool> resizing;
+    property <length> live-w: 288px;
     property <string> open-done;
     property <bool> dragging;
     property <bool> dropped;
@@ -117,7 +136,14 @@ component Kanban inherits Rectangle {
     fl := Flickable {
         // тащить мышью можно только карточки; доска листается колесом
         interactive: false;
-        content-width: max(self.width, S.columns.length * root.colw + 24px);
+        content-width: max(self.width, S.columns.length * root.colw + 24px + 140px);
+        // справа от колонок — «＋ Колонка» (открывает настройки списка)
+        Rectangle {
+            x: S.columns.length * root.colw + 4px; y: 0; width: 124px; height: 40px;
+            border-radius: 8px; border-width: 1px; border-color: addc.has-hover ? G.accent : G.line;
+            Text { text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: addc.has-hover ? G.accent : #8A8C96; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+            addc := TouchArea { clicked => { S.ls-show(); } mouse-cursor: pointer; }
+        }
         cols := HorizontalLayout {
             padding: 0px;
             padding-bottom: 28px;
@@ -289,6 +315,21 @@ component Kanban inherits Rectangle {
                     }
                 }
                 if hot: Brackets { x: 0; y: 0; width: root.colw - 8px; height: parent.height; }
+                // правый край колонки: потянуть — все колонки меняют ширину вместе
+                Rectangle {
+                    x: root.colw - 11px; y: 40px; width: 6px; height: parent.height - 48px;
+                    background: ra.has-hover || ra.pressed ? G.accent.with-alpha(0.5) : transparent;
+                    ra := TouchArea {
+                        mouse-cursor: ew-resize;
+                        pointer-event(e) => {
+                            if (e.kind == PointerEventKind.down) { root.live-w = S.board-colw; root.resizing = true; }
+                            if (e.kind == PointerEventKind.up && root.resizing) { root.resizing = false; S.board-colw-set(root.live-w); }
+                        }
+                        moved => {
+                            if (root.resizing) { root.live-w = max(200px, min(360px, S.board-colw + (self.mouse-x - self.pressed-x) / (ci + 1))); }
+                        }
+                    }
+                }
                 // провод к следующей колонке: по зазору 8 px между колонками, на высоте шапки;
                 // сокеты 10 px сидят центром на краях нод (правая грань этой — colw-8, левая следующей — colw)
                 if ci < S.columns.length - 1: Rectangle {
@@ -911,6 +952,7 @@ export component BoardPage inherits Rectangle {
                 if S.board-view == "pipe": GSeg { items: ["СТРОКИ", "ГАЛЕРЕЯ"]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
                 if S.board-view == "pipe" && !S.pipe-gallery: GSeg { items: ["ПО ПРОЕКТАМ", "ПО ЭТАПАМ"]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
                 Rectangle { }
+                if S.board-view == "kanban": ColWidth { y: 14px; }
                 if S.archived > 0: Text { text: "В АРХИВЕ · " + S.archived; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; vertical-alignment: center; color: #62646E; }
                 Rectangle {
                     y: 7px; height: 34px;
