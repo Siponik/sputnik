@@ -103,7 +103,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_board_tip(ss("Стрелка на строке переводит задачу на следующий этап.".to_string()));
     match view.as_str() {
         "list" => {
-            let mut cs = stickers_by_due(app, &id);
+            let mut cs = stickers_by_due(app, &id, "");
             for c in cs.iter_mut() {
                 let open: Vec<Card> = slint::Model::iter(&c.cards).filter(|x| !x.done).collect();
                 c.count = open.len() as i32;
@@ -116,7 +116,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         }
         "stickers" => {
             g.set_stk_by(ss(if u.stk_by == "due" { "due" } else { "topic" }));
-            let cols = if u.stk_by == "due" { stickers_by_due(app, &id) } else { stickers(app, &id) };
+            let cols = if u.stk_by == "due" { stickers_by_due(app, &id, &u.board_sel) } else { stickers(app, &id, &u.board_sel) };
             stk_place(g, &cols);
             g.set_columns(model(cols));
             let week = sputnik_core::dates::ymd(sputnik_core::dates::add_days(sputnik_core::dates::parse_ymd(&today_s()).unwrap(), -7));
@@ -182,7 +182,14 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 g.set_pipe_note(ss(text(&t["notes"])));
                 g.set_pipe_client(ss(text(&l["client"])));
                 let d = day10(&t["due"]);
-                g.set_pipe_due(ss(if d.is_empty() { "без срока".to_string() } else { sputnik_core::create::day_month(&d) }));
+                g.set_pipe_due(ss(if d.is_empty() { "Без срока".to_string() } else { sputnik_core::when::when_text(&d, None, sputnik_core::habits::now().date()).0 }));
+                // п.42: время и напоминания — как в окне задачи
+                let (st, lab) = super::dialogs::time_of(&l["slot"]);
+                g.set_pipe_time(ss(st));
+                g.set_pipe_time_label(ss(lab));
+                let (rv, k) = super::dialogs::reminds_of(&l["remind"]);
+                g.set_pipe_reminds(model(rv));
+                g.set_pipe_remind_n(k);
                 g.set_pipe_prio(n(&l["priority"]).unwrap_or(2.0) as i32);
                 let ci = rows.iter().find(|r| r.id.as_str() == tid).map(|r| r.stage as usize).unwrap_or(0);
                 pipe_detail(app, &id, &t, &cols, ci, g);
@@ -219,7 +226,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
 }
 
 /// Стикеры по темам списка; сделанные сегодня ещё видны, раньше — в «баночке» (архив).
-fn stickers(app: &App, id: &str) -> Vec<Column> {
+fn stickers(app: &App, id: &str, sel: &str) -> Vec<Column> {
     let ll = app.ll(id);
     let topics = a(&stk::topics_of(ll)).to_vec();
     let tdy = today_s();
@@ -236,10 +243,10 @@ fn stickers(app: &App, id: &str) -> Vec<Column> {
     }
     let mut out: Vec<Column> = lanes.into_iter().filter(|x| !x.1.is_empty()).map(|(tp, ts)| Column {
         id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: ts.len() as i32, limit: 0, over: false, done: false,
-        hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t, "")).collect()),
+        hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()),
     }).collect();
     out.push(Column { id: ss(""), name: ss("Разное"), count: misc.len() as i32, limit: 0, over: false, done: false, hue: color(""),
-        cards: model(misc.iter().map(|t| card(app, id, t, "")).collect()) });
+        cards: model(misc.iter().map(|t| card(app, id, t, sel)).collect()) });
     // пустые темы — тоже колонкой, чтобы было куда добавить
     for tp in &topics {
         if !out.iter().any(|c| c.id.as_str() == s(&tp["id"])) {
@@ -251,7 +258,7 @@ fn stickers(app: &App, id: &str) -> Vec<Column> {
 }
 
 /// Стикеры по срокам: просрочено, сегодня, завтра, на неделе, позже, без срока.
-fn stickers_by_due(app: &App, id: &str) -> Vec<Column> {
+fn stickers_by_due(app: &App, id: &str, sel: &str) -> Vec<Column> {
     let tdy = today_s();
     let d0 = sputnik_core::dates::parse_ymd(&tdy).unwrap();
     let plus = |k| sputnik_core::dates::ymd(sputnik_core::dates::add_days(d0, k));
@@ -264,7 +271,7 @@ fn stickers_by_due(app: &App, id: &str) -> Vec<Column> {
             let b = if d.is_empty() { "none" } else if d < tdy && !App::is_done(t) { "late" } else if d <= tdy { "today" } else if d == tmr { "tmr" } else if d <= wk { "week" } else { "later" };
             b == *k
         }).collect();
-        Column { id: ss(*k), name: ss(*name), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t, "")).collect()) }
+        Column { id: ss(*k), name: ss(*name), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()) }
     }).filter(|c| c.count > 0 || c.id.as_str() == "today").collect()
 }
 

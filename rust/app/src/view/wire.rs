@@ -29,6 +29,27 @@ pub(super) fn ask(u: &mut Ui, q: impl Into<String>, yes: &str, f: impl FnOnce(&m
     u.confirm = Some((q.into(), yes.into(), Box::new(f)));
 }
 
+fn remind_toggle(app: &mut App, id: &str, m: &str) {
+    let m: i64 = m.parse().unwrap_or(60);
+    let mut mins = lead_mins(&app.lt(id)["remind"]);
+    if let Some(i) = mins.iter().position(|x| *x == m) { mins.remove(i); } else { mins.push(m); }
+    let r = sputnik_core::reminders::mins_to_rule(&mins.iter().map(|x| json!(x)).collect::<Vec<_>>());
+    app.set_task(id, json!({"remind": r}));
+}
+
+/// Время задачи: пусто — весь день; иначе новое начало с прежней длительностью. Без даты — на сегодня.
+fn time_set(app: &mut App, l: &str, id: &str, t: &str) {
+    let Some(tk) = app.task(l, id).cloned() else { return };
+    if t.is_empty() { app.set_task(id, json!({"slot": null})); return; }
+    let mm = |x: &str| x.split_once(':').and_then(|(h, m)| Some(h.parse::<i64>().ok()? * 60 + m.parse::<i64>().ok()?));
+    let slot = &app.lt(id)["slot"];
+    let dur = match (slot["s"].as_str().and_then(mm), slot["e"].as_str().and_then(mm)) { (Some(a0), Some(b0)) if b0 > a0 => b0 - a0, _ => 0 };
+    let st = mm(t).unwrap_or(0);
+    let en = (st + dur).min(24 * 60 - 1);
+    let day = { let d = day10(&tk["due"]); if d.is_empty() { crate::view::today_s() } else { d } };
+    app.schedule(l, &tk, &day, json!({"s": t, "e": format!("{:02}:{:02}", en / 60, en % 60)}));
+}
+
 fn str_(x: &slint::SharedString) -> String {
     x.as_str().to_string()
 }
@@ -801,13 +822,14 @@ pub fn wire(w: &AppWindow) {
             app.toggle_done(&l, &tk);
         }
     }));
+    g.on_t_time_set(|t| act(|app, u| { if let Some((l, id)) = cur(u) { time_set(app, &l, &id, &str_(&t)); } }));
+    // те же поля в раскрытой строке конвейера (п.42)
+    g.on_w_time(|l, id, t| act(|app, _| time_set(app, &l, &id, &str_(&t))));
+    g.on_w_date(|l, id| act(|app, u| { u.dp = super::datetime::open(app, &l, &id); }));
+    g.on_w_remind(|_, id, m| act(|app, _| remind_toggle(app, &id, &m)));
     g.on_t_remind(|m| act(|app, u| {
         let Some((_, id)) = cur(u) else { return };
-        let m: i64 = m.parse().unwrap_or(60);
-        let mut mins = lead_mins(&app.lt(&id)["remind"]);
-        if let Some(i) = mins.iter().position(|x| *x == m) { mins.remove(i); } else { mins.push(m); }
-        let r = sputnik_core::reminders::mins_to_rule(&mins.iter().map(|x| json!(x)).collect::<Vec<_>>());
-        app.set_task(&id, json!({"remind": r}));
+        remind_toggle(app, &id, &m);
     }));
     g.on_t_repeat(|e| act(|app, u| {
         let Some((_, id)) = cur(u) else { return };

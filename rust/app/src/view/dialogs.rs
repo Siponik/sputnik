@@ -52,6 +52,26 @@ pub fn list_opts(app: &App, cur: &str) -> Vec<Opt> {
 }
 
 /// Минуты напоминаний из правил слоя (только «за N минут»).
+/// Напоминания задачи для чипов: hint — порядковый номер среди включённых (видны первые два, остальные — «+N»).
+pub fn reminds_of(r: &Value) -> (Vec<Opt>, i32) {
+    let mins = lead_mins(r);
+    let mut k = 0;
+    let v = rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| {
+        let on = mins.contains(m);
+        let mut o = opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), on);
+        if on { o.hint = ss(k.to_string()); k += 1; }
+        o
+    }).collect();
+    (v, k)
+}
+
+/// Время задачи для поля: начало и подпись «12:30–13:30».
+pub fn time_of(slot: &Value) -> (String, String) {
+    let st = slot["s"].as_str().unwrap_or("");
+    let en = slot["e"].as_str().unwrap_or(st);
+    (st.to_string(), if st.is_empty() || en == st { st.to_string() } else { format!("{st}–{en}") })
+}
+
 pub fn lead_mins(r: &Value) -> Vec<i64> {
     rem::rules_of(r).iter().filter(|x| x["kind"] == "lead").filter_map(|x| x["min"].as_i64()).collect()
 }
@@ -93,7 +113,12 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     };
     g.set_t_due(ss(due_in));
     let (a0, b0) = when::when_text(&day, slot["s"].as_str().map(|x| (x, slot["e"].as_str().unwrap_or(x))), hb::now().date());
-    g.set_t_due_label(ss(if b0.is_empty() { a0 } else { format!("{a0}, {b0}") }));
+    // дата — отдельно, время — в своём поле рядом (G_TaskFull)
+    let _ = b0;
+    g.set_t_due_label(ss(a0));
+    let (st, lab) = time_of(slot);
+    g.set_t_time(ss(st));
+    g.set_t_time_label(ss(lab));
     g.set_t_prio(n(&l["priority"]).unwrap_or(0.0) as i32);
     let cols = app.columns(list);
     let cur = app.col_of(t0, &cols.iter().map(|c| c.0.clone()).collect::<Vec<_>>());
@@ -116,15 +141,8 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
         let path = app.notes.notes.iter().find(|n| n.title.to_lowercase() == title.to_lowercase()).map(|n| n.path.clone()).unwrap_or_default();
         Opt { id: ss(path), label: ss(title), hint: ss(""), hue: color(""), on: false }
     }).collect()));
-    let mins = lead_mins(&l["remind"]);
-    // hint — порядковый номер среди включённых: в окне видны первые два чипа, остальные — «+N»
-    let mut k = 0;
-    g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| {
-        let on = mins.contains(m);
-        let mut o = opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), on);
-        if on { o.hint = ss(k.to_string()); k += 1; }
-        o
-    }).collect()));
+    let (rv, k) = reminds_of(&l["remind"]);
+    g.set_t_reminds(model(rv));
     g.set_t_remind_n(k);
     let every = s(&l["repeat"]["every"]);
     let mut reps = vec![opt("", "Нет", every.is_empty())];
