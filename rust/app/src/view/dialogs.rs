@@ -112,6 +112,10 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_subs_donelist(model(subs.iter().filter(|x| x.done).cloned().collect()));
     g.set_t_subs(model(subs));
     task_extra(app, g, list, t0, &cols, &cur);
+    g.set_t_links(model(sputnik_core::wikilink::links(s(&t0["notes"])).into_iter().map(|title| {
+        let path = app.notes.notes.iter().find(|n| n.title.to_lowercase() == title.to_lowercase()).map(|n| n.path.clone()).unwrap_or_default();
+        Opt { id: ss(path), label: ss(title), hint: ss(""), hue: color(""), on: false }
+    }).collect()));
     let mins = lead_mins(&l["remind"]);
     g.set_t_reminds(model(rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).collect()));
     let every = s(&l["repeat"]["every"]);

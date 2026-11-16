@@ -60,6 +60,13 @@ export component TaskDialog inherits Overlay {
     property <length> mid-h: root.H - root.top - 56px;
     property <length> lw: root.narrow || root.note-full ? root.W - 48px : root.W - 48px - root.RW - 24px;
     close => { S.t-close(); }
+    function pick-link(title: string) {
+        nb.text = S.link-insert(nb.text, title);
+        S.t-notes-set(nb.text);
+        S.link-search(nb.text);
+        nb.grab();
+        nb.to-end();
+    }
     fs := FocusScope {
         key-pressed(e) => {
             if (e.text == Key.Escape) {
@@ -174,10 +181,44 @@ export component TaskDialog inherits Overlay {
                         Icon { x: 4px; y: 4px; width: 16px; height: 16px; name: root.note-full ? "minimize" : "expand"; c: na.has-hover ? G.ink : #8A8C96; }
                         na := TouchArea { clicked => { root.note-full = !root.note-full; } mouse-cursor: pointer; }
                     }
+                    property <length> lk-h: S.t-links.length > 0 ? 34px : 0px;
                     nb := ScrollInput {
-                        x: 12px; y: 32px; width: parent.width - 24px; height: parent.height - 40px;
+                        x: 12px; y: 32px; width: parent.width - 24px; height: parent.height - 40px - lk-h;
                         text: S.t-notes; font-size: 13.5px;
-                        edited(t) => { S.t-notes-set(t); }
+                        enter-grab: S.link-found.length > 0;
+                        edited(t) => { S.t-notes-set(t); S.link-search(t); }
+                        enter => { root.pick-link(S.link-found[0].label); }
+                    }
+                    // ссылки на «Знания» плашками: клик открывает заметку
+                    if S.t-links.length > 0: HorizontalLayout {
+                        x: 12px; y: parent.height - 32px; height: 24px; width: parent.width - 24px;
+                        spacing: 6px; alignment: start;
+                        for lk in S.t-links: Rectangle {
+                            width: min(220px, lt.preferred-width + 34px);
+                            border-radius: 4px;
+                            background: lka.has-hover ? G.accent-line : G.accent-wash;
+                            Icon { x: 7px; y: 5px; width: 14px; height: 14px; name: "read"; c: G.accent; }
+                            lt := Text { x: 26px; width: parent.width - 32px; text: lk.label; font-size: 12px; color: lk.id == "" ? #8A8C96 : G.accent; vertical-alignment: center; height: parent.height; overflow: elide; }
+                            lka := TouchArea { clicked => { if (lk.id != "") { S.t-close(); S.note-open(lk.id); } } mouse-cursor: pointer; }
+                        }
+                    }
+                    // подсказка после «[[»: поиск по «Знаниям», Enter или клик вставляет ссылку
+                    if S.link-found.length > 0 && nb.focused: Rectangle {
+                        x: 12px; y: 32px; width: min(320px, parent.width - 24px); height: min(5, S.link-found.length) * 30px + 10px;
+                        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.accent-line;
+                        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+                        VerticalLayout {
+                            padding: 5px;
+                            for f[i] in S.link-found: Rectangle {
+                                visible: i < 5;
+                                height: i < 5 ? 30px : 0px;
+                                border-radius: 5px;
+                                background: i == 0 || fa.has-hover ? G.node-hover : transparent;
+                                Icon { x: 8px; y: 8px; width: 14px; height: 14px; name: "read"; c: G.accent; }
+                                Text { x: 30px; width: parent.width - 40px; text: f.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                fa := TouchArea { clicked => { root.pick-link(f.label); } mouse-cursor: pointer; }
+                            }
+                        }
                     }
                 }
                 // правая колонка (в узком окне — под левой)

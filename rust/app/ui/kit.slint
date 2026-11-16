@@ -335,7 +335,10 @@ export component ScrollInput inherits Flickable {
     out property <bool> focused: ti.has-focus;
     callback edited(string);
     callback escape();
+    in property <bool> enter-grab;   // Enter забирает подсказка (например, «[[» — выбрать ссылку)
+    callback enter();
     public function grab() { ti.focus(); }
+    public function to-end() { ti.set-selection-offsets(ti.text.character-count * 4, ti.text.character-count * 4); }
     viewport-height: max(self.height, ti.preferred-height + 4px);
     viewport-width: self.width;
     ti := TextInput {
@@ -343,7 +346,11 @@ export component ScrollInput inherits Flickable {
         font-size: root.font-size; color: root.ink;
         single-line: false; wrap: word-wrap;
         edited => { root.edited(self.text); }
-        key-pressed(e) => { if (e.text == Key.Escape) { root.escape(); return accept; } reject }
+        key-pressed(e) => {
+            if (e.text == Key.Escape) { root.escape(); return accept; }
+            if (e.text == Key.Return && root.enter-grab) { root.enter(); return accept; }
+            reject
+        }
         // курсор всегда виден
         cursor-position-changed(p) => {
             if (p.y + root.viewport-y < 0) { root.viewport-y = -p.y; }

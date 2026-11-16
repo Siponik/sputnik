@@ -309,6 +309,11 @@ export global S {
     in property <int> t-subs-done;
     in property <string> t-next-id;
     in property <string> t-next-name;
+    // ссылки [[…]] на «Знания» в заметке (п.37)
+    in property <[Opt]> t-links;              // label — название, id — путь заметки ("" — такой нет)
+    in property <[Opt]> link-found;           // подсказка после «[[»: label — название, id — путь
+    callback link-search(string);             // текст заметки — ищет по набранному после «[[»
+    pure callback link-insert(string, string) -> string;
     callback t-close();
     callback t-title-set(string);
     callback t-notes-set(string);
