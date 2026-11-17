@@ -406,6 +406,7 @@ impl Notes {
         let start: Vec<Option<(f64, f64)>> = self.graph.0.iter().map(|g| old.get(&g.id).copied()).collect();
         let fresh = start.iter().all(|x| x.is_none());
         let mut sm = sputnik_core::graph::Sim::new(self.graph.0.len(), &self.graph.1, o.forces, &start);
+        sm.steps = 160.0;
         sm.alpha = if fresh { 1.0 } else if start.iter().any(|x| x.is_none()) { 0.3 } else { 0.0 };
         if !fresh {
             sm.place(&mut self.graph.0);
@@ -417,7 +418,8 @@ impl Notes {
     pub fn graph_step(&mut self) -> bool {
         let Some(sm) = self.sim.as_mut() else { return false };
         let mut live = false;
-        for _ in 0..2 {
+        // несколько шагов за кадр: граф успокаивается за секунду-другую даже при медленной отрисовке
+        for _ in 0..4 {
             live |= sm.tick();
         }
         if sm.held.is_none() {

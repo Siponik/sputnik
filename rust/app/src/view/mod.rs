@@ -128,7 +128,9 @@ pub fn graph_frame() {
         let Ok(u) = u.try_borrow() else { return };
         let g = w.global::<S>();
         if u.tab == 4 && u.note_graph {
+            graph::FRAME.with(|f| f.set(true));
             graph::render(app, &u, &g);
+            graph::FRAME.with(|f| f.set(false));
         }
         g.set_graph_live(live);
     }));
