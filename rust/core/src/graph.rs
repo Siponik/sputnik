@@ -6,14 +6,53 @@ pub struct GNode {
     pub id: String,
     pub label: String,
     pub missing: bool,
+    /// Точка-тег (`#тег`): связана со всеми заметками, где он стоит.
+    pub tag: bool,
+    /// Вложение (картинка, PDF…) по ссылке `![[файл.png]]`.
+    pub file: bool,
     pub degree: usize,
     pub x: f64,
     pub y: f64,
 }
 
 /// Собрать граф: `notes` — (id, название, ссылки по названиям). Ссылка без заметки — бледная точка, если `missing`.
+/// Ссылка вида `#тег` становится точкой-тегом, ссылка на файл с расширением (`.png`, `.pdf`…) — вложением.
 pub fn build(notes: &[(String, String, Vec<String>)], missing: bool) -> (Vec<GNode>, Vec<(usize, usize)>) {
-    let mut nodes: Vec<GNode> = notes.iter().map(|(id, l, _)| GNode { id: id.clone(), label: l.clone(), missing: false, degree: 0, x: 0.0, y: 0.0 }).collect();
+    build_with(notes, missing, Forces::default())
+}
+
+/// Силы раскладки — ползунки «Отталкивание», «Длина связей», «Притяжение к центру», каждый 0…1.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Forces {
+    pub repel: f64,
+    pub dist: f64,
+    pub grav: f64,
+}
+
+impl Default for Forces {
+    fn default() -> Self {
+        Forces { repel: 0.25, dist: 0.25, grav: 0.25 }
+    }
+}
+
+impl Forces {
+    /// (длина связи, заряд, тяга к центру) в единицах раскладки; 0,25 у всех — прежние 40, −60, 0,06.
+    fn units(&self) -> (f64, f64, f64) {
+        let c = |v: f64| v.clamp(0.0, 1.0);
+        (15.0 + 100.0 * c(self.dist), -(20.0 + 160.0 * c(self.repel)), 0.02 + 0.16 * c(self.grav))
+    }
+}
+
+fn is_file(name: &str) -> bool {
+    let low = name.to_lowercase();
+    match low.rsplit_once('.') {
+        Some((a, e)) => !a.is_empty() && !e.is_empty() && e.len() <= 4 && e != "md" && e.chars().all(|c| c.is_ascii_alphanumeric()),
+        None => false,
+    }
+}
+
+pub fn build_with(notes: &[(String, String, Vec<String>)], missing: bool, forces: Forces) -> (Vec<GNode>, Vec<(usize, usize)>) {
+    let mut nodes: Vec<GNode> = notes.iter().map(|(id, l, _)| GNode { id: id.clone(), label: l.clone(), missing: false, tag: false, file: false, degree: 0, x: 0.0, y: 0.0 }).collect();
     let mut at: std::collections::HashMap<String, usize> = nodes.iter().enumerate().map(|(i, n)| (n.label.to_lowercase(), i)).collect();
     let mut edges: Vec<(usize, usize)> = vec![];
     let mut seen = std::collections::HashSet::new();
@@ -21,8 +60,18 @@ pub fn build(notes: &[(String, String, Vec<String>)], missing: bool) -> (Vec<GNo
         for l in links {
             let j = match at.get(&l.to_lowercase()) {
                 Some(&j) => j,
+                None if l.starts_with('#') => {
+                    nodes.push(GNode { id: l.to_lowercase(), label: l.clone(), missing: false, tag: true, file: false, degree: 0, x: 0.0, y: 0.0 });
+                    at.insert(l.to_lowercase(), nodes.len() - 1);
+                    nodes.len() - 1
+                }
+                None if is_file(l) => {
+                    nodes.push(GNode { id: format!("?{l}"), label: l.clone(), missing: false, tag: false, file: true, degree: 0, x: 0.0, y: 0.0 });
+                    at.insert(l.to_lowercase(), nodes.len() - 1);
+                    nodes.len() - 1
+                }
                 None if missing => {
-                    nodes.push(GNode { id: format!("?{l}"), label: l.clone(), missing: true, degree: 0, x: 0.0, y: 0.0 });
+                    nodes.push(GNode { id: format!("?{l}"), label: l.clone(), missing: true, tag: false, file: false, degree: 0, x: 0.0, y: 0.0 });
                     at.insert(l.to_lowercase(), nodes.len() - 1);
                     nodes.len() - 1
                 }
@@ -38,7 +87,7 @@ pub fn build(notes: &[(String, String, Vec<String>)], missing: bool) -> (Vec<GNo
         nodes[a].degree += 1;
         nodes[b].degree += 1;
     }
-    layout(&mut nodes, &edges);
+    layout_with(&mut nodes, &edges, forces);
     (nodes, edges)
 }
 
@@ -56,6 +105,35 @@ pub fn neighbors(edges: &[(usize, usize)], i: usize) -> Vec<usize> {
 /// связи (сила 1/меньшая степень, смещение по степеням), отталкивание Барнса–Хата (θ = 0,9), тяга к центру
 /// по x/y (чтобы одиночки не улетали) и центрирование. Старт — филлотаксис, как у d3. Итог вписан в 0…1000.
 pub fn layout(nodes: &mut [GNode], edges: &[(usize, usize)]) {
+    layout_with(nodes, edges, Forces::default())
+}
+
+/// Точки не дальше `depth` связей от `i` (сама `i` — первой): локальный граф.
+pub fn local(n: usize, edges: &[(usize, usize)], i: usize, depth: usize) -> Vec<usize> {
+    if i >= n {
+        return vec![];
+    }
+    let mut seen = vec![false; n];
+    seen[i] = true;
+    let mut out = vec![i];
+    let mut front = vec![i];
+    for _ in 0..depth {
+        let mut next = vec![];
+        for &f in &front {
+            for j in neighbors(edges, f) {
+                if !seen[j] {
+                    seen[j] = true;
+                    out.push(j);
+                    next.push(j);
+                }
+            }
+        }
+        front = next;
+    }
+    out
+}
+
+pub fn layout_with(nodes: &mut [GNode], edges: &[(usize, usize)], forces: Forces) {
     let n = nodes.len();
     if n == 0 {
         return;
@@ -78,7 +156,8 @@ pub fn layout(nodes: &mut [GNode], edges: &[(usize, usize)]) {
         let bias = deg[a] as f64 / (deg[a] + deg[b]) as f64;
         (a, b, st, bias)
     }).collect();
-    let (dist, charge, grav, vdecay) = (40.0, -60.0, 0.06, 0.6);
+    let (dist, charge, grav) = forces.units();
+    let vdecay = 0.6;
     let mut alpha = 1.0f64;
     let adecay = 1.0 - 0.001f64.powf(1.0 / 300.0);
     while alpha > 0.001 {

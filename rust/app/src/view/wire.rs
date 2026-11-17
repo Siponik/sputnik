@@ -1218,6 +1218,38 @@ pub fn wire(w: &AppWindow) {
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
+    // переключатель «Заметки · Граф · Холст»: холст — последний открытый, иначе первый в папке
+    g.on_note_mode(|m| act(|app, u| match m {
+        0 => u.note_graph = false,
+        1 => { u.graph_sel.clear(); u.note_graph = true; }
+        _ => {
+            let p = u.note_tabs.iter().rev().find(|p| super::canvas::is_canvas(p)).cloned().or_else(|| app.notes.canvases.first().cloned());
+            if let Some(p) = p { u.note_graph = false; open_note_tab(app, u, &p); }
+        }
+    }));
+    g.on_graph_pick(|id| act(|_, u| u.graph_sel = str_(&id)));
+    g.on_graph_search(|q| act(|_, u| u.graph_q = str_(&q)));
+    g.on_graph_local_set(|v| act(|_, u| u.graph_local = v));
+    g.on_graph_group(|f| act(|_, u| {
+        let f = str_(&f);
+        if let Some(i) = u.graph_hide.iter().position(|x| *x == f) { u.graph_hide.remove(i); } else { u.graph_hide.push(f); }
+    }));
+    g.on_graph_show_set(|i| act(|app, u| {
+        let o = &mut app.notes.graph_opts;
+        match i {
+            0 => o.tags = !o.tags,
+            1 => o.files = !o.files,
+            2 => { u.graph_no_lonely = !u.graph_no_lonely; return; }
+            _ => o.missing = !o.missing,
+        }
+        app.notes.relayout();
+    }));
+    g.on_graph_force(|i, v| act(|app, _| {
+        let f = &mut app.notes.graph_opts.forces;
+        let v = (v as f64).clamp(0.0, 1.0);
+        match i { 0 => f.repel = v, 1 => f.dist = v, _ => f.grav = v }
+        app.notes.relayout();
+    }));
     g.on_note_tab_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
     g.on_note_tab_close(|p| act(|app, u| {
         let p = str_(&p);
@@ -1320,6 +1352,7 @@ pub fn wire(w: &AppWindow) {
 
     g.on_graph_open(|p, t| act(|app, u| {
         u.note_graph = false;
+        u.graph_sel.clear();
         if p.is_empty() { new_note(app, u, &t) } else { open_note_tab(app, u, &str_(&p)); }
     }));
     g.on_note_edited(|t| act(|_, u| {

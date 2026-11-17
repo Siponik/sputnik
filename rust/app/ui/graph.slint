@@ -1,0 +1,341 @@
+// Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
+import { G } from "theme.slint";
+import { Mono, Field, Brackets, Icon } from "kit.slint";
+import { S, GDot, GLine, Opt } from "store.slint";
+
+// Главный переключатель раздела: «Заметки · Граф · Холст» (одинаковый на всех экранах «Знаний»).
+export component ModeSwitch inherits Rectangle {
+    in property <int> current;
+    callback picked(int);
+    height: 45px;
+    Rectangle {
+        x: 6px; y: 6px; width: parent.width - 12px; height: 38px;
+        border-radius: 9px; background: G.bg;
+        HorizontalLayout {
+            padding: 3px; spacing: 3px;
+            for it[i] in [{ t: "Заметки", ic: "read" }, { t: "Граф", ic: "graph" }, { t: "Холст", ic: "canvas" }]: Rectangle {
+                border-radius: 7px;
+                background: i == root.current ? G.accent : (ma.has-hover ? G.node-hover : transparent);
+                HorizontalLayout {
+                    alignment: center; spacing: 6px;
+                    Icon { name: it.ic; width: 13px; y: (parent.height - 13px) / 2; c: i == root.current ? G.on-accent : #C9CAD0; }
+                    Text { text: it.t; font-size: 13px; font-weight: i == root.current ? 600 : 400; color: i == root.current ? #1C1D21 : #C9CAD0; vertical-alignment: center; }
+                }
+                ma := TouchArea { mouse-cursor: pointer; clicked => { root.picked(i); } }
+            }
+        }
+    }
+    Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
+}
+
+component Micro inherits Text {
+    font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.muted;
+}
+
+component Toggle inherits Rectangle {
+    in property <string> label;
+    in property <bool> on;
+    callback clicked;
+    height: 28px;
+    Text { x: 0; text: root.label; font-size: 13px; color: G.ink; vertical-alignment: center; }
+    Rectangle {
+        x: 124px; y: 4px; width: 36px; height: 20px; border-radius: 10px;
+        background: root.on ? G.accent : G.line;
+        animate background { duration: G.fast; }
+        Rectangle { x: root.on ? parent.width - 18px : 2px; y: 2px; width: 16px; height: 16px; border-radius: 8px; background: #fff; animate x { duration: G.fast; } }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+// Ползунок 0…1: тянуть или кликнуть; значение уходит наружу, когда отпустили.
+component Slider inherits Rectangle {
+    in property <string> label;
+    in property <float> value;
+    property <float> live: value;
+    property <bool> dragging;
+    callback changed(float);
+    height: 38px;
+    Text { x: 0; y: 0; text: root.label; font-size: 12px; color: G.muted; }
+    Rectangle { x: 0; y: 25px; width: parent.width; height: 2px; background: G.line; }
+    Rectangle { x: 0; y: 25px; width: parent.width * (root.dragging ? root.live : root.value); height: 2px; background: G.accent; }
+    Rectangle { x: parent.width * (root.dragging ? root.live : root.value) - 6px; y: 20px; width: 12px; height: 12px; border-radius: 3px; background: G.ink; }
+    TouchArea {
+        y: 14px; height: 24px;
+        mouse-cursor: pointer;
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down) { root.dragging = true; root.live = max(0, min(1, self.mouse-x / self.width)); }
+            if (e.kind == PointerEventKind.up && root.dragging) { root.dragging = false; root.changed(root.live); }
+        }
+        moved => { if (self.pressed) { root.live = max(0, min(1, self.mouse-x / self.width)); } }
+    }
+}
+
+// Нода «Фильтры» графа.
+export component GraphFilters inherits Rectangle {
+    callback mode(int);
+    background: G.node; border-radius: 8px; border-width: 1px; border-color: G.line; clip: true;
+    VerticalLayout {
+        ModeSwitch { current: 1; picked(i) => { root.mode(i); } }
+        Rectangle {
+            height: 52px;
+            Rectangle {
+                x: 12px; y: 10px; width: parent.width - 24px; height: 32px; border-radius: 6px; background: G.bg; border-width: 1px; border-color: G.line;
+                Icon { name: "search"; x: 10px; y: 9.5px; width: 13px; c: G.muted; }
+                Field { x: 30px; y: 0; width: parent.width - 36px; height: 32px; bare: true; font-size: 13px; placeholder: "Найти на графе"; text: S.graph-q; edited(t) => { S.graph-search(t); } escape => { self.clear(); S.graph-search(""); } }
+            }
+        }
+        Rectangle {
+            height: 38px;
+            Rectangle {
+                x: 12px; y: 0; width: sg.preferred-width; height: 28px; border-radius: 6px; border-width: 1px; border-color: G.line;
+                sg := HorizontalLayout {
+                    padding: 2px; spacing: 2px;
+                    for t[i] in ["ВЕСЬ", "ЛОКАЛЬНЫЙ"]: Rectangle {
+                        min-width: st.preferred-width + 20px; border-radius: 4px;
+                        background: (i == 1) == S.graph-local ? G.ink : (sa.has-hover ? G.node-hover : transparent);
+                        st := Text { text: t; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: (i == 1) == S.graph-local ? #1C1D21 : G.muted; horizontal-alignment: center; vertical-alignment: center; }
+                        sa := TouchArea { mouse-cursor: pointer; clicked => { S.graph-local-set(i == 1); } }
+                    }
+                }
+            }
+        }
+        Rectangle { height: 1px; background: G.line; }
+        VerticalLayout {
+            padding-top: 10px; padding-bottom: 4px;
+            Micro { x: 12px; text: "ГРУППЫ · ЦВЕТ ПО ПАПКЕ"; height: 18px; }
+            for gr in S.graph-groups: Rectangle {
+                height: 28px;
+                background: ga.has-hover ? G.node-hover : transparent;
+                Rectangle { x: 12px; y: 10px; width: 8px; height: 8px; border-radius: 2px; background: gr.on ? gr.hue : transparent; border-width: 1.5px; border-color: gr.hue; }
+                Text { x: 28px; text: gr.label; font-size: 13px; color: gr.on ? G.ink : G.dim; vertical-alignment: center; width: parent.width - 70px; overflow: elide; }
+                Text { x: parent.width - 12px - self.preferred-width; text: gr.hint; font-family: G.mono; font-size: 11px; color: G.dim; vertical-alignment: center; }
+                ga := TouchArea { mouse-cursor: pointer; clicked => { S.graph-group(gr.id); } }
+            }
+        }
+        Rectangle { height: 1px; background: G.line; }
+        VerticalLayout {
+            padding: 12px; padding-top: 10px; spacing: 4px;
+            Micro { text: "ПОКАЗЫВАТЬ"; height: 16px; }
+            for t[i] in ["Теги точками", "Вложения", "Без связей", "Ещё не созданные"]: Toggle { label: t; on: S.graph-show[i]; clicked => { S.graph-show-set(i); } }
+        }
+        Rectangle { height: 1px; background: G.line; }
+        VerticalLayout {
+            padding: 12px; padding-top: 10px; spacing: 4px;
+            Micro { text: "СИЛЫ"; height: 18px; }
+            for t[i] in ["Отталкивание", "Длина связей", "Притяжение к центру"]: Slider { label: t; value: S.graph-forces[i]; changed(v) => { S.graph-force(i, v); } }
+        }
+        Rectangle { }
+    }
+}
+
+// Сам граф: точки по цвету папки, подписи у самых связанных, у выбранной — соседи.
+export component GraphView inherits Rectangle {
+    in-out property <float> k: 1;
+    in-out property <length> ox;
+    in-out property <length> oy;
+    property <length> base: min(self.width, self.height) / 1000 * 0.92;
+    property <length> lx;
+    property <length> ly;
+    callback opened(string, string);
+    clip: true;
+    pan := TouchArea {
+        pointer-event(e) => {
+            if (e.kind == PointerEventKind.down) { root.lx = self.mouse-x; root.ly = self.mouse-y; }
+        }
+        moved => {
+            if (self.pressed) {
+                root.ox += self.mouse-x - root.lx;
+                root.oy += self.mouse-y - root.ly;
+                root.lx = self.mouse-x;
+                root.ly = self.mouse-y;
+            }
+        }
+        scroll-event(e) => {
+            if (e.delta-y != 0) {
+                root.k = max(0.3, min(8, root.k * (e.delta-y > 0 ? 1.15 : 1 / 1.15)));
+                return accept;
+            }
+            reject
+        }
+        mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
+    }
+    for l in S.graph-lines: Path {
+        x: 0; y: 0;
+        width: root.width;
+        height: root.height;
+        viewbox-width: root.width / 1px;
+        viewbox-height: root.height / 1px;
+        stroke: l.near ? G.accent : G.line-strong;
+        stroke-width: l.near ? 1.4px : 1px;
+        opacity: l.near ? 0.9 : (S.graph-sel != "" ? 0.22 : 0.4);
+        MoveTo { x: (root.width / 2 + (l.x1 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y1 - 500) * root.base * root.k + root.oy) / 1px; }
+        LineTo { x: (root.width / 2 + (l.x2 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y2 - 500) * root.base * root.k + root.oy) / 1px; }
+    }
+    for d in S.graph-dots: Rectangle {
+        property <length> cx: root.width / 2 + (d.x - 500) * root.base * root.k + root.ox;
+        property <length> cy: root.height / 2 + (d.y - 500) * root.base * root.k + root.oy;
+        property <length> rr: d.r * 1px * min(2, max(1, root.k * 0.7)) + (d.cur ? 3px : 0) + (da.has-hover ? 2px : 0);
+        x: cx - rr;
+        y: cy - rr;
+        width: rr * 2;
+        height: rr * 2;
+        border-radius: rr;
+        background: d.missing ? transparent : d.hue;
+        opacity: d.dim ? 0.45 : 1;
+        border-width: d.cur ? 2px : (d.missing ? 1px : 0);
+        border-color: d.cur ? G.accent-ink : G.dim;
+        da := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { S.graph-pick(d.id); fs.focus(); }
+            double-clicked => { root.opened(d.path, d.title); }
+            pointer-event(e) => { if (d.path != "" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", d.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+        }
+        if d.label || root.k >= 1.8 || da.has-hover: Text {
+            x: (parent.width - self.preferred-width) / 2;
+            y: parent.height + 3px;
+            text: d.title;
+            font-size: 11.5px;
+            color: d.cur || d.near || da.has-hover ? G.ink : G.muted;
+        }
+    }
+    fs := FocusScope {
+        width: 0; height: 0;
+        key-pressed(e) => {
+            if (e.text == Key.Return && S.graph-sel != "") { root.opened(S.graph-sel, S.graph-sel-title); return accept; }
+            if (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д") { S.graph-local-set(!S.graph-local); return accept; }
+            if (e.text == Key.Escape) { if (S.graph-local) { S.graph-local-set(false); } else { S.graph-pick(""); } return accept; }
+            if (e.text == "=" || e.text == "+") { root.k = min(8, root.k * 1.3); return accept; }
+            if (e.text == "-") { root.k = max(0.3, root.k / 1.3); return accept; }
+            reject
+        }
+    }
+    public function grab() { fs.focus(); }
+}
+
+component ZoomBtn inherits Rectangle {
+    in property <string> t;
+    callback clicked;
+    width: 32px; height: 32px; border-radius: 8px; border-width: 1px; border-color: G.line;
+    background: za.has-hover ? G.node-hover : G.node;
+    Text { text: root.t; font-size: 15px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
+    za := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+component Btn inherits Rectangle {
+    in property <string> t;
+    in property <bool> acc;
+    callback clicked;
+    height: 30px; border-radius: 6px;
+    border-width: acc ? 0 : 1px; border-color: G.line-strong;
+    background: acc ? (ba.has-hover ? G.accent.brighter(0.1) : G.accent) : (ba.has-hover ? G.node-hover : transparent);
+    Text { text: root.t; font-size: 13px; font-weight: root.acc ? 600 : 500; color: root.acc ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+    ba := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+}
+
+component Kbd inherits HorizontalLayout {
+    in property <string> k;
+    in property <string> t;
+    spacing: 5px;
+    Rectangle {
+        width: kt.preferred-width + 10px; height: 16px; y: 1px; border-radius: 3px; border-width: 1px; border-color: G.line;
+        kt := Text { text: root.k; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: G.dim; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    Text { text: root.t; font-size: 12px; color: G.muted; vertical-alignment: center; }
+}
+
+// Панель «Читаю»: начало заметки, соседи, кнопки.
+export component GraphRead inherits Rectangle {
+    callback open();
+    callback zen();
+    background: G.node; border-radius: 12px; border-width: 1px; border-color: G.accent-line; clip: true;
+    Rectangle {
+        y: 0; height: 34px; background: G.head-main;
+        Text { x: 12px; width: parent.width - 70px; text: "ЧИТАЮ · " + S.graph-sel-head; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
+        Text { x: parent.width - self.preferred-width - 12px; text: "↔ " + S.graph-sel-n; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #ffffffb0; vertical-alignment: center; }
+    }
+    VerticalLayout {
+        y: 34px; height: parent.height - 34px - 112px;
+        padding-left: 16px; padding-right: 16px; padding-top: 14px; spacing: 0;
+        if S.graph-sel-crumb != "": Text { text: S.graph-sel-crumb; font-size: 12px; color: G.muted; overflow: elide; }
+        Text { text: S.graph-sel-title; font-size: 20px; font-weight: 600; color: G.ink; wrap: word-wrap; }
+        if S.graph-sel-tags.length > 0: HorizontalLayout {
+            padding-top: 8px; spacing: 6px; alignment: start;
+            for t in S.graph-sel-tags: Rectangle {
+                width: tt.preferred-width + 12px; height: 18px; border-radius: 3px; border-width: 1px; border-color: G.line;
+                tt := Text { text: t; font-family: G.mono; font-size: 10.5px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
+            }
+        }
+        Rectangle { height: 12px; }
+        for l in S.graph-sel-lines: Text { text: l; font-size: 13.5px; color: #D4D5DA; wrap: word-wrap; min-height: 22px; }
+        if S.graph-sel-more != "": Text { text: S.graph-sel-more; font-size: 13.5px; color: G.muted; min-height: 22px; }
+        Rectangle { height: 12px; }
+        Text { text: "Клик по соседу — граф переезжает к той заметке, панель показывает её."; font-size: 12px; color: G.muted; wrap: word-wrap; }
+        Rectangle { height: 12px; }
+        Rectangle { height: 1px; background: G.line; }
+        Rectangle { height: 10px; }
+        Micro { text: "СОСЕДИ · " + S.graph-sel-n; }
+        Rectangle { height: 8px; }
+        for nb in S.graph-sel-near: HorizontalLayout {
+            alignment: start; padding-bottom: 6px;
+            Rectangle {
+                width: nt.preferred-width + 34px; height: 26px; border-radius: 13px; border-width: 1px; border-color: G.line;
+                background: na.has-hover ? G.node-hover : transparent;
+                Rectangle { x: 11px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: nb.hue; }
+                nt := Text { x: 23px; text: nb.label; font-size: 12.5px; color: nb.on ? G.ink : G.muted; vertical-alignment: center; }
+                na := TouchArea { mouse-cursor: pointer; clicked => { S.graph-pick(nb.id); } }
+            }
+        }
+        if S.graph-sel-rest > 0: Text { text: "ещё " + S.graph-sel-rest; font-size: 12.5px; color: G.muted; }
+        Rectangle { }
+    }
+    Rectangle {
+        y: parent.height - 112px; height: 112px;
+        Rectangle { y: 0; height: 1px; background: G.line; }
+        VerticalLayout {
+            padding: 12px; padding-left: 16px; padding-right: 16px; spacing: 8px;
+            Btn { t: "Открыть в заметках"; acc: true; clicked => { root.open(); } }
+            HorizontalLayout {
+                spacing: 8px;
+                Btn { t: "Открыть в фокусе"; clicked => { root.zen(); } }
+                Btn { t: S.graph-local ? "Весь граф" : "Локальный граф"; clicked => { S.graph-local-set(!S.graph-local); } }
+            }
+            HorizontalLayout {
+                spacing: 12px; alignment: start;
+                Kbd { k: "ENTER"; t: "открыть"; }
+                Kbd { k: "L"; t: "локальный"; }
+                Kbd { k: "ESC"; t: "закрыть"; }
+            }
+        }
+    }
+}
+
+// Экран целиком: фильтры 252 px слева, панель «Читаю» 320 px справа (на узком окне — поверх графа).
+export component GraphPage inherits Rectangle {
+    callback mode(int);
+    callback opened(string, string);
+    callback focus-open(string, string);
+    property <length> rw: S.graph-sel != "" ? 320px : 0px;
+    GraphFilters { x: 8px; y: 8px; width: 252px; height: min(parent.height - 16px, 760px); mode(i) => { root.mode(i); } }
+    gv := GraphView {
+        x: 268px; y: 8px; width: parent.width - 268px - 8px - (root.rw > 0 ? root.rw + 16px : 0px); height: parent.height - 16px;
+        opened(p, t) => { root.opened(p, t); }
+    }
+    HorizontalLayout {
+        x: 276px; y: 14px; height: 16px; spacing: 12px; alignment: start; width: gv.width - 60px;
+        Text { text: "ГРАФ ЗНАНИЙ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 2px; color: G.ink; vertical-alignment: center; }
+        Micro { text: S.graph-info + (S.graph-local ? " · ЛОКАЛЬНЫЙ" : "") + " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"; vertical-alignment: center; }
+    }
+    VerticalLayout {
+        x: gv.x + gv.width - 44px; y: 52px; width: 32px; spacing: 6px;
+        ZoomBtn { t: "+"; clicked => { gv.k = min(8, gv.k * 1.3); } }
+        ZoomBtn { t: "−"; clicked => { gv.k = max(0.3, gv.k / 1.3); } }
+        ZoomBtn { t: "⤢"; clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
+    }
+    if root.rw > 0: GraphRead {
+        x: parent.width - 8px - 320px; y: 8px; width: 320px; height: min(parent.height - 16px, 760px);
+        open => { root.opened(S.graph-sel, S.graph-sel-title); }
+        zen => { root.focus-open(S.graph-sel, S.graph-sel-title); }
+    }
+    if root.rw > 0: Brackets { x: parent.width - 8px - 320px; y: 8px; width: 320px; height: min(parent.height - 16px, 760px); }
+    init => { gv.grab(); }
+}

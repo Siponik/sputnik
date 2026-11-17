@@ -5,6 +5,7 @@ import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, S
 import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
 import { CanvasView, CvCam } from "canvas.slint";
 import { MdLine } from "linknote.slint";
+import { GraphPage, ModeSwitch } from "graph.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
 component LiveLine inherits Rectangle {
@@ -212,83 +213,6 @@ component NoteList inherits VerticalLayout {
 
 // Граф: точки — заметки, линии — [[ссылки]]. Колесо — масштаб, тянуть — двигать, клик — открыть.
 // С ×1.8 у точек видны названия, у выбранной заметки соседи подсвечены.
-component Graph inherits Rectangle {
-    in-out property <float> k: 1;
-    in-out property <length> ox;
-    in-out property <length> oy;
-    property <length> base: min(self.width, self.height) / 1000 * 0.92;
-    property <length> lx;
-    property <length> ly;
-    property <bool> moved-far;
-    clip: true;
-    background: G.bg;
-    pan := TouchArea {
-        pointer-event(e) => {
-            if (e.kind == PointerEventKind.down) { root.lx = self.mouse-x; root.ly = self.mouse-y; root.moved-far = false; }
-        }
-        moved => {
-            if (self.pressed) {
-                root.ox += self.mouse-x - root.lx;
-                root.oy += self.mouse-y - root.ly;
-                root.lx = self.mouse-x;
-                root.ly = self.mouse-y;
-            }
-        }
-        scroll-event(e) => {
-            if (e.delta-y != 0) {
-                root.k = max(0.3, min(8, root.k * (e.delta-y > 0 ? 1.15 : 1 / 1.15)));
-                return accept;
-            }
-            reject
-        }
-        mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
-    }
-    for l in S.graph-lines: Path {
-        x: 0; y: 0;
-        width: root.width;
-        height: root.height;
-        viewbox-width: root.width / 1px;
-        viewbox-height: root.height / 1px;
-        stroke: l.near ? G.accent : G.line-strong;
-        stroke-width: l.near ? 1.5px : 1px;
-        opacity: l.near ? 1 : 0.6;
-        MoveTo { x: (root.width / 2 + (l.x1 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y1 - 500) * root.base * root.k + root.oy) / 1px; }
-        LineTo { x: (root.width / 2 + (l.x2 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y2 - 500) * root.base * root.k + root.oy) / 1px; }
-    }
-    for d in S.graph-dots: Rectangle {
-        property <length> cx: root.width / 2 + (d.x - 500) * root.base * root.k + root.ox;
-        property <length> cy: root.height / 2 + (d.y - 500) * root.base * root.k + root.oy;
-        property <length> rr: d.r * 1px * min(2, max(1, root.k * 0.7)) + (da.has-hover ? 2px : 0);
-        x: cx - rr;
-        y: cy - rr;
-        width: rr * 2;
-        height: rr * 2;
-        border-radius: rr;
-        background: d.cur ? G.accent : (d.missing ? transparent : (d.near ? G.accent-ink : G.ink.with-alpha(0.75)));
-        border-width: d.missing ? 1px : 0;
-        border-color: G.dim;
-        da := TouchArea { clicked => { S.graph-open(d.path, d.title); } mouse-cursor: pointer; pointer-event(e) => { if (d.path != "" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", d.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
-        if root.k >= 1.8 || d.cur || d.near || da.has-hover: Text {
-            x: (parent.width - self.preferred-width) / 2;
-            y: parent.height + 3px;
-            text: d.title;
-            font-size: 11px;
-            color: d.cur ? G.accent-ink : (d.missing ? G.dim : G.ink);
-        }
-    }
-    HorizontalLayout {
-        x: parent.width - 150px;
-        width: 138px;
-        height: 30px;
-        y: parent.height - 42px;
-        spacing: 6px;
-        Button { text: "−"; clicked => { root.k = max(0.3, root.k / 1.3); } }
-        Button { text: "＋"; clicked => { root.k = min(8, root.k * 1.3); } }
-        Button { text: "⤢"; clicked => { root.k = 1; root.ox = 0; root.oy = 0; } }
-    }
-    Mono { x: 14px; y: parent.height - 30px; text: S.graph-dots.length + " ЗАМЕТОК · " + S.graph-lines.length + " СВЯЗЕЙ"; }
-}
-
 // Раскладка G: слева нода «Заметки» 264 px, справа нода «Связи» 300 px, середина тянется; поля 8 px.
 export component NotesPage inherits Rectangle {
     property <string> body: S.note-body;
@@ -308,7 +232,7 @@ export component NotesPage inherits Rectangle {
     property <int> caret: -1;
 
     // 01 · заметки
-    if !root.zen: Rectangle {
+    if !root.zen && !S.note-graph: Rectangle {
         x: 8px; y: 8px; width: root.lw; height: parent.height - 16px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
         Rectangle {
@@ -317,7 +241,7 @@ export component NotesPage inherits Rectangle {
             Text { x: 12px; text: "01  ЗАМЕТКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
             Text { x: parent.width - self.preferred-width - 12px; text: S.notes-count + ""; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb0; vertical-alignment: center; }
         }
-        Seg { x: 10px; y: 44px; width: parent.width - 20px; items: ["¶ ЗАМЕТКИ", "◉ ГРАФ"]; current: S.note-graph ? 1 : 0; picked(i) => { S.note-graph-set(i == 1); } }
+        Seg { x: 10px; y: 44px; width: parent.width - 20px; items: ["¶ ЗАМЕТКИ", "◉ ГРАФ", "ХОЛСТ"]; current: S.note-canvas ? 2 : 0; picked(i) => { S.note-mode(i); } }
         Rectangle {
             x: 10px; y: 84px; width: parent.width - 54px; height: 32px;
             border-radius: 8px; background: G.bg; border-width: 1px; border-color: G.line;
@@ -339,10 +263,11 @@ export component NotesPage inherits Rectangle {
         Text { x: 12px; y: parent.height - 32px; height: 32px; text: "ПАПКА ЗАМЕТОК · " + S.notes-count; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
     }
 
-    if S.note-graph: Rectangle {
-        x: root.mx0; y: 8px; width: parent.width - root.mx0 - 8px; height: parent.height - 16px;
-        border-radius: 12px; border-width: 1px; border-color: G.line; clip: true;
-        Graph { }
+    if S.note-graph: GraphPage {
+        width: parent.width; height: parent.height;
+        mode(i) => { S.note-mode(i); }
+        opened(p, t) => { S.graph-open(p, t); }
+        focus-open(p, t) => { S.graph-open(p, t); root.zen = true; }
     }
 
     // 02 · заметка
