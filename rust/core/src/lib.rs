@@ -13,6 +13,7 @@ pub mod compose;
 pub mod create;
 pub mod dates;
 pub mod dropdown;
+pub mod edcmd;
 pub mod graph;
 pub mod habits;
 pub mod inbox;

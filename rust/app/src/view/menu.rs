@@ -23,6 +23,7 @@ fn items(app: &App, u: &Ui, m: &Menu) -> (String, Vec<MItem>) {
     match m.kind.as_str() {
         "cv-node" | "cv-bg" => super::cvmenu::items(u, m),
         "dir" => super::notedir::items(m),
+        "ed" => super::edmenu::items(m),
         "list" => {
             let ll = app.ll(&m.id);
             let name = app.list_name(&m.id);
@@ -146,6 +147,7 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
     }
     u.menu = None;
     if m.kind == "note" || m.kind == "tab" { note_pick(app, u, &m, id); return; }
+    if m.kind == "ed" { super::edmenu::pick(u, &m, id); return; }
     if m.kind == "dir" { super::notedir::pick(app, u, m.id.clone(), id); return; }
     if m.kind.starts_with("cv-") { super::cvmenu::pick(app, u, &m, id); return; }
     if m.kind == "newnote" {

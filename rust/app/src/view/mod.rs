@@ -13,6 +13,7 @@ mod notes;
 mod graph;
 mod notefile;
 mod notedir;
+mod edmenu;
 pub mod datetime;
 pub mod listset;
 pub mod menu;
@@ -32,6 +33,8 @@ use std::cell::RefCell;
 /// Состояние экрана (не данные): открытый раздел, список доски, день календаря, открытые окна.
 #[derive(Default)]
 pub struct Ui {
+    /// Команда меню правки строки заметки и её номер.
+    pub ed_cmd: (String, i32),
     /// Открытый выбор даты и времени (G_DateTime).
     pub dp: Option<datetime::Dp>,
     pub ls: bool,
@@ -244,6 +247,8 @@ fn render(app: &App) {
         listset::render(app, &u, &g);
         tpl::render(app, &u, &g);
         menu::render(app, &u, &g);
+        g.set_ed_cmd(ss(u.ed_cmd.0.clone()));
+        g.set_ed_cmd_n(u.ed_cmd.1);
     });
 }
 

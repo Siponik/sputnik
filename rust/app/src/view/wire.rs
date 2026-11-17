@@ -1327,6 +1327,14 @@ pub fn wire(w: &AppWindow) {
         })).unwrap_or(-1)
     });
     g.on_byte_len(|t| t.len() as i32);
+    g.on_ed_apply(|t, a, b, c| {
+        let (t2, a2, b2) = sputnik_core::edcmd::apply(&t, a.max(0) as usize, b.max(0) as usize, &c);
+        crate::EdOut { text: ss(t2), a: a2 as i32, b: b2 as i32 }
+    });
+    g.on_ed_sel(|t, a, b| {
+        let (a, b) = ((a.min(b).max(0) as usize).min(t.len()), (a.max(b).max(0) as usize).min(t.len()));
+        ss(t.get(a..b).unwrap_or("").to_string())
+    });
     g.on_note_todo(|i| act(|app, u| {
         let body = note_text(app, u);
         if let Some(r) = crate::notes::line_rows(&body).get(i.max(0) as usize) {
