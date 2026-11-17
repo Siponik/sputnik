@@ -64,7 +64,7 @@ def search_inp(t, ph=True, w='100%'):
 def modeswitch(active):
     # главный переключатель раздела «Знания»: одинаковый на всех экранах, слева сверху
     out = ''
-    for t, ic, k in [('Заметки', '¶', 'Ctrl 1'), ('Граф', '◉', 'Ctrl G'), ('Холст', '▦', '')]:
+    for t, ic, k in [('Заметки', '¶', 'Ctrl 1'), ('Граф', '◉', 'Ctrl G')]:
         on = t == active
         s_ = f'background: {OR}; color: {DARK}; font-weight: 600' if on else f'color: #C9CAD0'
         out += f'<span style="flex: 1; height: 32px; border-radius: 7px; {s_}; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 13px"><span style="opacity: .8">{ic}</span>{t}</span>'
