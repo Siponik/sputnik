@@ -3,6 +3,7 @@
 import { G } from "theme.slint";
 import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView } from "kit.slint";
 import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
+import { CanvasView, CvCam } from "canvas.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
 component LiveLine inherits Rectangle {
@@ -125,6 +126,11 @@ component LiveLine inherits Rectangle {
 component NoteList inherits VerticalLayout {
     in property <[NoteRow]> rows;
     in property <string> cur;
+    callback drag(string, length, length);
+    callback drop(string, length, length);
+    property <length> px0;
+    property <length> py0;
+    property <bool> dragging;
     for r in rows: Rectangle {
         height: r.path == "" ? 30px : 30px;
         background: r.path != "" && r.path == cur ? G.accent-wash : (r.path != "" && na.has-hover ? G.node-hover : transparent);
@@ -132,8 +138,23 @@ component NoteList inherits VerticalLayout {
         if r.path == "": Rectangle { x: 14px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: #7C7E88; }
         if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
         if r.path == "": Text { x: parent.width - self.preferred-width - 12px; y: 6px; height: 22px; text: r.sub; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; }
+        if r.sub == "canvas": Icon { name: "canvas"; x: 10px; width: 13px; y: 8.5px; c: r.path == cur ? G.accent : G.muted; }
         if r.path != "": Text { x: 28px; width: parent.width - 40px; text: r.title; color: r.path == cur ? G.ink : #C9CBD3; font-size: 13px; vertical-alignment: center; overflow: elide; }
-        na := TouchArea { enabled: r.path != ""; clicked => { S.note-open(r.path); } mouse-cursor: pointer; pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
+        na := TouchArea { enabled: r.path != ""; clicked => { if (!root.dragging) { S.note-open(r.path); } } mouse-cursor: pointer;
+            pointer-event(e) => {
+                if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+                if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) { root.px0 = self.mouse-x; root.py0 = self.mouse-y; root.dragging = false; }
+                if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up && root.dragging) {
+                    root.drop(r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                }
+            }
+            moved => {
+                // тянуть заметку (не канвас) — положить на канвас
+                if (self.pressed && r.sub != "canvas" && (root.dragging || abs(self.mouse-x - root.px0) > 6px || abs(self.mouse-y - root.py0) > 6px)) {
+                    root.dragging = true;
+                    root.drag(r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                }
+            } }
     }
 }
 
@@ -221,11 +242,15 @@ export component NotesPage inherits Rectangle {
     property <string> body: S.note-body;
     property <bool> wide: self.width >= 1100px;
     property <length> lw: zen ? 0px : 264px;
-    property <length> rw: wide && !zen ? 300px : 0px;
+    property <length> rw: wide && !zen && !S.note-canvas ? 300px : 0px;
     property <length> mx0: zen ? 8px : 8px + lw + 8px;
-    property <length> mw: self.width - mx0 - 8px - (wide && !zen ? rw + 8px : 0px);
+    property <length> mw: self.width - mx0 - 8px - (rw > 0 ? rw + 8px : 0px);
     property <string> q;
     in-out property <bool> zen;
+    // заметку тянут из списка на канвас
+    property <string> drag-path;
+    property <length> drag-x;
+    property <length> drag-y;
     property <int> edit-i: -1;
     property <int> caret: -1;
 
@@ -253,7 +278,10 @@ export component NotesPage inherits Rectangle {
             Text { text: "+"; color: #1C1D21; font-size: 18px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.note-new(root.q != "" ? root.q : "Новая заметка"); } }
         }
-        ScrollView { x: 0; y: 124px; width: parent.width; height: parent.height - 124px - 32px; NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path; } }
+        ScrollView { x: 0; y: 124px; width: parent.width; height: parent.height - 124px - 32px; NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path;
+            drag(p, ax, ay) => { root.drag-path = p; root.drag-x = ax - root.absolute-position.x; root.drag-y = ay - root.absolute-position.y; }
+            drop(p, ax, ay) => { root.drag-path = ""; if (S.note-canvas && ax - root.absolute-position.x > root.mx0) {
+                S.cv-add-file(p, (ax - root.absolute-position.x - root.mx0 - CvCam.ox) / 1px / CvCam.k, (ay - root.absolute-position.y - 42px - CvCam.oy) / 1px / CvCam.k); } } } }
         Rectangle { x: 0; y: parent.height - 32px; height: 1px; background: G.line-soft; }
         Text { x: 12px; y: parent.height - 32px; height: 32px; text: "ПАПКА ЗАМЕТОК · " + S.notes-count; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
     }
@@ -298,8 +326,9 @@ export component NotesPage inherits Rectangle {
             Text { text: "Заметок пока нет. Выбери папку с заметками (подойдёт и папка Obsidian) — или нажми «+» слева."; color: G.muted; font-size: 14px; horizontal-alignment: center; wrap: word-wrap; }
             HorizontalLayout { alignment: center; Button { text: "Выбрать папку…"; primary: true; clicked => { S.notes-pick(); } } }
         }
+        if S.note-canvas: CanvasView { y: 34px; height: parent.height - 34px; }
         if S.note-path == "" && S.notes-count != 0: Empty { y: 34px; height: parent.height - 34px; text: "Выбери заметку слева"; pose: "sleep"; }
-        if S.note-path != "": Rectangle {
+        if S.note-path != "" && !S.note-canvas: Rectangle {
             y: 34px; height: 40px;
             Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 200px; }
             Rectangle {
@@ -311,7 +340,7 @@ export component NotesPage inherits Rectangle {
             }
             Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
         }
-        if S.note-path != "": sv := ScrollView {
+        if S.note-path != "" && !S.note-canvas: sv := ScrollView {
             y: 74px; height: parent.height - 74px - 34px;
             property <length> cw: min(root.zen ? 780px : 700px, self.width - 64px);
             VerticalLayout {
@@ -385,7 +414,7 @@ export component NotesPage inherits Rectangle {
                 }
             }
         }
-        if S.note-path != "": Rectangle {
+        if S.note-path != "" && !S.note-canvas: Rectangle {
             y: parent.height - 34px; height: 34px;
             Rectangle { y: 0; height: 1px; background: G.line-soft; }
             Rectangle { x: 16px; y: 14px; width: 6px; height: 6px; border-radius: 3px; background: S.note-dirty ? G.accent : G.green; }
@@ -393,10 +422,10 @@ export component NotesPage inherits Rectangle {
             Text { x: parent.width - self.preferred-width - 16px; text: S.note-words + " СЛОВ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #62646E; vertical-alignment: center; }
         }
     }
-    if !S.note-graph && S.note-path != "": Brackets { x: root.mx0; y: 8px; width: root.mw; height: parent.height - 16px; }
+    if !S.note-graph && S.note-path != "" && !S.note-canvas: Brackets { x: root.mx0; y: 8px; width: root.mw; height: parent.height - 16px; }
 
     // 03 · связи
-    if !S.note-graph && root.wide && !root.zen: Rectangle {
+    if !S.note-graph && root.rw > 0: Rectangle {
         x: parent.width - 8px - root.rw; y: 8px; width: root.rw; height: parent.height - 16px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
         Rectangle {
@@ -442,5 +471,12 @@ export component NotesPage inherits Rectangle {
                 }
             }
         }
+    }
+    if root.drag-path != "": Rectangle {
+        x: root.drag-x + 12px; y: root.drag-y + 8px; width: gt.preferred-width + 34px; height: 28px;
+        border-radius: 6px; background: G.node; border-width: 1px; border-color: G.accent-line;
+        drop-shadow-blur: 16px; drop-shadow-color: #00000080;
+        Icon { name: "note"; x: 9px; width: 13px; y: 7.5px; c: G.accent; }
+        gt := Text { x: 28px; text: S.note-canvas ? "на канвас" : "открой канвас, чтобы положить"; font-size: 12px; color: G.ink; vertical-alignment: center; height: parent.height; }
     }
 }
