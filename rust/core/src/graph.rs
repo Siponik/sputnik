@@ -163,6 +163,8 @@ pub struct Sim {
     pub held: Option<(usize, f64, f64)>,
     /// Перевод в лист 0…1000: центр и масштаб (обновляется, пока точку не тянут).
     pub map: (f64, f64, f64),
+    /// За сколько шагов остывает: 300 — для разовой раскладки, живой граф — быстрее.
+    pub steps: f64,
 }
 
 impl Sim {
@@ -191,7 +193,7 @@ impl Sim {
             (a, b, st, bias)
         }).collect();
         let (dist, charge, grav) = forces.units();
-        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0) };
+        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0), steps: 300.0 };
         s.refit();
         s
     }
@@ -202,7 +204,7 @@ impl Sim {
         if n == 0 || (self.alpha <= 0.001 && self.held.is_none()) {
             return false;
         }
-        let adecay = 1.0 - 0.001f64.powf(1.0 / 300.0);
+        let adecay = 1.0 - 0.001f64.powf(1.0 / self.steps);
         // пока тянут — не остывает ниже 0,3
         let target = if self.held.is_some() { 0.3 } else { 0.0 };
         self.alpha += (target - self.alpha) * adecay;

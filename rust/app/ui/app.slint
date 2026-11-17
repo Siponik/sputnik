@@ -1,7 +1,7 @@
 // Главное окно Спутника: шапка с вкладками, разделы, плашка внизу и окна поверх.
 // Вся логика — в Rust (src/view, src/state); окно только показывает модели из глобала S.
 import { G } from "theme.slint";
-import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon, ScrollView } from "kit.slint";
+import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon, ScrollView, Tip } from "kit.slint";
 import { S } from "store.slint";
 import { TodayPage } from "today.slint";
 import { BoardPage } from "board.slint";
@@ -200,6 +200,7 @@ export component AppWindow inherits Window {
                         background: ua.has-hover ? G.accent-wash : transparent;
                         ut := Text { text: (root.hd-compact ? "" : "ВЕРСИЯ ") + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
                         ua := TouchArea { clicked => { upd.visible = !upd.visible; } mouse-cursor: pointer; }
+                        Tip { text: "Есть обновление — открыть"; on: ua.has-hover; }
                     }
                     if !root.hd-compact || S.busy || S.offline: Rectangle {
                         width: st.preferred-width + 16px;
@@ -210,6 +211,7 @@ export component AppWindow inherits Window {
                             horizontal-alignment: center; vertical-alignment: center;
                         }
                         sa := TouchArea { clicked => { S.refresh(); } mouse-cursor: pointer; }
+                        Tip { text: "Обновить сейчас"; on: sa.has-hover; }
                     }
                     sbox := Rectangle {
                         width: root.hd-compact ? 40px : 172px;
@@ -222,6 +224,7 @@ export component AppWindow inherits Window {
                         if !root.hd-compact: Text { x: 31px; text: "НАЙТИ"; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; }
                         if !root.hd-compact: Text { x: parent.width - self.preferred-width - 10px; text: "CTRL K"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #62646E; vertical-alignment: center; }
                         fa := TouchArea { clicked => { S.search-open-set(true); } mouse-cursor: pointer; }
+                        Tip { text: "Поиск · Ctrl K"; on: fa.has-hover; }
                     }
                     // «Состояние»: три точки — связь, синхронизация, очередь; клик — Настройки
                     Rectangle {
@@ -239,6 +242,7 @@ export component AppWindow inherits Window {
                             Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.status-ok ? G.green : G.gold; }
                         }
                         pa := TouchArea { clicked => { stat.visible = !stat.visible; } mouse-cursor: pointer; }
+                        Tip { text: "Состояние: связь, синхронизация, очередь"; on: pa.has-hover; }
                     }
                     // настройки — отдельной кнопкой
                     Rectangle {
@@ -248,6 +252,7 @@ export component AppWindow inherits Window {
                         border-color: S.tab == 5 ? G.accent-line : (ga.has-hover ? G.line-strong : G.line);
                         Icon { name: "settings"; width: 15px; height: 15px; x: (parent.width - 15px) / 2; y: (parent.height - 15px) / 2; c: S.tab == 5 ? G.accent : G.ink; }
                         ga := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
+                        Tip { text: "Настройки"; on: ga.has-hover; }
                     }
                     Rectangle {
                         width: chl.preferred-width + 26px;
@@ -261,6 +266,7 @@ export component AppWindow inherits Window {
                             ct := Text { text: "Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
                         }
                         ca := TouchArea { clicked => { S.create(""); } mouse-cursor: pointer; }
+                        Tip { text: "Создать задачу, список или заметку"; on: ca.has-hover; }
                     }
                     // кнопки окна (G_Window): 34×32, скругление 8, у «Закрыть» — красный при наведении
                     HorizontalLayout {
@@ -274,6 +280,7 @@ export component AppWindow inherits Window {
                             background: wa.has-hover ? (i == 2 ? #E5484D : #2C2D33) : transparent;
                             Icon { name: b; width: 11px; height: 11px; x: (parent.width - 11px) / 2; y: (parent.height - 11px) / 2; stroke-width: 1.2px; c: wa.has-hover ? #fff : #A3A5AE; }
                             wa := TouchArea { clicked => { if (i == 0) { S.win-min(); } else if (i == 1) { S.win-max(); } else { S.win-close(); } } }
+                            Tip { text: i == 0 ? "Свернуть" : i == 1 ? (S.win-maxed ? "Восстановить" : "Развернуть") : "Закрыть"; on: wa.has-hover; }
                         }
                     }
                 }

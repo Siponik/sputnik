@@ -112,10 +112,13 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         lines.push(GLine { x1: xa as f32, y1: ya as f32, x2: xb as f32, y2: yb as f32, near: cur.is_some_and(|c| a == c || b == c) });
     }
     g.set_graph_info(ss(format!("{} · {}", super::spheres::plural(nd, "ЗАМЕТКА", "ЗАМЕТКИ", "ЗАМЕТОК"), super::spheres::plural(lines.len(), "СВЯЗЬ", "СВЯЗИ", "СВЯЗЕЙ"))));
-    g.set_graph_dots(model(dots));
+    g.set_graph_dots(keep(&DOTS, dots));
     g.set_graph_live(app.notes.sim.as_ref().is_some_and(|sm| sm.alpha > 0.001 || sm.held.is_some()));
-    g.set_graph_lines(model(lines));
-
+    g.set_graph_lines(keep(&LINES, lines));
+    // кадр живого графа — только точки и связи, панель не трогаем
+    if FRAME.with(|f| f.get()) {
+        return;
+    }
 
     // панель «Читаю»
     let note = cur.and_then(|c| app.notes.notes.iter().find(|n| n.path == ns[c].id));
@@ -156,3 +159,36 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_graph_sel_rest(all.len().saturating_sub(5) as i32);
 }
 
+
+thread_local! {
+    pub static FRAME: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static DOTS: std::cell::RefCell<Option<std::rc::Rc<slint::VecModel<GDot>>>> = const { std::cell::RefCell::new(None) };
+    static LINES: std::cell::RefCell<Option<std::rc::Rc<slint::VecModel<GLine>>>> = const { std::cell::RefCell::new(None) };
+}
+
+/// Тот же список, что и в прошлом кадре, — правим строки на месте: точки живого графа не пересоздаются,
+/// и их можно схватить мышью, пока они едут (новый список каждый кадр сбрасывал нажатие).
+fn keep<T: Clone + PartialEq + 'static>(
+    slot: &'static std::thread::LocalKey<std::cell::RefCell<Option<std::rc::Rc<slint::VecModel<T>>>>>,
+    rows: Vec<T>,
+) -> slint::ModelRc<T> {
+    use slint::Model;
+    slot.with(|c| {
+        let mut c = c.borrow_mut();
+        match c.as_ref() {
+            Some(m) if m.row_count() == rows.len() => {
+                for (i, r) in rows.into_iter().enumerate() {
+                    if m.row_data(i).as_ref() != Some(&r) {
+                        m.set_row_data(i, r);
+                    }
+                }
+                slint::ModelRc::from(m.clone())
+            }
+            _ => {
+                let m = std::rc::Rc::new(slint::VecModel::from(rows));
+                *c = Some(m.clone());
+                slint::ModelRc::from(m)
+            }
+        }
+    })
+}
