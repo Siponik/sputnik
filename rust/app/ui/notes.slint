@@ -2,7 +2,7 @@
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
 import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView } from "kit.slint";
-import { S, NoteRow, MdRow, GDot, GLine } from "store.slint";
+import { S, NoteRow, TreeRow, MdRow, GDot, GLine } from "store.slint";
 import { CanvasView, CvCam } from "canvas.slint";
 import { MdLine } from "linknote.slint";
 import { GraphPage, ModeSwitch } from "graph.slint";
@@ -176,6 +176,37 @@ component LiveLine inherits Rectangle {
     init => { if (editing) { start(); } }
 }
 
+// Строка дерева G_Notes: 28 px, отступ 8 + 14 на уровень, стрелка ▾/▸ у папок, у корневой папки — цветная точка,
+// у вложенной — ▭, у заметки — ¶; выбранная — тёплая заливка с полоской слева.
+component TreeLine inherits Rectangle {
+    in property <TreeRow> r;
+    in property <string> cur;
+    property <bool> on: r.kind != "dir" && r.path == cur;
+    height: 28px;
+    Rectangle {
+        x: 6px; width: parent.width - 12px; border-radius: 6px; clip: true;
+        background: root.on ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
+        if root.on: Rectangle { x: 0; width: 2px; background: G.accent; }
+        HorizontalLayout {
+            padding-left: 8px + r.depth * 14px; padding-right: 10px; spacing: 7px;
+            Rectangle { width: 10px;
+                if r.kind == "dir": Path { y: (parent.height - 10px) / 2; width: 10px; height: 10px; viewbox-width: 10; viewbox-height: 10; fill: transparent; stroke: G.dim; stroke-width: 1.4px;
+                    stroke-line-cap: round; stroke-line-join: round; commands: r.open ? "M2.5 3.5 L5 6.5 L7.5 3.5" : "M3.5 2.5 L6.5 5 L3.5 7.5"; } }
+            if r.kind == "dir" && r.depth == 0: Rectangle { width: 7px; Rectangle { y: (parent.height - 7px) / 2; height: 7px; border-radius: 3.5px; background: r.hue; } }
+            if r.kind == "dir" && r.depth > 0: Text { width: 12px; text: "▭"; font-size: 11px; color: G.dim; vertical-alignment: center; }
+            if r.kind == "note": Text { width: 12px; text: "¶"; font-size: 11px; color: G.dim; vertical-alignment: center; }
+            if r.kind == "canvas": Icon { name: "canvas"; width: 12px; y: 8px; c: G.dim; }
+            Text { horizontal-stretch: 1; text: r.title; font-size: 13px; color: root.on || (r.kind == "dir" && r.depth == 0) ? G.ink : #C9CAD0; vertical-alignment: center; overflow: elide; }
+            if r.n != "": Text { text: r.n; font-family: G.mono; font-size: 11px; color: G.dim; vertical-alignment: center; }
+        }
+    }
+    ta := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { if (r.kind == "dir") { S.note-fold(r.path); } else { S.note-open(r.path); } }
+        pointer-event(e) => { if (r.kind != "dir" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+    }
+}
+
 component NoteList inherits VerticalLayout {
     in property <[NoteRow]> rows;
     in property <string> cur;
@@ -231,37 +262,46 @@ export component NotesPage inherits Rectangle {
     property <int> edit-i: -1;
     property <int> caret: -1;
 
-    // 01 · заметки
+    // 01 · заметки (G_Notes): переключатель раздела, поиск с «＋», «Недавние», дерево папок
     if !root.zen && !S.note-graph: Rectangle {
         x: 8px; y: 8px; width: root.lw; height: parent.height - 16px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
+        ModeSwitch { y: 0; width: parent.width; current: 0; picked(i) => { S.note-mode(i); } }
         Rectangle {
-            y: 0; height: 34px; background: #3D3E45; border-radius: 7px;
-            Rectangle { y: 27px; height: 7px; background: parent.background; }
-            Text { x: 12px; text: "01  ЗАМЕТКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
-            Text { x: parent.width - self.preferred-width - 12px; text: S.notes-count + ""; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb0; vertical-alignment: center; }
-        }
-        Seg { x: 10px; y: 44px; width: parent.width - 20px; items: ["¶ ЗАМЕТКИ", "◉ ГРАФ"]; current: 0; picked(i) => { S.note-mode(i); } }
-        Rectangle {
-            x: 10px; y: 84px; width: parent.width - 54px; height: 32px;
+            x: 10px; y: 55px; width: parent.width - 58px; height: 32px;
             border-radius: 8px; background: G.bg; border-width: 1px; border-color: G.line;
-            Field { x: 8px; y: 1px; height: 30px; width: parent.width - 16px; bare: true; placeholder: "Найти заметку"; font-size: 13px;
+            Icon { name: "search"; x: 10px; width: 13px; y: 9.5px; c: G.dim; }
+            Field { x: 28px; y: 1px; height: 30px; width: parent.width - 36px; bare: true; placeholder: "Найти заметку  Ctrl K"; font-size: 13px;
                 edited(t) => { root.q = t; S.note-search(t); }
                 accepted(t) => { if (t != "" && S.notes.length == 0) { S.note-new(t); self.clear(); S.note-search(""); } } }
         }
         Rectangle {
-            x: parent.width - 42px; y: 84px; width: 32px; height: 32px; border-radius: 8px;
+            x: parent.width - 42px; y: 55px; width: 32px; height: 32px; border-radius: 8px;
             background: pa.has-hover ? G.accent.brighter(0.1) : G.accent;
-            Text { text: "+"; color: #1C1D21; font-size: 18px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: "＋"; color: #2A1A0A; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
         }
-        Seg { x: 10px; y: 124px; width: parent.width - 20px; items: ["ИЗМЕНЕНО", "А–Я", "СВЯЗИ"]; current: S.note-sort; picked(i) => { S.note-sort-set(i); } }
-        ScrollView { x: 0; y: 160px; width: parent.width; height: parent.height - 160px - 32px; content-height: nlist.preferred-height; nlist := NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path;
-            drag(p, ax, ay) => { root.drag-path = p; root.drag-x = ax - root.absolute-position.x; root.drag-y = ay - root.absolute-position.y; }
-            drop(p, ax, ay) => { root.drag-path = ""; if (S.note-canvas && ax - root.absolute-position.x > root.mx0) {
-                S.cv-add-file(p, (ax - root.absolute-position.x - root.mx0 - CvCam.ox) / 1px / CvCam.k, (ay - root.absolute-position.y - 52px - CvCam.oy) / 1px / CvCam.k); } } } }
-        Rectangle { x: 0; y: parent.height - 32px; height: 1px; background: G.line-soft; }
-        Text { x: 12px; y: parent.height - 32px; height: 32px; text: "ПАПКА ЗАМЕТОК · " + S.notes-count; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
+        ScrollView {
+            x: 0; y: 93px; width: parent.width; height: parent.height - 93px - 37px; content-height: col.preferred-height;
+            col := VerticalLayout {
+                x: 0; y: 0; width: root.lw; alignment: start;
+                if S.note-recent.length > 0 && root.q == "": Text { height: 24px; x: 16px; text: "НЕДАВНИЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: bottom; }
+                if S.note-recent.length > 0 && root.q == "": Rectangle { height: 4px; }
+                if root.q == "": VerticalLayout { for r in S.note-recent: TreeLine { r: r; cur: S.note-path; } }
+                if S.note-recent.length > 0 && root.q == "": Rectangle { height: 9px; Rectangle { y: 8px; height: 1px; background: G.line; } }
+                Text { height: 28px; x: 16px; text: root.q == "" ? "ПАПКИ" : "НАЙДЕНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: bottom; }
+                Rectangle { height: 4px; }
+                for r in S.note-tree: TreeLine { r: r; cur: S.note-path; }
+                Rectangle { height: 8px; }
+            }
+        }
+        Rectangle { x: 0; y: parent.height - 37px; height: 1px; background: G.line; }
+        Text { x: 14px; y: parent.height - 36px; height: 36px; text: "ПАПКА · " + S.notes-count; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: center; }
+        // порядок внутри папок: клик — следующий
+        so := Text { x: parent.width - self.preferred-width - 14px; y: parent.height - 36px; height: 36px;
+            text: (S.note-sort == 0 ? "ИЗМЕНЕНО" : S.note-sort == 1 ? "А–Я" : "СВЯЗИ") ; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px;
+            color: soa.has-hover ? G.ink : G.muted; vertical-alignment: center;
+            soa := TouchArea { mouse-cursor: pointer; clicked => { S.note-sort-set(Math.mod(S.note-sort + 1, 3)); } } }
     }
 
     if S.note-graph: GraphPage {

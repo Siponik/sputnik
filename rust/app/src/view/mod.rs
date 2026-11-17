@@ -76,6 +76,8 @@ pub struct Ui {
     pub graph_no_lonely: bool,
     /// Открытые вкладки заметок (пути), активная — note_path.
     pub note_tabs: Vec<String>,
+    /// Папки в дереве «Знаний», чьё «открыто/закрыто» поменяли руками (по умолчанию открыты папки текущей заметки).
+    pub note_fold: Vec<String>,
     /// Режим «Чтение» вместо правки.
     pub note_reading: bool,
     /// Открытый канвас (вкладка с файлом .canvas).
