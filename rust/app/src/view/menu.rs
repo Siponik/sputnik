@@ -64,6 +64,7 @@ fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
             let todo = todo_new(app, &m.id).len();
             (format!("Заметка · {title}"), vec![
                 it("note-open", "Открыть", "open", ""),
+                it("note-pin", if super::notes::pins().contains(&m.id) { "Открепить" } else { "Закрепить вверху папки" }, "pin", ""),
                 it("note-graph", "Показать на графе", "graph", ""),
                 MItem { sub: true, off: todo == 0, ..it("sub:todo", &if todo == 0 { "Чек-лист → в задачи".to_string() } else { format!("Чек-лист → в задачи · {todo}") }, "check", "") },
                 MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
@@ -102,6 +103,7 @@ fn note_pick(app: &mut App, u: &mut Ui, m: &Menu, id: &str) {
     let p = m.id.clone();
     match id {
         "note-open" => { u.note_graph = false; super::wire::open_note_tab(app, u, &p); }
+        "note-pin" => super::notes::pin_toggle(&p),
         "note-graph" => { super::wire::open_note_tab(app, u, &p); u.note_graph = true; }
         x if x.starts_with("todo:") => todo_send(app, &p, &x["todo:".len()..]),
         "note-dir" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f.parent().unwrap_or(&f)); } }
