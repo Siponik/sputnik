@@ -14,15 +14,30 @@ component LiveLine inherits Rectangle {
     callback commit(string);
     callback split(string, int);
     callback join(string);
-    callback move(string, int);
+    callback move(string, int, int);
     callback leave(string);
+    callback pick-at(int);
+    callback toggle();
     callback focus-mode();
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
+    property <bool> wrapped: ed.preferred-height > root.fs * 1.9;
+    property <int> arrow;
+    property <int> arrow-from;
+    Timer {
+        interval: 1ms;
+        running: root.arrow != 0;
+        triggered => {
+            if (ed.cursor-position-byte-offset == root.arrow-from) { root.move(ed.text, root.arrow, root.arrow-from); }
+            root.arrow = 0;
+        }
+    }
     property <length> fs: (line.kind == "h1" ? 22px : line.kind == "h2" ? 17.5px : line.kind == "h3" ? 15.5px : 14.5px) * zoom;
     property <length> pad: line.kind == "h1" ? 14px : line.kind == "h2" ? 10px : line.kind == "h3" ? 6px : 3px;
     property <length> ind: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 18px : (line.kind == "code" ? 12px : 0));
     height: line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px));
-    ta := TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.pick(); } }
+    ta := TouchArea { mouse-cursor: MouseCursor.text; clicked => {
+        if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
+    } }
     if line.kind == "code" && !editing: Rectangle { x: -8px; y: 0; width: parent.width + 16px; height: parent.height; background: G.bg; }
     if line.kind == "hr" && !editing: Rectangle { y: (parent.height - 1px) / 2; height: 1px; background: G.line; }
     if line.kind == "quote" && !editing: Rectangle { x: 0; y: pad; width: 3px; height: parent.height - pad - 3px; border-radius: 1.5px; background: G.accent; }
@@ -45,6 +60,26 @@ component LiveLine inherits Rectangle {
         link-color: G.accent;
         link-clicked(l) => { S.note-link(l); }
     }
+    // раскладка: в прокрутке (невидимое поле во всю строку, растёт с ней)
+    // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
+    // Rust переводит это место в место в строке файла (или открывает ссылку). StyledText сам клики глотает.
+    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img": hit := TextInput {
+        x: ind; y: pad; width: parent.width - ind;
+        text: line.plain;
+        read-only: true;
+        single-line: false;
+        wrap: word-wrap;
+        font-size: root.fs;
+        font-family: line.kind == "code" ? G.mono : G.sans;
+        color: transparent;
+        selection-background-color: transparent;
+        selection-foreground-color: transparent;
+        changed has-focus => {
+            if (self.has-focus && !root.editing) {
+                root.pick-at(self.cursor-position-byte-offset);
+            }
+        }
+    }
     fs-scope := FocusScope {
         x: 0; y: pad; width: parent.width; height: ed.preferred-height;
         visible: editing;
@@ -52,8 +87,12 @@ component LiveLine inherits Rectangle {
         capture-key-pressed(e) => {
             if (!editing) { return reject; }
             if (e.text == Key.Return && !e.modifiers.shift) { root.split(ed.text, ed.cursor-position-byte-offset); return accept; }
-            if (e.text == Key.UpArrow) { root.move(ed.text, -1); return accept; }
-            if (e.text == Key.DownArrow) { root.move(ed.text, 1); return accept; }
+            // в длинном абзаце стрелки ходят по его строкам; на краю — на соседнюю строку заметки, в ту же колонку
+            // (поле двигает курсор само; не сдвинулся — значит, край абзаца)
+            if ((e.text == Key.UpArrow || e.text == Key.DownArrow) && !e.modifiers.shift) {
+                if (root.wrapped) { root.arrow-from = ed.cursor-position-byte-offset; root.arrow = e.text == Key.UpArrow ? -1 : 1; return reject; }
+                root.move(ed.text, e.text == Key.UpArrow ? -1 : 1, ed.cursor-position-byte-offset); return accept;
+            }
             if (e.text == Key.Escape) { root.leave(ed.text); return accept; }
             if (e.text == Key.Backspace && ed.cursor-position-byte-offset == 0 && ed.anchor-position-byte-offset == 0) { root.join(ed.text); return accept; }
             if (e.modifiers.control && (e.text == "e" || e.text == "E" || e.text == "у" || e.text == "У")) { root.focus-mode(); return accept; }
@@ -305,7 +344,12 @@ export component NotesPage inherits Rectangle {
                     commit(t) => { if (t != b.raw) { S.note-line-set(i, t); } S.note-commit(); }
                     split(t, at) => { root.caret = S.note-line-split(i, t, at); root.edit-i = i + 1; }
                     join(t) => { if (i > 0) { if (t != b.raw) { S.note-line-set(i, t); } root.caret = S.note-line-join(i); root.edit-i = i - 1; } }
-                    move(t, d) => { if (t != b.raw) { S.note-line-set(i, t); } root.caret = -1; root.edit-i = max(0, min(S.note-lines.length - 1, i + d)); }
+                    move(t, d, at) => {
+                        if (t != b.raw) { S.note-line-set(i, t); }
+                        if (i + d >= 0 && i + d < S.note-lines.length) { root.caret = S.note-col(i, t, at, i + d); root.edit-i = i + d; }
+                    }
+                    pick-at(at) => { root.caret = S.note-hit(i, at); if (root.caret >= 0) { root.edit-i = i; } else { root.edit-i = -1; } }
+                    toggle => { S.note-todo(i); }
                     focus-mode => { root.zen = !root.zen; }
                 }
                 // клик под текстом — новая строка в конце

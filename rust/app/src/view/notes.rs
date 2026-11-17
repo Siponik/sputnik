@@ -73,10 +73,11 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             }
             g.set_note_props(model(pills));
             // текст режима «Чтение»
-            let rows: Vec<MdRow> = crate::notes::line_blocks(&text).into_iter().map(|(k, raw, md)| MdRow {
-                kind: ss(k),
-                raw: ss(raw),
-                md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)),
+            let rows: Vec<MdRow> = crate::notes::line_rows(&text).into_iter().map(|r| MdRow {
+                kind: ss(r.kind),
+                raw: ss(r.raw),
+                md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
+                plain: ss(r.plain),
             }).collect();
             sync_lines(g, &u.note_path, rows);
             // упомянуто без ссылки: название встречается в тексте другой заметки, но не как [[ссылка]]

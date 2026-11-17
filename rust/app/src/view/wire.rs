@@ -1164,8 +1164,8 @@ pub fn wire(w: &AppWindow) {
             out.push_str(rest); out
         };
         let body = t.lines().map(re).collect::<Vec<_>>().join("\n");
-        model(crate::notes::line_blocks(&body).into_iter().map(|(k, raw, md)| {
-            crate::MdRow { kind: ss(k), raw: ss(raw), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)) }
+        model(crate::notes::line_rows(&body).into_iter().map(|r| {
+            crate::MdRow { kind: ss(r.kind), raw: ss(r.raw), md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)), plain: ss(r.plain) }
         }).collect())
     });
     g.on_link_chips(|t| model(crate::state::peek(|app| sputnik_core::wikilink::links(t.as_str()).into_iter().map(|title| {
@@ -1194,6 +1194,49 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
+    g.on_note_hit(|i, at| {
+        let mut caret = 0;
+        act(|app, u| {
+            let body = note_text(app, u);
+            match crate::notes::line_hit(&body, i.max(0) as usize, at.max(0) as usize) {
+                Ok(c) => caret = c as i32,
+                Err(link) => {
+                    caret = -1;
+                    if link.contains("://") {
+                        let _ = open::that(&link);
+                    } else {
+                        let title = link.split('#').next().unwrap_or("").trim().to_string();
+                        match app.notes.find(&title).map(|n0| n0.path.clone()) {
+                            Some(p) => open_note_tab(app, u, &p),
+                            None => new_note(app, u, &title),
+                        }
+                    }
+                }
+            }
+        });
+        caret
+    });
+    g.on_note_col(|_from, t, byte, to| {
+        crate::state::peek(|app| super::UI.with(|u| {
+            let body = note_text(app, &u.borrow());
+            let rows = crate::notes::line_rows(&body);
+            let Some(r) = rows.get(to.max(0) as usize) else { return 0 };
+            // колонка — по видимому тексту: значки «- », «## » не считаются
+            let from_pre = crate::notes::line_rows(t.as_str()).first().map_or(0, |x| x.pre);
+            let b = (byte.max(0) as usize).saturating_sub(from_pre);
+            let to_pre = if r.kind == "empty" { 0 } else { r.pre.min(r.raw.len()) };
+            (to_pre + sputnik_core::mdline::same_col(&t.as_str()[from_pre.min(t.len())..], b, &r.raw[to_pre..])) as i32
+        })).unwrap_or(-1)
+    });
+    g.on_byte_len(|t| t.len() as i32);
+    g.on_note_todo(|i| act(|app, u| {
+        let body = note_text(app, u);
+        if let Some(r) = crate::notes::line_rows(&body).get(i.max(0) as usize) {
+            let t = crate::notes::toggle_todo(&r.raw);
+            note_set_lines(app, u, i as usize, &t, 1);
+            save_draft(app, u);
+        }
+    }));
     g.on_note_line_split(|i, t, at| {
         let mut caret = 0;
         act(|app, u| {

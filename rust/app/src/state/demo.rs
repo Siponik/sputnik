@@ -103,4 +103,9 @@ pub fn fill(app: &mut App) {
     app.notes.root = None;
     app.notes.notes = ns.iter().map(|(p, t, b)| crate::notes::Note { path: p.to_string(), title: t.to_string(), body: b.to_string(), links: crate::notes::links_of(b), tags: vec![], props: vec![] }).collect();
     app.notes.relayout();
+    // для проверки правки на настоящих файлах: SPUTNIK_NOTES=папка
+    if let Ok(dir) = std::env::var("SPUTNIK_NOTES") {
+        app.notes.root = Some(dir.into());
+        app.notes.rescan();
+    }
 }
