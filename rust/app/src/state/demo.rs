@@ -101,7 +101,34 @@ pub fn fill(app: &mut App) {
         ("Металл.md", "Металл", "Блики, [[Палитра]]."), ("Blender/Скульптинг.md", "Скульптинг", "Урок 12. [[Ретопология]] дальше."),
         ("Blender/Ретопология.md", "Ретопология", "После [[Скульптинг]]."), ("Входящие.md", "Входящие", "Разобрать.")];
     app.notes.root = None;
-    app.notes.notes = ns.iter().map(|(p, t, b)| crate::notes::Note { path: p.to_string(), title: t.to_string(), body: b.to_string(), links: crate::notes::links_of(b), tags: vec![], props: vec![] }).collect();
+    let mut all: Vec<(String, String, String)> = ns.iter().map(|(p, t, b)| (p.to_string(), t.to_string(), b.to_string())).collect();
+    // папки по сферам (как в макете G_NotesGraph): у каждой — хаб и заметки вокруг него
+    let packs: [(&str, &str, &[&str]); 6] = [
+        ("3D", "Пайплайн ассета", &["Запекание нормалей", "UV без растяжений", "Умные маски Substance", "Щит паладина", "Кейдж", "Низкий полигонаж", "Текстурный атлас", "Ретушь альбедо"]),
+        ("DND", "Кампания «Пепельный берег»", &["Город Вельск", "НПС: Мира Тёрн", "Фракция Пепла", "Карта побережья", "Сессия 12", "Сессия 13", "Таверна «Якорь»", "Культ Прилива", "Маяк"]),
+        ("Работа", "Клиенты", &["Студия «Север»", "Смета шаблон", "Договор", "Созвоны"]),
+        ("Учёба", "Курс: текстуры", &["Урок 1: материалы", "Урок 2: шум", "Урок 3: износ", "Домашка"]),
+        ("Личное", "Планы на год", &["Книги", "Спорт"]),
+        ("00 Входящие", "Разобрать потом", &["Ссылка на референсы"]),
+    ];
+    for (f, hub, kids) in packs {
+        let body = kids.iter().map(|k| format!("[[{k}]]")).collect::<Vec<_>>().join(", ");
+        all.push((format!("{f}/{hub}.md"), hub.to_string(), format!("---\ntags: [{}]\n---\n# {hub}\n\n1. Начало: {body}.\n2. Дальше — по шагам.", f.to_lowercase())));
+        for (i, k) in kids.iter().enumerate() {
+            let next = kids[(i + 1) % kids.len()];
+            all.push((format!("{f}/{k}.md"), k.to_string(), format!("# {k}\n\nСм. [[{hub}]] и [[{next}]].")));
+        }
+    }
+    let extra = [("3D/Запекание нормалей.md", " Потом [[Курс: текстуры]]. #baking #substance"), ("Учёба/Курс: текстуры.md", " Пример — [[Щит паладина]]."), ("DND/Город Вельск.md", " Там живёт [[НПС: Мира Тёрн]]. Склад [[Контрабанда]].")];
+    for (p, add) in extra {
+        if let Some(x) = all.iter_mut().find(|x| x.0 == p) {
+            x.2.push_str(add);
+        }
+    }
+    app.notes.notes = all.iter().map(|(p, t, b)| {
+        let pr = crate::notes::parse(b);
+        crate::notes::Note { path: p.clone(), title: t.clone(), body: b.clone(), links: pr.links, tags: pr.tags, props: crate::notes::frontmatter(b), mtime: 0 }
+    }).collect();
     app.notes.relayout();
     // для проверки правки на настоящих файлах: SPUTNIK_NOTES=папка
     if let Ok(dir) = std::env::var("SPUTNIK_NOTES") {

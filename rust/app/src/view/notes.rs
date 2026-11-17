@@ -1,10 +1,9 @@
 //! Модели «Знаний».
 use super::*;
-use crate::{GDot, GLine, MdRow, NoteRow};
+use crate::{MdRow, NoteRow};
 use slint::{Model, VecModel};
 use std::cell::RefCell;
 use std::rc::Rc;
-use sputnik_core::graph as gr;
 
 pub fn render(app: &App, u: &Ui, g: &S) {
     let n0 = &app.notes;
@@ -47,18 +46,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_note_canvas(super::canvas::is_canvas(&u.note_path));
     super::canvas::render(app, u, g);
     if u.note_graph {
-        let (ns, es) = &n0.graph;
-        let cur = ns.iter().position(|x| x.id == u.note_path);
-        let near: Vec<usize> = cur.map(|c| gr::neighbors(es, c)).unwrap_or_default();
-        g.set_graph_dots(model(ns.iter().enumerate().map(|(i, x)| GDot {
-            x: x.x as f32, y: x.y as f32, r: gr::radius(x.degree) as f32, title: ss(x.label.clone()),
-            path: ss(if x.missing { String::new() } else { x.id.clone() }), missing: x.missing,
-            near: near.contains(&i), cur: Some(i) == cur,
-        }).collect()));
-        g.set_graph_lines(model(es.iter().map(|&(a, b)| GLine {
-            x1: ns[a].x as f32, y1: ns[a].y as f32, x2: ns[b].x as f32, y2: ns[b].y as f32,
-            near: cur.is_some_and(|c| a == c || b == c),
-        }).collect()));
+        super::graph::render(app, u, g);
     }
     match n0.notes.iter().find(|x| x.path == u.note_path) {
         Some(x) => {
@@ -118,7 +106,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     }
 }
 
-fn folder(path: &str) -> String {
+pub fn folder(path: &str) -> String {
     path.rsplit_once('/').map(|p| p.0.to_string()).unwrap_or_default()
 }
 

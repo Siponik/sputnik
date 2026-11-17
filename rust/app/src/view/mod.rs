@@ -9,6 +9,7 @@ mod habits;
 mod canvas;
 mod linkpeek;
 mod notes;
+mod graph;
 mod notefile;
 pub mod datetime;
 pub mod listset;
@@ -65,6 +66,12 @@ pub struct Ui {
     /// Текст правки текущей заметки, пока она не сохранена (note_dirty).
     pub note_draft: String,
     pub note_graph: bool,
+    /// Граф знаний: поиск, «Локальный», выбранная точка (панель «Читаю»), скрытые группы-папки, «без связей» скрыты.
+    pub graph_q: String,
+    pub graph_local: bool,
+    pub graph_sel: String,
+    pub graph_hide: Vec<String>,
+    pub graph_no_lonely: bool,
     /// Открытые вкладки заметок (пути), активная — note_path.
     pub note_tabs: Vec<String>,
     /// Режим «Чтение» вместо правки.

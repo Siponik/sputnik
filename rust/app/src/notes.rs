@@ -11,6 +11,23 @@ pub struct Note {
     pub tags: Vec<String>,
     /// Свойства из шапки YAML (frontmatter): `тип`, `где` и т. п. — пары «ключ: значение».
     pub props: Vec<(String, String)>,
+    /// Когда файл менялся (мс от 1970), для «изменено 22:14».
+    pub mtime: i64,
+}
+
+/// Что показывать на графе и силы раскладки (нода «Фильтры» графа).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GraphOpts {
+    pub tags: bool,
+    pub files: bool,
+    pub missing: bool,
+    pub forces: sputnik_core::graph::Forces,
+}
+
+impl Default for GraphOpts {
+    fn default() -> Self {
+        GraphOpts { tags: false, files: false, missing: true, forces: Default::default() }
+    }
 }
 
 #[derive(Default)]
@@ -23,6 +40,7 @@ pub struct Notes {
     pub canvases: Vec<String>,
     /// Раскладка графа — считается при перечитывании папки, не на каждый кадр.
     pub graph: (Vec<sputnik_core::graph::GNode>, Vec<(usize, usize)>),
+    pub graph_opts: GraphOpts,
 }
 
 /// Разбор заметки через pulldown-cmark (MIT): [[ссылки]] в любой форме ([[Имя]], [[Имя|подпись]], [[Имя#раздел]]),
@@ -74,6 +92,11 @@ pub fn parse(body: &str) -> Parsed {
         }
     }
     out
+}
+
+/// Ссылка на файл-вложение (`кадр.png`), а не на заметку.
+fn looks_file(l: &str) -> bool {
+    matches!(l.rsplit_once('.'), Some((a, e)) if !a.is_empty() && (1..=4).contains(&e.len()) && e != "md" && e.chars().all(|c| c.is_ascii_alphanumeric()))
 }
 
 pub fn links_of(body: &str) -> Vec<String> {
@@ -318,7 +341,8 @@ impl Notes {
                     let body = std::fs::read_to_string(&p).unwrap_or_default();
                     let rel = p.strip_prefix(&root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
                     let pr = parse(&body);
-                    self.notes.push(Note { title: name.trim_end_matches(".md").to_string(), links: pr.links, tags: pr.tags, props: frontmatter(&body), path: rel, body });
+                    let mtime = e.metadata().ok().and_then(|m| m.modified().ok()).and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map(|d| d.as_millis() as i64).unwrap_or(0);
+                    self.notes.push(Note { title: name.trim_end_matches(".md").to_string(), links: pr.links, tags: pr.tags, props: frontmatter(&body), path: rel, body, mtime });
                 }
             }
         }
@@ -328,8 +352,16 @@ impl Notes {
     }
 
     pub fn relayout(&mut self) {
-        let src: Vec<_> = self.notes.iter().map(|n| (n.path.clone(), n.title.clone(), n.links.clone())).collect();
-        self.graph = sputnik_core::graph::build(&src, true);
+        let o = self.graph_opts;
+        let titles: std::collections::HashSet<String> = self.notes.iter().map(|n| n.title.to_lowercase()).collect();
+        let src: Vec<_> = self.notes.iter().map(|n| {
+            let mut ls: Vec<String> = n.links.iter().filter(|l| o.files || titles.contains(&l.to_lowercase()) || !looks_file(l)).cloned().collect();
+            if o.tags {
+                ls.extend(n.tags.iter().map(|t| format!("#{t}")));
+            }
+            (n.path.clone(), n.title.clone(), ls)
+        }).collect();
+        self.graph = sputnik_core::graph::build_with(&src, o.missing, o.forces);
     }
 
     pub fn find(&self, title: &str) -> Option<&Note> {
