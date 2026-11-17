@@ -12,11 +12,18 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     found.sort_by(|a, b| (folder(&a.path), a.title.to_lowercase()).cmp(&(folder(&b.path), b.title.to_lowercase())));
     // заметки и канвасы вместе, по папкам; у канваса sub = "canvas"
     let q = u.note_q.trim().to_lowercase().replace('ё', "е");
-    let mut items: Vec<(String, String, String, &str)> = found.iter().map(|x| (folder(&x.path), x.title.to_lowercase(), x.path.clone(), "")).collect();
+    // порядок внутри папки (G_Notes): «Изменено» — свежие сверху, «А–Я», «Связи» — больше связей сверху
+    let deg = |p: &str| n0.graph.0.iter().find(|g| g.id == p).map(|g| g.degree).unwrap_or(0);
+    let key = |x: &crate::notes::Note| match u.note_sort {
+        1 => x.title.to_lowercase(),
+        2 => format!("{:08}{}", 99_999_999 - deg(&x.path).min(99_999_999), x.title.to_lowercase()),
+        _ => format!("{:020}{}", i64::MAX - x.mtime, x.title.to_lowercase()),
+    };
+    let mut items: Vec<(String, String, String, &str)> = found.iter().map(|x| (folder(&x.path), key(x), x.path.clone(), "")).collect();
     for p in &n0.canvases {
         let t = p.rsplit('/').next().unwrap_or(p).trim_end_matches(".canvas").to_string();
         if q.is_empty() || t.to_lowercase().replace('ё', "е").contains(&q) {
-            items.push((folder(p), t.to_lowercase(), p.clone(), "canvas"));
+            items.push((folder(p), if u.note_sort == 1 { t.to_lowercase() } else { format!("~{}", t.to_lowercase()) }, p.clone(), "canvas"));
         }
     }
     items.sort();
@@ -34,6 +41,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     }
     g.set_notes(model(list));
     g.set_notes_count(n0.notes.len() as i32);
+    g.set_note_sort(u.note_sort);
     g.set_note_path(ss(u.note_path.clone()));
     g.set_note_dirty(u.note_dirty);
     g.set_note_graph(u.note_graph);

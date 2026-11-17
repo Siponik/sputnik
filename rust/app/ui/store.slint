@@ -696,6 +696,8 @@ export global S {
     // начальный масштаб графа (для проверки окна: SPUTNIK_GRAPH_K=3)
     in property <float> graph-zoom: 1;
     in property <int> graph-sel-rest;
+    in property <int> note-sort;
+    callback note-sort-set(int);
     callback graph-pick(string);
     callback graph-search(string);
     callback graph-local-set(bool);

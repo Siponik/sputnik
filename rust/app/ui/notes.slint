@@ -255,7 +255,8 @@ export component NotesPage inherits Rectangle {
             Text { text: "+"; color: #1C1D21; font-size: 18px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
         }
-        ScrollView { x: 0; y: 124px; width: parent.width; height: parent.height - 124px - 32px; content-height: nlist.preferred-height; nlist := NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path;
+        Seg { x: 10px; y: 124px; width: parent.width - 20px; items: ["ИЗМЕНЕНО", "А–Я", "СВЯЗИ"]; current: S.note-sort; picked(i) => { S.note-sort-set(i); } }
+        ScrollView { x: 0; y: 160px; width: parent.width; height: parent.height - 160px - 32px; content-height: nlist.preferred-height; nlist := NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path;
             drag(p, ax, ay) => { root.drag-path = p; root.drag-x = ax - root.absolute-position.x; root.drag-y = ay - root.absolute-position.y; }
             drop(p, ax, ay) => { root.drag-path = ""; if (S.note-canvas && ax - root.absolute-position.x > root.mx0) {
                 S.cv-add-file(p, (ax - root.absolute-position.x - root.mx0 - CvCam.ox) / 1px / CvCam.k, (ay - root.absolute-position.y - 52px - CvCam.oy) / 1px / CvCam.k); } } } }

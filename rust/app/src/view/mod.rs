@@ -67,6 +67,8 @@ pub struct Ui {
     pub note_draft: String,
     pub note_graph: bool,
     /// Граф знаний: поиск, «Локальный», выбранная точка (панель «Читаю»), скрытые группы-папки, «без связей» скрыты.
+    /// Порядок списка заметок: 0 — изменено, 1 — А–Я, 2 — по числу связей.
+    pub note_sort: i32,
     pub graph_q: String,
     pub graph_local: bool,
     pub graph_sel: String,
