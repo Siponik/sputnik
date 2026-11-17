@@ -108,7 +108,7 @@ pub fn new_canvas(app: &mut App, u: &mut Ui, dir: &str) {
         app.notes.watch();
     }
     let root = app.notes.root.clone().unwrap_or_default();
-    let base = if dir.is_empty() { "Новый канвас".to_string() } else { format!("{dir}/Новый канвас") };
+    let base = if dir.is_empty() { "Новый холст".to_string() } else { format!("{dir}/Новый холст") };
     let path = (1..).map(|i| if i == 1 { format!("{base}.canvas") } else { format!("{base} {i}.canvas") })
         .find(|p| !root.join(p).exists()).unwrap();
     let _ = std::fs::create_dir_all(root.join(&path).parent().unwrap_or(&root));
@@ -117,7 +117,7 @@ pub fn new_canvas(app: &mut App, u: &mut Ui, dir: &str) {
             app.notes.rescan();
             super::wire::open_note_tab(app, u, &path);
         }
-        Err(e) => app.say(format!("Канвас не создался: {e}")),
+        Err(e) => app.say(format!("Холст не создался: {e}")),
     }
 }
 
@@ -212,7 +212,20 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 tag = "ТЕКСТ".into();
                 rows = md_rows(n.text(), 60);
             }
-            "link" => tag = "ССЫЛКА".into(),
+            "link" => {
+                let p = super::linkpeek::get(n.url());
+                tag = if p.meta.site.is_empty() { sputnik_core::linkpeek::host(n.url()).trim_start_matches("www.").to_string() } else { p.meta.site.clone() };
+                if !p.meta.title.is_empty() {
+                    title = p.meta.title.clone();
+                }
+                if !p.meta.desc.is_empty() {
+                    rows = md_rows(&p.meta.desc, 6);
+                }
+                if let Some(f) = &p.img {
+                    img = slint::Image::load_from_path(f).unwrap_or_default();
+                }
+                missing = !p.ready; // ещё качается
+            }
             _ => {}
         }
         let col = hex_color(&cv::color_hex(n.color()));
@@ -224,7 +237,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             title: ss(title), tag: ss(tag), rows: model(rows), img, missing,
             head, colored: col.is_some(), text: ss(if n.is_group() { n.label() } else { n.text() }),
             sel: c.sel.iter().any(|s| s == n.id()), mv: mv.iter().any(|s| s == n.id()), main: main == n.id(),
-            path: ss(n.file()),
+            path: ss(if n.kind() == "link" { n.url() } else { n.file() }),
         }
     }).collect();
     keep(&NODES, nodes, |m| g.set_cv_nodes(m));
@@ -344,10 +357,9 @@ pub fn wire(g: &S) {
             c.doc.shift(&mv, dx as f64, dy as f64);
         }
     })));
-    g.on_cv_resize(|id, w, h| with_cv(move |app, u| change(app, u, |c| {
+    g.on_cv_resize(|id, x, y, w, h| with_cv(move |app, u| change(app, u, |c| {
         if let Some(n) = c.doc.node_mut(&id) {
-            let (x, y) = (n.x(), n.y());
-            n.set_rect(x, y, cv::snap(w as f64), cv::snap(h as f64));
+            n.set_rect(cv::snap(x as f64), cv::snap(y as f64), cv::snap(w as f64), cv::snap(h as f64));
         }
     })));
     g.on_cv_add(|kind, x, y| with_cv(move |app, u| {

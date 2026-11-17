@@ -94,6 +94,9 @@ export component AppWindow inherits Window {
         return o[Math.mod(i + d + n, n)];
     }
     keys := FocusScope {
+        // Ctrl зажат или нет — для перехода по ссылкам Ctrl+кликом
+        capture-key-pressed(e) => { if (e.text == Key.Control) { S.ctrl-held = true; } reject }
+        capture-key-released(e) => { if (e.text == Key.Control) { S.ctrl-held = false; } reject }
         key-pressed(e) => {
             if (S.task-open || S.create-open || S.search-open || S.confirm != "" || S.ls-open || S.dp-open || S.menu-open || S.tp-open) {
                 if (e.text == Key.Escape && S.dp-open) { S.dp-cancel(); return accept; }
@@ -557,6 +560,8 @@ export component AppWindow inherits Window {
     TouchArea { x: parent.width - 5px; y: 60px; width: 5px; height: parent.height - 74px; mouse-cursor: ew-resize; pointer-event(e) => { if (e.kind == PointerEventKind.down) { S.win-resize(1); } } }
     TouchArea { x: 0; y: parent.height - 5px; width: parent.width - 14px; height: 5px; mouse-cursor: ns-resize; pointer-event(e) => { if (e.kind == PointerEventKind.down) { S.win-resize(2); } } }
     TouchArea { x: 0; y: 60px; width: 5px; height: parent.height - 65px; mouse-cursor: ew-resize; pointer-event(e) => { if (e.kind == PointerEventKind.down) { S.win-resize(3); } } }
+    property <int> fk: S.focus-keys;
+    changed fk => { keys.focus(); }
     init => {
         keys.focus();
         self.hd-compact = self.width < 1440px;

@@ -205,6 +205,15 @@ pub fn line_hit(body: &str, i: usize, at: usize) -> Result<usize, String> {
     }
 }
 
+/// Курсор в строке файла для клика по видимому тексту, даже если это ссылка (без перехода по ней).
+pub fn line_caret(body: &str, i: usize, at: usize) -> usize {
+    let Some(r) = line_rows(body).into_iter().nth(i) else { return 0 };
+    if r.kind == "code" {
+        return r.pre + at.min(r.raw.len() - r.pre);
+    }
+    r.pre + sputnik_core::mdline::caret(&sputnik_core::mdline::plain(&r.raw[r.pre..]), at)
+}
+
 /// «- [ ] дело» ⇄ «- [x] дело»; другие строки — как есть.
 pub fn toggle_todo(raw: &str) -> String {
     if let Some(i) = raw.find("- [ ]") {

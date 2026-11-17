@@ -163,3 +163,54 @@ pub fn link_mention(app: &mut App, u: &mut Ui, path: &str) {
         None => app.say("Упоминание не нашлось — может, уже ссылка"),
     }
 }
+
+/// Предпросмотр ссылки: название, подпись (папка или «адрес»), первые строки заметки.
+pub fn peek(app: &App, link: &str) -> (String, String, Vec<crate::MdRow>) {
+    if link.contains("://") {
+        return (link.to_string(), "адрес в интернете · откроется в браузере".into(), vec![]);
+    }
+    let Some(n) = app.notes.find(link) else {
+        return (link.to_string(), "заметки ещё нет · Ctrl+клик создаст".into(), vec![]);
+    };
+    let dir = n.path.rsplit_once('/').map(|(d, _)| d.replace('/', " › ")).unwrap_or_default();
+    let rows = crate::notes::line_rows(&n.body).into_iter()
+        .filter(|r| r.kind != "empty" && !(r.kind == "h1" && r.plain.trim() == n.title.trim()))
+        .take(7)
+        .map(|r| crate::MdRow {
+            kind: ss(r.kind),
+            md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
+            raw: ss(r.raw),
+            plain: ss(r.plain),
+        }).collect();
+    (n.title.clone(), dir, rows)
+}
+
+/// Папка открытой заметки (для нового холста рядом), "" — корень.
+pub fn cur_dir(u: &Ui) -> String {
+    u.note_path.rsplit_once('/').map(|(d, _)| d.to_string()).unwrap_or_default()
+}
+
+/// «Папка…»: имя новой папки; в ней сразу заметка — пустые папки список не показывает.
+pub fn ask_folder(u: &mut Ui) {
+    u.ask_field = Some("Новая папка".into());
+    super::wire::ask(u, "Название новой папки", "Создать", |app, u| {
+        let name = clean(&u.answer);
+        if name.is_empty() {
+            return;
+        }
+        if app.notes.root.is_none() {
+            app.notes.root = Some(crate::data::store::own("notes"));
+            app.notes.watch();
+        }
+        let root = app.notes.root.clone().unwrap_or_default();
+        if let Err(e) = std::fs::create_dir_all(root.join(&name)) {
+            app.say(format!("Папка не создалась: {e}"));
+            return;
+        }
+        let path = crate::notes::free_name(&format!("{name}/Новая заметка"), |p| root.join(p).exists());
+        match app.notes.save(&path, "# Новая заметка\n\n") {
+            Ok(()) => super::wire::open_note_tab(app, u, &path),
+            Err(e) => app.say(format!("Заметка не создалась: {e}")),
+        }
+    });
+}

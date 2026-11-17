@@ -101,3 +101,28 @@ pub fn trash_path(path: &str, taken: impl Fn(&str) -> bool) -> String {
     };
     (2..).map(|i| format!("{stem} {i}{ext}")).find(|p| !taken(p)).unwrap_or(base.clone())
 }
+
+/// Ссылка, в которой стоит курсор `at` (байт строки): `[[Имя|подпись]]` → «Имя», `[текст](адрес)` → адрес.
+pub fn link_at(line: &str, at: usize) -> Option<String> {
+    let mut from = 0;
+    while let Some(a) = line[from..].find("[[").map(|k| from + k) {
+        let b = line[a + 2..].find("]]").map(|k| a + 2 + k)?;
+        if at >= a && at <= b + 2 {
+            let inner = &line[a + 2..b];
+            let t = inner.split(['|', '#']).next().unwrap_or("").trim();
+            return (!t.is_empty()).then(|| t.to_string());
+        }
+        from = b + 2;
+    }
+    let mut from = 0;
+    while let Some(a) = line[from..].find('[').map(|k| from + k) {
+        let Some(m) = line[a..].find("](").map(|k| a + k) else { break };
+        let Some(e) = line[m + 2..].find(')').map(|k| m + 2 + k) else { break };
+        if at >= a && at <= e + 1 {
+            let url = line[m + 2..e].trim().trim_matches(['<', '>']);
+            return (!url.is_empty()).then(|| url.to_string());
+        }
+        from = e + 1;
+    }
+    None
+}

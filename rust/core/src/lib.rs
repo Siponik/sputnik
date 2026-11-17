@@ -5,6 +5,7 @@ pub mod boardedit;
 pub mod calendar;
 pub mod canvas;
 pub mod notefile;
+pub mod linkpeek;
 mod canvas_layout;
 pub mod authcheck;
 pub mod compose;
