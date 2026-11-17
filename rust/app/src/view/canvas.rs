@@ -230,6 +230,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                     page = p.shot.is_some();
                 }
                 missing = !p.ready; // ещё качается
+                if p.ready && p.meta.title.is_empty() && p.img.is_none() && p.shot.is_none() {
+                    rows = md_rows("_Сайт не отдал предпросмотр. Попробую снова при следующем запуске._", 3);
+                }
             }
             _ => {}
         }
