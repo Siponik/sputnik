@@ -104,6 +104,15 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_id(ss(id));
     g.set_t_title(ss(text(&t0["title"])));
     g.set_t_notes(ss(text(&t0["notes"])));
+    // блок «Заметки»: заметки по ссылкам [[…]] и по названию задачи (G_NotesSearch, окно задачи)
+    let titles: Vec<String> = app.notes.notes.iter().map(|n| n.title.clone()).collect();
+    let gs = super::graph::groups(app);
+    g.set_t_note_links(model(sputnik_core::wikilink::about(&text(&t0["title"]), &text(&t0["notes"]), &titles).into_iter().take(3).map(|i| {
+        let n = &app.notes.notes[i];
+        let f = super::notes::folder(&n.path);
+        let top = f.split('/').next().unwrap_or("").to_string();
+        crate::Opt { id: ss(n.path.clone()), label: ss(n.title.clone()), hint: ss(f.to_uppercase()), hue: gs.iter().find(|x| x.0 == top).map(|x| x.1).unwrap_or(color("#7C7E88")), on: true }
+    }).collect()));
     g.set_t_list_name(ss(app.list_name(list)));
     let day = day10(&t0["due"]);
     let slot = &l["slot"];
