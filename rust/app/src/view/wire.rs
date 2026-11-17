@@ -154,7 +154,7 @@ pub fn wire(w: &AppWindow) {
         crate::data::google::cancel_login();
         app.flags.logging_in = false;
     }));
-    g.on_refresh(|| act(|app, _| app.refresh()));
+    g.on_refresh(|| act(|app, _| { app.refresh(); crate::notesync::sync_now(app); }));
     g.on_toast_act(|| {
         crate::state::with(|app| app.toast_act());
     });

@@ -188,3 +188,85 @@ pub fn push_layer(id: Option<&str>, data: &Value) -> R<String> {
     api_raw("PATCH", &format!("{UPLOAD}/files/{}?uploadType=media", enc(&id)), Some((data.to_string().into_bytes(), "application/json")))?;
     Ok(id)
 }
+
+// ---------- «Знания» на Drive: видимая папка «Спутник / Знания» (право drive.file — видны только файлы Спутника) ----------
+
+const FOLDER: &str = "application/vnd.google-apps.folder";
+
+fn q_name(s: &str) -> String {
+    s.replace('\\', "\\\\").replace('\'', "\\'")
+}
+
+/// Папка с таким именем внутри parent (или в корне Drive); нет — создать.
+pub fn ensure_folder(parent: Option<&str>, name: &str) -> R<String> {
+    let p = parent.unwrap_or("root");
+    let q = enc(&format!("name='{}' and mimeType='{FOLDER}' and '{}' in parents and trashed=false", q_name(name), q_name(p)));
+    let v = api("GET", &format!("{DRIVE}/files?q={q}&fields=files(id)&pageSize=10"), None)?;
+    if let Some(id) = v["files"].as_array().and_then(|f| f.first()).and_then(|f| f["id"].as_str()) {
+        return Ok(id.to_string());
+    }
+    let f = api("POST", &format!("{DRIVE}/files?fields=id"), Some(&json!({ "name": name, "mimeType": FOLDER, "parents": [p] })))?;
+    Ok(f["id"].as_str().unwrap_or("").to_string())
+}
+
+/// Все файлы под папкой: путь → (id, md5, размер); папки — путь → id (корень — "").
+pub fn notes_tree(root: &str) -> R<(Vec<(String, String, String, u64)>, Vec<(String, String)>)> {
+    let mut files = vec![];
+    let mut dirs = vec![(String::new(), root.to_string())];
+    let mut i = 0;
+    while i < dirs.len() {
+        let (path, id) = dirs[i].clone();
+        let mut token = String::new();
+        loop {
+            let q = enc(&format!("'{}' in parents and trashed=false", q_name(&id)));
+            let page = if token.is_empty() { String::new() } else { format!("&pageToken={}", enc(&token)) };
+            let v = api("GET", &format!("{DRIVE}/files?q={q}&fields=nextPageToken,files(id,name,mimeType,md5Checksum,size)&pageSize=1000{page}"), None)?;
+            for f in v["files"].as_array().into_iter().flatten() {
+                let name = f["name"].as_str().unwrap_or("");
+                let p = if path.is_empty() { name.to_string() } else { format!("{path}/{name}") };
+                let fid = f["id"].as_str().unwrap_or("").to_string();
+                if f["mimeType"] == FOLDER {
+                    dirs.push((p, fid));
+                } else {
+                    let size = f["size"].as_str().and_then(|x| x.parse().ok()).unwrap_or(0);
+                    files.push((p, fid, f["md5Checksum"].as_str().unwrap_or("").to_string(), size));
+                }
+            }
+            match v["nextPageToken"].as_str() {
+                Some(t) => token = t.to_string(),
+                None => break,
+            }
+        }
+        i += 1;
+    }
+    Ok((files, dirs))
+}
+
+/// Новый файл в папке; ответ — (id, md5).
+pub fn upload_new(parent: &str, name: &str, bytes: Vec<u8>) -> R<(String, String)> {
+    let f = api("POST", &format!("{DRIVE}/files?fields=id"), Some(&json!({ "name": name, "parents": [parent] })))?;
+    let id = f["id"].as_str().unwrap_or("").to_string();
+    upload_to(&id, bytes)
+}
+
+/// Новая версия файла; ответ — (id, md5).
+pub fn upload_to(id: &str, bytes: Vec<u8>) -> R<(String, String)> {
+    let v = api_raw("PATCH", &format!("{UPLOAD}/files/{}?uploadType=media&fields=id,md5Checksum", enc(id)), Some((bytes, "application/octet-stream")))?;
+    Ok((id.to_string(), v["md5Checksum"].as_str().unwrap_or("").to_string()))
+}
+
+pub fn download(id: &str) -> R<Vec<u8>> {
+    crate::data::google::api_bytes("GET", &format!("{DRIVE}/files/{}?alt=media", enc(id)), None)
+}
+
+/// В корзину Drive (не насовсем).
+pub fn trash(id: &str) -> R<()> {
+    api("PATCH", &format!("{DRIVE}/files/{}", enc(id)), Some(&json!({ "trashed": true }))).map(|_| ())
+}
+
+/// Сколько занято и всего на Drive (байты; всего 0 — без ограничения).
+pub fn quota() -> R<(u64, u64)> {
+    let v = api("GET", &format!("{DRIVE}/about?fields=storageQuota"), None)?;
+    let n = |k: &str| v["storageQuota"][k].as_str().and_then(|x| x.parse().ok()).unwrap_or(0);
+    Ok((n("usage"), n("limit")))
+}

@@ -57,6 +57,8 @@ pub struct App {
     pub layer: Value,
     pub inbox_st: Value,
     pub flags: Flags,
+    /// «Знания» на Drive: идёт ли сверка и что показать в «Состоянии».
+    pub notes_sync: crate::notesync::Status,
     pub toast: Option<Toast>,
     pub outbox: sync::Outbox,
     pub shared: shared::Shared,
@@ -101,6 +103,7 @@ impl App {
             layer,
             inbox_st: cache["inbox"].clone(),
             flags: Flags::default(),
+            notes_sync: Default::default(),
             toast: None,
             outbox: sync::Outbox::new(ops),
             shared: shared::Shared::load(),
