@@ -1,6 +1,6 @@
 // Холст: кнопка панели и меню у выделенного (как в Obsidian: удалить, цвет, приблизить, стрелка, править, открыть…).
 import { G } from "theme.slint";
-import { Icon, IconBtn } from "kit.slint";
+import { Icon, IconBtn, Mono, Field } from "kit.slint";
 import { S } from "store.slint";
 
 export component ToolBtn inherits Rectangle {
@@ -38,8 +38,8 @@ export component SelMenu inherits Rectangle {
             icon: "edit"; tip: "Править"; clicked => { root.palette = false; S.cv-key("edit", 0, 0); }
         }
         if S.cv-sel-kind == "file" || S.cv-sel-kind == "link" || S.cv-sel-kind == "image": IconBtn { icon: "open"; tip: "Открыть"; clicked => { S.cv-key("open", 0, 0); } }
-        if S.cv-sel-kind != "edge": IconBtn { icon: "canvas"; tip: "Группа"; clicked => { S.cv-key("group", 0, 0); } }
-        if S.cv-sel-kind != "edge": IconBtn { icon: "copy"; tip: "Копия"; clicked => { S.cv-key("dup", 0, 0); } }
+        if S.cv-sel-kind != "edge": IconBtn { icon: "canvas"; tip: "В группу"; clicked => { S.cv-key("group", 0, 0); } }
+        if S.cv-sel-kind != "edge": IconBtn { icon: "copy"; tip: "Дублировать"; clicked => { S.cv-key("dup", 0, 0); } }
     }
     // цвета — полоской рядом с меню
     if root.palette: Rectangle {
@@ -60,5 +60,33 @@ export component SelMenu inherits Rectangle {
                 }
             }
         }
+    }
+}
+
+// Поиск заметки для «＋ Заметка»: Enter — первая найденная, Esc — закрыть.
+export component NotePick inherits Rectangle {
+    callback picked(string);
+    callback closed();
+    property <string> q;
+    width: 320px; height: 44px + min(8, S.cv-note-find(root.q).length) * 32px;
+    border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+    drop-shadow-blur: 24px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000080;
+    TouchArea { }
+    Field {
+        x: 6px; y: 6px; width: parent.width - 12px; height: 32px; placeholder: "Найти заметку";
+        init => { self.grab(); }
+        edited(t) => { root.q = t; }
+        escape => { root.closed(); }
+        accepted => {
+            if (S.cv-note-find(root.q).length > 0) { root.picked(S.cv-note-find(root.q)[0].path); } else { root.closed(); }
+        }
+    }
+    for r[i] in S.cv-note-find(root.q): Rectangle {
+        y: 44px + i * 32px; height: 32px;
+        background: pa.has-hover || i == 0 ? G.accent-wash : transparent;
+        Icon { name: "note"; x: 12px; width: 13px; y: 9.5px; c: i == 0 ? G.accent : G.muted; }
+        Text { x: 34px; width: parent.width - 140px; text: r.title; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+        Mono { x: parent.width - self.width - 12px; width: min(self.preferred-width, 90px); text: r.sub.to-uppercase(); font-size: 9px; vertical-alignment: center; height: parent.height; overflow: elide; }
+        pa := TouchArea { mouse-cursor: pointer; clicked => { root.picked(r.path); } }
     }
 }
