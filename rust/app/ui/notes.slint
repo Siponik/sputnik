@@ -143,7 +143,7 @@ component LiveLine inherits Rectangle {
             x: 12px; y: 8px; width: parent.width - 24px; spacing: 4px; alignment: LayoutAlignment.start;
             HorizontalLayout { spacing: 8px;
                 Text { text: S.peek-title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; horizontal-stretch: 1; }
-                Text { text: "CTRL + КЛИК"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.dim; vertical-alignment: center; }
+                Text { text: "CTRL + КЛИК"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: center; }
             }
             if S.peek-sub != "": Text { text: S.peek-sub; font-family: G.mono; font-size: 10px; color: #8A8C96; overflow: elide; }
             for l in S.peek-rows: MdLine { line: l; fs: 12px; }
@@ -196,18 +196,18 @@ component TreeLine inherits Rectangle {
             Rectangle { width: 10px;
                 if r.kind == "dir": Path { y: (parent.height - 10px) / 2; width: 10px; height: 10px; viewbox-width: 10; viewbox-height: 10; fill: transparent; stroke: G.dim; stroke-width: 1.4px;
                     stroke-line-cap: round; stroke-line-join: round; commands: r.open ? "M2.5 3.5 L5 6.5 L7.5 3.5" : "M3.5 2.5 L6.5 5 L3.5 7.5"; } }
-            if r.kind == "dir": Icon { name: "folder"; width: 14px; y: 7px; c: r.depth == 0 ? r.hue : G.dim; }
+            if r.kind == "dir": Icon { name: "folder"; width: 14px; y: 7px; c: r.depth == 0 || r.own ? r.hue : G.dim; }
             if r.kind == "note": Icon { name: "note"; width: 14px; y: 7px; c: G.dim; }
             if r.kind == "canvas": Icon { name: "canvas"; width: 14px; y: 7px; c: G.dim; }
             Text { horizontal-stretch: 1; text: r.title; font-size: 13px; color: root.on || (r.kind == "dir" && r.depth == 0) ? G.ink : #C9CAD0; vertical-alignment: center; overflow: elide; }
             if r.kind != "dir" && r.open: Icon { name: "pin"; width: 12px; y: 8px; c: G.accent; }
-            if r.n != "": Text { text: r.n; font-family: G.mono; font-size: 11px; color: G.dim; vertical-alignment: center; }
+            if r.n != "": Text { text: r.n; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; }
         }
     }
     ta := TouchArea {
         mouse-cursor: pointer;
         clicked => { if (r.kind == "dir") { S.note-fold(r.path); } else { S.note-open(r.path); } }
-        pointer-event(e) => { if (r.kind != "dir" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+        pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx(r.kind == "dir" ? "dir" : "note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
     }
 }
 
@@ -502,7 +502,7 @@ export component NotesPage inherits Rectangle {
             y: 0; height: 34px; background: #3D3E45; border-radius: 7px;
             Rectangle { y: 27px; height: 7px; background: parent.background; }
             Text { x: 12px; text: "03  СВЯЗИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
-            Text { x: parent.width - self.preferred-width - 12px; text: (S.note-links.length + S.note-back.length) + ""; font-family: G.mono; font-size: 10.5px; color: #ffffffb0; vertical-alignment: center; }
+            Text { x: parent.width - self.preferred-width - 12px; text: (S.note-links.length + S.note-back.length) + ""; font-family: G.mono; font-size: 10.5px; color: #FFFFFFE6; vertical-alignment: center; }
         }
         ScrollView {
             y: 34px; height: parent.height - 34px;

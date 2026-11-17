@@ -12,6 +12,7 @@ mod linkpeek;
 mod notes;
 mod graph;
 mod notefile;
+mod notedir;
 pub mod datetime;
 pub mod listset;
 pub mod menu;

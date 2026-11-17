@@ -23,7 +23,7 @@ pub fn groups(app: &App) -> Vec<(String, Color, usize)> {
     fs.into_iter().map(|f| {
         let n = app.notes.notes.iter().filter(|x| group(&x.path) == f).count();
         let low = f.to_lowercase();
-        let c = if low.contains("входящ") || f == "Без папки" { hex(0xA3A5AE) } else { k += 1; hex(HUES[(k - 1) % HUES.len()]) };
+        let c = if let Some(c) = super::notedir::color_of(&f) { c } else if low.contains("входящ") || f == "Без папки" { hex(0xA3A5AE) } else { k += 1; hex(HUES[(k - 1) % HUES.len()]) };
         (f, c, n)
     }).collect()
 }

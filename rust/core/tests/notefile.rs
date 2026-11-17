@@ -36,3 +36,12 @@ fn link_under_caret() {
     assert_eq!(link_at(l, 0), None);
     assert_eq!(link_at(l, l.len()), None);
 }
+
+#[test]
+fn lift_path_moves_up() {
+    use sputnik_core::notefile::lift_path;
+    assert_eq!(lift_path("a/b/c.md", "a/b"), "a/c.md");
+    assert_eq!(lift_path("a/b/x/c.md", "a/b"), "a/x/c.md");
+    assert_eq!(lift_path("a/c.md", "a"), "c.md");
+    assert_eq!(lift_path("ab/c.md", "a"), "ab/c.md");
+}

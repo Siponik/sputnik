@@ -151,3 +151,13 @@ pub fn open_todos(body: &str) -> Vec<String> {
     }
     out
 }
+
+/// Путь файла после «удалить только папку `dir`»: всё её содержимое поднимается на уровень выше.
+/// `a/b/c.md` при `dir = a/b` → `a/c.md`; файлы вне папки не меняются.
+pub fn lift_path(path: &str, dir: &str) -> String {
+    let Some(rest) = path.strip_prefix(dir).and_then(|r| r.strip_prefix('/')) else { return path.to_string() };
+    match dir.rsplit_once('/') {
+        Some((up, _)) => format!("{up}/{rest}"),
+        None => rest.to_string(),
+    }
+}
