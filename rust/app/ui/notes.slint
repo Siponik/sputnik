@@ -241,7 +241,7 @@ export component NotesPage inherits Rectangle {
             Text { x: 12px; text: "01  ЗАМЕТКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; }
             Text { x: parent.width - self.preferred-width - 12px; text: S.notes-count + ""; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb0; vertical-alignment: center; }
         }
-        Seg { x: 10px; y: 44px; width: parent.width - 20px; items: ["¶ ЗАМЕТКИ", "◉ ГРАФ", "ХОЛСТ"]; current: S.note-canvas ? 2 : 0; picked(i) => { S.note-mode(i); } }
+        Seg { x: 10px; y: 44px; width: parent.width - 20px; items: ["¶ ЗАМЕТКИ", "◉ ГРАФ"]; current: 0; picked(i) => { S.note-mode(i); } }
         Rectangle {
             x: 10px; y: 84px; width: parent.width - 54px; height: 32px;
             border-radius: 8px; background: G.bg; border-width: 1px; border-color: G.line;

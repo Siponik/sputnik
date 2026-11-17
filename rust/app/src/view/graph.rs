@@ -115,7 +115,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_graph_dots(model(dots));
     g.set_graph_lines(model(lines));
 
-    near_view(app, g, cur, &hue_of);
+    near_view(app, g, cur, &hue_of, &|i| { let (x, y) = px(&ns[i]); (x as f32, y as f32) });
 
     // панель «Читаю»
     let note = cur.and_then(|c| app.notes.notes.iter().find(|n| n.path == ns[c].id));
@@ -177,7 +177,7 @@ fn lead(body: &str, title: &str) -> String {
 
 /// Граф вблизи (G_NotesGraphNear): выбранная заметка — главная нода в центре, слева — кто ссылается на неё,
 /// справа — на кого ссылается она; провода от сокетов. Координаты — от центра главной ноды, в px.
-fn near_view(app: &App, g: &S, cur: Option<usize>, hue_of: &dyn Fn(&str) -> Color) {
+fn near_view(app: &App, g: &S, cur: Option<usize>, hue_of: &dyn Fn(&str) -> Color, at: &dyn Fn(usize) -> (f32, f32)) {
     let (ns, es) = &app.notes.graph;
     let mut nodes: Vec<NearNode> = vec![];
     let mut wires: Vec<NearWire> = vec![];
@@ -199,8 +199,9 @@ fn near_view(app: &App, g: &S, cur: Option<usize>, hue_of: &dyn Fn(&str) -> Colo
         let body_h = if p.missing { 18.0 } else { lines(&text, w).min(4.0) * 18.0 };
         let h = 30.0 + 10.0 + body_h + if tags.is_empty() { 0.0 } else { 24.0 } + 12.0;
         let f = super::notes::folder(&p.id);
+        let (gx, gy) = at(i);
         NearNode {
-            x, y: y - h / 2.0, w, h, title: ss(p.label.to_uppercase()), aside: ss(if p.missing { String::new() } else { f.rsplit('/').next().unwrap_or("").to_uppercase() }),
+            gx, gy, x, y: y - h / 2.0, w, h, title: ss(p.label.to_uppercase()), aside: ss(if p.missing { String::new() } else { f.rsplit('/').next().unwrap_or("").to_uppercase() }),
             head: if p.missing { Color::from_argb_u8(0, 0, 0, 0) } else { dark(hue) }, hue, text: ss(text), tags: ss(tags), missing: p.missing, main,
             id: ss(p.id.clone()), path: ss(if p.missing { String::new() } else { p.id.clone() }), label: ss(p.label.clone()),
         }

@@ -3,7 +3,7 @@ import { G } from "theme.slint";
 import { Mono, Field, Brackets, Icon, DashBox, Sat } from "kit.slint";
 import { S, GDot, GLine, Opt, NearNode, NearWire } from "store.slint";
 
-// Главный переключатель раздела: «Заметки · Граф · Холст» (одинаковый на всех экранах «Знаний»).
+// Главный переключатель раздела: «Заметки · Граф» (одинаковый на всех экранах «Знаний»).
 export component ModeSwitch inherits Rectangle {
     in property <int> current;
     callback picked(int);
@@ -13,7 +13,7 @@ export component ModeSwitch inherits Rectangle {
         border-radius: 9px; background: G.bg;
         HorizontalLayout {
             padding: 3px; spacing: 3px;
-            for it[i] in [{ t: "Заметки", ic: "read" }, { t: "Граф", ic: "graph" }, { t: "Холст", ic: "canvas" }]: Rectangle {
+            for it[i] in [{ t: "Заметки", ic: "read" }, { t: "Граф", ic: "graph" }]: Rectangle {
                 border-radius: 7px;
                 background: i == root.current ? G.accent : (ma.has-hover ? G.node-hover : transparent);
                 HorizontalLayout {
@@ -138,8 +138,16 @@ export component GraphView inherits Rectangle {
     property <length> ly;
     callback opened(string, string);
     // ближе ×2,5 — точки раскрываются в ноды (G_NotesGraphNear)
-    out property <bool> near: root.k >= 2.5 && S.near-nodes.length > 0;
-    changed near => { root.ox = 0; root.oy = 0; }
+    // от ×1,6 до ×3 точки плавно растут в ноды и съезжают к центру; e — сглаженная доля перехода
+    property <float> t: S.near-nodes.length > 0 ? max(0, min(1, (root.k - 1.6) / 1.4)) : 0;
+    property <float> e: root.t * root.t * (3 - 2 * root.t);
+    out property <bool> near: root.e > 0.5;
+    // где сейчас центр раскладки нод: от точки выбранной заметки — к центру окна
+    property <length> dax: root.width / 2 + (S.near-nodes.length > 0 ? (S.near-nodes[0].gx - 500) : 0) * root.base * root.k + root.ox;
+    property <length> day: root.height / 2 + (S.near-nodes.length > 0 ? (S.near-nodes[0].gy - 500) : 0) * root.base * root.k + root.oy;
+    property <length> ax: root.dax + (root.width / 2 + root.ox - root.dax) * root.e;
+    property <length> ay: root.day + (root.height / 2 + root.oy - root.day) * root.e;
+    property <float> wo: max(0, min(1, (root.e - 0.9) / 0.1));
     clip: true;
     pan := TouchArea {
         pointer-event(e) => {
@@ -162,7 +170,8 @@ export component GraphView inherits Rectangle {
         }
         mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
     }
-    if !root.near: Rectangle {
+    if root.e < 0.999: Rectangle {
+    opacity: 1 - root.e;
     for l in S.graph-lines: Path {
         x: 0; y: 0;
         width: root.width;
@@ -204,14 +213,30 @@ export component GraphView inherits Rectangle {
     }
     }
     // граф вблизи: выбранная заметка и соседи — ноды G с проводами
-    if root.near: Rectangle {
+    if root.e > 0: Rectangle {
         for w in S.near-wires: Path {
-            x: root.width / 2 + root.ox - 2000px; y: root.height / 2 + root.oy - 2000px; width: 4000px; height: 4000px;
+            opacity: root.wo;
+            x: root.ax - 2000px; y: root.ay - 2000px; width: 4000px; height: 4000px;
             viewbox-width: 4000; viewbox-height: 4000;
-            commands: w.cmd; stroke: w.hue; stroke-width: 1.5px; opacity: w.dashed ? 0.8 : 1;
+            commands: w.cmd; stroke: w.hue; stroke-width: 1.5px;
         }
         for nd in S.near-nodes: Rectangle {
-            x: root.width / 2 + root.ox + nd.x * 1px; y: root.height / 2 + root.oy + nd.y * 1px; width: nd.w * 1px; height: nd.h * 1px;
+            // точка на графе → карточка: центр едет, размер растёт, текст проявляется
+            property <length> dcx: root.width / 2 + (nd.gx - 500) * root.base * root.k + root.ox;
+            property <length> dcy: root.height / 2 + (nd.gy - 500) * root.base * root.k + root.oy;
+            property <length> tcx: root.ax + (nd.x + nd.w / 2) * 1px;
+            property <length> tcy: root.ay + (nd.y + nd.h / 2) * 1px;
+            property <length> cw: max(10px, nd.w * 1px * root.e);
+            property <length> ch: max(10px, nd.h * 1px * root.e);
+            property <float> ce: max(0, min(1, (root.e - 0.35) / 0.5));
+            x: self.dcx + (self.tcx - self.dcx) * root.e - self.cw / 2;
+            y: self.dcy + (self.tcy - self.dcy) * root.e - self.ch / 2;
+            width: self.cw; height: self.ch;
+            clip: true;
+            Rectangle { border-radius: min(self.width, self.height) / 2; background: nd.hue; opacity: 1 - parent.ce; }
+            Rectangle {
+            x: (parent.width - nd.w * 1px) / 2; y: (parent.height - nd.h * 1px) / 2; width: nd.w * 1px; height: nd.h * 1px;
+            opacity: parent.ce;
             if !nd.missing: Rectangle {
                 border-radius: nd.main ? 10px : 8px; background: G.node; border-width: 1px; border-color: nd.main ? G.accent-line : G.line; clip: true;
                 Rectangle {
@@ -237,15 +262,18 @@ export component GraphView inherits Rectangle {
                 clicked => { S.graph-pick(nd.id); fs.focus(); }
                 double-clicked => { root.opened(nd.path, nd.label); }
             }
+            }
         }
         for w in S.near-wires: Rectangle {
-            x: root.width / 2 + root.ox + w.x1 * 1px - 4px; y: root.height / 2 + root.oy + w.y1 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
+            opacity: root.wo;
+            x: root.ax + w.x1 * 1px - 4px; y: root.ay + w.y1 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
         }
         for w in S.near-wires: Rectangle {
-            x: root.width / 2 + root.ox + w.x2 * 1px - 4px; y: root.height / 2 + root.oy + w.y2 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
+            opacity: root.wo;
+            x: root.ax + w.x2 * 1px - 4px; y: root.ay + w.y2 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
         }
-        if S.near-more != "": Text { x: root.width / 2 + root.ox + 270px; y: root.height / 2 + root.oy + 330px; text: S.near-more; font-size: 12px; color: G.muted; }
-        Rectangle {
+        if S.near-more != "": Text { opacity: root.wo; x: root.ax + 270px; y: root.ay + 330px; text: S.near-more; font-size: 12px; color: G.muted; }
+        if root.e >= 0.999: Rectangle {
             x: 16px; y: parent.height - 86px; width: min(520px, parent.width - 32px); height: 70px;
             DashBox { c: G.accent-line; }
             Sat { x: 14px; y: 12px; }
