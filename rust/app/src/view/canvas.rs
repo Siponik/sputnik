@@ -178,6 +178,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let main = if c.sel.len() == 1 { c.sel[0].clone() } else { String::new() };
     let nodes: Vec<CvNode> = d.nodes.iter().map(|n| {
         let (mut kind, mut title, mut tag, mut rows, mut img, mut missing) = (n.kind().to_string(), n.title(), String::new(), vec![], slint::Image::default(), false);
+        let mut page = false;
+        let mut text = if n.is_group() { n.label() } else { n.text() }.to_string();
         let mut head = Color::from_rgb_u8(0x3D, 0x3E, 0x45);
         match n.kind() {
             "file" if is_image(n.file()) => {
@@ -193,6 +195,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 head = folder_hue(folder);
                 match app.notes.notes.iter().find(|x| x.path == f) {
                     Some(note) => {
+                        // правка на холсте — весь текст заметки (без шапки YAML)
+                        text = crate::notes::body_without_front(&note.body).to_string();
                         let body = crate::notes::body_without_front(&note.body).trim_start();
                         // первая строка «# Заголовок» идёт в шапку ноды
                         let (h1, rest) = match body.split_once('\n') {
@@ -209,7 +213,6 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 }
             }
             "text" => {
-                tag = "ТЕКСТ".into();
                 rows = md_rows(n.text(), 60);
             }
             "link" => {
@@ -221,8 +224,10 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 if !p.meta.desc.is_empty() {
                     rows = md_rows(&p.meta.desc, 6);
                 }
-                if let Some(f) = &p.img {
+                // снимок страницы главнее картинки из её описания
+                if let Some(f) = p.shot.as_ref().or(p.img.as_ref()) {
                     img = slint::Image::load_from_path(f).unwrap_or_default();
+                    page = p.shot.is_some();
                 }
                 missing = !p.ready; // ещё качается
             }
@@ -235,9 +240,10 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         CvNode {
             id: ss(n.id()), kind: ss(kind), x: n.x() as f32, y: n.y() as f32, w: n.w() as f32, h: n.h() as f32,
             title: ss(title), tag: ss(tag), rows: model(rows), img, missing,
-            head, colored: col.is_some(), text: ss(if n.is_group() { n.label() } else { n.text() }),
+            head, colored: col.is_some(), text: ss(text),
             sel: c.sel.iter().any(|s| s == n.id()), mv: mv.iter().any(|s| s == n.id()), main: main == n.id(),
             path: ss(if n.kind() == "link" { n.url() } else { n.file() }),
+            page,
         }
     }).collect();
     keep(&NODES, nodes, |m| g.set_cv_nodes(m));
@@ -379,6 +385,13 @@ pub fn wire(g: &S) {
     }));
     g.on_cv_text(|id, t| with_cv(move |app, u| {
         let (id, t) = (id.to_string(), t.to_string());
+        // нода-заметка: правка уходит в сам файл заметки
+        let file = u.cv.as_ref().and_then(|c| c.doc.node(&id)).filter(|n| n.kind() == "file" && !is_image(n.file())).map(|n| n.file().to_string());
+        if let Some(f) = file {
+            if let Some(c) = u.cv.as_mut() { if c.edit == id { c.edit.clear(); } }
+            save_note(app, &f, &t);
+            return;
+        }
         change(app, u, |c| {
             if let Some(n) = c.doc.node_mut(&id) {
                 let k = if n.is_group() { "label" } else { "text" };
@@ -397,20 +410,7 @@ pub fn wire(g: &S) {
     g.on_cv_edit_start(|id| with_cv(move |_, u| {
         if let Some(c) = u.cv.as_mut() { c.edit = id.to_string(); }
     }));
-    g.on_cv_open(|id| with_cv(move |app, u| {
-        let Some(c) = u.cv.as_ref() else { return };
-        let Some(n) = c.doc.node(&id) else { return };
-        match n.kind() {
-            "file" if is_image(n.file()) => { if let Some(p) = file_of(app, n.file()) { let _ = open::that(p); } }
-            "file" => {
-                let p = n.file().to_string();
-                if app.notes.notes.iter().any(|x| x.path == p) { super::wire::open_note_tab(app, u, &p); } else { app.say("Заметки нет в папке"); }
-            }
-            "link" => { let _ = open::that(n.url()); }
-            _ => { let id = id.to_string(); if let Some(c) = u.cv.as_mut() { c.edit = id; } }
-        }
-    }));
-    // провод от сокета `s` ноды `from`, отпущен в точке (x, y): над нодой — соединить, на пустом — новая карточка
+    g.on_cv_open(|id| with_cv(move |app, u| open_node(app, u, &id)));    // провод от сокета `s` ноды `from`, отпущен в точке (x, y): над нодой — соединить, на пустом — новая карточка
     g.on_cv_wire(|from, s, x, y| with_cv(move |app, u| {
         let from = from.to_string();
         change(app, u, |c| {
@@ -485,6 +485,33 @@ pub fn wire(g: &S) {
     g.on_cv_key(|k, x, y| with_cv(move |app, u| key(app, u, &k, x as f64, y as f64)));
 }
 
+/// Открыть ноду: заметку — во вкладке, картинку и ссылку — снаружи, карточку — на правку.
+fn open_node(app: &mut App, u: &mut Ui, id: &str) {
+    let Some(c) = u.cv.as_ref() else { return };
+    let Some(n) = c.doc.node(id) else { return };
+    match n.kind() {
+        "file" if is_image(n.file()) => { if let Some(p) = file_of(app, n.file()) { let _ = open::that(p); } }
+        "file" => {
+            let p = n.file().to_string();
+            if app.notes.notes.iter().any(|x| x.path == p) { super::wire::open_note_tab(app, u, &p); } else { app.say("Заметки нет в папке"); }
+        }
+        "link" => { let _ = open::that(n.url()); }
+        _ => { let id = id.to_string(); if let Some(c) = u.cv.as_mut() { c.edit = id; } }
+    }
+}
+
+/// Сохранить текст заметки, правленный на холсте (шапку YAML оставить как была).
+fn save_note(app: &mut App, path: &str, body: &str) {
+    let Some(old) = app.notes.notes.iter().find(|n| n.path == path).map(|n| n.body.clone()) else { return };
+    let front = &old[..old.len() - crate::notes::body_without_front(&old).len()];
+    if crate::notes::body_without_front(&old) == body {
+        return;
+    }
+    if let Err(e) = app.notes.save(path, &format!("{front}{body}")) {
+        app.say(format!("Заметка не сохранилась: {e}"));
+    }
+}
+
 /// Клавиши и кнопки панели. (x, y) — точка холста под мышью (для вставки).
 fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
     let Some(c) = u.cv.as_mut() else { return };
@@ -502,6 +529,7 @@ fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
             }
         }
         "all" => { c.sel = c.doc.nodes.iter().map(|n| n.id().to_string()).collect(); c.edge.clear(); }
+        "open" if c.sel.len() == 1 => { let id = c.sel[0].clone(); open_node(app, u, &id); }
         "esc" => { c.sel.clear(); c.edge.clear(); c.edit.clear(); }
         "copy" | "cut" => {
             if !c.sel.is_empty() {
