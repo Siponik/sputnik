@@ -4,7 +4,7 @@
 // двойной клик по пустому — карточка, по карточке — правка, по заметке — открыть. Камера живёт здесь, Rust получает
 // только итоги в единицах холста (экран = мир × k + o).
 import { G, Hues } from "theme.slint";
-import { Mono, Icon, Brackets, Socket, DashBox, Field, Sat } from "kit.slint";
+import { Mono, Icon, Brackets, Socket, DashBox, Field, Sat, ScrollInput } from "kit.slint";
 import { S, CvNode, CvEdge, NoteRow } from "store.slint";
 import { MdLine } from "linknote.slint";
 
@@ -47,6 +47,7 @@ export component CanvasView inherits Rectangle {
     property <float> ddx;
     property <float> ddy;
     property <bool> alt;
+    property <bool> ctl;           // Ctrl при последнем нажатии (двойной клик с Ctrl — открыть заметку)
     property <string> wire-from;
     property <int> wire-side;
     property <length> wx0;
@@ -170,6 +171,7 @@ export component CanvasView inherits Rectangle {
         property <bool> far: root.k < 0.35;
         property <bool> editing: S.cv-edit == n.id;
         property <length> hh: 30px * min(1.4, max(0.6, root.k));
+        property <length> pscroll;     // прокрутка снимка страницы
         x: root.sx((root.rs-id == n.id ? root.rs-x : n.x) + (moving ? root.ddx : 0));
         y: root.sy((root.rs-id == n.id ? root.rs-y : n.y) + (moving ? root.ddy : 0));
         width: nw * root.k * 1px;
@@ -231,16 +233,10 @@ export component CanvasView inherits Rectangle {
                     color: #ffffffb0; vertical-alignment: center; height: parent.height;
                 }
             }
-            if n.kind == "text" && !far && !editing: Text {
-                x: 12px * min(1, root.k * 1.5); y: 10px * root.k;
-                text: "ТЕКСТ НА ХОЛСТЕ";
-                font-family: G.mono; font-size: max(8px, 10px * root.k); letter-spacing: 1.4px; font-weight: 600;
-                color: n.colored ? n.head.brighter(0.5) : G.gold;
-            }
             // тело: строки заметки или карточки как markdown
             if (n.kind == "file" || n.kind == "text") && !far && !editing: Rectangle {
                 x: 12px * min(1, root.k * 1.5);
-                y: n.kind == "text" ? 28px * root.k : nd.hh + 8px * root.k;
+                y: n.kind == "text" ? 10px * root.k : nd.hh + 8px * root.k;
                 width: parent.width - 24px * min(1, root.k * 1.5);
                 height: parent.height - self.y - 6px * root.k;
                 clip: true;
@@ -256,7 +252,13 @@ export component CanvasView inherits Rectangle {
                 Image { source: n.img; width: parent.width; height: parent.height; image-fit: contain; }
             }
             // ссылка: картинка страницы, название, описание, адрес (предпросмотр качается в фоне)
-            if n.kind == "link" && !far: Rectangle {
+            // снимок страницы — как в браузере, колесо листает (у выделенной)
+            if n.kind == "link" && n.page && !far: Rectangle {
+                y: nd.hh; height: parent.height - nd.hh; clip: true; background: #fff;
+                property <length> ph: self.width * n.img.height / max(1, n.img.width);
+                Image { y: -nd.pscroll; source: n.img; width: parent.width; height: parent.ph; image-fit: fill; }
+            }
+            if n.kind == "link" && !n.page && !far: Rectangle {
                 x: 10px * min(1, root.k * 1.5); y: nd.hh + 8px * root.k;
                 width: parent.width - 20px * min(1, root.k * 1.5); height: parent.height - self.y - 8px * root.k;
                 clip: true;
@@ -280,16 +282,15 @@ export component CanvasView inherits Rectangle {
             mouse-cursor: root.mode == 3 ? MouseCursor.grabbing : MouseCursor.default;
             pointer-event(e) => {
                 if (e.kind == PointerEventKind.down && e.button == PointerEventButton.left) {
-                    fs.focus();
-                    if (S.cv-edit != "" && S.cv-edit != n.id) { fs.focus(); }
+                    if (!fs.has-focus) { fs.focus(); }
                     if (!n.sel || e.modifiers.shift || e.modifiers.control) { S.cv-click(n.id, e.modifiers.shift || e.modifiers.control); }
                     root.px0 = self.absolute-position.x + self.mouse-x; root.py0 = self.absolute-position.y + self.mouse-y;
-                    root.ddx = 0; root.ddy = 0; root.mode = 9; root.what = 3; root.alt = e.modifiers.alt;
+                    root.ddx = 0; root.ddy = 0; root.mode = 9; root.what = 3; root.alt = e.modifiers.alt; root.ctl = e.modifiers.control;
                 }
                 if (e.kind == PointerEventKind.down && e.button == PointerEventButton.middle) { root.mode = 0; }
                 if (e.kind == PointerEventKind.up) {
                     if (root.mode == 3) { S.cv-move(round(root.ddx / 10) * 10, round(root.ddy / 10) * 10, root.alt); }
-                    else if (root.mode == 9 && n.sel && !e.modifiers.shift && !e.modifiers.control) { S.cv-click(n.id, false); }
+                    else if (root.mode == 9 && n.sel && S.cv-sel > 1 && !e.modifiers.shift && !e.modifiers.control) { S.cv-click(n.id, false); }
                     root.mode = 0; root.ddx = 0; root.ddy = 0;
                 }
             }
@@ -307,32 +308,47 @@ export component CanvasView inherits Rectangle {
                 }
             }
             double-clicked => {
-                if (n.kind == "text" || n.kind == "group") { S.cv-edit-start(n.id); } else { S.cv-open(n.id); }
+                // заметку и карточку правим прямо на холсте; Ctrl + двойной клик — открыть заметку во вкладке
+                if (n.kind == "text" || n.kind == "group" || (n.kind == "file" && !n.missing && !root.ctl)) { S.cv-edit-start(n.id); } else { S.cv-open(n.id); }
             }
-            scroll-event(e) => { reject }
+            scroll-event(e) => {
+                if (n.kind == "link" && n.page && n.sel && !e.modifiers.control) {
+                    let ph = (nd.width) * n.img.height / max(1, n.img.width);
+                    nd.pscroll = max(0, min(ph - (nd.height - nd.hh), nd.pscroll - e.delta-y));
+                    return accept;
+                }
+                reject
+            }
         }
         // правка на месте: текст карточки или подпись группы
         if editing: Rectangle {
-            x: 10px; y: n.kind == "group" ? 6px : 10px;
-            width: parent.width - 20px; height: n.kind == "group" ? 26px : parent.height - 20px;
+            x: 10px; y: n.kind == "group" ? 6px : (n.kind == "file" ? nd.hh + 6px : 10px);
+            width: parent.width - 20px; height: n.kind == "group" ? 26px : parent.height - self.y - 10px;
             background: G.bg; border-radius: 6px; border-width: 1px; border-color: G.accent-line;
             clip: true;
-            // раскладка: в прокрутке (поле во всю карточку, обрезается её рамкой)
-            ed := TextInput {
+            if n.kind == "group": TextInput {
                 x: 8px; y: 6px; width: parent.width - 16px; height: parent.height - 12px;
                 text: n.text;
-                single-line: n.kind == "group";
-                wrap: word-wrap;
+                single-line: true;
                 font-size: max(11px, 13px * root.k);
                 color: G.ink;
                 selection-background-color: #F0A04B66;
                 selection-foreground-color: #FFFFFF;
                 init => { self.focus(); self.select-all(); }
                 key-pressed(e) => {
-                    if (e.text == Key.Escape || (e.text == Key.Return && (e.modifiers.control || n.kind == "group"))) { S.cv-text(n.id, self.text); fs.focus(); return accept; }
+                    if (e.text == Key.Escape || e.text == Key.Return) { S.cv-text(n.id, self.text); fs.focus(); return accept; }
                     reject
                 }
                 changed has-focus => { if (!self.has-focus && S.cv-edit == n.id) { S.cv-text(n.id, self.text); } }
+            }
+            // карточка и заметка: markdown целиком, длинный текст листается внутри; Esc или клик мимо — готово
+            if n.kind != "group": si := ScrollInput {
+                x: 8px; y: 6px; width: parent.width - 16px; height: parent.height - 12px;
+                text: n.text;
+                font-size: max(11px, 13px * root.k);
+                init => { self.grab(); }
+                escape => { S.cv-text(n.id, self.text); fs.focus(); }
+                changed focused => { if (!self.focused && S.cv-edit == n.id) { S.cv-text(n.id, self.text); } }
             }
         }
         // гнёзда по сторонам — тянуть провод
@@ -454,6 +470,7 @@ export component CanvasView inherits Rectangle {
             le := TextInput {
                 x: 8px; width: parent.width - 16px; height: parent.height;
                 text: e.label; font-size: 12px; color: G.ink; vertical-alignment: center;
+                selection-background-color: #F0A04B66; selection-foreground-color: #FFFFFF;
                 init => { self.focus(); self.select-all(); }
                 accepted => { S.cv-text(e.id, self.text); fs.focus(); }
                 key-pressed(k) => { if (k.text == Key.Escape) { S.cv-text(e.id, self.text); fs.focus(); return accept; } reject }
@@ -548,6 +565,7 @@ export component CanvasView inherits Rectangle {
                 }
             }
             Rectangle { width: 1px; height: 20px; y: 10px; background: G.line; }
+            if S.cv-sel == 1: VerticalLayout { alignment: center; ToolBtn { text: "Открыть"; clicked => { S.cv-key("open", 0, 0); } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Группа"; clicked => { S.cv-key("group", 0, 0); } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Копия"; clicked => { S.cv-key("dup", 0, 0); } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Удалить"; icon: "trash"; clicked => { S.cv-key("delete", 0, 0); } } }
@@ -576,7 +594,7 @@ export component CanvasView inherits Rectangle {
         Sat { x: 14px; y: 13px; width: 46px; height: 46px; }
         Text {
             x: 72px; width: parent.width - 86px; height: parent.height;
-            text: "Перетащи заметку из списка — появится нода. Двойной клик — карточка. Провод — от гнезда к гнезду, двойной клик по подписи — правка.";
+            text: "Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка.";
             font-size: 12.5px; color: #C9CBD3; wrap: word-wrap; vertical-alignment: center;
         }
     }

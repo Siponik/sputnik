@@ -38,7 +38,7 @@ export struct Found { kind: string, title: string, sub: string, list-id: string,
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
 export struct MdRow { kind: string, raw: string, md: styled-text, plain: string }
 export struct CvNode { id: string, kind: string, x: float, y: float, w: float, h: float, title: string, tag: string,
-    rows: [MdRow], img: image, missing: bool, head: color, colored: bool, text: string, sel: bool, mv: bool, main: bool, path: string }
+    rows: [MdRow], img: image, missing: bool, head: color, colored: bool, text: string, sel: bool, mv: bool, main: bool, path: string, page: bool }
 export struct CvEdge { id: string, ax: float, ay: float, c1x: float, c1y: float, c2x: float, c2y: float, bx: float, by: float,
     amv: bool, bmv: bool, label: string, sel: bool, arrow: bool, color: color, colored: bool }
 // Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
