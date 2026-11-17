@@ -336,6 +336,17 @@ pub fn api(method: &str, url: &str, body: Option<&Value>) -> Result<Value, Fail>
 
 /// То же с любым телом (загрузка файлов на Drive).
 pub fn api_raw(method: &str, url: &str, body: Option<(Vec<u8>, &str)>) -> Result<Value, Fail> {
+    let bytes = api_bytes(method, url, body)?;
+    let text = String::from_utf8_lossy(&bytes);
+    if text.trim().is_empty() {
+        Ok(Value::Null)
+    } else {
+        serde_json::from_str(&text).map_err(|e| Fail::Status(500, e.to_string()))
+    }
+}
+
+/// То же, ответ — байтами как есть (скачать файл с Drive).
+pub fn api_bytes(method: &str, url: &str, body: Option<(Vec<u8>, &str)>) -> Result<Vec<u8>, Fail> {
     let u = url::Url::parse(url).map_err(|e| Fail::Status(400, e.to_string()))?;
     if u.scheme() != "https" || !u.host_str().is_some_and(|h| h.ends_with(".googleapis.com")) {
         return Err(Fail::Status(400, "Разрешены только запросы к googleapis.com".into()));
@@ -352,12 +363,9 @@ pub fn api_raw(method: &str, url: &str, body: Option<(Vec<u8>, &str)>) -> Result
         };
         match res {
             Ok(r) => {
-                let text = r.into_string().map_err(|e| Fail::Net(e.to_string()))?;
-                return if text.trim().is_empty() {
-                    Ok(Value::Null)
-                } else {
-                    serde_json::from_str(&text).map_err(|e| Fail::Status(500, e.to_string()))
-                };
+                let mut buf = vec![];
+                std::io::Read::read_to_end(&mut r.into_reader().take(200 * 1024 * 1024), &mut buf).map_err(|e| Fail::Net(e.to_string()))?;
+                return Ok(buf);
             }
             Err(ureq::Error::Status(401, _)) if !refreshed => refreshed = true,
             Err(ureq::Error::Status(c, r)) if (c == 429 || c >= 500) && repeatable => match waits.next() {

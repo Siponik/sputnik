@@ -530,6 +530,7 @@ export component AppWindow inherits Window {
                 for r[i] in [
                     { t: "Google Задачи и Календарь", s: S.offline ? "Нет связи — правки уйдут, когда вернётся" : S.status, ok: !S.offline && S.error == "" },
                     { t: "Слой Спутника на Drive", s: S.sync-info, ok: true },
+                    { t: "Знания на Drive", s: S.notes-sync-info, ok: S.notes-sync-ok },
                     { t: "Бот в Telegram", s: S.bot-name == "" ? "Не подключён — Настройки → Напоминания" : (S.bot-status == "" ? "Работает" : S.bot-status), ok: S.bot-name != "" },
                     { t: "Входящие от Claude", s: S.inbox-count == 0 ? "Пусто" : "Ждут ответа: " + S.inbox-count, ok: S.inbox-count == 0 },
                 ]: Rectangle {
@@ -537,7 +538,7 @@ export component AppWindow inherits Window {
                     Rectangle { x: 0; y: 13px; width: 7px; height: 7px; border-radius: 1.5px; background: r.ok ? G.green : G.gold; }
                     Text { x: 20px; y: 8px; text: r.t; font-size: 13.5px; color: G.ink; }
                     Text { x: 20px; y: 28px; text: r.s; font-size: 12px; color: #A3A5AE; overflow: elide; width: parent.width - 20px; }
-                    if i < 3: Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+                    if i < 4: Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 }
                 Rectangle { height: 1px; background: G.line; }
                 HorizontalLayout {

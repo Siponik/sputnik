@@ -2,6 +2,7 @@
 //! Спутник на Rust + Slint. Устройство — docs/rust-architecture.md.
 mod data;
 mod notes;
+mod notesync;
 mod notify;
 mod startmenu;
 mod state;
@@ -14,5 +15,7 @@ fn main() {
     std::thread::spawn(startmenu::ensure_link);
     let app = state::App::load();
     let w = view::start(app);
+    // «Знания» ↔ Drive: первая сверка сразу, дальше раз в 2 минуты
+    notesync::start();
     w.run().expect("окно");
 }

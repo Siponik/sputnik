@@ -117,6 +117,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_bot_name(ss(if t(&tg["key"]) { text(&tg["name"]).max("бот".into()) } else { String::new() }));
     g.set_bot_status(ss(if !app.bot_err.is_empty() { format!("Ошибка: {}", app.bot_err) } else if let Some(at) = app.bot_at { format!("Последний обмен — {}", super::hm(at)) } else { String::new() }));
     let f = &app.flags;
+    g.set_notes_sync_info(ss(if app.notes.root.is_none() { "Папка заметок не выбрана".to_string() } else if app.notes_sync.text.is_empty() { "Ждёт первой сверки".to_string() } else { app.notes_sync.text.clone() }));
+    g.set_notes_sync_ok(app.notes_sync.ok || app.notes_sync.text.is_empty() || app.notes_sync.busy);
     g.set_sync_info(ss(format!(
         "Google: {}. Слой Спутника на Drive: {}. Правок в очереди: {}. Запуск за {} мс.",
         if f.need_login { "не выполнен вход".to_string() } else if f.offline { "нет связи".into() } else { f.synced_at.map(|x| format!("синхронизировано в {}", super::hm(x))).unwrap_or("ещё не синхронизировано".into()) },
