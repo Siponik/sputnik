@@ -45,7 +45,18 @@ component LiveLine inherits Rectangle {
     tbr := TableRow { visible: root.tbl; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; }
     ta := TouchArea { mouse-cursor: MouseCursor.text; clicked => {
         if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
-    } }
+    }
+        // правый клик — меню правки (G-стиль): строка становится редактируемой, выделение сохраняется
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) {
+                let sel = editing ? S.ed-sel(ed.text, ed.anchor-position-byte-offset, ed.cursor-position-byte-offset) : "";
+                if (!editing) { root.pick(); }
+                S.menu-ctx("ed", sel, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+    }
+    property <int> cmd-n: S.ed-cmd-n;
+    changed cmd-n => { if (editing) { root.run(S.ed-cmd); } }
     if line.kind == "code" && !editing: Rectangle { x: -8px; y: 0; width: parent.width + 16px; height: parent.height; background: G.bg; }
     if line.kind == "hr" && !editing: Rectangle { y: (parent.height - 1px) / 2; height: 1px; background: G.line; }
     if line.kind == "quote" && !editing: Rectangle { x: 0; y: pad; width: 3px; height: parent.height - pad - 3px; border-radius: 1.5px; background: G.accent; }
@@ -170,6 +181,17 @@ component LiveLine inherits Rectangle {
         ed.text = n;
         ed.set-selection-offsets(c, c);
         S.note-link-q("", 0);
+    }
+    function run(c: string) {
+        ed.focus();
+        if (c == "cut") { ed.cut(); return; }
+        if (c == "copy") { ed.copy(); return; }
+        if (c == "paste") { ed.paste(); return; }
+        if (c == "all") { ed.select-all(); return; }
+        let r = S.ed-apply(ed.text, ed.anchor-position-byte-offset, ed.cursor-position-byte-offset, c);
+        ed.text = r.text;
+        ed.set-selection-offsets(r.a, r.b);
+        if (c == "link" && r.a == r.b) { S.note-link-q(ed.text, r.a); }
     }
     function start() {
         ed.text = line.raw;

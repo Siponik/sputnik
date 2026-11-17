@@ -104,6 +104,18 @@ pub fn extra_copies(files: &BTreeMap<String, Local>) -> Vec<String> {
     out
 }
 
+/// Свободный путь: занято — «… 2», «… 3».
+pub fn trash_free(path: &str, taken: impl Fn(&str) -> bool) -> String {
+    if !taken(path) {
+        return path.to_string();
+    }
+    let (stem, ext) = match path.rsplit_once('.') {
+        Some((s, e)) if !e.contains('/') => (s, format!(".{e}")),
+        _ => (path, String::new()),
+    };
+    (2..).map(|i| format!("{stem} {i}{ext}")).find(|p| !taken(p)).unwrap_or(path.to_string())
+}
+
 /// «Заметка (с другого компьютера 2).md» → «Заметка.md» (и копия копии — тоже к самому первому имени).
 pub fn original_of(path: &str) -> Option<String> {
     let mut p = path.to_string();

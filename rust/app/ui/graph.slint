@@ -190,6 +190,8 @@ export component GraphView inherits Rectangle {
         opacity: d.dim ? 0.45 : 1;
         border-width: d.cur ? 2px : (d.missing ? 1px : 0);
         border-color: d.cur ? G.accent-ink : G.dim;
+        property <bool> hov: da.has-hover;
+        changed hov => { S.graph-hover(self.hov ? d.id : ""); }
         da := TouchArea {
             mouse-cursor: self.pressed && root.dragging ? MouseCursor.grabbing : MouseCursor.pointer;
             // тянуть точку — соседи идут следом (живой граф)

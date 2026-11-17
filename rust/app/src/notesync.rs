@@ -109,6 +109,26 @@ fn save_base(base: &BTreeMap<String, Base>, root: &str, cache: &Cache, hist: &Hi
     let _ = crate::data::store::write_json(STATE, &json!({"root": root, "files": files, "cache": cache, "hist": hist}));
 }
 
+/// Убрать пустые папки (кроме служебных), снизу вверх.
+fn prune_empty(d: &Path) -> bool {
+    let Ok(rd) = std::fs::read_dir(d) else { return false };
+    let mut empty = true;
+    for e in rd.flatten() {
+        let p = e.path();
+        let hidden = e.file_name().to_string_lossy().starts_with('.');
+        if p.is_dir() && !hidden {
+            if prune_empty(&p) {
+                let _ = std::fs::remove_dir(&p);
+            } else {
+                empty = false;
+            }
+        } else {
+            empty = false;
+        }
+    }
+    empty
+}
+
 fn write_local(root: &Path, rel: &str, bytes: &[u8]) -> std::io::Result<()> {
     let p = root.join(rel);
     if let Some(d) = p.parent() {
@@ -136,19 +156,30 @@ fn run(root: PathBuf) -> Done {
         let drive_root = api::ensure_folder(Some(&top), "Знания")?;
         let (files, dirs) = api::notes_tree(&drive_root)?;
         let mut dir_ids: BTreeMap<String, String> = dirs.into_iter().collect();
-        let remote: BTreeMap<String, Remote> = files.iter().filter(|f| ns::wanted(&f.0)).map(|f| (f.0.clone(), Remote { id: f.1.clone(), md5: f.2.clone() })).collect();
+        // копии «(с другого компьютера)» больше не синхронизируем вовсе: на Drive — в корзину Drive,
+        // здесь — в `.trash` (ничего не пропадает, но и не плодится между компьютерами)
+        for f in files.iter().filter(|f| ns::wanted(&f.0) && ns::original_of(&f.0).is_some()) {
+            if api::trash(&f.1).is_ok() {
+                base.remove(&f.0);
+                done.changed += 1;
+            }
+        }
+        let remote: BTreeMap<String, Remote> = files.iter().filter(|f| ns::wanted(&f.0) && ns::original_of(&f.0).is_none()).map(|f| (f.0.clone(), Remote { id: f.1.clone(), md5: f.2.clone() })).collect();
         let mut local = scan(&root, &mut cache);
-        // прежние лишние копии «(с другого компьютера)» — слово в слово как оригинал или другая копия — в корзину
-        for p in ns::extra_copies(&local) {
-            let to = root.join(".trash").join(&p);
+        let copies: Vec<String> = local.keys().filter(|p| ns::original_of(p).is_some()).cloned().collect();
+        for p in copies {
+            let to = root.join(ns::trash_free(&format!(".trash/{p}"), |x| root.join(x).exists()));
             if let Some(d) = to.parent() {
                 let _ = std::fs::create_dir_all(d);
             }
             if std::fs::rename(root.join(&p), &to).is_ok() {
                 local.remove(&p);
+                base.remove(&p);
                 done.changed += 1;
             }
         }
+        // пустые папки, оставшиеся от копий, тоже убрать
+        prune_empty(&root);
         let steps = ns::guard(ns::plan(&local, &remote, &base), base.len());
         done.pending = steps.iter().filter(|s| !matches!(s, Step::Forget(_))).count();
         let folder_of = |rel: &str, dir_ids: &mut BTreeMap<String, String>| -> Result<String, crate::data::google::Fail> {
@@ -215,12 +246,12 @@ fn run(root: PathBuf) -> Done {
                         done.changed += 1;
                         continue;
                     }
-                    // их версия — копией рядом (уйдёт на Drive следующей сверкой), наша — на Drive под своим именем
-                    let copy = ns::conflict_name(&p, |n| root.join(n).exists() || remote.contains_key(n));
+                    // настоящий конфликт: остаётся наша версия; их версия — не рядом, а в `.trash`, чтобы её можно было достать
+                    let copy = ns::conflict_name(&format!(".trash/{p}"), |n| root.join(n).exists());
                     write_local(&root, &copy, &theirs).map_err(|e| crate::data::google::Fail::Net(e.to_string()))?;
                     let (_, md5) = api::upload_to(&r.id, mine.clone())?;
+                    remember(&mut hist, &p, &hash(&mine));
                     base.insert(p, Base { hash: hash(&mine), md5 });
-                    done.copies.push(copy);
                 }
                 Step::TrashRemote(p) => {
                     api::trash(&remote[&p].id)?;

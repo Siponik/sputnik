@@ -432,8 +432,14 @@ impl Notes {
         for _ in 0..4 {
             live |= sm.tick();
         }
+        // камера подстраивается плавно и не дёргается; пока тянут точку — стоит на месте
         if sm.held.is_none() {
+            let old = sm.map;
             sm.refit();
+            if old.2 > 0.0 {
+                let k = 0.08;
+                sm.map = (old.0 + (sm.map.0 - old.0) * k, old.1 + (sm.map.1 - old.1) * k, old.2 + (sm.map.2 - old.2) * k);
+            }
         }
         sm.place(&mut self.graph.0);
         live

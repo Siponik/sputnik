@@ -26,6 +26,7 @@ export struct SphList { id: string, name: string, letter: string, count: int }
 export struct SphCard { id: string, name: string, head: color, aside: string, sel: bool, lists: [SphList] }
 export struct ArchSph { kind: string, id: string, name: string, meta: string, date: string, head: color, letter: string, group: string, first: bool }
 export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool }
+export struct EdOut { text: string, a: int, b: int }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct SphRow { items: [Opt], last: bool }
 export struct Sub { id: string, title: string, done: bool }
@@ -495,6 +496,11 @@ export global S {
     callback arch-tab-set(int);
     in property <[MItem]> menu-items;
     callback menu-ctx(string, string, length, length);   // что, id, x, y
+    // меню правки строки заметки: команда для строки, которую сейчас правят (номер растёт с каждой командой)
+    in property <string> ed-cmd;
+    in property <int> ed-cmd-n;
+    pure callback ed-apply(string, int, int, string) -> EdOut;
+    pure callback ed-sel(string, int, int) -> string;
     callback menu-pick(string);
     callback menu-close();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками
@@ -707,6 +713,7 @@ export global S {
     in property <bool> graph-live;                // живой граф ещё движется — нужен следующий кадр
     callback graph-tick();
     callback graph-rebuild();
+    callback graph-hover(string);
     callback graph-hold(string, float, float);    // тянут точку: id и место на листе 0…1000; "" — отпустили
     in property <int> graph-sel-rest;
     in property <int> note-sort;
