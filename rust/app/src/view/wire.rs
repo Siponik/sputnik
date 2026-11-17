@@ -1440,6 +1440,14 @@ pub(super) fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
     }
     u.note_path = path.to_string();
     u.note_dirty = false;
+    // папки этой заметки в дереве — раскрыть (остальные не трогаем)
+    let mut cur = String::new();
+    for part in path.split('/').rev().skip(1).collect::<Vec<_>>().into_iter().rev() {
+        cur = if cur.is_empty() { part.to_string() } else { format!("{cur}/{part}") };
+        if !u.note_fold.contains(&cur) {
+            u.note_fold.push(cur.clone());
+        }
+    }
     super::canvas::ensure(app, u);
 }
 

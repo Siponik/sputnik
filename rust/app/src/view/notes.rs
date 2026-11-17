@@ -19,11 +19,13 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         2 => format!("{:08}{}", 99_999_999 - deg(&x.path).min(99_999_999), x.title.to_lowercase()),
         _ => format!("{:020}{}", i64::MAX - x.mtime, x.title.to_lowercase()),
     };
-    let mut items: Vec<(String, String, String, &str)> = found.iter().map(|x| (folder(&x.path), key(x), x.path.clone(), "")).collect();
+    let pinned = pins();
+    let pk = |p: &str, k: String| if pinned.iter().any(|x| x == p) { format!("!{k}") } else { format!("~{k}") };
+    let mut items: Vec<(String, String, String, &str)> = found.iter().map(|x| (folder(&x.path), pk(&x.path, key(x)), x.path.clone(), "")).collect();
     for p in &n0.canvases {
         let t = p.rsplit('/').next().unwrap_or(p).trim_end_matches(".canvas").to_string();
         if q.is_empty() || t.to_lowercase().replace('ё', "е").contains(&q) {
-            items.push((folder(p), if u.note_sort == 1 { t.to_lowercase() } else { format!("~{}", t.to_lowercase()) }, p.clone(), "canvas"));
+            items.push((folder(p), pk(p, if u.note_sort == 1 { t.to_lowercase() } else { format!("~{}", t.to_lowercase()) }), p.clone(), "canvas"));
         }
     }
     items.sort();
@@ -54,26 +56,23 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     dirs.sort_by_key(|d| d.to_lowercase());
     let hues = super::graph::groups(app);
     let searching = !q.is_empty();
-    let open = |d: &str| {
-        let auto = searching || u.note_path.starts_with(&format!("{d}/"));
-        auto != u.note_fold.iter().any(|x| x == d)
-    };
+    let open = |d: &str| searching || u.note_fold.iter().any(|x| x == d);
     let mut tree: Vec<TreeRow> = vec![];
     fn walk(dir: &str, depth: i32, dirs: &[String], items: &[(String, String, String, &str)], open: &dyn Fn(&str) -> bool,
-            title_of: &dyn Fn(&str) -> String, hue: slint::Color, tree: &mut Vec<TreeRow>) {
+            title_of: &dyn Fn(&str) -> String, hue: slint::Color, tree: &mut Vec<TreeRow>, pinned: &[String]) {
         for d in dirs.iter().filter(|d| folder(d) == dir && d.as_str() != dir) {
             let o = open(d);
             let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
             tree.push(TreeRow { path: ss(d.clone()), title: ss(d.rsplit('/').next().unwrap_or(d)), kind: ss("dir"), depth, open: o, n: ss(n.to_string()), hue });
             if o {
-                walk(d, depth + 1, dirs, items, open, title_of, hue, tree);
+                walk(d, depth + 1, dirs, items, open, title_of, hue, tree, pinned);
             }
         }
         if depth == 0 && dir.is_empty() {
             return;
         }
         for (_, _, p, kind) in items.iter().filter(|x| x.0 == dir) {
-            tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth, open: false, n: ss(""), hue });
+            tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth, open: pinned.iter().any(|x| x == p), n: ss(""), hue });
         }
     }
     for d in dirs.iter().filter(|d| !d.contains('/')) {
@@ -82,12 +81,12 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
         tree.push(TreeRow { path: ss(d.clone()), title: ss(d.clone()), kind: ss("dir"), depth: 0, open: o, n: ss(n.to_string()), hue });
         if o {
-            walk(d, 1, &dirs, &items, &open, &title_of, hue, &mut tree);
+            walk(d, 1, &dirs, &items, &open, &title_of, hue, &mut tree, &pinned);
         }
     }
     let grey = slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE);
     for (_, _, p, kind) in items.iter().filter(|x| x.0.is_empty()) {
-        tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth: 0, open: false, n: ss(""), hue: grey });
+        tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth: 0, open: pinned.iter().any(|x| x == p), n: ss(""), hue: grey });
     }
     g.set_note_tree(model(tree));
     // «Недавние» — последние открытые вкладки, свежие сверху
@@ -166,6 +165,24 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             g.set_note_mentions(model(vec![]));
         }
     }
+}
+
+thread_local! {
+    static PINS: RefCell<Option<Vec<String>>> = const { RefCell::new(None) };
+}
+
+/// Закреплённые заметки и холсты (пути) — встают наверх своей папки. Хранятся в папке настроек.
+pub fn pins() -> Vec<String> {
+    PINS.with(|p| p.borrow_mut().get_or_insert_with(|| {
+        crate::data::store::read("note-pins.json").and_then(|v| serde_json::from_value(v).ok()).unwrap_or_default()
+    }).clone())
+}
+
+pub fn pin_toggle(path: &str) {
+    let mut v = pins();
+    if let Some(i) = v.iter().position(|x| x == path) { v.remove(i); } else { v.push(path.to_string()); }
+    let _ = crate::data::store::write_json("note-pins.json", &serde_json::json!(v));
+    PINS.with(|p| *p.borrow_mut() = Some(v));
 }
 
 pub fn folder(path: &str) -> String {
