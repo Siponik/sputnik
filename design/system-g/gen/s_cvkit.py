@@ -12,7 +12,7 @@ def card(x, y, w, title, body, c=VIO, kind='DND', sel=False, hover=False, edit=F
         ex += ''.join(f'<span style="position: absolute; {v}: -8px; {hh}: -8px; width: 8px; height: 8px; background: {GROUND}; border: 1.5px solid {OR}"></span>' for v in ('top', 'bottom') for hh in ('left', 'right'))
     b = f'<div style="padding: 10px 12px; font-size: 12.5px; color: #C9CAD0; line-height: 1.45">{body}</div>'
     return node(x, y, w, h, nhead('', title, kind, c) + b, extra=ex, style=bord)
-def tag(t): return f'<div style="font: 500 10px {MONO}; letter-spacing: .16em; color: {DIM}; margin-bottom: 10px">{t}</div>'
+def tag(t): return f'<div style="font: 500 10px {MONO}; letter-spacing: .16em; color: {MUT}; margin-bottom: 10px">{t}</div>'
 def cap(x, y, n, t, w=380): return ab(x, y, f'<div style="display: flex; gap: 8px; align-items: baseline"><span style="font: 500 10.5px {MONO}; color: {OR}">{n}</span><span style="font: 500 10px {MONO}; letter-spacing: .16em; color: {MUT}">{t}</span></div>', w=w)
 def bar(items):
     return f'<div style="display: inline-flex; align-items: center; gap: 2px; padding: 4px; border-radius: 9px; background: {NODE}; border: 1px solid {LINE}{SH}">{items}</div>'
@@ -30,7 +30,7 @@ st += card(0, 24, 220, 'НПС: МИРА ТЁРН', 'Информатор фра
 st += card(250, 24, 220, 'НПС: МИРА ТЁРН', 'Информатор фракции.', hover=True)
 st += card(500, 24, 220, 'НПС: МИРА ТЁРН', 'Информатор фракции.', sel=True)
 st += node(750, 24, 220, 0, f'<div style="padding: 10px 12px; font-size: 12.5px; line-height: 1.45">Игроки ещё не знают, что Мира<span style="display: inline-block; width: 1.5px; height: 14px; background: {OR}; vertical-align: -2px; margin-left: 1px"></span></div>', style=f'; border-color: {OR}; background: {WASH}')
-st += ab(750, 92, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {DIM}">ESC ИЛИ КЛИК МИМО — ГОТОВО</span>')
+st += ab(750, 92, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {MUT}">ESC ИЛИ КЛИК МИМО — ГОТОВО</span>')
 st += ab(1000, 30, f'<div style="font-size: 12px; color: {MUT}; line-height: 1.5">Наведение — гнёзда со всех четырёх сторон, как в JSON Canvas.<br>Выбор — рамка {OR} 1.5 с отступом 2 и уголки размера.<br>Двойной клик — правка прямо в карточке.</div>', w=248)
 
 # 2. панель над выделенным
@@ -52,7 +52,7 @@ st += cap(0, 380, '4', 'РАМКА ВЫДЕЛЕНИЯ · ТЯНУТЬ ПО ПУ�
 st += ab(0, 406, f'<div style="width: 400px; height: 170px; box-sizing: border-box; border: 1px dashed {OR}; background: rgba(240,160,75,.06); border-radius: 2px"></div>')
 st += card(20, 426, 170, 'СЕССИЯ 11', 'Порт и склад.', OR, sel=True)
 st += card(210, 480, 170, 'СЕССИЯ 12', 'Пожар в доках.', OR, sel=True)
-st += ab(0, 582, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {DIM}">SHIFT / CTRL + КЛИК — ДОБАВИТЬ К ВЫДЕЛЕНИЮ · ALT + ТЯНУТЬ — КОПИЯ</span>')
+st += ab(0, 582, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {MUT}">SHIFT / CTRL + КЛИК — ДОБАВИТЬ К ВЫДЕЛЕНИЮ · ALT + ТЯНУТЬ — КОПИЯ</span>')
 
 # 5. провод: тянем и подпись
 st += cap(440, 380, '5', 'ПРОВОД · ТЯНЕМ НА ПУСТОЕ / ПОДПИСЬ')
@@ -81,4 +81,5 @@ st += ab(720, 648, bar(bi('＋ Карточка') + bi('¶ Заметка') + bi
 st += ab(720, 700, f'<div style="width: 528px; height: 40px; box-sizing: border-box; border-radius: 8px; border: 1px solid {GOLD}; background: #2A2718; display: flex; align-items: center; gap: 10px; padding: 0 6px 0 12px; font-size: 12.5px">{dot(GOLD, 8)}<span style="flex: 1">Холст изменили в Obsidian. Твоя версия сохранена копией рядом.</span>{btn("Открыть копию", "ghost", True)}</div>')
 
 st = svg(paths, 1248, 820) + st
+st = st.replace('rgba(255,255,255,.72)', 'rgba(255,255,255,.9)')
 save2('G_NotesCanvasKit.dc.html', page('Холст · элементы', 'ЗНАНИЯ', st, right='22:40', stage_h=770), 'Знания · холст: все элементы и состояния')
