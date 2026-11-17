@@ -11,7 +11,8 @@ export component CtxMenu inherits Rectangle {
         x: max(8px, min(S.menu-x, root.width - self.width - 8px));
         y: max(8px, min(S.menu-y, root.height - self.height - 8px));
         width: 260px;
-        height: min(mv.preferred-height, root.height - 16px);
+        // своя ScrollView без preferred-height — высота по пунктам
+        height: min(mvl.preferred-height, root.height - 16px);
         border-radius: 10px;
         background: G.node;
         border-width: 1px; border-color: G.line;

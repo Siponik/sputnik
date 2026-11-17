@@ -907,19 +907,27 @@ export component Confirm inherits Overlay {
         // высота по тексту вопроса: длинный вопрос не прячет кнопки
         height: max(170px, 30px + cl.preferred-height);
         num: "!!";
-        title: "ТОЧНО?";
-        head: #8A3A2E;
+        title: S.confirm-field ? "НАЗВАНИЕ" : "ТОЧНО?";
+        head: S.confirm-field ? #3A3C46 : #8A3A2E;
         TouchArea { }
         cl := VerticalLayout {
             padding: 16px;
             spacing: 14px;
             Text { text: S.confirm; color: G.ink; font-size: 14px; wrap: word-wrap; vertical-stretch: 1; }
+            f := Field {
+                visible: S.confirm-field;
+                height: S.confirm-field ? 34px : 0;
+                text: S.confirm-input;
+                accepted(t) => { S.confirm-yes(t); }
+                escape => { S.confirm-no(); }
+            }
             HorizontalLayout {
                 spacing: 10px;
                 alignment: end;
                 b := Button { text: "Отмена"; clicked => { S.confirm-no(); } }
-                Button { text: S.confirm-yes-label; primary: true; clicked => { S.confirm-yes(); } }
+                Button { text: S.confirm-yes-label; primary: true; clicked => { S.confirm-yes(f.text); } }
             }
         }
     }
+    init => { if (S.confirm-field) { f.grab(); } }
 }

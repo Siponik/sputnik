@@ -62,7 +62,14 @@ fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
                 it("note-graph", "Показать на графе", "graph", ""),
                 MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
                 it("note-file", "Открыть в другой программе", "share", ""),
+                MItem { sep: true, ..it("note-rename", "Переименовать…", "edit", "") },
+                MItem { red: true, ..it("note-trash", "Удалить в корзину", "trash", "") },
             ])
+        }
+        "newnote" => {
+            let mut v = vec![it("new:", "Пустая заметка", "note", "")];
+            v.extend(super::notefile::templates(app).into_iter().map(|(p, t)| it(&format!("tpl:{p}"), &t, "copy", "")));
+            (String::from("Новая заметка · шаблон"), v)
         }
         "tab" => (String::from("Вкладка"), vec![
             it("tab-close", "Закрыть", "close", "Ctrl W"),
@@ -85,6 +92,8 @@ fn note_pick(app: &mut App, u: &mut Ui, m: &Menu, id: &str) {
         "note-graph" => { super::wire::open_note_tab(app, u, &p); u.note_graph = true; }
         "note-dir" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f.parent().unwrap_or(&f)); } }
         "note-file" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f); } }
+        "note-rename" => super::notefile::ask_rename(u, p),
+        "note-trash" => super::notefile::ask_trash(app, u, p),
         "tab-close" => {
             if u.note_path == p { super::wire::save_draft(app, u); }
             u.note_tabs.retain(|t| t != &p);
@@ -119,6 +128,7 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
     }
     u.menu = None;
     if m.kind == "note" || m.kind == "tab" { note_pick(app, u, &m, id); return; }
+    if m.kind == "newnote" { super::notefile::create(app, u, &m.id, id.strip_prefix("tpl:").unwrap_or("")); return; }
     if m.kind == "sphere" {
         let sid = m.id.clone();
         match id {

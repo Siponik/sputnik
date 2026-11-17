@@ -130,7 +130,9 @@ pub fn snippet(body: &str, title: &str) -> String {
         Some(i) => body[..].lines().find(|l| l.to_lowercase().contains(&key)).unwrap_or(&body[i..]).to_string(),
         None => body.lines().find(|l| !l.trim().is_empty() && !l.starts_with('#')).unwrap_or("").to_string(),
     };
-    let t: String = line.replace("[[", "").replace("]]", "").trim().trim_start_matches(['-', '*', ' ']).chars().take(140).collect();
+    // как видно в заметке: [[Имя|подпись]] → подпись, без звёздочек
+    let line = line.trim().trim_start_matches(['-', '*', ' ']);
+    let t: String = sputnik_core::mdline::plain(line).text.chars().take(140).collect();
     t
 }
 

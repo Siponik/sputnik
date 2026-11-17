@@ -158,12 +158,14 @@ pub fn wire(w: &AppWindow) {
     g.on_toast_act(|| {
         crate::state::with(|app| app.toast_act());
     });
-    g.on_confirm_yes(|| act(|app, u| {
+    g.on_confirm_yes(|v| act(|app, u| {
+        u.answer = v.to_string();
+        u.ask_field = None;
         if let Some((_, _, f)) = u.confirm.take() {
             f(app, u);
         }
     }));
-    g.on_confirm_no(|| act(|_, u| u.confirm = None));
+    g.on_confirm_no(|| act(|_, u| { u.confirm = None; u.ask_field = None; }));
 
     // ---------- Сегодня ----------
     g.on_quick_changed(|t| act(|_, u| u.quick = str_(&t)));
@@ -787,7 +789,14 @@ pub fn wire(w: &AppWindow) {
     g.on_tp_dup(|| act(|_, u| super::tpl::dup(u)));
     g.on_tp_reset(|| act(|app, u| super::tpl::reset(app, u)));
     g.on_ls_close(|| act(|_, u| u.ls = false));
-    g.on_menu_ctx(|k, id, x, y| act(|_, u| u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })));
+    g.on_menu_ctx(|k, id, x, y| act(|app, u| {
+        // новая заметка без шаблонов — сразу, без меню
+        if k == "newnote" && super::notefile::templates(app).is_empty() {
+            return super::notefile::create(app, u, &id, "");
+        }
+        u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })
+    }));
+    g.on_note_mention_link(|p| act(|app, u| super::notefile::link_mention(app, u, &p)));
     g.on_menu_close(|| act(|_, u| u.menu = None));
     g.on_menu_pick(|id| act(|app, u| super::menu::pick(app, u, &id)));
     g.on_ls_set(|k, v| act(|app, u| super::listset::set(app, u, &k, &v)));
@@ -1176,6 +1185,25 @@ pub fn wire(w: &AppWindow) {
         if let Some(tk) = task_of(app, &l, &id) { app.set_notes(&l, &tk, &t); }
     }));
     g.on_link_insert(|t, title| ss(sputnik_core::wikilink::insert(t.as_str(), title.as_str())));
+    let ww3 = w.as_weak();
+    g.on_note_link_q(move |t, at| {
+        let Some(w3) = ww3.upgrade() else { return };
+        let head = t.as_str().get(..at.max(0) as usize).unwrap_or("");
+        let found: Vec<crate::Opt> = match sputnik_core::wikilink::query(head) {
+            Some(q) => crate::state::peek(|app| app.notes.search(&q).into_iter().filter(|n| !n.path.starts_with("Шаблоны/")).take(6)
+                .map(|n| crate::Opt { id: ss(n.path.clone()), label: ss(n.title.clone()), hint: ss(""), hue: color(""), on: false }).collect()).unwrap_or_default(),
+            None => vec![],
+        };
+        w3.global::<S>().set_link_found(model(found));
+    });
+    g.on_note_link_put(|t, at, title| {
+        let at = (at.max(0) as usize).min(t.len());
+        let at = if t.is_char_boundary(at) { at } else { t.len() };
+        let (head, tail) = t.as_str().split_at(at);
+        // «]]», которые редактор мог уже дописать, не удваивать
+        let tail = tail.strip_prefix("]]").unwrap_or(tail);
+        ss(format!("{}{}", sputnik_core::wikilink::insert(head, title.as_str()), tail))
+    });
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
@@ -1366,6 +1394,10 @@ pub(super) fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
 }
 
 fn new_note(app: &mut App, u: &mut Ui, title: &str) {
+    new_note_with(app, u, title, &format!("# {}\n\n", title.trim()));
+}
+
+pub(super) fn new_note_with(app: &mut App, u: &mut Ui, title: &str, body: &str) {
     let name: String = title.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).collect();
     if app.notes.root.is_none() {
         app.notes.root = Some(crate::data::store::own("notes"));
@@ -1375,7 +1407,7 @@ fn new_note(app: &mut App, u: &mut Ui, title: &str) {
     // такой файл уже есть (дважды «+» → «Новая заметка») — не затирать, а взять «Имя 2», «Имя 3»…
     let root = app.notes.root.clone().unwrap_or_default();
     let path = crate::notes::free_name(name.trim(), |p| root.join(p).exists());
-    match app.notes.save(&path, &format!("# {}\n\n", title.trim())) {
+    match app.notes.save(&path, body) {
         Ok(()) => {
             open_note_tab(app, u, &path);
         }

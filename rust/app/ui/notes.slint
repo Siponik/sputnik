@@ -24,6 +24,8 @@ component LiveLine inherits Rectangle {
     property <bool> wrapped: ed.preferred-height > root.fs * 1.9;
     property <int> arrow;
     property <int> arrow-from;
+    property <int> hint-i;
+    property <bool> hints: editing && ed.has-focus && S.link-found.length > 0;
     Timer {
         interval: 1ms;
         running: root.arrow != 0;
@@ -87,6 +89,13 @@ component LiveLine inherits Rectangle {
         enabled: editing;
         capture-key-pressed(e) => {
             if (!editing) { return reject; }
+            // подсказка после «[[»: Enter/Tab — вставить, стрелки — выбрать, Esc — закрыть
+            if (root.hints) {
+                if (e.text == Key.Return || e.text == Key.Tab) { root.put(S.link-found[min(root.hint-i, S.link-found.length - 1)].label); return accept; }
+                if (e.text == Key.DownArrow) { root.hint-i = min(root.hint-i + 1, S.link-found.length - 1); return accept; }
+                if (e.text == Key.UpArrow) { root.hint-i = max(root.hint-i - 1, 0); return accept; }
+                if (e.text == Key.Escape) { S.note-link-q("", 0); return accept; }
+            }
             if (e.text == Key.Return && !e.modifiers.shift) { root.split(ed.text, ed.cursor-position-byte-offset); return accept; }
             // в длинном абзаце стрелки ходят по его строкам; на краю — на соседнюю строку заметки, в ту же колонку
             // (поле двигает курсор само; не сдвинулся — значит, край абзаца)
@@ -112,7 +121,30 @@ component LiveLine inherits Rectangle {
             color: G.ink;
             selection-background-color: G.accent-wash;
             changed has-focus => { if (!self.has-focus && root.editing) { root.leave(self.text); } }
+            edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); }
         }
+    }
+    // подсказка названий над строкой (ниже её закрыли бы следующие строки)
+    if root.hints: Rectangle {
+        x: root.ind; y: -self.height - 4px; width: min(320px, root.width - root.ind);
+        height: 8px + min(6, S.link-found.length) * 30px;
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 14px; drop-shadow-color: #0009;
+        for f[k] in S.link-found: Rectangle {
+            x: 4px; y: 4px + k * 30px; width: parent.width - 8px; height: 30px; visible: k < 6;
+            border-radius: 6px; background: k == root.hint-i || fa.has-hover ? G.node-hover : transparent;
+            Icon { name: "link"; x: 8px; y: 8px; width: 14px; c: G.accent; }
+            Text { x: 30px; width: parent.width - 38px; text: f.label; font-size: 13px; color: G.ink; vertical-alignment: center; overflow: elide; }
+            fa := TouchArea { mouse-cursor: pointer; clicked => { root.put(f.label); } }
+        }
+    }
+    function put(title: string) {
+        let at = ed.cursor-position-byte-offset;
+        let n = S.note-link-put(ed.text, at, title);
+        let c = S.byte-len(n) - (S.byte-len(ed.text) - at);
+        ed.text = n;
+        ed.set-selection-offsets(c, c);
+        S.note-link-q("", 0);
     }
     function start() {
         ed.text = line.raw;
@@ -276,7 +308,7 @@ export component NotesPage inherits Rectangle {
             x: parent.width - 42px; y: 84px; width: 32px; height: 32px; border-radius: 8px;
             background: pa.has-hover ? G.accent.brighter(0.1) : G.accent;
             Text { text: "+"; color: #1C1D21; font-size: 18px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
-            pa := TouchArea { mouse-cursor: pointer; clicked => { S.note-new(root.q != "" ? root.q : "Новая заметка"); } }
+            pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
         }
         ScrollView { x: 0; y: 124px; width: parent.width; height: parent.height - 124px - 32px; NoteList { x: 0; y: 0; width: root.lw; rows: S.notes; cur: S.note-path;
             drag(p, ax, ay) => { root.drag-path = p; root.drag-x = ax - root.absolute-position.x; root.drag-y = ay - root.absolute-position.y; }
@@ -465,9 +497,16 @@ export component NotesPage inherits Rectangle {
                 for l in S.note-mentions: Rectangle {
                     height: mt.preferred-height + 38px;
                     border-radius: 8px; background: ma.has-hover ? G.node-hover : transparent; border-width: 1px; border-color: G.line-soft;
-                    Text { x: 10px; y: 8px; width: parent.width - 20px; text: l.title; font-size: 13px; color: G.ink; overflow: elide; }
+                    Text { x: 10px; y: 8px; width: parent.width - 90px; text: l.title; font-size: 13px; color: G.ink; overflow: elide; }
                     mt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: #8A8C96; wrap: word-wrap; }
                     ma := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", l.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
+                    // «Связать»: упоминание в той заметке становится [[ссылкой]]
+                    Rectangle {
+                        x: parent.width - self.width - 6px; y: 5px; width: lk.preferred-width + 18px; height: 22px; border-radius: 5px;
+                        background: la2.has-hover ? G.accent-line : transparent; border-width: 1px; border-color: G.accent-line;
+                        lk := Text { text: "Связать"; font-size: 11.5px; color: G.accent; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                        la2 := TouchArea { mouse-cursor: pointer; clicked => { S.note-mention-link(l.path); } }
+                    }
                 }
             }
         }
