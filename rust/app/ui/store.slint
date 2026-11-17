@@ -713,6 +713,7 @@ export global S {
     in property <bool> graph-live;                // живой граф ещё движется — нужен следующий кадр
     callback graph-tick();
     callback graph-rebuild();
+    callback graph-hover(string);
     callback graph-hold(string, float, float);    // тянут точку: id и место на листе 0…1000; "" — отпустили
     in property <int> graph-sel-rest;
     in property <int> note-sort;

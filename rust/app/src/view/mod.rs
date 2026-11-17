@@ -77,6 +77,8 @@ pub struct Ui {
     pub graph_q: String,
     pub graph_local: bool,
     pub graph_sel: String,
+    /// Точка графа под мышью.
+    pub graph_hover: String,
     pub graph_hide: Vec<String>,
     pub graph_no_lonely: bool,
     /// Открытые вкладки заметок (пути), активная — note_path.

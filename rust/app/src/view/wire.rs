@@ -1246,6 +1246,7 @@ pub fn wire(w: &AppWindow) {
         if let Some(i) = u.note_fold.iter().position(|x| *x == d) { u.note_fold.remove(i); } else { u.note_fold.push(d); }
     }));
     g.on_graph_pick(|id| act(|_, u| u.graph_sel = str_(&id)));
+    g.on_graph_hover(|id| act(|_, u| u.graph_hover = str_(&id)));
     g.on_graph_search(|q| act(|_, u| u.graph_q = str_(&q)));
     g.on_graph_local_set(|v| act(|_, u| u.graph_local = v));
     g.on_graph_group(|f| act(|_, u| {

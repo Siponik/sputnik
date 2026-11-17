@@ -52,7 +52,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     // выбранная точка: явно выбранная на графе, иначе открытая заметка
     let sel_id = if u.graph_sel.is_empty() { u.note_path.clone() } else { u.graph_sel.clone() };
     let cur = ns.iter().position(|x| x.id == sel_id);
-    let near: Vec<usize> = cur.map(|c| gr::neighbors(es, c)).unwrap_or_default();
+    // подсветка: точка под мышью (как в Obsidian), иначе выбранная
+    let hl = if u.graph_hover.is_empty() { cur } else { ns.iter().position(|x| x.id == u.graph_hover).or(cur) };
+    let near: Vec<usize> = hl.map(|c| gr::neighbors(es, c)).unwrap_or_default();
     // что видно: группы, «без связей», локальный граф
     let mut vis: Vec<bool> = ns.iter().map(|x| {
         let note = !x.missing && !x.tag && !x.file;
@@ -94,7 +96,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             nd += 1;
         }
         let (x, y) = px(p);
-        let on = Some(i) == cur || near.contains(&i);
+        let on = Some(i) == hl || near.contains(&i);
         let hue = if p.tag || p.file { hex(0x8A8C96) } else if p.missing { hex(0x62646E) } else { hue_of(&p.id) };
         dots.push(GDot {
             x: x as f32, y: y as f32, r: (gr::radius(p.degree) * if u.graph_local { 1.3 } else { 1.0 }) as f32, title: ss(p.label.clone()),
@@ -109,7 +111,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             continue;
         }
         let ((xa, ya), (xb, yb)) = (px(&ns[a]), px(&ns[b]));
-        lines.push(GLine { x1: xa as f32, y1: ya as f32, x2: xb as f32, y2: yb as f32, near: cur.is_some_and(|c| a == c || b == c) });
+        lines.push(GLine { x1: xa as f32, y1: ya as f32, x2: xb as f32, y2: yb as f32, near: hl.is_some_and(|c| a == c || b == c) });
     }
     g.set_graph_info(ss(format!("{} · {}", super::spheres::plural(nd, "ЗАМЕТКА", "ЗАМЕТКИ", "ЗАМЕТОК"), super::spheres::plural(lines.len(), "СВЯЗЬ", "СВЯЗИ", "СВЯЗЕЙ"))));
     g.set_graph_dots(keep(&DOTS, dots));
