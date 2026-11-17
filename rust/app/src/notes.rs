@@ -200,14 +200,19 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
             ("done", x.trim())
         } else if let Some(x) = t.strip_prefix("- ").or_else(|| t.strip_prefix("* ")) {
             ("li", x)
-        } else if let Some(x) = t.strip_prefix("> ") {
-            ("quote", x)
+        } else if let Some(x) = t.strip_prefix("> ").or_else(|| t.strip_prefix('>')) {
+            // выноска Obsidian «> [!quote] Заголовок» — значок типа прячем, заголовок — жирным
+            match x.trim_start().strip_prefix("[!").and_then(|y| y.find(']').map(|k| &y[k + 1..])) {
+                Some(y) => ("callout", y.trim_start_matches(['-', '+']).trim()),
+                None => ("quote", x),
+            }
         } else if t.starts_with("![[") || (t.starts_with("![") && t.ends_with(')')) {
             ("img", t.trim_start_matches('!').trim_start_matches('[').trim_end_matches([')', ']']))
         } else {
             ("p", t)
         };
-        let md = if kind == "code" { rest.to_string() } else { inline_md(rest) };
+        let md = if kind == "code" { rest.to_string() } else if kind == "callout" && !rest.is_empty() { format!("**{}**", inline_md(rest)) } else { inline_md(rest) };
+        let kind = if kind == "callout" { "quote" } else { kind };
         // rest — кусок той же строки (или пустая константа)
         let pre = (rest.as_ptr() as usize).checked_sub(l.as_ptr() as usize).filter(|p| *p <= l.len()).unwrap_or(l.len());
         let plain = if kind == "code" { rest.to_string() } else { sputnik_core::mdline::plain(rest).text };

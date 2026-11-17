@@ -386,7 +386,9 @@ export component NotesPage inherits Rectangle {
         if S.note-path != "" && !S.note-canvas: sv := ScrollView {
             y: 84px; height: parent.height - 84px - 34px;
             property <length> cw: min(root.zen ? 780px : 700px, self.width - 64px);
-            VerticalLayout {
+            // высота прокрутки — вся заметка целиком, до «Ссылаются сюда» включительно
+            content-height: nbody.preferred-height;
+            nbody := VerticalLayout {
                 x: (sv.width - sv.cw) / 2; y: 0; width: sv.cw;
                 padding-top: 22px; padding-bottom: 40px; spacing: 0; alignment: start;
                 // название — правится прямо здесь: Enter или клик мимо — переименовать файл (ссылки обновятся)

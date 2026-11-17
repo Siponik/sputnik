@@ -1,6 +1,7 @@
 // Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
 import { G } from "theme.slint";
-import { Mono, Field, Brackets, Icon, DashBox, Sat } from "kit.slint";
+import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView } from "kit.slint";
+import { MdLine } from "linknote.slint";
 import { S, GDot, GLine, Opt } from "store.slint";
 
 // Главный переключатель раздела: «Заметки · Граф» (одинаковый на всех экранах «Знаний»).
@@ -256,8 +257,10 @@ export component GraphRead inherits Rectangle {
         Text { x: 12px; width: parent.width - 70px; text: "ЧИТАЮ · " + S.graph-sel-head; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
         Text { x: parent.width - self.preferred-width - 12px; text: "↔ " + S.graph-sel-n; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #ffffffb0; vertical-alignment: center; }
     }
-    VerticalLayout {
-        y: 34px; height: parent.height - 34px - 112px;
+    ScrollView {
+        y: 34px; height: parent.height - 34px - 112px; content-height: rd.preferred-height;
+    rd := VerticalLayout {
+        x: 0; y: 0; width: root.width; alignment: start;
         padding-left: 16px; padding-right: 16px; padding-top: 14px; spacing: 0;
         if S.graph-sel-crumb != "": Text { text: S.graph-sel-crumb; font-size: 12px; color: G.muted; overflow: elide; }
         Text { text: S.graph-sel-title; font-size: 20px; font-weight: 600; color: G.ink; wrap: word-wrap; }
@@ -269,8 +272,7 @@ export component GraphRead inherits Rectangle {
             }
         }
         Rectangle { height: 12px; }
-        for l in S.graph-sel-lines: Text { text: l; font-size: 13.5px; color: #D4D5DA; wrap: word-wrap; min-height: 22px; }
-        if S.graph-sel-more != "": Text { text: S.graph-sel-more; font-size: 13.5px; color: G.muted; min-height: 22px; }
+        for l in S.graph-sel-lines: MdLine { line: l; fs: 13.5px; }
         Rectangle { height: 12px; }
         Text { text: "Клик по соседу — граф переезжает к той заметке, панель показывает её."; font-size: 12px; color: G.muted; wrap: word-wrap; }
         Rectangle { height: 12px; }
@@ -289,7 +291,8 @@ export component GraphRead inherits Rectangle {
             }
         }
         if S.graph-sel-rest > 0: Text { text: "ещё " + S.graph-sel-rest; font-size: 12.5px; color: G.muted; }
-        Rectangle { }
+        Rectangle { height: 12px; }
+    }
     }
     Rectangle {
         y: parent.height - 112px; height: 112px;
@@ -318,8 +321,8 @@ export component GraphPage inherits Rectangle {
     callback opened(string, string);
     callback focus-open(string, string);
     property <length> rw: S.graph-sel != "" && !gv.near ? 320px : 0px;
-    property <length> lw: gv.near ? 0px : 260px;
-    if !gv.near: GraphFilters { x: 8px; y: 8px; width: 252px; height: min(parent.height - 16px, 760px); mode(i) => { root.mode(i); } }
+    property <length> lw: 272px;
+    GraphFilters { x: 8px; y: 8px; width: 264px; height: parent.height - 16px; mode(i) => { root.mode(i); } }
     gv := GraphView {
         x: root.lw + 8px; y: 8px; width: parent.width - root.lw - 16px - (root.rw > 0 ? root.rw + 8px : 0px); height: parent.height - 16px;
         opened(p, t) => { root.opened(p, t); }
@@ -336,10 +339,10 @@ export component GraphPage inherits Rectangle {
         ZoomBtn { t: "⤢"; clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
     }
     if root.rw > 0: GraphRead {
-        x: parent.width - 8px - 320px; y: 8px; width: 320px; height: min(parent.height - 16px, 760px);
+        x: parent.width - 8px - 320px; y: 8px; width: 320px; height: parent.height - 16px;
         open => { root.opened(S.graph-sel, S.graph-sel-title); }
         zen => { root.focus-open(S.graph-sel, S.graph-sel-title); }
     }
-    if root.rw > 0: Brackets { x: parent.width - 8px - 320px; y: 8px; width: 320px; height: min(parent.height - 16px, 760px); }
+    if root.rw > 0: Brackets { x: parent.width - 8px - 320px; y: 8px; width: 320px; height: parent.height - 16px; }
     init => { gv.grab(); }
 }

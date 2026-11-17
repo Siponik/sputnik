@@ -121,7 +121,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_graph_sel(ss(note.map(|n| n.path.clone()).unwrap_or_default()));
     let Some(n) = note else {
         g.set_graph_sel_title(ss(cur.map(|c| ns[c].label.clone()).unwrap_or_default()));
-        g.set_graph_sel_lines(model(vec![]));
+        g.set_graph_sel_lines(model(Vec::<crate::MdRow>::new()));
         g.set_graph_sel_near(model(vec![]));
         return;
     };
@@ -133,24 +133,22 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let crumb = if f.is_empty() { String::new() } else { f.replace('/', " › ") };
     g.set_graph_sel_crumb(ss([crumb, when(n.mtime)].into_iter().filter(|x| !x.is_empty()).collect::<Vec<_>>().join(" · ")));
     g.set_graph_sel_tags(model(n.tags.iter().take(4).map(|t| ss(format!("#{t}"))).collect()));
+    // текст заметки с оформлением (заголовки, списки, цитаты, ссылки) — как в самой заметке; первый заголовок-название пропускаем
     let body = crate::notes::body_without_front(&n.body);
-    let rows: Vec<&str> = body.lines().map(|l| l.trim()).filter(|l| !l.is_empty() && l.trim_start_matches('#').trim() != n.title).collect();
-    let mut shown: Vec<slint::SharedString> = vec![];
-    let mut used = 0;
-    for l in rows.iter() {
-        if shown.len() >= 5 {
-            break;
-        }
-        used += 1;
-        let t = sputnik_core::mdline::plain(l.trim_start_matches('#').trim()).text;
-        if !t.trim().is_empty() {
-            shown.push(ss(t.chars().take(160).collect::<String>()));
+    let mut rows = crate::notes::line_rows(body);
+    if let Some(i) = rows.iter().position(|r| r.kind != "empty") {
+        if rows[i].kind.starts_with('h') && rows[i].plain.trim() == n.title.trim() {
+            rows.remove(i);
         }
     }
-    let heads = rows[used.min(rows.len())..].iter().filter(|l| l.starts_with('#')).count();
-    let rest = rows.len().saturating_sub(used);
-    g.set_graph_sel_more(ss(if heads > 0 { format!("…ещё {}", super::spheres::plural(heads, "раздел", "раздела", "разделов")) } else if rest > 0 { format!("…ещё {}", super::spheres::plural(rest, "строка", "строки", "строк")) } else { String::new() }));
-    g.set_graph_sel_lines(model(shown));
+    let rows: Vec<crate::MdRow> = rows.into_iter().skip_while(|r| r.kind == "empty").filter(|r| r.kind != "fence").take(80).map(|r| crate::MdRow {
+        kind: ss(r.kind),
+        raw: ss(r.raw),
+        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
+        plain: ss(r.plain),
+    }).collect();
+    g.set_graph_sel_more(ss(""));
+    g.set_graph_sel_lines(model(rows));
     let all: Vec<usize> = near.iter().copied().filter(|&j| !ns[j].tag && !ns[j].file).collect();
     g.set_graph_sel_n(gr::neighbors(es, c).len() as i32);
     g.set_graph_sel_near(model(all.iter().take(5).map(|&j| Opt { id: ss(ns[j].id.clone()), label: ss(ns[j].label.clone()), hint: ss(""), hue: if ns[j].missing { hex(0x62646E) } else { hue_of(&ns[j].id) }, on: !ns[j].missing }).collect()));
