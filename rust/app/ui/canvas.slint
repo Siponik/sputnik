@@ -7,29 +7,13 @@ import { G, Hues } from "theme.slint";
 import { Mono, Icon, Brackets, Socket, DashBox, Field, Sat, ScrollInput } from "kit.slint";
 import { S, CvNode, CvEdge, NoteRow } from "store.slint";
 import { MdLine } from "linknote.slint";
+import { ToolBtn, SelMenu } from "canvasmenu.slint";
 
 // Камера открытого канваса — общая, чтобы «Знания» могли положить заметку из списка в нужную точку.
 export global CvCam {
     in-out property <float> k: 1;
     in-out property <length> ox;
     in-out property <length> oy;
-}
-
-component ToolBtn inherits Rectangle {
-    in property <string> text;
-    in property <string> icon;
-    in property <bool> outlined;
-    in property <bool> accent;
-    callback clicked;
-    width: lb.preferred-width + (icon != "" ? 38px : 24px);
-    height: 28px;
-    border-radius: 6px;
-    background: ta.has-hover ? G.node-hover : transparent;
-    border-width: outlined ? 1px : 0;
-    border-color: G.line-strong;
-    if icon != "": Icon { name: root.icon; x: 10px; width: 13px; y: (parent.height - 13px) / 2; c: root.outlined ? G.ink : G.muted; }
-    lb := Text { x: icon != "" ? 28px : 12px; text: root.text; font-size: 13px; color: root.accent ? G.accent : (root.outlined ? G.ink : #C9CBD3); vertical-alignment: center; height: parent.height; }
-    ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
 export component CanvasView inherits Rectangle {
@@ -61,6 +45,9 @@ export component CanvasView inherits Rectangle {
     property <duration> last-down: -1s;
     property <bool> second;
     property <bool> picking;       // открыт поиск «＋ Заметка»
+    property <bool> palette;       // в меню выделенного открыт выбор цвета
+    property <string> sel-key: S.cv-sel + S.cv-sel-kind;
+    changed sel-key => { root.palette = false; }
     property <string> pick-q;
     property <int> ver: S.cv-ver;
     // перетаскивание заметки из списка слева (NotesPage сообщает точку)
@@ -71,6 +58,13 @@ export component CanvasView inherits Rectangle {
     function wy(sy: length) -> float { return (sy - root.oy) / 1px / root.k; }
     function sx(x: float) -> length { return x * root.k * 1px + root.ox; }
     function sy(y: float) -> length { return y * root.k * 1px + root.oy; }
+    // приблизить к выделенному: вписать рамку x0, y0, x1, y1 в экран (как в Obsidian)
+    function zoom-to(b: [float]) {
+        if (b.length < 4) { return; }
+        root.k = max(0.15, min(2, min((root.width / 1px - 160) / max(1, b[2] - b[0]), (root.height / 1px - 220) / max(1, b[3] - b[1]))));
+        root.ox = root.width / 2 - (b[0] + b[2]) / 2 * root.k * 1px;
+        root.oy = root.height / 2 + 26px - (b[1] + b[3]) / 2 * root.k * 1px;
+    }
     public function fit() {
         if (S.cv-bounds.length < 4) { return; }
         root.k = max(0.15, min(1, min((root.width / 1px - 120) / max(1, S.cv-bounds[2] - S.cv-bounds[0]), (root.height / 1px - 160) / max(1, S.cv-bounds[3] - S.cv-bounds[1]))));
@@ -117,6 +111,13 @@ export component CanvasView inherits Rectangle {
         }
     }
 
+    // фон в точку, как у графа; точки едут вместе с холстом
+    Rectangle { background: G.ground; }
+    Image {
+        x: mod(root.ox / 1px, 24) * 1px - 48px; y: mod(root.oy / 1px, 24) * 1px - 48px;
+        width: parent.width + 96px; height: parent.height + 96px;
+        source: @image-url("dot.svg"); horizontal-tiling: repeat; vertical-tiling: repeat;
+    }
     // фон: колесо, рамка, двигать, двойной клик — карточка, клик — снять выбор или выбрать провод
     bg := TouchArea {
         mouse-cursor: root.mode == 1 || root.space ? MouseCursor.grabbing : MouseCursor.default;
@@ -419,20 +420,35 @@ export component CanvasView inherits Rectangle {
     }
 
     // провода (поверх нод не мешают кликам: Path без TouchArea)
-    for e in S.cv-edges: Path {
+    // выделенный провод — как в Obsidian: толще, светлее, с широким полупрозрачным ореолом своего цвета
+    for e in S.cv-edges: Rectangle {
         property <float> dax: e.amv && root.mode == 3 ? root.ddx : 0;
         property <float> day: e.amv && root.mode == 3 ? root.ddy : 0;
         property <float> dbx: e.bmv && root.mode == 3 ? root.ddx : 0;
         property <float> dby: e.bmv && root.mode == 3 ? root.ddy : 0;
-        x: 0; y: 0; width: root.width; height: root.height;
-        viewbox-width: root.width / 1px; viewbox-height: root.height / 1px;
-        stroke: e.sel ? G.accent : (e.colored ? e.color : G.violet);
-        stroke-width: e.sel ? 2.5px : 1.5px;
-        MoveTo { x: root.sx(e.ax + dax) / 1px; y: root.sy(e.ay + day) / 1px; }
-        CubicTo {
-            control-1-x: root.sx(e.c1x + dax) / 1px; control-1-y: root.sy(e.c1y + day) / 1px;
-            control-2-x: root.sx(e.c2x + dbx) / 1px; control-2-y: root.sy(e.c2y + dby) / 1px;
-            x: root.sx(e.bx + dbx) / 1px; y: root.sy(e.by + dby) / 1px;
+        property <color> c: e.colored ? e.color : G.violet;
+        if e.sel: Path {
+            x: 0; y: 0; width: root.width; height: root.height;
+            viewbox-width: root.width / 1px; viewbox-height: root.height / 1px;
+            stroke: parent.c.with-alpha(0.16); stroke-width: max(10px, 16px * min(1, root.k)); stroke-line-cap: round;
+            MoveTo { x: root.sx(e.ax + dax) / 1px; y: root.sy(e.ay + day) / 1px; }
+            CubicTo {
+                control-1-x: root.sx(e.c1x + dax) / 1px; control-1-y: root.sy(e.c1y + day) / 1px;
+                control-2-x: root.sx(e.c2x + dbx) / 1px; control-2-y: root.sy(e.c2y + dby) / 1px;
+                x: root.sx(e.bx + dbx) / 1px; y: root.sy(e.by + dby) / 1px;
+            }
+        }
+        Path {
+            x: 0; y: 0; width: root.width; height: root.height;
+            viewbox-width: root.width / 1px; viewbox-height: root.height / 1px;
+            stroke: e.sel ? parent.c.mix(#ffffff, 0.55) : parent.c;
+            stroke-width: e.sel ? 3.5px : 1.5px; stroke-line-cap: round;
+            MoveTo { x: root.sx(e.ax + dax) / 1px; y: root.sy(e.ay + day) / 1px; }
+            CubicTo {
+                control-1-x: root.sx(e.c1x + dax) / 1px; control-1-y: root.sy(e.c1y + day) / 1px;
+                control-2-x: root.sx(e.c2x + dbx) / 1px; control-2-y: root.sy(e.c2y + dby) / 1px;
+                x: root.sx(e.bx + dbx) / 1px; y: root.sy(e.by + dby) / 1px;
+            }
         }
     }
     // стрелки и подписи проводов
@@ -451,17 +467,18 @@ export component CanvasView inherits Rectangle {
         if e.arrow: Path {
             x: 0; y: 0; width: root.width; height: root.height;
             viewbox-width: root.width / 1px; viewbox-height: root.height / 1px;
-            fill: e.sel ? G.accent : (e.colored ? e.color : G.violet);
+            fill: e.sel ? (e.colored ? e.color : G.violet).mix(#ffffff, 0.55) : (e.colored ? e.color : G.violet);
+            property <float> al: e.sel ? 12 : 9;
             MoveTo { x: tx; y: ty; }
-            LineTo { x: tx - ux * 9 - uy * 4.5; y: ty - uy * 9 + ux * 4.5; }
-            LineTo { x: tx - ux * 9 + uy * 4.5; y: ty - uy * 9 - ux * 4.5; }
+            LineTo { x: tx - ux * al - uy * al / 2; y: ty - uy * al + ux * al / 2; }
+            LineTo { x: tx - ux * al + uy * al / 2; y: ty - uy * al - ux * al / 2; }
             Close { }
         }
         if e.label != "" && S.cv-edit != e.id && root.k >= 0.35: Rectangle {
             x: root.sx(mx) - self.width / 2; y: root.sy(my) - self.height / 2;
             width: lt.preferred-width + 12px; height: 18px;
             background: #191A1E; border-radius: 4px;
-            lt := Text { text: e.label.to-uppercase(); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: e.sel ? G.accent-ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
+            lt := Text { text: e.label.to-uppercase(); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: e.sel ? G.ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
             TouchArea { double-clicked => { S.cv-edit-start(e.id); } clicked => { S.cv-edge-pick(mx, my, 1); } }
         }
         if S.cv-edit == e.id: Rectangle {
@@ -547,29 +564,14 @@ export component CanvasView inherits Rectangle {
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.cv-add-file(r.path, root.wx(root.width / 2), root.wy(root.height / 2)); root.picking = false; fs.focus(); } }
         }
     }
-    // выделено — цвет и действия
-    if S.cv-sel > 0 && S.cv-edit == "": Rectangle {
-        x: (parent.width - self.width) / 2; y: parent.height - 56px; width: row.preferred-width + 20px; height: 40px;
-        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 20px; drop-shadow-color: #00000070;
-        TouchArea { }
-        row := HorizontalLayout {
-            x: 10px; spacing: 8px; alignment: start;
-            for c[i] in ["", "1", "2", "3", "4", "5", "6"]: VerticalLayout {
-                alignment: center;
-                Rectangle {
-                    width: 18px; height: 18px; border-radius: 9px;
-                    background: i == 0 ? transparent : [#E5484D, #F0A04B, #E8C547, #5BB98B, #4FB3D9, #A78BFA][i - 1];
-                    border-width: i == 0 || ca.has-hover ? 1.5px : 0; border-color: ca.has-hover ? G.ink : G.line-strong;
-                    ca := TouchArea { mouse-cursor: pointer; clicked => { S.cv-key("color:" + c, 0, 0); } }
-                }
-            }
-            Rectangle { width: 1px; height: 20px; y: 10px; background: G.line; }
-            if S.cv-sel == 1: VerticalLayout { alignment: center; ToolBtn { text: "Открыть"; clicked => { S.cv-key("open", 0, 0); } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Группа"; clicked => { S.cv-key("group", 0, 0); } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Копия"; clicked => { S.cv-key("dup", 0, 0); } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Удалить"; icon: "trash"; clicked => { S.cv-key("delete", 0, 0); } } }
-        }
+    // меню у выделенного (как в Obsidian): над объектом, не мешает тянуть — пока тянут, спрятано
+    if S.cv-sel > 0 && S.cv-edit == "" && S.cv-sel-box.length == 4 && root.mode != 3 && root.rs-id == "": SelMenu {
+        property <length> top: root.sy(S.cv-sel-box[1]) - self.height - 12px;
+        x: max(8px, min(parent.width - self.width - 8px, (root.sx(S.cv-sel-box[0]) + root.sx(S.cv-sel-box[2])) / 2 - self.width / 2));
+        y: self.below ? min(parent.height - self.height - 60px, root.sy(S.cv-sel-box[3]) + 12px) : self.top;
+        below: self.top < bar.y + bar.height + 8px;
+        palette <=> root.palette;
+        zoom => { root.zoom-to(S.cv-sel-box); }
     }
     // масштаб
     Rectangle {
