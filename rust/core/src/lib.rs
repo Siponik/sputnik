@@ -14,6 +14,7 @@ pub mod inbox;
 pub mod j;
 pub mod kanban;
 pub mod layer;
+pub mod mdline;
 pub mod reminders;
 pub mod preview;
 pub mod repeat;

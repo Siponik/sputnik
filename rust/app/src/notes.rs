@@ -130,6 +130,25 @@ pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
 /// Одна запись на каждую строку после шапки YAML — номер записи = номер строки тела.
 /// Виды: h1 h2 h3 li todo done quote code fence hr img p empty.
 pub fn line_blocks(body: &str) -> Vec<(String, String, String)> {
+    line_rows(body).into_iter().map(|r| (r.kind, r.raw, r.md)).collect()
+}
+
+/// Строка заметки для показа и правки.
+#[derive(Clone, Debug, Default)]
+pub struct LineRow {
+    pub kind: String,
+    /// Строка файла как есть.
+    pub raw: String,
+    /// Текст в разметке StyledText.
+    pub md: String,
+    /// Видимый текст — как его рисует окно (для клика по месту).
+    pub plain: String,
+    /// С какого байта `raw` начинается видимое (после «# », «- [ ] »…).
+    pub pre: usize,
+}
+
+/// То же, что `line_blocks`, плюс видимый текст и где он начинается в строке.
+pub fn line_rows(body: &str) -> Vec<LineRow> {
     let mut out = vec![];
     let mut code = false;
     for raw in body_without_front(body).split('\n') {
@@ -164,9 +183,35 @@ pub fn line_blocks(body: &str) -> Vec<(String, String, String)> {
             ("p", t)
         };
         let md = if kind == "code" { rest.to_string() } else { inline_md(rest) };
-        out.push((kind.to_string(), l.to_string(), md));
+        // rest — кусок той же строки (или пустая константа)
+        let pre = (rest.as_ptr() as usize).checked_sub(l.as_ptr() as usize).filter(|p| *p <= l.len()).unwrap_or(l.len());
+        let plain = if kind == "code" { rest.to_string() } else { sputnik_core::mdline::plain(rest).text };
+        out.push(LineRow { kind: kind.to_string(), raw: l.to_string(), md, plain, pre });
     }
     out
+}
+
+/// Клик по видимому тексту строки `i` (байт `at`): Ok(курсор в строке файла) или Err(ссылка).
+pub fn line_hit(body: &str, i: usize, at: usize) -> Result<usize, String> {
+    let Some(r) = line_rows(body).into_iter().nth(i) else { return Ok(0) };
+    if r.kind == "code" {
+        return Ok(r.pre + at.min(r.raw.len() - r.pre));
+    }
+    match sputnik_core::mdline::hit(&r.raw[r.pre..], at) {
+        sputnik_core::mdline::Hit::Caret(c) => Ok(r.pre + c),
+        sputnik_core::mdline::Hit::Link(l) => Err(l),
+    }
+}
+
+/// «- [ ] дело» ⇄ «- [x] дело»; другие строки — как есть.
+pub fn toggle_todo(raw: &str) -> String {
+    if let Some(i) = raw.find("- [ ]") {
+        format!("{}- [x]{}", &raw[..i], &raw[i + 5..])
+    } else if let Some(i) = raw.find("- [x]").or_else(|| raw.find("- [X]")) {
+        format!("{}- [ ]{}", &raw[..i], &raw[i + 5..])
+    } else {
+        raw.to_string()
+    }
 }
 
 /// [[Заметка]] и [[Заметка|подпись]] → ссылка Markdown `[подпись](Заметка)`, остальное как есть.
@@ -317,6 +362,20 @@ mod live_tests {
         assert_eq!(l[2].2, "Текст про [металл](<Металл>).");
         assert_eq!(replace_line(b, 1, &["новое", ""], 1), "---\ntags: [a]\n---\n# Заголовок\nновое\n\nТекст про [[Металл|металл]].");
         assert_eq!(replace_line(b, 2, &[], 1), "---\ntags: [a]\n---\n# Заголовок\n");
+    }
+
+    #[test]
+    fn click_on_line() {
+        let b = "---\ntype: x\n---\n## Про **металл**\n- [ ] купить [[Краска|краску]]\n```\nкод\n```";
+        let r = line_rows(b);
+        assert_eq!((r[0].plain.as_str(), r[0].pre), ("Про металл", 3));
+        // «Про мет|алл» → после «## Про **мет»
+        assert_eq!(line_hit(b, 0, "Про мет".len()), Ok("## Про **мет".len()));
+        assert_eq!(line_hit(b, 1, "купить кр".len()), Err("Краска".into()));
+        assert_eq!(line_hit(b, 1, "ку".len()), Ok("- [ ] ку".len()));
+        assert_eq!(line_hit(b, 3, 2), Ok(2));
+        assert_eq!(toggle_todo("  - [ ] дело"), "  - [x] дело");
+        assert_eq!(toggle_todo("- [x] дело"), "- [ ] дело");
     }
 }
 
