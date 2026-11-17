@@ -7,7 +7,7 @@ def card(x, y, w, title, body, c=VIO, kind='DND', sel=False, hover=False, edit=F
     if edit: bord = f'; border-color: {OR}'
     ex = ''
     if hover or sel:
-        ex += sock('l', 38, c) + sock('r', 38, c) + f'<span style="position: absolute; left: 50%; top: -6px; margin-left: -5px; width: 10px; height: 10px; border-radius: 3px; box-sizing: border-box; background: {c}; border: 1.5px solid {GROUND}"></span>'
+        ex += sock('l', 38, c) + sock('r', 38, c) + f'<span style="position: absolute; left: 50%; top: -6px; margin-left: -5px; width: 10px; height: 10px; border-radius: 3px; box-sizing: border-box; background: {c}; border: 1.5px solid {GROUND}"></span>' + f'<span style="position: absolute; left: 50%; bottom: -6px; margin-left: -5px; width: 10px; height: 10px; border-radius: 3px; box-sizing: border-box; background: {c}; border: 1.5px solid {GROUND}"></span>'
     if sel:
         ex += ''.join(f'<span style="position: absolute; {v}: -8px; {hh}: -8px; width: 8px; height: 8px; background: {GROUND}; border: 1.5px solid {OR}"></span>' for v in ('top', 'bottom') for hh in ('left', 'right'))
     b = f'<div style="padding: 10px 12px; font-size: 12.5px; color: #C9CAD0; line-height: 1.45">{body}</div>'
@@ -31,7 +31,7 @@ st += card(250, 24, 220, 'НПС: МИРА ТЁРН', 'Информатор фр
 st += card(500, 24, 220, 'НПС: МИРА ТЁРН', 'Информатор фракции.', sel=True)
 st += node(750, 24, 220, 0, f'<div style="padding: 10px 12px; font-size: 12.5px; line-height: 1.45">Игроки ещё не знают, что Мира<span style="display: inline-block; width: 1.5px; height: 14px; background: {OR}; vertical-align: -2px; margin-left: 1px"></span></div>', style=f'; border-color: {OR}; background: {WASH}')
 st += ab(750, 92, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {DIM}">ESC ИЛИ КЛИК МИМО — ГОТОВО</span>')
-st += ab(1000, 30, f'<div style="font-size: 12px; color: {MUT}; line-height: 1.5">Наведение — гнёзда по трём сторонам.<br>Выбор — рамка {OR} 1.5 с отступом 2 и уголки размера.<br>Двойной клик — правка прямо в карточке.</div>', w=248)
+st += ab(1000, 30, f'<div style="font-size: 12px; color: {MUT}; line-height: 1.5">Наведение — гнёзда со всех четырёх сторон, как в JSON Canvas.<br>Выбор — рамка {OR} 1.5 с отступом 2 и уголки размера.<br>Двойной клик — правка прямо в карточке.</div>', w=248)
 
 # 2. панель над выделенным
 st += cap(0, 140, '2', 'ПАНЕЛЬ НАД ВЫДЕЛЕННЫМ')
