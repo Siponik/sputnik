@@ -34,7 +34,7 @@ export struct PipeBlock { stage-id: string, name: string, state: int, info: stri
 // отрезок полоски времени (п.33): kind 0 пройден, 1 сейчас, 2 до срока; w — доля
 export struct PipeSeg { w: float, kind: int, tip: string }
 export struct DpCell { n: int, day: string, other: bool, today: bool, sel: bool }
-export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string, mark: styled-text, hue: color, due: string }
+export struct Found { kind: string, title: string, sub: string, list-id: string, id: string, head: string, mark: styled-text, hue: color, due: string, smark: styled-text }
 export struct NoteRow { path: string, title: string, sub: string, cur: bool }
 export struct MdRow { kind: string, raw: string, md: styled-text, plain: string }
 export struct CvNode { id: string, kind: string, x: float, y: float, w: float, h: float, title: string, tag: string,
@@ -565,6 +565,8 @@ export global S {
     // ---------- Поиск ----------
     in property <bool> search-open;
     in property <[Found]> found;
+    // текст поиска при открытии (поиск открыт из «[[» или для проверки окна)
+    in property <string> search-q;
     callback search(string);
     callback search-open-set(bool);
     callback search-go(int);

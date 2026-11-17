@@ -151,7 +151,7 @@ pub fn start(app: App) -> AppWindow {
             ["hedit", id] => u.hedit = Some(habitedit::HEdit { id: id.to_string() }),
             ["search", q] => {
                 u.search = Some(q.to_string());
-                u.found = wire::find(&app, q);
+                u.found = wire::find(&app, q, u.tab == 4);
             }
             ["note", p] => u.note_path = p.to_string(),
             ["pipe", p] => u.pipe_open = p.to_string(),
