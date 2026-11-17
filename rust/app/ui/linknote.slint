@@ -8,17 +8,20 @@ export component TableRow inherits Rectangle {
     in property <bool> head;
     in property <length> fs: 13.5px;
     property <[MdRow]> cells: S.table-cells(raw);
-    // все ячейки одной ширины, строка — в одну линию текста
+    // все ячейки одной ширины; текст переносится, строка растёт по самой высокой ячейке
     property <length> cw: root.width / max(1, root.cells.length);
-    out property <length> row-h: root.fs * 1.5 + 10px;
+    out property <length> row-h: hl.preferred-height;
     background: head ? G.bg : transparent;
     border-width: 1px; border-color: G.line;
-    for c[i] in root.cells: Rectangle {
-        x: i * root.cw; y: 0; width: root.cw; height: root.height;
-        if i > 0: Rectangle { x: 0; width: 1px; background: G.line; }
-        ct := StyledText {
-            x: 9px; y: 5px; width: parent.width - 18px; height: parent.height - 10px;
-            text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent;
+    hl := HorizontalLayout {
+        spacing: 0; padding: 0;
+        for c[i] in root.cells: Rectangle {
+            width: root.cw;
+            if i > 0: Rectangle { x: 0; width: 1px; background: G.line; }
+            VerticalLayout {
+                padding-left: 9px; padding-right: 9px; padding-top: 5px; padding-bottom: 5px;
+                StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent; }
+            }
         }
     }
 }

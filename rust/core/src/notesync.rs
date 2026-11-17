@@ -87,6 +87,35 @@ pub fn conflict_name(path: &str, taken: impl Fn(&str) -> bool) -> String {
     }
 }
 
+/// Лишние копии «… (с другого компьютера N)»: те, что слово в слово как оригинал или как более ранняя копия.
+/// `files` — путь → хеш содержимого. Возвращает пути, которые можно убрать в корзину.
+pub fn extra_copies(files: &BTreeMap<String, Local>) -> Vec<String> {
+    let mut out = vec![];
+    let mut kept: BTreeMap<(String, String), ()> = BTreeMap::new();
+    for (p, l) in files {
+        let Some(orig) = original_of(p) else { continue };
+        let same_as_orig = files.get(&orig).is_some_and(|o| o.hash == l.hash);
+        if same_as_orig || kept.contains_key(&(orig.clone(), l.hash.clone())) {
+            out.push(p.clone());
+        } else {
+            kept.insert((orig, l.hash.clone()), ());
+        }
+    }
+    out
+}
+
+/// «Заметка (с другого компьютера 2).md» → «Заметка.md» (и копия копии — тоже к самому первому имени).
+pub fn original_of(path: &str) -> Option<String> {
+    let mut p = path.to_string();
+    let mut found = false;
+    while let Some(a) = p.find(" (с другого компьютера") {
+        let Some(b) = p[a..].find(')') else { break };
+        p.replace_range(a..a + b + 1, "");
+        found = true;
+    }
+    found.then_some(p)
+}
+
 /// Какие файлы папки заметок синхронизировать: заметки, холсты и вложения; не служебные папки.
 pub fn wanted(path: &str) -> bool {
     if path.split('/').any(|s| s.starts_with('.')) {

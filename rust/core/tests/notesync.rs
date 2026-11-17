@@ -56,3 +56,21 @@ fn mass_delete_is_not_trusted() {
     let gone: Vec<Step> = (0..8).map(|i| Step::TrashRemote(format!("{i}.md"))).collect();
     assert!(guard(gone, 10).iter().all(|x| matches!(x, Step::Download(_))));
 }
+
+#[test]
+fn extra_copies_found() {
+    use sputnik_core::notesync::{extra_copies, original_of, Local};
+    use std::collections::BTreeMap;
+    assert_eq!(original_of("a/Заметка (с другого компьютера 2).md").as_deref(), Some("a/Заметка.md"));
+    assert_eq!(original_of("a/Заметка (с другого компьютера) (с другого компьютера).md").as_deref(), Some("a/Заметка.md"));
+    assert_eq!(original_of("a/Заметка.md"), None);
+    let mut f = BTreeMap::new();
+    let l = |h: &str| Local { hash: h.into() };
+    f.insert("Н.md".to_string(), l("1"));
+    f.insert("Н (с другого компьютера).md".to_string(), l("1"));
+    f.insert("Н (с другого компьютера 2).md".to_string(), l("2"));
+    f.insert("Н (с другого компьютера 3).md".to_string(), l("2"));
+    let x = extra_copies(&f);
+    assert!(x.contains(&"Н (с другого компьютера).md".to_string()));
+    assert_eq!(x.len(), 2);
+}
