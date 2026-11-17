@@ -5,7 +5,7 @@ use sputnik_core::notefile as nf;
 
 const TEMPLATES: &str = "Шаблоны/";
 
-fn clean(name: &str) -> String {
+pub fn clean(name: &str) -> String {
     name.chars().filter(|c| !"/\\:*?\"<>|".contains(*c)).collect::<String>().trim().to_string()
 }
 

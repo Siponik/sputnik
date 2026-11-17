@@ -1224,6 +1224,12 @@ pub fn wire(w: &AppWindow) {
         _ => { u.graph_sel.clear(); u.note_graph = true; }
     }));
     g.on_note_sort_set(|i| act(|_, u| u.note_sort = i));
+    g.on_note_retitle(|t| act(|app, u| {
+        let p = u.note_path.clone();
+        if !p.is_empty() {
+            super::notefile::rename(app, u, &p, &super::notefile::clean(&t));
+        }
+    }));
     g.on_note_fold(|d| act(|_, u| {
         let d = str_(&d);
         if let Some(i) = u.note_fold.iter().position(|x| *x == d) { u.note_fold.remove(i); } else { u.note_fold.push(d); }
