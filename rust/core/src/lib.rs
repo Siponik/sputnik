@@ -3,6 +3,8 @@
 pub mod accent;
 pub mod boardedit;
 pub mod calendar;
+pub mod canvas;
+mod canvas_layout;
 pub mod authcheck;
 pub mod compose;
 pub mod create;
