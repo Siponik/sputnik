@@ -1,7 +1,7 @@
 // Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
 import { G } from "theme.slint";
-import { Mono, Field, Brackets, Icon } from "kit.slint";
-import { S, GDot, GLine, Opt } from "store.slint";
+import { Mono, Field, Brackets, Icon, DashBox, Sat } from "kit.slint";
+import { S, GDot, GLine, Opt, NearNode, NearWire } from "store.slint";
 
 // Главный переключатель раздела: «Заметки · Граф · Холст» (одинаковый на всех экранах «Знаний»).
 export component ModeSwitch inherits Rectangle {
@@ -130,13 +130,16 @@ export component GraphFilters inherits Rectangle {
 
 // Сам граф: точки по цвету папки, подписи у самых связанных, у выбранной — соседи.
 export component GraphView inherits Rectangle {
-    in-out property <float> k: 1;
+    in-out property <float> k: S.graph-zoom;
     in-out property <length> ox;
     in-out property <length> oy;
     property <length> base: min(self.width, self.height) / 1000 * 0.92;
     property <length> lx;
     property <length> ly;
     callback opened(string, string);
+    // ближе ×2,5 — точки раскрываются в ноды (G_NotesGraphNear)
+    out property <bool> near: root.k >= 2.5 && S.near-nodes.length > 0;
+    changed near => { root.ox = 0; root.oy = 0; }
     clip: true;
     pan := TouchArea {
         pointer-event(e) => {
@@ -159,6 +162,7 @@ export component GraphView inherits Rectangle {
         }
         mouse-cursor: self.pressed ? MouseCursor.grabbing : MouseCursor.grab;
     }
+    if !root.near: Rectangle {
     for l in S.graph-lines: Path {
         x: 0; y: 0;
         width: root.width;
@@ -198,11 +202,62 @@ export component GraphView inherits Rectangle {
             color: d.cur || d.near || da.has-hover ? G.ink : G.muted;
         }
     }
+    }
+    // граф вблизи: выбранная заметка и соседи — ноды G с проводами
+    if root.near: Rectangle {
+        for w in S.near-wires: Path {
+            x: root.width / 2 + root.ox - 2000px; y: root.height / 2 + root.oy - 2000px; width: 4000px; height: 4000px;
+            viewbox-width: 4000; viewbox-height: 4000;
+            commands: w.cmd; stroke: w.hue; stroke-width: 1.5px; opacity: w.dashed ? 0.8 : 1;
+        }
+        for nd in S.near-nodes: Rectangle {
+            x: root.width / 2 + root.ox + nd.x * 1px; y: root.height / 2 + root.oy + nd.y * 1px; width: nd.w * 1px; height: nd.h * 1px;
+            if !nd.missing: Rectangle {
+                border-radius: nd.main ? 10px : 8px; background: G.node; border-width: 1px; border-color: nd.main ? G.accent-line : G.line; clip: true;
+                Rectangle {
+                    y: 0; height: 28px; background: nd.head;
+                    Text { x: 12px; width: parent.width - 60px; text: nd.title; font-family: G.mono; font-size: 10.5px; font-weight: 700; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
+                    Text { x: parent.width - self.preferred-width - 12px; text: nd.aside; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffb0; vertical-alignment: center; }
+                }
+                Text { x: 12px; y: 38px; width: parent.width - 24px; height: parent.height - 38px - (nd.tags != "" ? 34px : 10px); text: nd.text; font-size: 12.5px; color: #D4D5DA; wrap: word-wrap; overflow: elide; }
+                if nd.tags != "": Text { x: 12px; y: parent.height - 30px; text: nd.tags; font-family: G.mono; font-size: 10.5px; color: G.muted; }
+            }
+            if nd.missing: DashBox {
+                c: G.line-strong;
+                Text { x: 12px; y: 12px; text: nd.title; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: G.muted; }
+                HorizontalLayout {
+                    x: 12px; y: 30px; height: 18px; spacing: 0; alignment: start;
+                    Text { text: "Заметки ещё нет · "; font-size: 12.5px; color: G.muted; }
+                    Text { text: "Создать"; font-size: 12.5px; color: G.accent; TouchArea { mouse-cursor: pointer; clicked => { root.opened("", nd.label); } } }
+                }
+            }
+            if nd.main: Brackets { }
+            if !nd.missing: TouchArea {
+                mouse-cursor: pointer;
+                clicked => { S.graph-pick(nd.id); fs.focus(); }
+                double-clicked => { root.opened(nd.path, nd.label); }
+            }
+        }
+        for w in S.near-wires: Rectangle {
+            x: root.width / 2 + root.ox + w.x1 * 1px - 4px; y: root.height / 2 + root.oy + w.y1 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
+        }
+        for w in S.near-wires: Rectangle {
+            x: root.width / 2 + root.ox + w.x2 * 1px - 4px; y: root.height / 2 + root.oy + w.y2 * 1px - 4px; width: 8px; height: 8px; border-radius: 2px; background: w.hue;
+        }
+        if S.near-more != "": Text { x: root.width / 2 + root.ox + 270px; y: root.height / 2 + root.oy + 330px; text: S.near-more; font-size: 12px; color: G.muted; }
+        Rectangle {
+            x: 16px; y: parent.height - 86px; width: min(520px, parent.width - 32px); height: 70px;
+            DashBox { c: G.accent-line; }
+            Sat { x: 14px; y: 12px; }
+            Text { x: 72px; y: 0; width: parent.width - 88px; height: parent.height; text: "Колёсико — масштаб, тянуть мышью — двигать холст. Клик по ноде — она станет главной. Двойной клик — открыть заметку."; font-size: 13px; color: G.ink; wrap: word-wrap; vertical-alignment: center; }
+        }
+    }
     fs := FocusScope {
         width: 0; height: 0;
         key-pressed(e) => {
             if (e.text == Key.Return && S.graph-sel != "") { root.opened(S.graph-sel, S.graph-sel-title); return accept; }
             if (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д") { S.graph-local-set(!S.graph-local); return accept; }
+            if (e.text == Key.Escape && root.near) { root.k = 1; return accept; }
             if (e.text == Key.Escape) { if (S.graph-local) { S.graph-local-set(false); } else { S.graph-pick(""); } return accept; }
             if (e.text == "=" || e.text == "+") { root.k = min(8, root.k * 1.3); return accept; }
             if (e.text == "-") { root.k = max(0.3, root.k / 1.3); return accept; }
@@ -314,16 +369,18 @@ export component GraphPage inherits Rectangle {
     callback mode(int);
     callback opened(string, string);
     callback focus-open(string, string);
-    property <length> rw: S.graph-sel != "" ? 320px : 0px;
-    GraphFilters { x: 8px; y: 8px; width: 252px; height: min(parent.height - 16px, 760px); mode(i) => { root.mode(i); } }
+    property <length> rw: S.graph-sel != "" && !gv.near ? 320px : 0px;
+    property <length> lw: gv.near ? 0px : 260px;
+    if !gv.near: GraphFilters { x: 8px; y: 8px; width: 252px; height: min(parent.height - 16px, 760px); mode(i) => { root.mode(i); } }
     gv := GraphView {
-        x: 268px; y: 8px; width: parent.width - 268px - 8px - (root.rw > 0 ? root.rw + 16px : 0px); height: parent.height - 16px;
+        x: root.lw + 8px; y: 8px; width: parent.width - root.lw - 16px - (root.rw > 0 ? root.rw + 8px : 0px); height: parent.height - 16px;
         opened(p, t) => { root.opened(p, t); }
     }
     HorizontalLayout {
-        x: 276px; y: 14px; height: 16px; spacing: 12px; alignment: start; width: gv.width - 60px;
-        Text { text: "ГРАФ ЗНАНИЙ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 2px; color: G.ink; vertical-alignment: center; }
-        Micro { text: S.graph-info + (S.graph-local ? " · ЛОКАЛЬНЫЙ" : "") + " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"; vertical-alignment: center; }
+        x: root.lw + 16px; y: 14px; height: 16px; spacing: 12px; alignment: start; width: gv.width - 60px;
+        Text { text: gv.near ? "ГРАФ · ПРИБЛИЖЕНИЕ ×" + round(gv.k) : "ГРАФ ЗНАНИЙ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 2px; color: G.ink; vertical-alignment: center; }
+        if gv.near: Micro { text: "БЛИЖЕ — ТОЧКИ РАСКРЫВАЮТСЯ В НОДЫ, ПРОВОДА — ССЫЛКИ [[…]]"; vertical-alignment: center; }
+        if !gv.near: Micro { text: S.graph-info + (S.graph-local ? " · ЛОКАЛЬНЫЙ" : "") + " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"; vertical-alignment: center; }
     }
     VerticalLayout {
         x: gv.x + gv.width - 44px; y: 52px; width: 32px; spacing: 6px;

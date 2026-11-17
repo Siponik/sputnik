@@ -43,6 +43,8 @@ export struct CvEdge { id: string, ax: float, ay: float, c1x: float, c1y: float,
     amv: bool, bmv: bool, label: string, sel: bool, arrow: bool, color: color, colored: bool }
 // Строка заметки в режиме «Чтение»: kind — h1/h2/h3/p/li/todo/done/quote/code/hr/img.
 export struct GDot { x: float, y: float, r: float, title: string, path: string, missing: bool, near: bool, cur: bool, hue: color, dim: bool, label: bool, id: string }
+export struct NearNode { x: float, y: float, w: float, h: float, title: string, aside: string, head: color, hue: color, text: string, tags: string, missing: bool, main: bool, id: string, path: string, label: string }
+export struct NearWire { cmd: string, x1: float, y1: float, x2: float, y2: float, hue: color, dashed: bool }
 export struct GLine { x1: float, y1: float, x2: float, y2: float, near: bool }
 
 export global S {
@@ -684,6 +686,11 @@ export global S {
     in property <string> graph-sel-more;
     in property <int> graph-sel-n;
     in property <[Opt]> graph-sel-near;
+    in property <[NearNode]> near-nodes;
+    in property <[NearWire]> near-wires;
+    in property <string> near-more;
+    // начальный масштаб графа (для проверки окна: SPUTNIK_GRAPH_K=3)
+    in property <float> graph-zoom: 1;
     in property <int> graph-sel-rest;
     callback graph-pick(string);
     callback graph-search(string);

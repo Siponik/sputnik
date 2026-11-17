@@ -167,6 +167,9 @@ pub fn start(app: App) -> AppWindow {
             _ => {}
         }
     });
+    if let Some(k) = std::env::var("SPUTNIK_GRAPH_K").ok().and_then(|k| k.parse::<f32>().ok()) {
+        w.global::<S>().set_graph_zoom(k);
+    }
     wire::wire(&w);
     settings::apply_accent(&w, app.layer["settings"]["accent"]["v"].as_i64().unwrap_or(0));
     settings::apply_anim(&w, app.layer["settings"]["anim"]["v"].as_i64().unwrap_or(0));
