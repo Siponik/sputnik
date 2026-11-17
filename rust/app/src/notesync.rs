@@ -172,6 +172,14 @@ fn run(root: PathBuf) -> Done {
                         base.insert(p, Base { hash: hash(&mine), md5: r.md5.clone() });
                         continue;
                     }
+                    // на Drive на самом деле то же, что было при прошлой сверке (поменялась только отметка md5) —
+                    // это не конфликт: просто отправляем нашу правку, без копии
+                    if base.get(&p).is_some_and(|b| b.hash == hash(&theirs)) {
+                        let (_, md5) = api::upload_to(&r.id, mine.clone())?;
+                        base.insert(p, Base { hash: hash(&mine), md5 });
+                        done.changed += 1;
+                        continue;
+                    }
                     // их версия — копией рядом (уйдёт на Drive следующей сверкой), наша — на Drive под своим именем
                     let copy = ns::conflict_name(&p, |n| root.join(n).exists() || remote.contains_key(n));
                     write_local(&root, &copy, &theirs).map_err(|e| crate::data::google::Fail::Net(e.to_string()))?;
