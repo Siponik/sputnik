@@ -853,11 +853,27 @@ export component SearchDialog inherits Overlay {
                         text: "    " + f.head;
                         font-size: 12.5px; color: #A3A5AE; vertical-alignment: center;
                     }
-                    Rectangle {
+                    // заметка (G_NotesSearch): значок ¶, название и кусок текста вокруг найденного, папка справа
+                    if f.kind == "заметка": Rectangle {
+                        height: 52px;
+                        border-radius: 6px;
+                        background: i == root.cur || na.has-hover ? G.node-hover : transparent;
+                        Icon { name: "read"; x: 12px; y: 11px; width: 14px; c: G.muted; }
+                        StyledText { x: 36px; y: 8px; width: parent.width - 150px; text: f.mark; default-color: G.ink; default-font-size: 13.5px; max-lines: 1; }
+                        StyledText { x: 36px; y: 29px; width: parent.width - 150px; text: f.smark; default-color: #A3A5AE; default-font-size: 11.5px; max-lines: 1; }
+                        if f.sub != "": HorizontalLayout {
+                            x: parent.width - self.preferred-width - 12px; height: parent.height; spacing: 7px;
+                            Rectangle { width: 6px; Rectangle { y: (parent.height - 6px) / 2; height: 6px; border-radius: 1.5px; background: f.hue; } }
+                            Text { text: f.sub; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; }
+                        }
+                        na := TouchArea { clicked => { S.search-go(i); } mouse-cursor: pointer; }
+                    }
+                    if f.kind != "заметка": Rectangle {
                         height: 38px;
                         border-radius: 6px;
                         background: i == root.cur || fa.has-hover ? G.node-hover : transparent;
-                        if f.kind != "раздел": Rectangle { x: 10px; y: 12px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.2px; border-color: #8A8C96; }
+                        if f.kind == "задача": Rectangle { x: 10px; y: 12px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.2px; border-color: #8A8C96; }
+                        if f.kind == "действие": Text { x: 12px; width: 14px; text: "+"; font-size: 16px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
                         if f.kind == "раздел": Rectangle { x: 13px; y: 16px; width: 6px; height: 6px; border-radius: 3px; background: f.hue; }
                         StyledText { x: f.kind == "раздел" ? 30px : 36px; width: parent.width - 240px; y: (parent.height - self.preferred-height) / 2; text: f.mark; default-color: G.ink; default-font-size: 13.5px; max-lines: 1; }
                         HorizontalLayout {
@@ -867,7 +883,6 @@ export component SearchDialog inherits Overlay {
                                 Rectangle { width: 6px; Rectangle { y: (parent.height - 6px) / 2; height: 6px; border-radius: 3px; background: f.hue; } }
                                 Text { text: f.sub; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; }
                             }
-                            if f.kind == "заметка" && f.sub != "": Text { text: "«…" + f.sub + "…»"; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; max-width: 220px; overflow: elide; }
                             if f.due != "": Text { text: f.due; color: #A3A5AE; font-size: 12.5px; vertical-alignment: center; }
                         }
                         fa := TouchArea { clicked => { S.search-go(i); } mouse-cursor: pointer; }
@@ -895,7 +910,7 @@ export component SearchDialog inherits Overlay {
             }
         }
     }
-    init => { q.grab(); }
+    init => { q.text = S.search-q; root.q-text = S.search-q; q.grab(); }
 }
 
 export component Confirm inherits Overlay {

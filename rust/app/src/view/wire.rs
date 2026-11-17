@@ -1054,7 +1054,7 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_search(|q| act(|app, u| {
         u.search = Some(str_(&q));
-        u.found = find(app, &q);
+        u.found = find(app, &q, u.tab == 4);
     }));
     g.on_search_go(|i| act(|app, u| {
         let found = std::mem::take(&mut u.found);
@@ -1609,7 +1609,7 @@ fn mark(title: &str, q: &str) -> slint::StyledText {
 }
 
 /// Поиск: разделы, списки, задачи.
-pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> {
+pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> {
     let mut out: Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> = vec![];
     if q.trim().is_empty() {
         return out;
@@ -1621,34 +1621,71 @@ pub fn find(app: &App, q: &str) -> Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> 
         let (l, id) = (text(&f.list["id"]), text(&t0["id"]));
         let due = super::due_text(&f.task, &app.lt(s(&f.task["id"]))["slot"]).0;
         out.push((Found { kind: ss("задача"), title: ss(text(&f.task["title"])), sub: ss(text(&f.list["title"])), list_id: ss(l.clone()), id: ss(id.clone()), head: ss(""),
-            mark: mark(&text(&f.task["title"]), q), hue: super::list_hue(app, &l), due: ss(due.to_lowercase()) },
+            mark: mark(&text(&f.task["title"]), q), hue: super::list_hue(app, &l), due: ss(due.to_lowercase()), smark: Default::default() },
             Box::new(move |_, u| u.task = Some((l.clone(), id.clone())))));
     }
-    for n0 in app.notes.search(q).into_iter().take(4) {
+    // заметки (G_NotesSearch): во «Знаниях» — первой группой и больше; кусок текста вокруг найденного, папка справа
+    let gs = super::graph::groups(app);
+    let mut notes: Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)> = vec![];
+    let mut found_notes = app.notes.search(q);
+    let qn = search::norm(q);
+    found_notes.sort_by_key(|n| (!search::norm(&n.title).starts_with(&qn), !search::norm(&n.title).contains(&qn), n.title.to_lowercase()));
+    for n0 in found_notes.into_iter().take(if notes_first { 8 } else { 4 }) {
         let p = n0.path.clone();
-        let sub = super::notes::snippet(&n0.body, &n0.title);
-        out.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(sub), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&n0.title, q), hue: color("#7C7E88"), due: ss("") },
+        let sub = around(&n0.body, q);
+        let f = super::notes::folder(&n0.path);
+        let top = f.split('/').next().unwrap_or("").to_string();
+        let hue = gs.iter().find(|x| x.0 == top).map(|x| x.1).unwrap_or(color("#7C7E88"));
+        notes.push((Found { kind: ss("заметка"), title: ss(n0.title.clone()), sub: ss(top), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&n0.title, q), hue, due: ss(""), smark: mark(&sub, q) },
             Box::new(move |app, u| { u.tab = 4; open_note_tab(app, u, &p); })));
+    }
+    if notes_first {
+        out.splice(0..0, notes);
+    } else {
+        out.extend(notes);
     }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss("") }, Box::new(move |_, u| u.tab = i as i32)));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| u.tab = i as i32)));
         }
     }
     for l in app.board_lists() {
         if search::norm(s(&l["title"])).contains(&nq) {
             let id = text(&l["id"]);
-            out.push((Found { kind: ss("раздел"), title: ss(format!("Доска · {}", text(&l["title"]))), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss(""), mark: mark(&format!("Доска · {}", text(&l["title"])), q), hue: super::list_hue(app, &id), due: ss("") },
+            out.push((Found { kind: ss("раздел"), title: ss(format!("Доска · {}", text(&l["title"]))), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss(""), mark: mark(&format!("Доска · {}", text(&l["title"])), q), hue: super::list_hue(app, &id), due: ss(""), smark: Default::default() },
                 Box::new(move |_, u| { u.tab = 2; u.board = id.clone(); })));
         }
     }
     // заголовки групп с числом найденного
-    let names = [("задача", "Задачи"), ("заметка", "В заметках"), ("раздел", "Разделы и списки")];
+    // действие: новая заметка с этим названием (Ctrl+Enter)
+    let t = q.trim().to_string();
+    if !app.notes.notes.iter().any(|n| search::norm(&n.title) == search::norm(&t)) {
+        out.push((Found { kind: ss("действие"), title: ss(format!("Новая заметка «{t}»")), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&format!("Новая заметка «{t}»"), ""), hue: color("clay"), due: ss(""), smark: Default::default() },
+            Box::new(move |app, u| { u.tab = 4; u.note_graph = false; new_note(app, u, &t); })));
+    }
+    let names = [("задача", "Задачи"), ("заметка", "Заметки"), ("раздел", "Разделы и списки"), ("действие", "Действия")];
     for (kind, label) in names {
         let n = out.iter().filter(|(f, _)| f.kind.as_str() == kind).count();
         if let Some((f, _)) = out.iter_mut().find(|(f, _)| f.kind.as_str() == kind) {
-            f.head = ss(format!("{label} · {n}"));
+            f.head = ss(if kind == "действие" { label.to_string() } else { format!("{label} · {n}") });
         }
     }
+    out
+}
+
+/// Кусок текста заметки вокруг первого найденного слова («…кейдж чуть больше модели…»), без разметки.
+fn around(body: &str, q: &str) -> String {
+    let body = crate::notes::body_without_front(body);
+    let words: Vec<String> = q.to_lowercase().replace('ё', "е").split_whitespace().map(String::from).collect();
+    let line = body.lines().filter(|l| !l.trim_start().starts_with('#')).find(|l| { let ll = l.to_lowercase().replace('ё', "е"); words.iter().any(|w| ll.contains(w.as_str())) })
+        .or_else(|| body.lines().find(|l| !l.trim().is_empty() && !l.starts_with('#'))).unwrap_or("");
+    let plain = sputnik_core::mdline::plain(line.trim().trim_start_matches(['-', '*', '#', ' '])).text;
+    let chars: Vec<char> = plain.chars().collect();
+    let low = plain.to_lowercase().replace('ё', "е");
+    let at = words.first().and_then(|w| low.find(w.as_str())).map(|b| low[..b].chars().count()).unwrap_or(0);
+    let from = at.saturating_sub(18);
+    let mut out: String = chars[from..].iter().take(60).collect();
+    if from > 0 { out = format!("…{}", out.trim_start()); }
+    if chars.len() > from + 60 { out.push('…'); }
     out
 }

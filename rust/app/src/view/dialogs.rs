@@ -92,6 +92,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     }
     // поиск
     g.set_search_open(u.search.is_some());
+    g.set_search_q(ss(u.search.clone().unwrap_or_default()));
     g.set_found(model(u.found.iter().map(|x| x.0.clone()).collect()));
 }
 
