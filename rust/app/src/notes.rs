@@ -41,6 +41,8 @@ pub struct Notes {
     /// Раскладка графа — считается при перечитывании папки, не на каждый кадр.
     pub graph: (Vec<sputnik_core::graph::GNode>, Vec<(usize, usize)>),
     pub graph_opts: GraphOpts,
+    /// Живая раскладка: точки доезжают до мест на глазах, их можно тянуть.
+    pub sim: Option<sputnik_core::graph::Sim>,
 }
 
 /// Разбор заметки через pulldown-cmark (MIT): [[ссылки]] в любой форме ([[Имя]], [[Имя|подпись]], [[Имя#раздел]]),
@@ -395,7 +397,34 @@ impl Notes {
             }
             (n.path.clone(), n.title.clone(), ls)
         }).collect();
+        let old: std::collections::HashMap<String, (f64, f64)> = match &self.sim {
+            Some(sm) => self.graph.0.iter().enumerate().filter(|(i, _)| *i < sm.x.len()).map(|(i, g)| (g.id.clone(), (sm.x[i], sm.y[i]))).collect(),
+            None => Default::default(),
+        };
         self.graph = sputnik_core::graph::build_with(&src, o.missing, o.forces);
+        // живая раскладка: уже стоявшие точки остаются на местах, новые выезжают; первый раз — всё разлетается из центра
+        let start: Vec<Option<(f64, f64)>> = self.graph.0.iter().map(|g| old.get(&g.id).copied()).collect();
+        let fresh = start.iter().all(|x| x.is_none());
+        let mut sm = sputnik_core::graph::Sim::new(self.graph.0.len(), &self.graph.1, o.forces, &start);
+        sm.alpha = if fresh { 1.0 } else if start.iter().any(|x| x.is_none()) { 0.3 } else { 0.0 };
+        if !fresh {
+            sm.place(&mut self.graph.0);
+        }
+        self.sim = Some(sm);
+    }
+
+    /// Шаг живой раскладки (кадр анимации). false — замерло.
+    pub fn graph_step(&mut self) -> bool {
+        let Some(sm) = self.sim.as_mut() else { return false };
+        let mut live = false;
+        for _ in 0..2 {
+            live |= sm.tick();
+        }
+        if sm.held.is_none() {
+            sm.refit();
+        }
+        sm.place(&mut self.graph.0);
+        live
     }
 
     pub fn find(&self, title: &str) -> Option<&Note> {

@@ -140,6 +140,9 @@ export component GraphView inherits Rectangle {
     callback opened(string, string);
     out property <bool> near: false;
     clip: true;
+    // кадры живого графа, пока он движется
+    Timer { interval: 16ms; running: S.graph-live; triggered => { S.graph-tick(); } }
+    property <bool> dragging;
     pan := TouchArea {
         pointer-event(e) => {
             if (e.kind == PointerEventKind.down) { root.lx = self.mouse-x; root.ly = self.mouse-y; }
@@ -188,10 +191,19 @@ export component GraphView inherits Rectangle {
         border-width: d.cur ? 2px : (d.missing ? 1px : 0);
         border-color: d.cur ? G.accent-ink : G.dim;
         da := TouchArea {
-            mouse-cursor: pointer;
-            clicked => { S.graph-pick(d.id); fs.focus(); }
+            mouse-cursor: self.pressed && root.dragging ? MouseCursor.grabbing : MouseCursor.pointer;
+            // тянуть точку — соседи идут следом (живой граф)
+            moved => {
+                if (self.pressed) {
+                    root.dragging = true;
+                    S.graph-hold(d.id, (self.absolute-position.x + self.mouse-x - root.absolute-position.x - root.width / 2 - root.ox) / (root.base * root.k) + 500,
+                        (self.absolute-position.y + self.mouse-y - root.absolute-position.y - root.height / 2 - root.oy) / (root.base * root.k) + 500);
+                }
+            }
+            clicked => { if (!root.dragging) { S.graph-pick(d.id); } root.dragging = false; S.graph-hold("", 0, 0); fs.focus(); }
             double-clicked => { root.opened(d.path, d.title); }
-            pointer-event(e) => { if (d.path != "" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", d.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
+            pointer-event(e) => { if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up && root.dragging) { S.graph-hold("", 0, 0); }
+                if (d.path != "" && e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", d.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } }
         }
         if d.label || root.k >= 1.8 || da.has-hover: Text {
             x: (parent.width - self.preferred-width) / 2;

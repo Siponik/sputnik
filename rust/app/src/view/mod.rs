@@ -120,6 +120,38 @@ pub fn notes_changed() {
     });
 }
 
+/// Кадр живого графа: шаг раскладки и перерисовка одного графа (не всего окна).
+pub fn graph_frame() {
+    let live = crate::state::bg::with_quiet(|a| a.notes.graph_step()).unwrap_or(false);
+    let Some(w) = WIN.with(|x| x.borrow().as_ref().and_then(|w| w.upgrade())) else { return };
+    crate::state::peek(|app| UI.with(|u| {
+        let Ok(u) = u.try_borrow() else { return };
+        let g = w.global::<S>();
+        if u.tab == 4 && u.note_graph {
+            graph::render(app, &u, &g);
+        }
+        g.set_graph_live(live);
+    }));
+}
+
+/// Тянут точку графа: `id` — её id, (px, py) — место на листе 0…1000; пустой id — отпустили.
+pub fn graph_hold(id: &str, px: f64, py: f64) {
+    crate::state::bg::with_quiet(|a| {
+        let Some(i) = a.notes.graph.0.iter().position(|g| g.id == id) else {
+            if let Some(sm) = a.notes.sim.as_mut() { sm.held = None; }
+            return;
+        };
+        if let Some(sm) = a.notes.sim.as_mut() {
+            let (x, y) = sm.from_sheet(px, py);
+            sm.held = Some((i, x, y));
+            sm.reheat(0.3);
+        }
+    });
+    if let Some(w) = WIN.with(|x| x.borrow().as_ref().and_then(|w| w.upgrade())) {
+        w.global::<S>().set_graph_live(true);
+    }
+}
+
 pub fn act(f: impl FnOnce(&mut App, &mut Ui)) {
     crate::state::with(|app| UI.with(|u| f(app, &mut u.borrow_mut())));
 }

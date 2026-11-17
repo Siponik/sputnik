@@ -22,6 +22,11 @@ pub fn with<R>(f: impl FnOnce(&mut App) -> R) -> Option<R> {
     r
 }
 
+/// Поменять состояние без общей перерисовки (кадры анимации — перерисовывают своё сами).
+pub fn with_quiet<R>(f: impl FnOnce(&mut App) -> R) -> Option<R> {
+    APP.with(|a| a.try_borrow_mut().ok().and_then(|mut g| g.as_mut().map(f)))
+}
+
 /// Прочитать состояние без перерисовки.
 pub fn peek<R>(f: impl FnOnce(&App) -> R) -> Option<R> {
     APP.with(|a| a.try_borrow().ok().and_then(|g| g.as_ref().map(f)))

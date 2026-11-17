@@ -113,6 +113,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     }
     g.set_graph_info(ss(format!("{} · {}", super::spheres::plural(nd, "ЗАМЕТКА", "ЗАМЕТКИ", "ЗАМЕТОК"), super::spheres::plural(lines.len(), "СВЯЗЬ", "СВЯЗИ", "СВЯЗЕЙ"))));
     g.set_graph_dots(model(dots));
+    g.set_graph_live(app.notes.sim.as_ref().is_some_and(|sm| sm.alpha > 0.001 || sm.held.is_some()));
     g.set_graph_lines(model(lines));
 
 

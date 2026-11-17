@@ -1236,6 +1236,8 @@ pub fn wire(w: &AppWindow) {
             super::notefile::rename(app, u, &p, &super::notefile::clean(&t));
         }
     }));
+    g.on_graph_tick(super::graph_frame);
+    g.on_graph_hold(|id, x, y| super::graph_hold(id.as_str(), x as f64, y as f64));
     g.on_note_fold(|d| act(|_, u| {
         let d = str_(&d);
         if let Some(i) = u.note_fold.iter().position(|x| *x == d) { u.note_fold.remove(i); } else { u.note_fold.push(d); }
@@ -1255,13 +1257,13 @@ pub fn wire(w: &AppWindow) {
             2 => { u.graph_no_lonely = !u.graph_no_lonely; return; }
             _ => o.missing = !o.missing,
         }
-        app.notes.relayout();
+        app.notes.relayout(); if let Some(sm) = app.notes.sim.as_mut() { sm.reheat(0.5); }
     }));
     g.on_graph_force(|i, v| act(|app, _| {
         let f = &mut app.notes.graph_opts.forces;
         let v = (v as f64).clamp(0.0, 1.0);
         match i { 0 => f.repel = v, 1 => f.dist = v, _ => f.grav = v }
-        app.notes.relayout();
+        app.notes.relayout(); if let Some(sm) = app.notes.sim.as_mut() { sm.reheat(0.5); }
     }));
     g.on_note_tab_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
     g.on_note_tab_close(|p| act(|app, u| {

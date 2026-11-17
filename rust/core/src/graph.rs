@@ -134,36 +134,81 @@ pub fn local(n: usize, edges: &[(usize, usize)], i: usize, depth: usize) -> Vec<
 }
 
 pub fn layout_with(nodes: &mut [GNode], edges: &[(usize, usize)], forces: Forces) {
-    let n = nodes.len();
-    if n == 0 {
+    if nodes.is_empty() {
         return;
     }
-    let (mut x, mut y) = (vec![0.0f64; n], vec![0.0f64; n]);
-    let (mut vx, mut vy) = (vec![0.0f64; n], vec![0.0f64; n]);
-    let ang = std::f64::consts::PI * (3.0 - 5f64.sqrt());
-    for i in 0..n {
-        let r = 10.0 * (0.5 + i as f64).sqrt();
-        x[i] = r * (i as f64 * ang).cos();
-        y[i] = r * (i as f64 * ang).sin();
+    let mut sim = Sim::new(nodes.len(), edges, forces, &[]);
+    while sim.tick() {}
+    for (i, p) in nodes.iter_mut().enumerate() {
+        p.x = sim.x[i];
+        p.y = sim.y[i];
     }
-    let mut deg = vec![0usize; n];
-    for &(a, b) in edges {
-        deg[a] += 1;
-        deg[b] += 1;
+    fit(nodes);
+}
+
+/// Живая раскладка графа (как в Obsidian): шаг за шагом, точки разлетаются по местам на глазах;
+/// точку можно тянуть — соседи идут следом. Координаты — свои, на лист 0…1000 их переводит `place`.
+pub struct Sim {
+    pub x: Vec<f64>,
+    pub y: Vec<f64>,
+    vx: Vec<f64>,
+    vy: Vec<f64>,
+    lk: Vec<(usize, usize, f64, f64)>,
+    dist: f64,
+    charge: f64,
+    grav: f64,
+    /// «Температура»: 1 — всё летит, к 0,001 — замерло.
+    pub alpha: f64,
+    /// Тянут мышью: точка и куда (в своих координатах).
+    pub held: Option<(usize, f64, f64)>,
+    /// Перевод в лист 0…1000: центр и масштаб (обновляется, пока точку не тянут).
+    pub map: (f64, f64, f64),
+}
+
+impl Sim {
+    /// `start` — где точки уже стоят (свои координаты); остальные — по спирали от центра.
+    pub fn new(n: usize, edges: &[(usize, usize)], forces: Forces, start: &[Option<(f64, f64)>]) -> Sim {
+        let (mut x, mut y) = (vec![0.0f64; n], vec![0.0f64; n]);
+        let ang = std::f64::consts::PI * (3.0 - 5f64.sqrt());
+        for i in 0..n {
+            match start.get(i).copied().flatten() {
+                Some((a, b)) => { x[i] = a; y[i] = b; }
+                None => {
+                    let r = 10.0 * (0.5 + i as f64).sqrt();
+                    x[i] = r * (i as f64 * ang).cos();
+                    y[i] = r * (i as f64 * ang).sin();
+                }
+            }
+        }
+        let mut deg = vec![0usize; n];
+        for &(a, b) in edges {
+            deg[a] += 1;
+            deg[b] += 1;
+        }
+        let lk = edges.iter().map(|&(a, b)| {
+            let st = 1.0 / deg[a].min(deg[b]).max(1) as f64;
+            let bias = deg[a] as f64 / (deg[a] + deg[b]) as f64;
+            (a, b, st, bias)
+        }).collect();
+        let (dist, charge, grav) = forces.units();
+        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0) };
+        s.refit();
+        s
     }
-    let lk: Vec<(usize, usize, f64, f64)> = edges.iter().map(|&(a, b)| {
-        let st = 1.0 / deg[a].min(deg[b]).max(1) as f64;
-        let bias = deg[a] as f64 / (deg[a] + deg[b]) as f64;
-        (a, b, st, bias)
-    }).collect();
-    let (dist, charge, grav) = forces.units();
-    let vdecay = 0.6;
-    let mut alpha = 1.0f64;
-    let adecay = 1.0 - 0.001f64.powf(1.0 / 300.0);
-    while alpha > 0.001 {
-        alpha += (0.0 - alpha) * adecay;
-        // связи
-        for &(a, b, st, bias) in &lk {
+
+    /// Один шаг. false — уже замерло (и никто не тянет).
+    pub fn tick(&mut self) -> bool {
+        let n = self.x.len();
+        if n == 0 || (self.alpha <= 0.001 && self.held.is_none()) {
+            return false;
+        }
+        let adecay = 1.0 - 0.001f64.powf(1.0 / 300.0);
+        // пока тянут — не остывает ниже 0,3
+        let target = if self.held.is_some() { 0.3 } else { 0.0 };
+        self.alpha += (target - self.alpha) * adecay;
+        let (x, y, vx, vy) = (&mut self.x, &mut self.y, &mut self.vx, &mut self.vy);
+        let alpha = self.alpha;
+        for &(a, b, st, bias) in &self.lk {
             let mut dx = x[b] + vx[b] - x[a] - vx[a];
             let mut dy = y[b] + vy[b] - y[a] - vy[a];
             if dx == 0.0 && dy == 0.0 {
@@ -171,39 +216,79 @@ pub fn layout_with(nodes: &mut [GNode], edges: &[(usize, usize)], forces: Forces
                 dy = 1e-6;
             }
             let l = (dx * dx + dy * dy).sqrt();
-            let f = (l - dist) / l * alpha * st;
+            let f = (l - self.dist) / l * alpha * st;
             let (fx, fy) = (dx * f, dy * f);
             vx[b] -= fx * bias;
             vy[b] -= fy * bias;
             vx[a] += fx * (1.0 - bias);
             vy[a] += fy * (1.0 - bias);
         }
-        // отталкивание (Барнс–Хат)
-        let q = Quad::build(&x, &y);
+        let q = Quad::build(x, y);
         for i in 0..n {
-            let (fx, fy) = q.force(x[i], y[i], i, charge * alpha);
+            let (fx, fy) = q.force(x[i], y[i], i, self.charge * alpha);
             vx[i] += fx;
             vy[i] += fy;
         }
         for i in 0..n {
-            vx[i] -= x[i] * grav * alpha;
-            vy[i] -= y[i] * grav * alpha;
-            vx[i] *= vdecay;
-            vy[i] *= vdecay;
+            vx[i] -= x[i] * self.grav * alpha;
+            vy[i] -= y[i] * self.grav * alpha;
+            vx[i] *= 0.6;
+            vy[i] *= 0.6;
             x[i] += vx[i];
             y[i] += vy[i];
         }
-        let (mx, my) = (x.iter().sum::<f64>() / n as f64, y.iter().sum::<f64>() / n as f64);
+        if let Some((i, hx, hy)) = self.held {
+            x[i] = hx;
+            y[i] = hy;
+            vx[i] = 0.0;
+            vy[i] = 0.0;
+        } else {
+            let (mx, my) = (x.iter().sum::<f64>() / n as f64, y.iter().sum::<f64>() / n as f64);
+            for i in 0..n {
+                x[i] -= mx;
+                y[i] -= my;
+            }
+        }
+        true
+    }
+
+    /// Пересчитать перевод на лист так, чтобы всё влезло (как `fit`).
+    pub fn refit(&mut self) {
+        let n = self.x.len();
+        if n == 0 {
+            return;
+        }
+        let (mut x0, mut x1, mut y0, mut y1) = (f64::MAX, f64::MIN, f64::MAX, f64::MIN);
         for i in 0..n {
-            x[i] -= mx;
-            y[i] -= my;
+            x0 = x0.min(self.x[i]);
+            x1 = x1.max(self.x[i]);
+            y0 = y0.min(self.y[i]);
+            y1 = y1.max(self.y[i]);
+        }
+        let span = (x1 - x0).max(y1 - y0);
+        let s = if span < 1.0 { 0.0 } else { (900.0 / span).min(4.0) };
+        self.map = ((x0 + x1) / 2.0, (y0 + y1) / 2.0, s);
+    }
+
+    /// Поставить точки на лист 0…1000.
+    pub fn place(&self, nodes: &mut [GNode]) {
+        let (cx, cy, s) = self.map;
+        for (i, p) in nodes.iter_mut().enumerate().take(self.x.len()) {
+            p.x = 500.0 + (self.x[i] - cx) * s;
+            p.y = 500.0 + (self.y[i] - cy) * s;
         }
     }
-    for (i, p) in nodes.iter_mut().enumerate() {
-        p.x = x[i];
-        p.y = y[i];
+
+    /// Место на листе → свои координаты.
+    pub fn from_sheet(&self, px: f64, py: f64) -> (f64, f64) {
+        let (cx, cy, s) = self.map;
+        if s == 0.0 { (cx, cy) } else { (cx + (px - 500.0) / s, cy + (py - 500.0) / s) }
     }
-    fit(nodes);
+
+    /// Встряхнуть (после правки связей, при перетаскивании).
+    pub fn reheat(&mut self, a: f64) {
+        self.alpha = self.alpha.max(a);
+    }
 }
 
 fn fit(nodes: &mut [GNode]) {
