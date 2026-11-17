@@ -29,12 +29,12 @@ pub fn is_canvas(path: &str) -> bool {
     path.ends_with(".canvas")
 }
 
-fn is_image(path: &str) -> bool {
+pub fn is_image(path: &str) -> bool {
     let p = path.to_lowercase();
     [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"].iter().any(|e| p.ends_with(e))
 }
 
-fn file_of(app: &App, path: &str) -> Option<std::path::PathBuf> {
+pub fn file_of(app: &App, path: &str) -> Option<std::path::PathBuf> {
     app.notes.root.as_ref().map(|r| r.join(path))
 }
 
@@ -73,7 +73,7 @@ pub fn reload_if_changed(app: &App, u: &mut Ui) {
 }
 
 /// Правка: запомнить «до» для Ctrl+Z, поменять, записать файл.
-fn change(app: &mut App, u: &mut Ui, f: impl FnOnce(&mut Cv)) {
+pub fn change(app: &mut App, u: &mut Ui, f: impl FnOnce(&mut Cv)) {
     ensure(app, u);
     let Some(c) = u.cv.as_mut() else { return };
     if !c.err.is_empty() {
@@ -234,6 +234,20 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             _ => {}
         }
         let col = hex_color(&cv::color_hex(n.color()));
+        // заливка плашки издалека (п. 46): тёмный цвет шапки; у заметки без своего цвета — цвет папки
+        let fill = match n.color() {
+            "1" => Color::from_rgb_u8(0x8A, 0x3A, 0x2E),
+            "2" => Color::from_rgb_u8(0x8A, 0x53, 0x20),
+            "3" => Color::from_rgb_u8(0x7A, 0x66, 0x20),
+            "4" => Color::from_rgb_u8(0x2E, 0x6B, 0x3E),
+            "5" => Color::from_rgb_u8(0x2F, 0x4F, 0x86),
+            "6" => Color::from_rgb_u8(0x5E, 0x3F, 0x92),
+            _ => match col {
+                Some(c) => c.darker(0.45),
+                None if n.kind() == "file" && kind != "image" => head,
+                None => Color::from_rgb_u8(0x3D, 0x3E, 0x45),
+            },
+        };
         if let Some(c) = col {
             head = c;
         }
@@ -244,6 +258,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             sel: c.sel.iter().any(|s| s == n.id()), mv: mv.iter().any(|s| s == n.id()), main: main == n.id(),
             path: ss(if n.kind() == "link" { n.url() } else { n.file() }),
             page,
+            fill,
         }
     }).collect();
     keep(&NODES, nodes, |m| g.set_cv_nodes(m));
@@ -295,6 +310,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     };
     g.set_cv_sel_box(model(sel_box.map(|b| vec![b.0 as f32, b.1 as f32, b.2 as f32, b.3 as f32]).unwrap_or_default()));
     g.set_cv_sel_kind(ss(sel_kind));
+    g.set_cv_pick(u.cv_pick);
     g.set_cv_title(ss(c.path.rsplit('/').next().unwrap_or(&c.path).trim_end_matches(".canvas").to_string()));
     g.set_cv_crumb(ss(c.path.replace('/', " / ").to_uppercase()));
 }
@@ -391,28 +407,14 @@ pub fn wire(g: &S) {
             n.set_rect(cv::snap(x as f64), cv::snap(y as f64), cv::snap(w as f64), cv::snap(h as f64));
         }
     })));
-    g.on_cv_add(|kind, x, y| with_cv(move |app, u| {
-        let kind = kind.to_string();
-        let mut made = String::new();
-        change(app, u, |c| {
-            let (w, h) = if kind == "group" { (500.0, 340.0) } else { (260.0, 120.0) };
-            let label = if kind == "group" { "Группа" } else { "" };
-            if kind == "group" && !c.sel.is_empty() {
-                made = c.doc.group_around(&c.sel.clone(), label).unwrap_or_default();
-            } else {
-                made = c.doc.add(&kind, x as f64 - w / 2.0, y as f64 - h / 2.0, w, h, label);
-            }
-            c.sel = vec![made.clone()];
-            c.edit = made.clone();
-        });
-    }));
+    g.on_cv_add(|kind, x, y| with_cv(move |app, u| super::cvmenu::add(app, u, &kind, x as f64, y as f64)));
     g.on_cv_text(|id, t| with_cv(move |app, u| {
         let (id, t) = (id.to_string(), t.to_string());
         // нода-заметка: правка уходит в сам файл заметки
         let file = u.cv.as_ref().and_then(|c| c.doc.node(&id)).filter(|n| n.kind() == "file" && !is_image(n.file())).map(|n| n.file().to_string());
         if let Some(f) = file {
             if let Some(c) = u.cv.as_mut() { if c.edit == id { c.edit.clear(); } }
-            save_note(app, &f, &t);
+            super::cvmenu::save_note(app, &f, &t);
             return;
         }
         change(app, u, |c| {
@@ -433,7 +435,7 @@ pub fn wire(g: &S) {
     g.on_cv_edit_start(|id| with_cv(move |_, u| {
         if let Some(c) = u.cv.as_mut() { c.edit = id.to_string(); }
     }));
-    g.on_cv_open(|id| with_cv(move |app, u| open_node(app, u, &id)));    // провод от сокета `s` ноды `from`, отпущен в точке (x, y): над нодой — соединить, на пустом — новая карточка
+    g.on_cv_open(|id| with_cv(move |app, u| super::cvmenu::open_node(app, u, &id)));    // провод от сокета `s` ноды `from`, отпущен в точке (x, y): над нодой — соединить, на пустом — новая карточка
     g.on_cv_wire(|from, s, x, y| with_cv(move |app, u| {
         let from = from.to_string();
         change(app, u, |c| {
@@ -480,63 +482,13 @@ pub fn wire(g: &S) {
             c.sel = vec![id];
         });
     }));
-    g.on_cv_add_image(|x, y| with_cv(move |app, u| {
-        let Some(src) = rfd::FileDialog::new().set_title("Картинка на канвас").add_filter("Картинки", &["png", "jpg", "jpeg", "webp", "gif"]).pick_file() else { return };
-        let Some(root) = app.notes.root.clone() else { return };
-        let name = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "картинка.png".into());
-        // уже в папке заметок — ссылаемся как есть; иначе копия в «Вложения/»
-        let rel = match src.strip_prefix(&root) {
-            Ok(r) => r.to_string_lossy().replace('\\', "/"),
-            Err(_) => {
-                let dir = root.join("Вложения");
-                let _ = std::fs::create_dir_all(&dir);
-                let (stem, ext) = name.rsplit_once('.').unwrap_or((&name, "png"));
-                let file = (1..).map(|i| if i == 1 { name.clone() } else { format!("{stem} {i}.{ext}") }).find(|f| !dir.join(f).exists()).unwrap();
-                if let Err(e) = std::fs::copy(&src, dir.join(&file)) {
-                    app.say(format!("Картинка не скопировалась: {e}"));
-                    return;
-                }
-                format!("Вложения/{file}")
-            }
-        };
-        change(app, u, |c| {
-            let id = c.doc.add("file", x as f64 - 160.0, y as f64 - 120.0, 320.0, 240.0, &rel);
-            c.sel = vec![id];
-        });
-    }));
+    g.on_cv_add_image(|x, y| with_cv(move |app, u| super::cvmenu::add_image(app, u, x as f64, y as f64)));
     g.on_cv_new(|| act(|app, u| new_canvas(app, u, "")));
     g.on_cv_key(|k, x, y| with_cv(move |app, u| key(app, u, &k, x as f64, y as f64)));
 }
 
-/// Открыть ноду: заметку — во вкладке, картинку и ссылку — снаружи, карточку — на правку.
-fn open_node(app: &mut App, u: &mut Ui, id: &str) {
-    let Some(c) = u.cv.as_ref() else { return };
-    let Some(n) = c.doc.node(id) else { return };
-    match n.kind() {
-        "file" if is_image(n.file()) => { if let Some(p) = file_of(app, n.file()) { let _ = open::that(p); } }
-        "file" => {
-            let p = n.file().to_string();
-            if app.notes.notes.iter().any(|x| x.path == p) { super::wire::open_note_tab(app, u, &p); } else { app.say("Заметки нет в папке"); }
-        }
-        "link" => { let _ = open::that(n.url()); }
-        _ => { let id = id.to_string(); if let Some(c) = u.cv.as_mut() { c.edit = id; } }
-    }
-}
-
-/// Сохранить текст заметки, правленный на холсте (шапку YAML оставить как была).
-fn save_note(app: &mut App, path: &str, body: &str) {
-    let Some(old) = app.notes.notes.iter().find(|n| n.path == path).map(|n| n.body.clone()) else { return };
-    let front = &old[..old.len() - crate::notes::body_without_front(&old).len()];
-    if crate::notes::body_without_front(&old) == body {
-        return;
-    }
-    if let Err(e) = app.notes.save(path, &format!("{front}{body}")) {
-        app.say(format!("Заметка не сохранилась: {e}"));
-    }
-}
-
 /// Клавиши и кнопки панели. (x, y) — точка холста под мышью (для вставки).
-fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
+pub fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
     let Some(c) = u.cv.as_mut() else { return };
     match k {
         "undo" | "redo" => {
@@ -552,7 +504,7 @@ fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
             }
         }
         "all" => { c.sel = c.doc.nodes.iter().map(|n| n.id().to_string()).collect(); c.edge.clear(); }
-        "open" if c.sel.len() == 1 => { let id = c.sel[0].clone(); open_node(app, u, &id); }
+        "open" if c.sel.len() == 1 => { let id = c.sel[0].clone(); super::cvmenu::open_node(app, u, &id); }
         // правка на месте: карточка, заметка, подпись группы или провода
         "edit" => {
             if !c.edge.is_empty() { c.edit = c.edge.clone(); } else if c.sel.len() == 1 { c.edit = c.sel[0].clone(); }

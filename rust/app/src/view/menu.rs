@@ -19,8 +19,9 @@ fn it(id: &str, label: &str, icon: &str, key: &str) -> MItem {
 
 const VIEWS: [(&str, &str, &str); 4] = [("kanban", "Канбан", "board"), ("pipe", "Конвейер", "stage"), ("list", "Список", "sort"), ("stickers", "Стикеры", "pin")];
 
-fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
+fn items(app: &App, u: &Ui, m: &Menu) -> (String, Vec<MItem>) {
     match m.kind.as_str() {
+        "cv-node" | "cv-bg" => super::cvmenu::items(u, m),
         "list" => {
             let ll = app.ll(&m.id);
             let name = app.list_name(&m.id);
@@ -127,7 +128,7 @@ fn note_pick(app: &mut App, u: &mut Ui, m: &Menu, id: &str) {
 pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_menu_open(u.menu.is_some());
     let Some(m) = &u.menu else { return };
-    let (title, v) = items(app, m);
+    let (title, v) = items(app, u, m);
     g.set_menu_x(m.x);
     g.set_menu_y(m.y);
     g.set_menu_title(ss(title));
@@ -144,6 +145,7 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
     }
     u.menu = None;
     if m.kind == "note" || m.kind == "tab" { note_pick(app, u, &m, id); return; }
+    if m.kind.starts_with("cv-") { super::cvmenu::pick(app, u, &m, id); return; }
     if m.kind == "newnote" {
         match id {
             "canvas:" => super::canvas::new_canvas(app, u, &super::notefile::cur_dir(u)),

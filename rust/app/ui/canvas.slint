@@ -7,7 +7,7 @@ import { G, Hues } from "theme.slint";
 import { Mono, Icon, Brackets, Socket, DashBox, Field, Sat, ScrollInput } from "kit.slint";
 import { S, CvNode, CvEdge, NoteRow } from "store.slint";
 import { MdLine } from "linknote.slint";
-import { ToolBtn, SelMenu } from "canvasmenu.slint";
+import { ToolBtn, SelMenu, NotePick } from "canvasmenu.slint";
 
 // Камера открытого канваса — общая, чтобы «Знания» могли положить заметку из списка в нужную точку.
 export global CvCam {
@@ -48,7 +48,9 @@ export component CanvasView inherits Rectangle {
     property <bool> palette;       // в меню выделенного открыт выбор цвета
     property <string> sel-key: S.cv-sel + S.cv-sel-kind;
     changed sel-key => { root.palette = false; }
-    property <string> pick-q;
+    // «Заметка…» из меню по правому клику
+    property <int> pick-req: S.cv-pick;
+    changed pick-req => { root.picking = true; }
     property <int> ver: S.cv-ver;
     // перетаскивание заметки из списка слева (NotesPage сообщает точку)
     in property <string> drag-path;
@@ -122,6 +124,10 @@ export component CanvasView inherits Rectangle {
     bg := TouchArea {
         mouse-cursor: root.mode == 1 || root.space ? MouseCursor.grabbing : MouseCursor.default;
         pointer-event(e) => {
+            if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+                S.menu-ctx("cv-bg", root.wx(self.mouse-x) + "," + root.wy(self.mouse-y), self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                return;
+            }
             if (e.kind == PointerEventKind.down) {
                 fs.focus();
                 // второе нажатие двойного клика — не снимать выбор и не тянуть рамку
@@ -203,17 +209,22 @@ export component CanvasView inherits Rectangle {
             clip: true;
             // шапка (у карточки-текста — без заливки, подпись цветом)
             // мелкий масштаб: одна плашка цвета ноды с крупным названием в несколько строк
+            // издалека (п. 46, «В · Заливка»): плашка цвета шапки, рамка цветом ноды 50 %, название 11 px, не больше 2 строк
             if far: Rectangle {
-                background: n.kind == "text" ? nd.hue.with-alpha(0.22) : n.head;
-                // совсем мелкая плашка — без надписи (ей там не уместиться)
-                if parent.height >= 16px && parent.width >= 36px: Text {
-                    x: 6px; width: parent.width - 12px; y: 4px; height: parent.height - 8px;
-                    text: n.kind == "image" ? n.title : (n.kind == "link" && n.title == n.path ? n.tag : n.title).to-uppercase();
-                    font-family: G.mono; font-weight: 600; letter-spacing: 0.6px;
-                    font-size: max(8px, min(15px, parent.height * 0.24, parent.width * 0.11));
-                    color: n.kind == "text" ? nd.hue.brighter(0.4) : #fff;
-                    // низкая плашка — одна строка с «…», иначе название переносится
-                    wrap: self.height > self.font-size * 2.6 ? word-wrap : no-wrap; overflow: elide;
+                background: n.fill; border-radius: 6px; clip: true;
+                border-width: n.sel ? 1.5px : 1px; border-color: n.sel ? G.accent : nd.hue.with-alpha(0.5);
+                // картинка — превью, а не имя файла
+                if n.kind == "image" || (n.kind == "link" && n.page): Image {
+                    x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+                    source: n.img; image-fit: cover; vertical-alignment: top;
+                }
+                // мелкая плашка (меньше 44×26 на экране) — только заливка
+                if n.kind != "image" && !(n.kind == "link" && n.page) && parent.width >= 44px && parent.height >= 26px: Text {
+                    x: 6px; width: parent.width - 12px;
+                    height: min(parent.height - 6px, 11px * 1.3 * 2); y: (parent.height - self.height) / 2;
+                    text: n.kind == "link" && n.title == n.path ? n.tag : n.title;
+                    font-family: G.sans; font-weight: 600; font-size: 11px; color: #ffffff;
+                    wrap: word-wrap; overflow: elide;
                     horizontal-alignment: center; vertical-alignment: center;
                 }
             }
@@ -289,6 +300,12 @@ export component CanvasView inherits Rectangle {
                     root.ddx = 0; root.ddy = 0; root.mode = 9; root.what = 3; root.alt = e.modifiers.alt; root.ctl = e.modifiers.control;
                 }
                 if (e.kind == PointerEventKind.down && e.button == PointerEventButton.middle) { root.mode = 0; }
+                // правый клик — меню карточки (выбранную оставляем, иначе выбираем эту)
+                if (e.kind == PointerEventKind.down && e.button == PointerEventButton.right) {
+                    if (!n.sel) { S.cv-click(n.id, false); }
+                    S.menu-ctx("cv-node", n.id, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+                    return;
+                }
                 if (e.kind == PointerEventKind.up) {
                     if (root.mode == 3) { S.cv-move(round(root.ddx / 10) * 10, round(root.ddy / 10) * 10, root.alt); }
                     else if (root.mode == 9 && n.sel && S.cv-sel > 1 && !e.modifiers.shift && !e.modifiers.control) { S.cv-click(n.id, false); }
@@ -442,7 +459,7 @@ export component CanvasView inherits Rectangle {
             x: 0; y: 0; width: root.width; height: root.height;
             viewbox-width: root.width / 1px; viewbox-height: root.height / 1px;
             stroke: e.sel ? parent.c.mix(#ffffff, 0.55) : parent.c;
-            stroke-width: e.sel ? 3.5px : 1.5px; stroke-line-cap: round;
+            stroke-width: e.sel ? 3.5px : (root.k < 0.35 ? 1px : 1.5px); stroke-line-cap: round;
             MoveTo { x: root.sx(e.ax + dax) / 1px; y: root.sy(e.ay + day) / 1px; }
             CubicTo {
                 control-1-x: root.sx(e.c1x + dax) / 1px; control-1-y: root.sy(e.c1y + day) / 1px;
@@ -474,7 +491,7 @@ export component CanvasView inherits Rectangle {
             LineTo { x: tx - ux * al + uy * al / 2; y: ty - uy * al - ux * al / 2; }
             Close { }
         }
-        if e.label != "" && S.cv-edit != e.id && root.k >= 0.35: Rectangle {
+        if e.label != "" && S.cv-edit != e.id && root.k >= 0.2: Rectangle {
             x: root.sx(mx) - self.width / 2; y: root.sy(my) - self.height / 2;
             width: lt.preferred-width + 12px; height: 18px;
             background: #191A1E; border-radius: 4px;
@@ -527,7 +544,7 @@ export component CanvasView inherits Rectangle {
             Mono { text: S.cv-crumb; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; overflow: elide; max-width: 260px; }
             Rectangle { width: 1px; height: 22px; y: 13px; background: G.line; }
             Rectangle { width: 2px; }
-            VerticalLayout { alignment: center; ToolBtn { text: "Заметка"; icon: "plus"; outlined: true; clicked => { root.picking = !root.picking; root.pick-q = ""; } } }
+            VerticalLayout { alignment: center; ToolBtn { text: "Заметка"; icon: "plus"; outlined: true; clicked => { root.picking = !root.picking; } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Текст"; icon: "plus"; clicked => { S.cv-add("text", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Картинка"; icon: "plus"; clicked => { S.cv-add-image(root.wx(root.width / 2), root.wy(root.height / 2)); } } }
             VerticalLayout { alignment: center; ToolBtn { text: "Группа"; clicked => { S.cv-add("group", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
@@ -540,29 +557,10 @@ export component CanvasView inherits Rectangle {
         }
     }
     // поиск заметки для «＋ Заметка»
-    if root.picking: Rectangle {
-        x: 200px; y: 64px; width: 320px; height: 44px + min(8, S.cv-note-find(root.pick-q).length) * 32px;
-        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 24px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000080;
-        TouchArea { }
-        f := Field {
-            x: 6px; y: 6px; width: parent.width - 12px; height: 32px; placeholder: "Найти заметку";
-            init => { self.grab(); }
-            edited(t) => { root.pick-q = t; }
-            escape => { root.picking = false; fs.focus(); }
-            accepted => {
-                if (S.cv-note-find(root.pick-q).length > 0) { S.cv-add-file(S.cv-note-find(root.pick-q)[0].path, root.wx(root.width / 2), root.wy(root.height / 2)); }
-                root.picking = false; fs.focus();
-            }
-        }
-        for r[i] in S.cv-note-find(root.pick-q): Rectangle {
-            y: 44px + i * 32px; height: 32px;
-            background: pa.has-hover || i == 0 ? G.accent-wash : transparent;
-            Icon { name: "note"; x: 12px; width: 13px; y: 9.5px; c: i == 0 ? G.accent : G.muted; }
-            Text { x: 34px; width: parent.width - 140px; text: r.title; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-            Mono { x: parent.width - self.width - 12px; width: min(self.preferred-width, 90px); text: r.sub.to-uppercase(); font-size: 9px; vertical-alignment: center; height: parent.height; overflow: elide; }
-            pa := TouchArea { mouse-cursor: pointer; clicked => { S.cv-add-file(r.path, root.wx(root.width / 2), root.wy(root.height / 2)); root.picking = false; fs.focus(); } }
-        }
+    if root.picking: NotePick {
+        x: 200px; y: 64px;
+        picked(p) => { S.cv-add-file(p, root.wx(root.width / 2), root.wy(root.height / 2)); root.picking = false; fs.focus(); }
+        closed => { root.picking = false; fs.focus(); }
     }
     // меню у выделенного (как в Obsidian): над объектом, не мешает тянуть — пока тянут, спрятано
     if S.cv-sel > 0 && S.cv-edit == "" && S.cv-sel-box.length == 4 && root.mode != 3 && root.rs-id == "": SelMenu {

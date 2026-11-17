@@ -7,6 +7,7 @@ mod dialogs;
 mod habitedit;
 mod habits;
 mod canvas;
+mod cvmenu;
 mod linkpeek;
 mod notes;
 mod graph;
@@ -84,6 +85,8 @@ pub struct Ui {
     pub cv: Option<canvas::Cv>,
     /// Скопированные ноды канваса (JSON Canvas).
     pub cv_clip: String,
+    /// Просьба открыть поиск «＋ Заметка» на холсте (из меню по правому клику): растёт на 1.
+    pub cv_pick: i32,
     pub pipe_open: String,
     pub pipe_by: String,
     pub stk_by: String,
