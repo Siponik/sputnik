@@ -186,7 +186,8 @@ export component GraphView inherits Rectangle {
         width: rr * 2;
         height: rr * 2;
         border-radius: rr;
-        background: d.missing ? transparent : d.hue;
+        // базовый цвет — приглушённый тон папки, яркий — у точки под мышью, выбранной и её соседей
+        background: d.missing ? transparent : (d.cur || d.near || da.has-hover ? d.hue : d.hue.mix(#8E9099, 0.45));
         opacity: d.dim ? 0.45 : 1;
         border-width: d.cur ? 2px : (d.missing ? 1px : 0);
         border-color: d.cur ? G.accent-ink : G.dim;
