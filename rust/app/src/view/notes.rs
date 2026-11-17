@@ -63,7 +63,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         for d in dirs.iter().filter(|d| folder(d) == dir && d.as_str() != dir) {
             let o = open(d);
             let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
-            tree.push(TreeRow { path: ss(d.clone()), title: ss(d.rsplit('/').next().unwrap_or(d)), kind: ss("dir"), depth, open: o, n: ss(n.to_string()), hue });
+            let own = super::notedir::color_of(d);
+            let hue = own.unwrap_or(hue);
+            tree.push(TreeRow { path: ss(d.clone()), title: ss(d.rsplit('/').next().unwrap_or(d)), kind: ss("dir"), depth, open: o, n: ss(n.to_string()), hue, own: own.is_some() });
             if o {
                 walk(d, depth + 1, dirs, items, open, title_of, hue, tree, pinned);
             }
@@ -72,26 +74,27 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             return;
         }
         for (_, _, p, kind) in items.iter().filter(|x| x.0 == dir) {
-            tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth, open: pinned.iter().any(|x| x == p), n: ss(""), hue });
+            tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth, open: pinned.iter().any(|x| x == p), n: ss(""), hue, own: false });
         }
     }
     for d in dirs.iter().filter(|d| !d.contains('/')) {
-        let hue = hues.iter().find(|h| h.0 == *d).map(|h| h.1).unwrap_or(slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE));
+        let own = super::notedir::color_of(d);
+        let hue = own.or_else(|| hues.iter().find(|h| h.0 == *d).map(|h| h.1)).unwrap_or(slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE));
         let o = open(d);
         let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
-        tree.push(TreeRow { path: ss(d.clone()), title: ss(d.clone()), kind: ss("dir"), depth: 0, open: o, n: ss(n.to_string()), hue });
+        tree.push(TreeRow { path: ss(d.clone()), title: ss(d.clone()), kind: ss("dir"), depth: 0, open: o, n: ss(n.to_string()), hue, own: own.is_some() });
         if o {
             walk(d, 1, &dirs, &items, &open, &title_of, hue, &mut tree, &pinned);
         }
     }
     let grey = slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE);
     for (_, _, p, kind) in items.iter().filter(|x| x.0.is_empty()) {
-        tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth: 0, open: pinned.iter().any(|x| x == p), n: ss(""), hue: grey });
+        tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth: 0, open: pinned.iter().any(|x| x == p), n: ss(""), hue: grey, own: false });
     }
     g.set_note_tree(model(tree));
     // «Недавние» — последние открытые вкладки, свежие сверху
     g.set_note_recent(model(u.note_tabs.iter().rev().take(3).map(|p| TreeRow {
-        path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if super::canvas::is_canvas(p) { "canvas" } else { "note" }), depth: 0, open: false, n: ss(""), hue: grey,
+        path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if super::canvas::is_canvas(p) { "canvas" } else { "note" }), depth: 0, open: false, n: ss(""), hue: grey, own: false,
     }).collect()));
     g.set_notes_count(n0.notes.len() as i32);
     g.set_note_sort(u.note_sort);

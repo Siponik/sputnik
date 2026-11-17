@@ -244,7 +244,7 @@ export component TaskDialog inherits Overlay {
                     x: 24px; y: sub-h + (root.note-full ? 0 : 10px); width: root.lw; height: lh - sub-h - (root.note-full ? 0 : 10px);
                     border-color: nb.focused ? G.accent-line : G.line;
                     Text { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; }
-                    Text { x: 84px; y: 0; height: 30px; text: "MARKDOWN"; font-family: G.mono; font-size: 10px; color: G.dim; vertical-alignment: center; }
+                    Text { x: 84px; y: 0; height: 30px; text: "MARKDOWN"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
                     Rectangle {
                         x: parent.width - 28px; y: 4px; width: 22px; height: 22px;
                         border-radius: 6px; border-width: 1px; border-color: G.line;
@@ -319,7 +319,7 @@ export component TaskDialog inherits Overlay {
                                 height: 32px; border-radius: 6px; background: nla.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 8px; y: 13px; width: 6px; height: 6px; border-radius: 3px; background: n.hue; }
                                 Text { x: 22px; width: parent.width - 110px; text: n.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                Text { x: parent.width - self.preferred-width - 8px; width: min(self.preferred-width, 80px); text: n.hint; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: G.dim; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                Text { x: parent.width - self.preferred-width - 8px; width: min(self.preferred-width, 80px); text: n.hint; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: G.muted; vertical-alignment: center; height: parent.height; overflow: elide; }
                                 nla := TouchArea { mouse-cursor: pointer; clicked => { S.t-close(); S.note-open(n.id); } }
                             }
                         }
@@ -338,7 +338,7 @@ export component TaskDialog inherits Overlay {
                                     height: 26px;
                                     Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: h.hue; }
                                     Text { x: 24px; width: parent.width - 80px; text: h.label; font-size: 12px; color: #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                    Text { x: parent.width - self.preferred-width - 10px; text: h.hint; font-family: G.mono; font-size: 10px; color: G.dim; vertical-alignment: center; height: parent.height; }
+                                    Text { x: parent.width - self.preferred-width - 10px; text: h.hint; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; height: parent.height; }
                                 }
                                 if S.t-hist.length == 0: Text { x: 10px; height: 26px; text: "Пока пусто"; font-size: 12px; color: #62646E; vertical-alignment: center; }
                             }

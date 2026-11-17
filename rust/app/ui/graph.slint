@@ -109,7 +109,7 @@ export component GraphFilters inherits Rectangle {
                 background: ga.has-hover ? G.node-hover : transparent;
                 Rectangle { x: 12px; y: 10px; width: 8px; height: 8px; border-radius: 2px; background: gr.on ? gr.hue : transparent; border-width: 1.5px; border-color: gr.hue; }
                 Text { x: 28px; text: gr.label; font-size: 13px; color: gr.on ? G.ink : G.dim; vertical-alignment: center; width: parent.width - 70px; overflow: elide; }
-                Text { x: parent.width - 12px - self.preferred-width; text: gr.hint; font-family: G.mono; font-size: 11px; color: G.dim; vertical-alignment: center; }
+                Text { x: parent.width - 12px - self.preferred-width; text: gr.hint; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; }
                 ga := TouchArea { mouse-cursor: pointer; clicked => { S.graph-group(gr.id); } }
             }
         }
@@ -258,7 +258,7 @@ component Kbd inherits HorizontalLayout {
     spacing: 5px;
     Rectangle {
         width: kt.preferred-width + 10px; height: 16px; y: 1px; border-radius: 3px; border-width: 1px; border-color: G.line;
-        kt := Text { text: root.k; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: G.dim; horizontal-alignment: center; vertical-alignment: center; }
+        kt := Text { text: root.k; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
     }
     Text { text: root.t; font-size: 12px; color: G.muted; vertical-alignment: center; }
 }
@@ -271,7 +271,7 @@ export component GraphRead inherits Rectangle {
     Rectangle {
         y: 0; height: 34px; background: G.head-main;
         Text { x: 12px; width: parent.width - 70px; text: "ЧИТАЮ · " + S.graph-sel-head; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
-        Text { x: parent.width - self.preferred-width - 12px; text: "↔ " + S.graph-sel-n; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #ffffffb0; vertical-alignment: center; }
+        Text { x: parent.width - self.preferred-width - 12px; text: "↔ " + S.graph-sel-n; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #FFFFFFE6; vertical-alignment: center; }
     }
     ScrollView {
         y: 34px; height: parent.height - 34px - 112px; content-height: rd.preferred-height;

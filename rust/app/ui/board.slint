@@ -187,7 +187,7 @@ component Kanban inherits Rectangle {
                             padding-left: 12px; padding-right: 12px;
                             spacing: 8px;
                             Text { text: (ci < 9 ? "0" : "") + (ci + 1) + "  " + col.name.to-uppercase(); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                            Text { text: col.limit > 0 ? col.count + " / " + col.limit : col.count; font-family: G.mono; font-size: 10.5px; color: col.over ? #FFB3A3 : #ffffffb8; vertical-alignment: center; }
+                            Text { text: col.limit > 0 ? col.count + " / " + col.limit : col.count; font-family: G.mono; font-size: 10.5px; color: col.over ? #FFB3A3 : #FFFFFFE6; vertical-alignment: center; }
                         }
                     }
                     ScrollView {
