@@ -27,3 +27,12 @@ fn trash_names() {
     assert_eq!(trash_path("DND/НПС.md", |_| false), ".trash/DND/НПС.md");
     assert_eq!(trash_path("DND/НПС.md", |p| p == ".trash/DND/НПС.md"), ".trash/DND/НПС 2.md");
 }
+
+#[test]
+fn link_under_caret() {
+    let l = "См. [[Таверна|кабак]] и [сайт](https://a.b) тут";
+    assert_eq!(link_at(l, 8).as_deref(), Some("Таверна"));
+    assert_eq!(link_at(l, l.find("сайт").unwrap()).as_deref(), Some("https://a.b"));
+    assert_eq!(link_at(l, 0), None);
+    assert_eq!(link_at(l, l.len()), None);
+}

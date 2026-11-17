@@ -52,6 +52,8 @@ export component CanvasView inherits Rectangle {
     property <length> wx0;
     property <length> wy0;
     property <string> rs-id;
+    property <float> rs-x;
+    property <float> rs-y;
     property <float> rs-w;
     property <float> rs-h;
     property <bool> space;
@@ -162,18 +164,20 @@ export component CanvasView inherits Rectangle {
     for n in S.cv-nodes: nd := Rectangle {
         property <bool> moving: n.mv && root.mode == 3;
         property <float> nw: root.rs-id == n.id ? root.rs-w : n.w;
+        // цвет ноды: выделение его не меняет — рамка и уголки того же цвета
+        property <color> hue: n.kind == "text" ? (n.colored ? n.head : G.gold) : n.head.brighter(0.5);
         property <float> nh: root.rs-id == n.id ? root.rs-h : n.h;
         property <bool> far: root.k < 0.35;
         property <bool> editing: S.cv-edit == n.id;
         property <length> hh: 30px * min(1.4, max(0.6, root.k));
-        x: root.sx(n.x + (moving ? root.ddx : 0));
-        y: root.sy(n.y + (moving ? root.ddy : 0));
+        x: root.sx((root.rs-id == n.id ? root.rs-x : n.x) + (moving ? root.ddx : 0));
+        y: root.sy((root.rs-id == n.id ? root.rs-y : n.y) + (moving ? root.ddy : 0));
         width: nw * root.k * 1px;
         height: nh * root.k * 1px;
         // рамка-группа
         if n.kind == "group": DashBox {
             width: parent.width; height: parent.height;
-            c: n.sel ? G.accent : (n.colored ? n.head : G.violet.with-alpha(0.7));
+            c: n.colored ? n.head.with-alpha(n.sel ? 1 : 0.8) : G.violet.with-alpha(n.sel ? 1 : 0.7);
             dash: 5px;
             background: (n.colored ? n.head : G.violet).with-alpha(0.05);
             border-radius: 10px;
@@ -182,7 +186,7 @@ export component CanvasView inherits Rectangle {
             x: 14px; y: 12px; width: parent.width - 28px;
             text: n.text.to-uppercase();
             font-family: G.mono; font-size: max(9px, 10.5px * root.k); letter-spacing: 1.6px; font-weight: 600;
-            color: n.sel ? G.accent-ink : (n.colored ? n.head.brighter(0.6) : G.violet);
+            color: n.colored ? n.head.brighter(0.6) : G.violet;
             overflow: elide;
         }
         // нода
@@ -190,25 +194,39 @@ export component CanvasView inherits Rectangle {
             border-radius: (n.main ? 12px : 8px) * min(1, root.k);
             background: G.node;
             border-width: 1px;
-            border-color: n.sel ? G.accent-line : (n.kind == "text" ? (n.colored ? n.head : G.gold.with-alpha(0.55)) : G.line);
+            border-color: n.sel ? nd.hue : (n.kind == "text" ? (n.colored ? n.head : G.gold.with-alpha(0.55)) : G.line);
             drop-shadow-blur: n.sel ? 18px : 0;
             drop-shadow-color: #0008;
             clip: true;
             // шапка (у карточки-текста — без заливки, подпись цветом)
-            if n.kind != "text": Rectangle {
-                y: 0; height: far ? parent.height : nd.hh;
-                background: n.main ? G.head-main : n.head;
+            // мелкий масштаб: одна плашка цвета ноды с крупным названием в несколько строк
+            if far: Rectangle {
+                background: n.kind == "text" ? nd.hue.with-alpha(0.22) : n.head;
+                // совсем мелкая плашка — без надписи (ей там не уместиться)
+                if parent.height >= 16px && parent.width >= 36px: Text {
+                    x: 6px; width: parent.width - 12px; y: 4px; height: parent.height - 8px;
+                    text: n.kind == "image" ? n.title : (n.kind == "link" && n.title == n.path ? n.tag : n.title).to-uppercase();
+                    font-family: G.mono; font-weight: 600; letter-spacing: 0.6px;
+                    font-size: max(8px, min(15px, parent.height * 0.24, parent.width * 0.11));
+                    color: n.kind == "text" ? nd.hue.brighter(0.4) : #fff;
+                    // низкая плашка — одна строка с «…», иначе название переносится
+                    wrap: self.height > self.font-size * 2.6 ? word-wrap : no-wrap; overflow: elide;
+                    horizontal-alignment: center; vertical-alignment: center;
+                }
+            }
+            if n.kind != "text" && !far: Rectangle {
+                y: 0; height: nd.hh;
+                background: n.head;
                 Text {
                     x: 12px * min(1, root.k * 1.5); width: parent.width - 24px * min(1, root.k * 1.5) - tg.width;
-                    text: n.title.to-uppercase();
-                    font-family: G.mono; font-size: far ? max(10px, 22px * root.k / 0.35 * 0.35) : max(8px, 10.5px * root.k); font-weight: 600; letter-spacing: 1.4px;
+                    text: (n.kind == "link" ? n.tag : n.title).to-uppercase();
+                    font-family: G.mono; font-size: max(8px, 10.5px * root.k); font-weight: 600; letter-spacing: 1.4px;
                     color: #fff; vertical-alignment: center; height: parent.height; overflow: elide;
                 }
                 tg := Text {
-                    visible: !far;
                     x: parent.width - self.width - 12px * min(1, root.k * 1.5);
                     width: self.preferred-width;
-                    text: n.missing ? "НЕТ ЗАМЕТКИ" : n.tag;
+                    text: n.kind == "link" ? "ССЫЛКА" : (n.missing ? "НЕТ ЗАМЕТКИ" : n.tag);
                     font-family: G.mono; font-size: max(8px, 10px * root.k); letter-spacing: 1.2px;
                     color: #ffffffb0; vertical-alignment: center; height: parent.height;
                 }
@@ -237,9 +255,23 @@ export component CanvasView inherits Rectangle {
                 border-radius: 6px; background: G.bg; border-width: 1px; border-color: G.line-soft; clip: true;
                 Image { source: n.img; width: parent.width; height: parent.height; image-fit: contain; }
             }
-            if n.kind == "link" && !far: Text {
-                x: 12px; y: nd.hh + 8px; width: parent.width - 24px;
-                text: n.title; color: G.accent; font-size: max(8px, 13px * root.k); wrap: word-wrap;
+            // ссылка: картинка страницы, название, описание, адрес (предпросмотр качается в фоне)
+            if n.kind == "link" && !far: Rectangle {
+                x: 10px * min(1, root.k * 1.5); y: nd.hh + 8px * root.k;
+                width: parent.width - 20px * min(1, root.k * 1.5); height: parent.height - self.y - 8px * root.k;
+                clip: true;
+                property <length> ih: n.img.width > 0 ? min(self.height * 0.55, self.width * n.img.height / max(1, n.img.width)) : 0;
+                if n.img.width > 0: Rectangle {
+                    y: 0; height: parent.ih; border-radius: 6px; clip: true; background: G.bg;
+                    Image { source: n.img; width: parent.width; height: parent.height; image-fit: cover; }
+                }
+                VerticalLayout {
+                    y: parent.ih + (parent.ih > 0 ? 8px * root.k : 0); height: parent.height - self.y;
+                    spacing: 4px * root.k; alignment: start;
+                    if n.title != n.path: Text { text: n.title; color: G.ink; font-size: max(8px, 14px * root.k); font-weight: 600; wrap: word-wrap; overflow: elide; max-height: max(8px, 14px * root.k) * 3.2; }
+                    for l in n.rows: MdLine { line: l; fs: max(7px, 12px * root.k); }
+                    Text { text: n.missing ? "загружаю предпросмотр…" : n.path; color: n.missing ? G.dim : G.accent; font-size: max(7px, 11px * root.k); overflow: elide; }
+                }
             }
         }
         // тянуть, выбрать, открыть
@@ -293,7 +325,8 @@ export component CanvasView inherits Rectangle {
                 wrap: word-wrap;
                 font-size: max(11px, 13px * root.k);
                 color: G.ink;
-                selection-background-color: G.accent-wash;
+                selection-background-color: #F0A04B66;
+                selection-foreground-color: #FFFFFF;
                 init => { self.focus(); self.select-all(); }
                 key-pressed(e) => {
                     if (e.text == Key.Escape || (e.text == Key.Return && (e.modifiers.control || n.kind == "group"))) { S.cv-text(n.id, self.text); fs.focus(); return accept; }
@@ -333,28 +366,40 @@ export component CanvasView inherits Rectangle {
                 }
             }
         }
-        // уголок — размер
+        // размер: тянуть за любой край или угол (края — невидимые полосы, гнёзда посередине поверх них)
         if n.sel && S.cv-sel == 1 && !editing: Rectangle {
-            x: parent.width - 10px; y: parent.height - 10px; width: 14px; height: 14px;
-            Rectangle { x: 2px; y: 2px; width: 8px; height: 8px; border-radius: 2px; background: G.accent; }
-            ra := TouchArea {
-                mouse-cursor: MouseCursor.nwse-resize;
-                pointer-event(e) => {
-                    if (e.kind == PointerEventKind.down) {
-                        root.rs-id = n.id; root.rs-w = n.w; root.rs-h = n.h;
-                        root.px0 = self.absolute-position.x + self.mouse-x; root.py0 = self.absolute-position.y + self.mouse-y;
+            for d in 8: Rectangle {
+                property <int> hx: d == 0 || d == 6 || d == 7 ? -1 : (d == 1 || d == 5 ? 0 : 1);
+                property <int> hy: d <= 2 ? -1 : (d == 3 || d == 7 ? 0 : 1);
+                property <bool> corner: hx != 0 && hy != 0;
+                x: hx < 0 ? -5px : (hx > 0 ? parent.width - 5px : 10px);
+                y: hy < 0 ? -5px : (hy > 0 ? parent.height - 5px : 10px);
+                width: hx == 0 ? parent.width - 20px : 10px;
+                height: hy == 0 ? parent.height - 20px : 10px;
+                if corner: Rectangle { x: 1px; y: 1px; width: 8px; height: 8px; border-radius: 2px; background: G.node; border-width: 1.5px; border-color: nd.hue; }
+                TouchArea {
+                    mouse-cursor: corner ? (hx == hy ? MouseCursor.nwse-resize : MouseCursor.nesw-resize) : (hx == 0 ? MouseCursor.ns-resize : MouseCursor.ew-resize);
+                    pointer-event(e) => {
+                        if (e.kind == PointerEventKind.down) {
+                            root.rs-id = n.id; root.rs-x = n.x; root.rs-y = n.y; root.rs-w = n.w; root.rs-h = n.h;
+                            root.px0 = self.absolute-position.x + self.mouse-x; root.py0 = self.absolute-position.y + self.mouse-y;
+                        }
+                        if (e.kind == PointerEventKind.up && root.rs-id == n.id) { S.cv-resize(n.id, root.rs-x, root.rs-y, root.rs-w, root.rs-h); root.rs-id = ""; }
                     }
-                    if (e.kind == PointerEventKind.up) { S.cv-resize(n.id, root.rs-w, root.rs-h); root.rs-id = ""; }
-                }
-                moved => {
-                    if (self.pressed) {
-                        root.rs-w = max(80, n.w + (self.absolute-position.x + self.mouse-x - root.px0) / 1px / root.k);
-                        root.rs-h = max(50, n.h + (self.absolute-position.y + self.mouse-y - root.py0) / 1px / root.k);
+                    moved => {
+                        if (self.pressed) {
+                            let dx = (self.absolute-position.x + self.mouse-x - root.px0) / 1px / root.k;
+                            let dy = (self.absolute-position.y + self.mouse-y - root.py0) / 1px / root.k;
+                            if (hx > 0) { root.rs-w = max(80, n.w + dx); }
+                            if (hx < 0) { root.rs-w = max(80, n.w - dx); root.rs-x = n.x + n.w - root.rs-w; }
+                            if (hy > 0) { root.rs-h = max(50, n.h + dy); }
+                            if (hy < 0) { root.rs-h = max(50, n.h - dy); root.rs-y = n.y + n.h - root.rs-h; }
+                        }
                     }
                 }
             }
         }
-        if n.main && n.kind != "group": Brackets { width: parent.width; height: parent.height; }
+        if n.sel && n.kind != "group": Brackets { width: parent.width; height: parent.height; c: nd.hue; }
     }
 
     // провода (поверх нод не мешают кликам: Path без TouchArea)

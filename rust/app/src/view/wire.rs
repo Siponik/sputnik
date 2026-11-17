@@ -789,11 +789,7 @@ pub fn wire(w: &AppWindow) {
     g.on_tp_dup(|| act(|_, u| super::tpl::dup(u)));
     g.on_tp_reset(|| act(|app, u| super::tpl::reset(app, u)));
     g.on_ls_close(|| act(|_, u| u.ls = false));
-    g.on_menu_ctx(|k, id, x, y| act(|app, u| {
-        // новая заметка без шаблонов — сразу, без меню
-        if k == "newnote" && super::notefile::templates(app).is_empty() {
-            return super::notefile::create(app, u, &id, "");
-        }
+    g.on_menu_ctx(|k, id, x, y| act(|_, u| {
         u.menu = Some(super::menu::Menu { kind: str_(&k), id: str_(&id), x, y, sub: String::new() })
     }));
     g.on_note_mention_link(|p| act(|app, u| super::notefile::link_mention(app, u, &p)));
@@ -1146,7 +1142,8 @@ pub fn wire(w: &AppWindow) {
 
     // ---------- Знания ----------
     g.on_note_search(|q| act(|_, u| u.note_q = str_(&q)));
-    g.on_note_open(|p| act(|app, u| open_note_tab(app, u, &str_(&p))));
+    // заметка из списка открывается и поверх графа
+    g.on_note_open(|p| act(|app, u| { u.note_graph = false; open_note_tab(app, u, &str_(&p)); }));
     // [[ в заметке задачи (п.37): подсказка по «Знаниям» и вставка ссылки
     let ww2 = w.as_weak();
     g.on_link_search(move |t| {
@@ -1196,6 +1193,19 @@ pub fn wire(w: &AppWindow) {
         };
         w3.global::<S>().set_link_found(model(found));
     });
+    let ww4 = w.as_weak();
+    g.on_note_peek_at(move |t, at| {
+        let Some(w4) = ww4.upgrade() else { return };
+        let g = w4.global::<S>();
+        let link = sputnik_core::notefile::link_at(t.as_str(), at.max(0) as usize);
+        let (title, sub, rows) = match &link {
+            Some(l) => crate::state::peek(|app| super::notefile::peek(app, l)).unwrap_or_default(),
+            None => Default::default(),
+        };
+        g.set_peek_title(ss(title));
+        g.set_peek_sub(ss(sub));
+        g.set_peek_rows(model(rows));
+    });
     g.on_note_link_put(|t, at, title| {
         let at = (at.max(0) as usize).min(t.len());
         let at = if t.is_char_boundary(at) { at } else { t.len() };
@@ -1223,12 +1233,14 @@ pub fn wire(w: &AppWindow) {
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
     super::canvas::wire(&g);
-    g.on_note_hit(|i, at| {
+    g.on_note_hit(|i, at, ctrl| {
         let mut caret = 0;
         act(|app, u| {
             let body = note_text(app, u);
             match crate::notes::line_hit(&body, i.max(0) as usize, at.max(0) as usize) {
                 Ok(c) => caret = c as i32,
+                // просто клик по ссылке — курсор в неё (и предпросмотр), переход — Ctrl+клик
+                Err(_) if !ctrl => caret = crate::notes::line_caret(&body, i.max(0) as usize, at.max(0) as usize) as i32,
                 Err(link) => {
                     caret = -1;
                     if link.contains("://") {
@@ -1326,6 +1338,10 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_note_new(|t| act(|app, u| new_note(app, u, &t)));
     g.on_note_link(|t| act(|app, u| {
+        if t.contains("://") {
+            let _ = open::that(t.as_str());
+            return;
+        }
         match app.notes.find(&t).map(|n0| n0.path.clone()) {
             Some(p) => open_note_tab(app, u, &p),
             None => new_note(app, u, &t),

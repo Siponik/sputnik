@@ -7,6 +7,7 @@ mod dialogs;
 mod habitedit;
 mod habits;
 mod canvas;
+mod linkpeek;
 mod notes;
 mod notefile;
 pub mod datetime;

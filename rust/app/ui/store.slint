@@ -627,7 +627,13 @@ export global S {
     callback note-line-split(int, string, int) -> int; // Enter: разрезать строку по курсору, вернуть курсор новой строки
     callback note-line-join(int) -> int;     // Backspace в начале: склеить с предыдущей, вернуть курсор
     callback note-commit();                  // сохранить файл, если есть правка
-    callback note-hit(int, int) -> int;      // клик по видимому тексту строки: курсор в строке файла, -1 — открыта ссылка
+    callback note-hit(int, int, bool) -> int; // клик по видимому тексту строки (с Ctrl?): курсор в строке файла, -1 — открыта ссылка
+    in-out property <bool> ctrl-held;         // Ctrl зажат: клик по ссылке открывает её
+    in-out property <int> focus-keys;         // +1 — вернуть фокус окну (после Esc в строке), чтобы Ctrl и клавиши ловились
+    callback note-peek-at(string, int);       // курсор в строке: если он в ссылке — показать её предпросмотр
+    in property <string> peek-title;          // предпросмотр ссылки под курсором; пусто — нет
+    in property <string> peek-sub;            // папка / адрес
+    in property <[MdRow]> peek-rows;          // первые строки заметки
     pure callback note-col(int, string, int, int) -> int; // стрелки: та же колонка на строке to (из, текст, байт, в)
     pure callback byte-len(string) -> int;
     callback note-todo(int);                 // галочка пункта «- [ ]»
@@ -645,7 +651,7 @@ export global S {
     callback cv-click(string, bool);         // выбрать ноду ("" — снять), bool — добавить к выделению
     callback cv-box(float, float, float, float, bool);
     callback cv-move(float, float, bool);    // сдвинуть выделенное; bool — копией (Alt)
-    callback cv-resize(string, float, float);
+    callback cv-resize(string, float, float, float, float); // новые x, y, ширина, высота
     callback cv-add(string, float, float);   // text / group в точке
     callback cv-text(string, string);        // текст карточки, подпись группы или провода
     callback cv-edit-start(string);

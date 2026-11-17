@@ -24,6 +24,7 @@ export component MdLine inherits Rectangle {
         default-font-size: root.size;
         default-font-family: line.kind == "code" ? G.mono : G.sans;
         default-color: line.kind == "done" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : G.ink));
+        link-color: G.accent;
     }
 }
 import { G } from "theme.slint";

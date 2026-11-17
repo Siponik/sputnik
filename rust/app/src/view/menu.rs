@@ -67,9 +67,16 @@ fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
             ])
         }
         "newnote" => {
-            let mut v = vec![it("new:", "Пустая заметка", "note", "")];
-            v.extend(super::notefile::templates(app).into_iter().map(|(p, t)| it(&format!("tpl:{p}"), &t, "copy", "")));
-            (String::from("Новая заметка · шаблон"), v)
+            let mut v = vec![
+                it("new:", "Заметка", "note", ""),
+                it("canvas:", "Холст", "canvas", ""),
+                it("folder:", "Папка…", "folder", ""),
+            ];
+            let t = super::notefile::templates(app);
+            for (k, (p, title)) in t.into_iter().enumerate() {
+                v.push(MItem { sep: k == 0, ..it(&format!("tpl:{p}"), &format!("Заметка по шаблону «{title}»"), "copy", "") });
+            }
+            (String::from("Создать"), v)
         }
         "tab" => (String::from("Вкладка"), vec![
             it("tab-close", "Закрыть", "close", "Ctrl W"),
@@ -128,7 +135,14 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
     }
     u.menu = None;
     if m.kind == "note" || m.kind == "tab" { note_pick(app, u, &m, id); return; }
-    if m.kind == "newnote" { super::notefile::create(app, u, &m.id, id.strip_prefix("tpl:").unwrap_or("")); return; }
+    if m.kind == "newnote" {
+        match id {
+            "canvas:" => super::canvas::new_canvas(app, u, &super::notefile::cur_dir(u)),
+            "folder:" => super::notefile::ask_folder(u),
+            _ => super::notefile::create(app, u, &m.id, id.strip_prefix("tpl:").unwrap_or("")),
+        }
+        return;
+    }
     if m.kind == "sphere" {
         let sid = m.id.clone();
         match id {
