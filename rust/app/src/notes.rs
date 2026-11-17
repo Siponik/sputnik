@@ -178,6 +178,8 @@ pub struct LineRow {
 pub fn line_rows(body: &str) -> Vec<LineRow> {
     let mut out = vec![];
     let mut code = false;
+    // внутри таблицы строка может начинаться не с «|» (Obsidian так позволяет)
+    let mut in_table = false;
     for raw in body_without_front(body).split('\n') {
         let l = raw.trim_end_matches('\r');
         let t = l.trim();
@@ -194,7 +196,7 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
             ("h2", x)
         } else if let Some(x) = t.strip_prefix("# ") {
             ("h1", x)
-        } else if t.starts_with('|') && t.len() > 1 {
+        } else if (t.starts_with('|') && t.len() > 1) || (in_table && t.contains('|')) {
             // таблица: строка-разделитель «|---|:--:|» — своя, остальные — ячейки (заголовок помечается ниже)
             if t.trim_matches('|').split('|').all(|c| { let c = c.trim(); !c.is_empty() && c.chars().all(|x| matches!(x, '-' | ':' | ' ')) }) { ("tsep", "") } else { ("table", t) }
         } else if t == "---" || t == "***" {
@@ -221,6 +223,7 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
         // rest — кусок той же строки (или пустая константа)
         let pre = (rest.as_ptr() as usize).checked_sub(l.as_ptr() as usize).filter(|p| *p <= l.len()).unwrap_or(l.len());
         let plain = if kind == "code" { rest.to_string() } else { sputnik_core::mdline::plain(rest).text };
+        in_table = matches!(kind, "table" | "tsep");
         out.push(LineRow { kind: kind.to_string(), raw: l.to_string(), md, plain, pre });
     }
     // строка таблицы прямо над разделителем — заголовок
@@ -411,6 +414,13 @@ impl Notes {
         if !fresh {
             sm.place(&mut self.graph.0);
         }
+        self.sim = Some(sm);
+    }
+
+    /// «Пересобрать граф»: раскладка заново, с нуля — точки снова разлетаются из центра.
+    pub fn graph_rebuild(&mut self) {
+        let mut sm = sputnik_core::graph::Sim::new(self.graph.0.len(), &self.graph.1, self.graph_opts.forces, &[]);
+        sm.steps = 160.0;
         self.sim = Some(sm);
     }
 

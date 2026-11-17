@@ -78,6 +78,24 @@ fn scan(root: &Path, cache: &mut BTreeMap<String, (u64, i64, String)>) -> BTreeM
 
 type Cache = BTreeMap<String, (u64, i64, String)>;
 
+type Hist = BTreeMap<String, Vec<String>>;
+
+/// Какие версии каждого файла уже проходили через эту сверку (хеши): своя старая версия на Drive — не конфликт.
+fn load_hist() -> Hist {
+    let v = crate::data::store::read(STATE).unwrap_or(Value::Null);
+    v["hist"].as_object().map(|m| m.iter().map(|(k, x)| (k.clone(), x.as_array().into_iter().flatten().filter_map(|h| h.as_str().map(String::from)).collect())).collect()).unwrap_or_default()
+}
+
+fn remember(hist: &mut Hist, p: &str, h: &str) {
+    let v = hist.entry(p.to_string()).or_default();
+    if !v.iter().any(|x| x == h) {
+        v.push(h.to_string());
+        if v.len() > 30 {
+            v.remove(0);
+        }
+    }
+}
+
 fn load_base() -> (BTreeMap<String, Base>, String, Cache) {
     let v = crate::data::store::read(STATE).unwrap_or(Value::Null);
     let cache = v["cache"].as_object().map(|m| m.iter().map(|(k, x)| (k.clone(), (x[0].as_u64().unwrap_or(0), x[1].as_i64().unwrap_or(0), x[2].as_str().unwrap_or("").to_string()))).collect()).unwrap_or_default();
@@ -85,10 +103,10 @@ fn load_base() -> (BTreeMap<String, Base>, String, Cache) {
     (base, v["root"].as_str().unwrap_or("").to_string(), cache)
 }
 
-fn save_base(base: &BTreeMap<String, Base>, root: &str, cache: &Cache) {
+fn save_base(base: &BTreeMap<String, Base>, root: &str, cache: &Cache, hist: &Hist) {
     let files: serde_json::Map<String, Value> = base.iter().map(|(k, b)| (k.clone(), json!({"h": b.hash, "m": b.md5}))).collect();
     let cache: serde_json::Map<String, Value> = cache.iter().map(|(k, c)| (k.clone(), json!([c.0, c.1, c.2]))).collect();
-    let _ = crate::data::store::write_json(STATE, &json!({"root": root, "files": files, "cache": cache}));
+    let _ = crate::data::store::write_json(STATE, &json!({"root": root, "files": files, "cache": cache, "hist": hist}));
 }
 
 fn write_local(root: &Path, rel: &str, bytes: &[u8]) -> std::io::Result<()> {
@@ -105,10 +123,12 @@ fn write_local(root: &Path, rel: &str, bytes: &[u8]) -> std::io::Result<()> {
 /// (другая папка — прошлую сверку не используем, чтобы не принять пустую папку за «всё удалили»).
 fn run(root: PathBuf) -> Done {
     let (mut base, old_root, mut cache) = load_base();
+    let mut hist = load_hist();
     let root_s = root.to_string_lossy().to_string();
     if old_root != root_s {
         base.clear();
         cache.clear();
+        hist.clear();
     }
     let mut done = Done { base: BTreeMap::new(), folder: root_s.clone(), files: 0, changed: 0, copies: vec![], err: None, pending: 0 };
     let res: Result<(), crate::data::google::Fail> = (|| {
@@ -117,7 +137,18 @@ fn run(root: PathBuf) -> Done {
         let (files, dirs) = api::notes_tree(&drive_root)?;
         let mut dir_ids: BTreeMap<String, String> = dirs.into_iter().collect();
         let remote: BTreeMap<String, Remote> = files.iter().filter(|f| ns::wanted(&f.0)).map(|f| (f.0.clone(), Remote { id: f.1.clone(), md5: f.2.clone() })).collect();
-        let local = scan(&root, &mut cache);
+        let mut local = scan(&root, &mut cache);
+        // прежние лишние копии «(с другого компьютера)» — слово в слово как оригинал или другая копия — в корзину
+        for p in ns::extra_copies(&local) {
+            let to = root.join(".trash").join(&p);
+            if let Some(d) = to.parent() {
+                let _ = std::fs::create_dir_all(d);
+            }
+            if std::fs::rename(root.join(&p), &to).is_ok() {
+                local.remove(&p);
+                done.changed += 1;
+            }
+        }
         let steps = ns::guard(ns::plan(&local, &remote, &base), base.len());
         done.pending = steps.iter().filter(|s| !matches!(s, Step::Forget(_))).count();
         let folder_of = |rel: &str, dir_ids: &mut BTreeMap<String, String>| -> Result<String, crate::data::google::Fail> {
@@ -150,6 +181,7 @@ fn run(root: PathBuf) -> Done {
                         Some(r) => api::upload_to(&r.id, bytes)?,
                         None => api::upload_new(&folder_of(&p, &mut dir_ids)?, &name_of(&p), bytes)?,
                     };
+                    remember(&mut hist, &p, &h);
                     base.insert(p, Base { hash: h, md5 });
                 }
                 Step::Download(p) => {
@@ -162,6 +194,7 @@ fn run(root: PathBuf) -> Done {
                         }
                     }
                     write_local(&root, &p, &bytes).map_err(|e| crate::data::google::Fail::Net(e.to_string()))?;
+                    remember(&mut hist, &p, &hash(&bytes));
                     base.insert(p, Base { hash: hash(&bytes), md5: r.md5.clone() });
                 }
                 Step::Conflict(p) => {
@@ -174,8 +207,10 @@ fn run(root: PathBuf) -> Done {
                     }
                     // на Drive на самом деле то же, что было при прошлой сверке (поменялась только отметка md5) —
                     // это не конфликт: просто отправляем нашу правку, без копии
-                    if base.get(&p).is_some_and(|b| b.hash == hash(&theirs)) {
+                    // и копию не делаем, если «их» версия — это наша же прошлая версия или сам файл — уже копия
+                    if base.get(&p).is_some_and(|b| b.hash == hash(&theirs)) || hist.get(&p).is_some_and(|v| v.contains(&hash(&theirs))) || ns::original_of(&p).is_some() {
                         let (_, md5) = api::upload_to(&r.id, mine.clone())?;
+                        remember(&mut hist, &p, &hash(&mine));
                         base.insert(p, Base { hash: hash(&mine), md5 });
                         done.changed += 1;
                         continue;
@@ -213,7 +248,7 @@ fn run(root: PathBuf) -> Done {
         done.err = Some(e.to_string());
     }
     // запоминаем и то, что успели до ошибки
-    save_base(&base, &root_s, &cache);
+    save_base(&base, &root_s, &cache, &hist);
     done.base = base;
     done
 }

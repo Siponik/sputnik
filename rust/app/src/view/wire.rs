@@ -1157,8 +1157,10 @@ pub fn wire(w: &AppWindow) {
     });
     g.on_table_cells(|raw| {
         model(crate::notes::table_cells(raw.as_str()).into_iter().map(|c| {
-            let md = crate::notes::line_rows(&c).into_iter().next().map(|r| r.md).unwrap_or_default();
-            crate::MdRow { kind: ss("p"), raw: ss(c.clone()), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)), plain: ss(c) }
+            // <br> внутри ячейки — перенос строки; каждая часть — своё оформление (**жирный**, _курсив_, ссылки)
+            let c2 = c.replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n").replace("<BR>", "\n");
+            let md = c2.split('\n').map(|part| crate::notes::inline_md(part.trim())).collect::<Vec<_>>().join("\n\n");
+            crate::MdRow { kind: ss("p"), raw: ss(c.clone()), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&c2)), plain: ss(c2) }
         }).collect())
     });
     g.on_md_rows(|t| {
@@ -1237,6 +1239,7 @@ pub fn wire(w: &AppWindow) {
         }
     }));
     g.on_graph_tick(super::graph_frame);
+    g.on_graph_rebuild(|| act(|app, _| app.notes.graph_rebuild()));
     g.on_graph_hold(|id, x, y| super::graph_hold(id.as_str(), x as f64, y as f64));
     g.on_note_fold(|d| act(|_, u| {
         let d = str_(&d);
