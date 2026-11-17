@@ -153,7 +153,7 @@ pub fn free_name(name: &str, taken: impl Fn(&str) -> bool) -> String {
 
 /// Строка заметки для живого вида: (вид, исходный текст строки, текст в разметке StyledText).
 /// Одна запись на каждую строку после шапки YAML — номер записи = номер строки тела.
-/// Виды: h1 h2 h3 li todo done quote code fence hr img p empty.
+/// Виды: h1 h2 h3 li todo done quote code fence hr img table th tsep p empty.
 pub fn line_blocks(body: &str) -> Vec<(String, String, String)> {
     line_rows(body).into_iter().map(|r| (r.kind, r.raw, r.md)).collect()
 }
@@ -192,6 +192,9 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
             ("h2", x)
         } else if let Some(x) = t.strip_prefix("# ") {
             ("h1", x)
+        } else if t.starts_with('|') && t.len() > 1 {
+            // таблица: строка-разделитель «|---|:--:|» — своя, остальные — ячейки (заголовок помечается ниже)
+            if t.trim_matches('|').split('|').all(|c| { let c = c.trim(); !c.is_empty() && c.chars().all(|x| matches!(x, '-' | ':' | ' ')) }) { ("tsep", "") } else { ("table", t) }
         } else if t == "---" || t == "***" {
             ("hr", "")
         } else if let Some(x) = t.strip_prefix("- [ ]") {
@@ -218,6 +221,32 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
         let plain = if kind == "code" { rest.to_string() } else { sputnik_core::mdline::plain(rest).text };
         out.push(LineRow { kind: kind.to_string(), raw: l.to_string(), md, plain, pre });
     }
+    // строка таблицы прямо над разделителем — заголовок
+    for i in 1..out.len() {
+        if out[i].kind == "tsep" && out[i - 1].kind == "table" {
+            out[i - 1].kind = "th".into();
+        }
+    }
+    out
+}
+
+/// Ячейки строки таблицы «| a | b |» — по отдельности (с «\|» внутри ячейки не путаемся).
+pub fn table_cells(raw: &str) -> Vec<String> {
+    let t = raw.trim();
+    let t = t.strip_prefix('|').unwrap_or(t);
+    let t = t.strip_suffix('|').unwrap_or(t);
+    let mut out = vec![];
+    let mut cur = String::new();
+    let mut esc = false;
+    for c in t.chars() {
+        if esc { cur.push(c); esc = false; continue; }
+        match c {
+            '\\' => { esc = true; cur.push(c); }
+            '|' => { out.push(cur.trim().to_string()); cur.clear(); }
+            _ => cur.push(c),
+        }
+    }
+    out.push(cur.trim().to_string());
     out
 }
 

@@ -2,13 +2,35 @@
 // ниже — плашки ссылок, клик открывает заметку. Одна на все окна с заметкой.
 // Пока поле не в фокусе, текст показан как markdown (заголовки, списки, жирный, ссылки); клик — правка.
 
+// Строка таблицы markdown: ячейки поровну по ширине, рамки как у нод; заголовок — жирнее и на подложке.
+export component TableRow inherits Rectangle {
+    in property <string> raw;
+    in property <bool> head;
+    in property <length> fs: 13.5px;
+    property <[MdRow]> cells: S.table-cells(raw);
+    // все ячейки одной ширины, строка — в одну линию текста
+    property <length> cw: root.width / max(1, root.cells.length);
+    out property <length> row-h: root.fs * 1.5 + 10px;
+    background: head ? G.bg : transparent;
+    border-width: 1px; border-color: G.line;
+    for c[i] in root.cells: Rectangle {
+        x: i * root.cw; y: 0; width: root.cw; height: root.height;
+        if i > 0: Rectangle { x: 0; width: 1px; background: G.line; }
+        ct := StyledText {
+            x: 9px; y: 5px; width: parent.width - 18px; height: parent.height - 10px;
+            text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent;
+        }
+    }
+}
+
 export component MdLine inherits Rectangle {
     in property <MdRow> line;
     in property <length> fs;
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
     property <length> size: line.kind == "h1" ? fs * 1.45 : line.kind == "h2" ? fs * 1.25 : line.kind == "h3" ? fs * 1.1 : fs;
     property <length> ind: line.kind == "quote" ? 12px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 16px : 0);
-    height: line.kind == "empty" ? fs * 0.8 : (line.kind == "hr" ? 12px : (line.kind == "fence" ? 2px : st.preferred-height + (h ? 4px : 2px)));
+    height: line.kind == "empty" ? fs * 0.8 : (line.kind == "hr" ? 12px : (line.kind == "fence" || line.kind == "tsep" ? (line.kind == "tsep" ? 0 : 2px) : (line.kind == "table" || line.kind == "th" ? tr.row-h - 1px : st.preferred-height + (h ? 4px : 2px))));
+    tr := TableRow { visible: line.kind == "table" || line.kind == "th"; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; }
     if line.kind == "hr": Rectangle { y: 6px; height: 1px; background: G.line; }
     if line.kind == "quote": Rectangle { x: 0; width: 3px; border-radius: 1.5px; background: G.accent; }
     if line.kind == "li": Rectangle { x: 4px; y: size * 0.6 - 2px; width: 5px; height: 5px; border-radius: 2.5px; background: G.muted; }
@@ -18,7 +40,7 @@ export component MdLine inherits Rectangle {
     }
     if line.kind == "code": Rectangle { background: G.bg; border-radius: 4px; }
     st := StyledText {
-        visible: line.kind != "empty" && line.kind != "hr" && line.kind != "fence";
+        visible: line.kind != "empty" && line.kind != "hr" && line.kind != "fence" && line.kind != "table" && line.kind != "th" && line.kind != "tsep";
         x: root.ind + (line.kind == "code" ? 6px : 0); y: h ? 2px : 1px; width: parent.width - self.x;
         text: line.md;
         default-font-size: root.size;

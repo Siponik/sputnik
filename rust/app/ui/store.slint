@@ -364,6 +364,7 @@ export global S {
     callback note-link-q(string, int);        // строка заметки и курсор: подсказка по «[[» перед курсором
     pure callback note-link-put(string, int, string) -> string; // вставить [[Название]] на месте «[[запроса» перед курсором
     pure callback link-chips(string) -> [Opt];
+    pure callback table-cells(string) -> [MdRow];  // ячейки строки таблицы «| a | b |» — каждая с оформлением
     pure callback md-rows(string) -> [MdRow];      // текст заметки по строкам для показа markdown   // ссылки [[…]] из текста: label — название, id — путь ("" — нет такой)
     callback pipe-notes-set(string, string, string); // список, задача, текст заметки в конвейере
     callback t-close();
@@ -613,6 +614,7 @@ export global S {
     in property <[TreeRow]> note-recent;
     callback note-fold(string);
     callback note-retitle(string);
+    callback note-table(int);
     in property <string> note-path;
     in property <string> note-title;
     in property <string> note-body;

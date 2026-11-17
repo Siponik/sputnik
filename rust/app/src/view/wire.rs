@@ -1155,6 +1155,12 @@ pub fn wire(w: &AppWindow) {
         };
         g.set_link_found(model(found));
     });
+    g.on_table_cells(|raw| {
+        model(crate::notes::table_cells(raw.as_str()).into_iter().map(|c| {
+            let md = crate::notes::line_rows(&c).into_iter().next().map(|r| r.md).unwrap_or_default();
+            crate::MdRow { kind: ss("p"), raw: ss(c.clone()), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&md)), plain: ss(c) }
+        }).collect())
+    });
     g.on_md_rows(|t| {
         // [[ссылка]] показываем акцентом, без скобок
         let re = |l: &str| {
@@ -1271,6 +1277,13 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
+    // «＋ Таблица»: 3 колонки, заголовок и пустая строка — после строки, где курсор, иначе в конец
+    g.on_note_table(|i| act(|app, u| {
+        let n = crate::notes::line_rows(&note_text(app, u)).len();
+        let at = if i >= 0 { (i as usize + 1).min(n) } else { n };
+        note_set_lines(app, u, at, "\n| Колонка 1 | Колонка 2 | Колонка 3 |\n|---|---|---|\n|  |  |  |\n", 0);
+        save_draft(app, u);
+    }));
     super::canvas::wire(&g);
     g.on_note_hit(|i, at, ctrl| {
         let mut caret = 0;

@@ -4,7 +4,7 @@ import { G } from "theme.slint";
 import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView } from "kit.slint";
 import { S, NoteRow, TreeRow, MdRow, GDot, GLine } from "store.slint";
 import { CanvasView, CvCam } from "canvas.slint";
-import { MdLine } from "linknote.slint";
+import { MdLine, TableRow } from "linknote.slint";
 import { GraphPage, ModeSwitch } from "graph.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
@@ -40,7 +40,9 @@ component LiveLine inherits Rectangle {
     property <length> fs: (line.kind == "h1" ? 22px : line.kind == "h2" ? 17.5px : line.kind == "h3" ? 15.5px : 14.5px) * zoom;
     property <length> pad: line.kind == "h1" ? 14px : line.kind == "h2" ? 10px : line.kind == "h3" ? 6px : 3px;
     property <length> ind: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 18px : (line.kind == "code" ? 12px : 0));
-    height: line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px));
+    property <bool> tbl: !editing && (line.kind == "table" || line.kind == "th");
+    height: line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (line.kind == "tsep" && !editing ? 0px : (root.tbl ? tbr.row-h - 1px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px))));
+    tbr := TableRow { visible: root.tbl; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; }
     ta := TouchArea { mouse-cursor: MouseCursor.text; clicked => {
         if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
     } }
@@ -57,7 +59,7 @@ component LiveLine inherits Rectangle {
         y: pad; height: parent.height - pad - 5px; border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
     }
     st := StyledText {
-        visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr";
+        visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "tsep" && !root.tbl;
         x: ind; y: pad; width: root.has-link ? min(self.preferred-width, parent.width - ind) : parent.width - ind;
         text: line.md;
         default-font-size: fs;
@@ -70,7 +72,7 @@ component LiveLine inherits Rectangle {
     // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
     // Rust переводит это место в место в строке файла (или открывает ссылку). StyledText сам клики глотает.
     // в строке со ссылками сверху оформленный текст: ссылка — рука и переход по клику; Ctrl+клик или клик правее текста — правка
-    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img" && (!root.has-link || S.ctrl-held): hit := TextInput {
+    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img" && line.kind != "tsep" && !root.tbl && (!root.has-link || S.ctrl-held): hit := TextInput {
         x: ind; y: pad; width: parent.width - ind;
         text: line.plain;
         read-only: true;
@@ -285,6 +287,8 @@ export component NotesPage inherits Rectangle {
         }
         ScrollView {
             x: 0; y: 93px; width: parent.width; height: parent.height - 93px - 37px; content-height: col.preferred-height;
+            // список стал короче (свернули папку, открыли холст) — не оставаться прокрученным в пустоту
+            changed content-height => { self.viewport-y = max(self.viewport-y, min(0px, self.visible-height - self.content-height)); }
             col := VerticalLayout {
                 x: 0; y: 0; width: root.lw; alignment: start;
                 if S.note-recent.length > 0 && root.q == "": Text { height: 24px; x: 16px; text: "НЕДАВНИЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: bottom; }
@@ -380,6 +384,14 @@ export component NotesPage inherits Rectangle {
                 Icon { name: "focus"; x: 9px; width: 14px; y: 7px; c: root.zen ? G.accent : G.muted; }
                 ft := Text { x: 29px; text: "ФОКУС · CTRL E"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: root.zen ? G.accent-ink : #A3A5AE; vertical-alignment: center; }
                 fa := TouchArea { mouse-cursor: pointer; clicked => { root.zen = !root.zen; } }
+            }
+            // вставить таблицу
+            Rectangle {
+                x: parent.width - self.width - 20px - ft.preferred-width - 40px; y: 6px; width: tbt.preferred-width + 40px; height: 28px; border-radius: 6px;
+                border-width: 1px; border-color: G.line; background: tba.has-hover ? G.node-hover : transparent;
+                Icon { name: "board"; x: 9px; width: 14px; y: 7px; c: G.muted; }
+                tbt := Text { x: 29px; text: "ТАБЛИЦА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #A3A5AE; vertical-alignment: center; }
+                tba := TouchArea { mouse-cursor: pointer; clicked => { S.note-table(root.edit-i); root.edit-i = -1; } }
             }
             Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
         }
