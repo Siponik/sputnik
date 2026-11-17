@@ -12,6 +12,7 @@
 Проверка без Google: `SPUTNIK_DEMO=1` (примерные данные, сеть и запись выключены). Для снимков: `SPUTNIK_TAB`, `SPUTNIK_BOARD`, `SPUTNIK_CAL`, `SPUTNIK_OPEN=create:K:текст | task:список:id | search:запрос | note:путь`.
 
 «Знания» (`app/src/notes.rs`): разбор — `pulldown-cmark` (MIT, ссылки `[[…]]`, теги, заголовок), слежение за папкой — `notify` (CC0), граф — `core/src/graph.rs`, раскладка по алгоритму d3-force (ISC) с Барнсом–Хатом.
+Холсты «Знаний» — файлы `.canvas` (JSON Canvas 1.0, тот же файл открывает Obsidian): чтение, правка, история и авто-раскладка — `core/src/canvas.rs` + `canvas_layout.rs` (незнакомые поля файла сохраняются как есть), экран — `app/ui/canvas.slint` + `app/src/view/canvas.rs`.
 
 Тесты: `cd rust; cargo test` (часовой пояс — Москва). CI на PR — `.github/workflows/rust-check.yml` (тесты и `cargo check` под Windows); сам `sputnik.exe` собирается после слияния (`rust-release.yml`, ниже).
 
