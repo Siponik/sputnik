@@ -6,6 +6,7 @@ mod calendar;
 mod dialogs;
 mod habitedit;
 mod habits;
+mod canvas;
 mod notes;
 pub mod datetime;
 pub mod listset;
@@ -63,6 +64,10 @@ pub struct Ui {
     pub note_tabs: Vec<String>,
     /// Режим «Чтение» вместо правки.
     pub note_reading: bool,
+    /// Открытый канвас (вкладка с файлом .canvas).
+    pub cv: Option<canvas::Cv>,
+    /// Скопированные ноды канваса (JSON Canvas).
+    pub cv_clip: String,
     pub pipe_open: String,
     pub pipe_by: String,
     pub stk_by: String,
@@ -91,6 +96,14 @@ thread_local! {
 }
 
 /// Действие окна: меняет App и Ui, потом перерисовка.
+/// Папка заметок изменилась снаружи: перечитать, открытый канвас — тоже.
+pub fn notes_changed() {
+    act(|app, u| {
+        app.notes.rescan();
+        canvas::reload_if_changed(app, u);
+    });
+}
+
 pub fn act(f: impl FnOnce(&mut App, &mut Ui)) {
     crate::state::with(|app| UI.with(|u| f(app, &mut u.borrow_mut())));
 }

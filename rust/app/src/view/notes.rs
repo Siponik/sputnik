@@ -11,27 +11,41 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     // список по папкам: строка папки — path пустой, title — папка, sub — число заметок
     let mut found: Vec<&crate::notes::Note> = if u.note_q.trim().is_empty() { n0.notes.iter().collect() } else { n0.search(&u.note_q) };
     found.sort_by(|a, b| (folder(&a.path), a.title.to_lowercase()).cmp(&(folder(&b.path), b.title.to_lowercase())));
+    // заметки и канвасы вместе, по папкам; у канваса sub = "canvas"
+    let q = u.note_q.trim().to_lowercase().replace('ё', "е");
+    let mut items: Vec<(String, String, String, &str)> = found.iter().map(|x| (folder(&x.path), x.title.to_lowercase(), x.path.clone(), "")).collect();
+    for p in &n0.canvases {
+        let t = p.rsplit('/').next().unwrap_or(p).trim_end_matches(".canvas").to_string();
+        if q.is_empty() || t.to_lowercase().replace('ё', "е").contains(&q) {
+            items.push((folder(p), t.to_lowercase(), p.clone(), "canvas"));
+        }
+    }
+    items.sort();
+    let title_of = |p: &str| n0.notes.iter().find(|x| x.path == p).map(|x| x.title.clone())
+        .unwrap_or_else(|| p.rsplit('/').next().unwrap_or(p).trim_end_matches(".canvas").to_string());
     let mut list: Vec<NoteRow> = vec![];
     let mut last: Option<String> = None;
-    for x in &found {
-        let f = folder(&x.path);
+    for (f, _, p, kind) in &items {
         if last.as_deref() != Some(f.as_str()) {
-            let cnt = found.iter().filter(|y| folder(&y.path) == f).count();
+            let cnt = items.iter().filter(|y| &y.0 == f).count();
             list.push(NoteRow { path: ss(""), title: ss(if f.is_empty() { "КОРЕНЬ".to_string() } else { f.to_uppercase() }), sub: ss(cnt.to_string()), cur: false });
             last = Some(f.clone());
         }
-        list.push(NoteRow { path: ss(x.path.clone()), title: ss(x.title.clone()), sub: ss(""), cur: false });
+        list.push(NoteRow { path: ss(p.clone()), title: ss(title_of(p)), sub: ss(*kind), cur: false });
     }
     g.set_notes(model(list));
     g.set_notes_count(n0.notes.len() as i32);
     g.set_note_path(ss(u.note_path.clone()));
     g.set_note_dirty(u.note_dirty);
     g.set_note_graph(u.note_graph);
-    // вкладки открытых заметок
+    // вкладки открытых заметок и канвасов
     g.set_note_tabs(model(u.note_tabs.iter().map(|p| {
-        let title = n0.notes.iter().find(|x| &x.path == p).map(|x| x.title.clone()).unwrap_or_else(|| p.clone());
-        NoteRow { path: ss(p.clone()), title: ss(title), sub: ss(""), cur: *p == u.note_path }
+        let title = n0.notes.iter().find(|x| &x.path == p).map(|x| x.title.clone())
+            .unwrap_or_else(|| p.rsplit('/').next().unwrap_or(p).trim_end_matches(".canvas").trim_end_matches(".md").to_string());
+        NoteRow { path: ss(p.clone()), title: ss(title), sub: ss(if super::canvas::is_canvas(p) { "canvas" } else { "" }), cur: *p == u.note_path }
     }).collect()));
+    g.set_note_canvas(super::canvas::is_canvas(&u.note_path));
+    super::canvas::render(app, u, g);
     if u.note_graph {
         let (ns, es) = &n0.graph;
         let cur = ns.iter().position(|x| x.id == u.note_path);

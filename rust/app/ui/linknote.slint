@@ -2,7 +2,7 @@
 // ниже — плашки ссылок, клик открывает заметку. Одна на все окна с заметкой.
 // Пока поле не в фокусе, текст показан как markdown (заголовки, списки, жирный, ссылки); клик — правка.
 
-component MdLine inherits Rectangle {
+export component MdLine inherits Rectangle {
     in property <MdRow> line;
     in property <length> fs;
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";

@@ -19,6 +19,8 @@ pub struct Notes {
     pub watcher: Option<notify::RecommendedWatcher>,
     pub root: Option<PathBuf>,
     pub notes: Vec<Note>,
+    /// Канвасы `.canvas` (пути от корня).
+    pub canvases: Vec<String>,
     /// Раскладка графа — считается при перечитывании папки, не на каждый кадр.
     pub graph: (Vec<sputnik_core::graph::GNode>, Vec<(usize, usize)>),
 }
@@ -257,7 +259,7 @@ impl Notes {
         let pending = Arc::new(AtomicBool::new(false));
         let w = notify::recommended_watcher(move |ev: notify::Result<notify::Event>| {
             let Ok(ev) = ev else { return };
-            if !ev.paths.iter().any(|p| p.extension().is_some_and(|e| e == "md") || p.extension().is_none()) {
+            if !ev.paths.iter().any(|p| p.extension().is_some_and(|e| e == "md" || e == "canvas") || p.extension().is_none()) {
                 return;
             }
             if pending.swap(true, Ordering::SeqCst) {
@@ -267,9 +269,7 @@ impl Notes {
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_millis(400));
                 pending.store(false, Ordering::SeqCst);
-                let _ = slint::invoke_from_event_loop(|| {
-                    crate::state::with(|a| a.notes.rescan());
-                });
+                let _ = slint::invoke_from_event_loop(crate::view::notes_changed);
             });
         });
         if let Ok(mut w) = w {
@@ -290,6 +290,7 @@ impl Notes {
 
     pub fn rescan(&mut self) {
         self.notes.clear();
+        self.canvases.clear();
         let Some(root) = self.root.clone() else { return };
         let mut stack = vec![root.clone()];
         while let Some(d) = stack.pop() {
@@ -302,6 +303,8 @@ impl Notes {
                 }
                 if p.is_dir() {
                     stack.push(p);
+                } else if name.ends_with(".canvas") {
+                    self.canvases.push(p.strip_prefix(&root).unwrap_or(&p).to_string_lossy().replace('\\', "/"));
                 } else if name.ends_with(".md") {
                     let body = std::fs::read_to_string(&p).unwrap_or_default();
                     let rel = p.strip_prefix(&root).unwrap_or(&p).to_string_lossy().replace('\\', "/");
@@ -311,6 +314,7 @@ impl Notes {
             }
         }
         self.notes.sort_by(|a, b| a.path.cmp(&b.path));
+        self.canvases.sort();
         self.relayout();
     }
 

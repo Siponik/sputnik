@@ -1194,6 +1194,7 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
+    super::canvas::wire(&g);
     g.on_note_hit(|i, at| {
         let mut caret = 0;
         act(|app, u| {
@@ -1361,6 +1362,7 @@ pub(super) fn open_note_tab(app: &mut App, u: &mut Ui, path: &str) {
     }
     u.note_path = path.to_string();
     u.note_dirty = false;
+    super::canvas::ensure(app, u);
 }
 
 fn new_note(app: &mut App, u: &mut Ui, title: &str) {
