@@ -1218,14 +1218,10 @@ pub fn wire(w: &AppWindow) {
     g.on_upd_install(|| act(|app, _| app.update_install()));
     g.on_upd_later(|| act(|app, _| app.update.version.clear()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
-    // переключатель «Заметки · Граф · Холст»: холст — последний открытый, иначе первый в папке
+    // переключатель «Заметки · Граф»
     g.on_note_mode(|m| act(|app, u| match m {
         0 => u.note_graph = false,
-        1 => { u.graph_sel.clear(); u.note_graph = true; }
-        _ => {
-            let p = u.note_tabs.iter().rev().find(|p| super::canvas::is_canvas(p)).cloned().or_else(|| app.notes.canvases.first().cloned());
-            if let Some(p) = p { u.note_graph = false; open_note_tab(app, u, &p); }
-        }
+        _ => { u.graph_sel.clear(); u.note_graph = true; }
     }));
     g.on_note_sort_set(|i| act(|_, u| u.note_sort = i));
     g.on_graph_pick(|id| act(|_, u| u.graph_sel = str_(&id)));
