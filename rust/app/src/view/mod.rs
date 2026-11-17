@@ -8,6 +8,7 @@ mod habitedit;
 mod habits;
 mod canvas;
 mod notes;
+mod notefile;
 pub mod datetime;
 pub mod listset;
 pub mod menu;
@@ -51,6 +52,9 @@ pub struct Ui {
     pub search: Option<String>,
     pub found: Vec<(Found, Box<dyn Fn(&mut App, &mut Ui)>)>,
     pub confirm: Option<(String, String, Box<dyn FnOnce(&mut App, &mut Ui)>)>,
+    /// В окне вопроса — поле ввода с этим текстом; ответ — в `answer`.
+    pub ask_field: Option<String>,
+    pub answer: String,
     pub habit_mode: String,
     pub habit_part: String,
     pub habit_sel: String,
@@ -233,6 +237,8 @@ fn shell(app: &App, u: &Ui, g: &S) {
         Some((q, yes, _)) => {
             g.set_confirm(q.clone().into());
             g.set_confirm_yes_label(yes.clone().into());
+            g.set_confirm_field(u.ask_field.is_some());
+            g.set_confirm_input(u.ask_field.clone().unwrap_or_default().into());
         }
         None => g.set_confirm("".into()),
     }

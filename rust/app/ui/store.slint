@@ -74,7 +74,9 @@ export global S {
     callback toast-act();
     in property <string> confirm;              // вопрос «Удалить…?»; пусто — окна нет
     in property <string> confirm-yes-label;
-    callback confirm-yes();
+    in property <bool> confirm-field;          // в окне есть поле ввода (переименование)
+    in property <string> confirm-input;        // его начальный текст
+    callback confirm-yes(string);              // ответ: текст поля (без поля — пусто)
     callback confirm-no();
 
     // ---------- Сегодня ----------
@@ -357,6 +359,8 @@ export global S {
     in property <[Opt]> link-found;           // подсказка после «[[»: label — название, id — путь
     callback link-search(string);             // текст заметки — ищет по набранному после «[[»
     pure callback link-insert(string, string) -> string;
+    callback note-link-q(string, int);        // строка заметки и курсор: подсказка по «[[» перед курсором
+    pure callback note-link-put(string, int, string) -> string; // вставить [[Название]] на месте «[[запроса» перед курсором
     pure callback link-chips(string) -> [Opt];
     pure callback md-rows(string) -> [MdRow];      // текст заметки по строкам для показа markdown   // ссылки [[…]] из текста: label — название, id — путь ("" — нет такой)
     callback pipe-notes-set(string, string, string); // список, задача, текст заметки в конвейере
@@ -611,6 +615,7 @@ export global S {
     callback note-open(string);
     callback note-save(string);
     callback note-new(string);
+    callback note-mention-link(string);      // «Связать»: упоминание в этой заметке сделать ссылкой
     callback note-link(string);
     callback note-edited(string);   // текст правки — чтобы сохранить его, если уйти с заметки
     in property <bool> note-graph;
