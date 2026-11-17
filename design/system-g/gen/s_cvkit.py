@@ -1,5 +1,6 @@
 import sys, os; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from kit import *
+from s_icons import svg_
 
 # Холст в «Знаниях»: все состояния элементов
 def card(x, y, w, title, body, c=VIO, kind='DND', sel=False, hover=False, edit=False, h=0):
@@ -33,16 +34,23 @@ st += node(750, 24, 220, 0, f'<div style="padding: 10px 12px; font-size: 12.5px;
 st += ab(750, 92, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {MUT}">ESC ИЛИ КЛИК МИМО — ГОТОВО</span>')
 st += ab(1000, 30, f'<div style="font-size: 12px; color: {MUT}; line-height: 1.5">Наведение — гнёзда со всех четырёх сторон, как в JSON Canvas.<br>Выбор — рамка {OR} 1.5 с отступом 2 и уголки размера.<br>Двойной клик — правка прямо в карточке.</div>', w=248)
 
-# 2. панель над выделенным
-st += cap(0, 140, '2', 'ПАНЕЛЬ НАД ВЫДЕЛЕННЫМ')
-pan = bar(sw(VIO, True) + sw(OR) + sw(BLUE) + sw(GREEN) + sw(GOLD) + sw(RED) + sw(GREY) + SEP + bi('✎ Править') + bi('↗ Открыть') + bi('⌖ К выделенному') + SEP + bi('✕', danger=True))
-st += ab(0, 166, pan)
-st += card(130, 216, 220, 'ТАВЕРНА', 'Хозяин — гном Борн.', sel=True)
-st += ab(380, 222, f'<div style="font-size: 12px; color: {MUT}; line-height: 1.5">Стоит над выделенным по центру, на 12 px выше.<br>Цвет меняет шапку карточки или рамку группы.<br>«Открыть» — только у заметок.</div>', w=300)
+# 2. панель над выделенным — как в приложении: значки с подсказками, цвета отдельной полоской
+def ib(ic, on=False, danger=False):
+    c = RED if danger else (OR if on else MUT)
+    bg = f'background: {WASH}; border: 1px solid {ORL};' if on else 'border: 1px solid transparent;'
+    return f'<span style="width: 28px; height: 28px; box-sizing: border-box; border-radius: 6px; {bg} display: inline-grid; place-items: center; color: {c}">{svg_(ic, 14)}</span>'
+PRESET = ['#E5484D', '#F0A04B', '#E8C547', '#5BB98B', '#4FB3D9', '#A78BFA']
+pal = bar(f'<span style="width: 18px; height: 18px; box-sizing: border-box; border-radius: 50%; border: 1.5px solid {STRONG}; margin: 0 4px"></span>' + ''.join(f'<span style="width: 18px; height: 18px; border-radius: 50%; background: {c}; margin: 0 4px"></span>' for c in PRESET))
+st += cap(0, 140, '2', 'ПАНЕЛЬ НАД ВЫДЕЛЕННЫМ · КАК В ПРИЛОЖЕНИИ')
+st += ab(0, 164, pal)
+st += ab(0, 206, bar(ib('trash', danger=True) + ib('accent', True) + ib('focus') + ib('edit') + ib('open') + ib('canvas') + ib('copy')))
+st += ab(250, 206, f'<span style="padding: 4px 8px; border-radius: 5px; background: {DARK}; border: 1px solid {LINE}; font-size: 11.5px; color: {INK}; white-space: nowrap">Цвет</span>')
+st += card(40, 262, 180, 'ТАВЕРНА', 'Хозяин — гном Борн.', sel=True)
+st += ab(250, 250, f'''<div style="font-size: 12px; color: {MUT}; line-height: 1.55">Уже есть в коде, оставляем. Значки слева направо: удалить, цвет, приблизить, править, открыть, в группу, дублировать. У провода ещё «стрелка».<br>Цвет — полоска над панелью: «без цвета» и 6 цветов холстов Obsidian (тот же файл открывается там).<br>Наведение — подсказка с названием.</div>''', w=440)
 
 # 3. меню по правому клику
 st += cap(720, 140, '3', 'МЕНЮ ПО ПРАВОМУ КЛИКУ')
-menu = '<div style="padding: 6px">' + mrow('Править', kbd('ENTER'), True, icon='✎') + mrow('Открыть заметку', icon='↗') + mrow('Цвет', f'<span style="color: {MUT}">▸</span>', icon='●') + f'<div style="height: 1px; background: {LINE}; margin: 4px 6px"></div>' + mrow('Копия', kbd('CTRL D'), icon='⧉') + mrow('В группу', kbd('CTRL G'), icon='▢') + mrow('Наверх / вниз', icon='⇅') + f'<div style="height: 1px; background: {LINE}; margin: 4px 6px"></div>' + mrow('Удалить', kbd('DEL'), danger=True, icon='✕') + '</div>'
+menu = '<div style="padding: 6px">' + mrow('Править', kbd('ENTER'), True, icon='✎') + mrow('Открыть заметку', icon='↗') + mrow('Цвет', f'<span style="color: {MUT}">▸</span>', icon='●') + f'<div style="height: 1px; background: {LINE}; margin: 4px 6px"></div>' + mrow('Копировать', kbd('CTRL C'), icon='⧉') + mrow('Вырезать', kbd('CTRL X'), icon='✂') + mrow('Дублировать', kbd('CTRL D'), icon='⧉') + mrow('В группу', kbd('CTRL G'), icon='▢') + f'<div style="height: 1px; background: {LINE}; margin: 4px 6px"></div>' + mrow('Удалить', kbd('DEL'), danger=True, icon='✕') + '</div>'
 st += pop(720, 166, 260, 0, 'КАРТОЧКА', menu, GREY)
 menu2 = '<div style="padding: 6px">' + mrow('Карточка здесь', icon='＋', on=True) + mrow('Заметка…', icon='¶') + mrow('Картинка…', icon='▣') + f'<div style="height: 1px; background: {LINE}; margin: 4px 6px"></div>' + mrow('Вставить', kbd('CTRL V'), icon='⎘') + mrow('Выделить всё', kbd('CTRL A'), icon='⬚') + '</div>'
 st += pop(1000, 166, 248, 0, 'ПУСТОЕ МЕСТО', menu2, GREY)
@@ -52,7 +60,7 @@ st += cap(0, 380, '4', 'РАМКА ВЫДЕЛЕНИЯ · ТЯНУТЬ ПО ПУ�
 st += ab(0, 406, f'<div style="width: 400px; height: 170px; box-sizing: border-box; border: 1px dashed {OR}; background: rgba(240,160,75,.06); border-radius: 2px"></div>')
 st += card(20, 426, 170, 'СЕССИЯ 11', 'Порт и склад.', OR, sel=True)
 st += card(210, 480, 170, 'СЕССИЯ 12', 'Пожар в доках.', OR, sel=True)
-st += ab(0, 582, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {MUT}">SHIFT / CTRL + КЛИК — ДОБАВИТЬ К ВЫДЕЛЕНИЮ · ALT + ТЯНУТЬ — КОПИЯ</span>')
+st += ab(0, 582, f'<span style="font: 400 10px {MONO}; letter-spacing: .1em; color: {MUT}">SHIFT / CTRL + КЛИК — ДОБАВИТЬ К ВЫДЕЛЕНИЮ · ALT + ТЯНУТЬ — ДУБЛИКАТ</span>')
 
 # 5. провод: тянем и подпись
 st += cap(440, 380, '5', 'ПРОВОД · ТЯНЕМ НА ПУСТОЕ / ПОДПИСЬ')
