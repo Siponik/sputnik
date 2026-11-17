@@ -1227,6 +1227,7 @@ pub fn wire(w: &AppWindow) {
             if let Some(p) = p { u.note_graph = false; open_note_tab(app, u, &p); }
         }
     }));
+    g.on_note_sort_set(|i| act(|_, u| u.note_sort = i));
     g.on_graph_pick(|id| act(|_, u| u.graph_sel = str_(&id)));
     g.on_graph_search(|q| act(|_, u| u.graph_q = str_(&q)));
     g.on_graph_local_set(|v| act(|_, u| u.graph_local = v));
