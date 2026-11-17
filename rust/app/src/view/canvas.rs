@@ -272,6 +272,29 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_cv_err(ss(c.err.clone()));
     g.set_cv_edit(ss(c.edit.clone()));
     g.set_cv_sel(c.sel.len() as i32 + if c.edge.is_empty() { 0 } else { 1 });
+    // рамка выделенного — для меню над ним и «приблизить к выделенному»
+    let (sel_box, sel_kind) = match d.edges.iter().find(|e| !c.edge.is_empty() && e.id() == c.edge) {
+        Some(e) => match (d.node(e.from()), d.node(e.to())) {
+            (Some(a), Some(b)) => {
+                let k = cv::edge_curve(e, a, b);
+                let xs = [k.a.0, k.c1.0, k.c2.0, k.b.0];
+                let ys = [k.a.1, k.c1.1, k.c2.1, k.b.1];
+                let f = |v: &[f64], m: fn(f64, f64) -> f64| v.iter().copied().fold(v[0], m);
+                (Some((f(&xs, f64::min), f(&ys, f64::min), f(&xs, f64::max), f(&ys, f64::max))), "edge".to_string())
+            }
+            _ => (None, String::new()),
+        },
+        None if !c.sel.is_empty() => {
+            let kind = match c.sel.as_slice() {
+                [one] => d.node(one).map(|n| if n.kind() == "file" && is_image(n.file()) { "image".to_string() } else { n.kind().to_string() }).unwrap_or_default(),
+                _ => "many".to_string(),
+            };
+            (d.bounds_of(Some(&c.sel)), kind)
+        }
+        None => (None, String::new()),
+    };
+    g.set_cv_sel_box(model(sel_box.map(|b| vec![b.0 as f32, b.1 as f32, b.2 as f32, b.3 as f32]).unwrap_or_default()));
+    g.set_cv_sel_kind(ss(sel_kind));
     g.set_cv_title(ss(c.path.rsplit('/').next().unwrap_or(&c.path).trim_end_matches(".canvas").to_string()));
     g.set_cv_crumb(ss(c.path.replace('/', " / ").to_uppercase()));
 }
@@ -530,6 +553,18 @@ fn key(app: &mut App, u: &mut Ui, k: &str, x: f64, y: f64) {
         }
         "all" => { c.sel = c.doc.nodes.iter().map(|n| n.id().to_string()).collect(); c.edge.clear(); }
         "open" if c.sel.len() == 1 => { let id = c.sel[0].clone(); open_node(app, u, &id); }
+        // правка на месте: карточка, заметка, подпись группы или провода
+        "edit" => {
+            if !c.edge.is_empty() { c.edit = c.edge.clone(); } else if c.sel.len() == 1 { c.edit = c.sel[0].clone(); }
+        }
+        // стрелка провода: есть ↔ нет
+        "arrow" => change(app, u, |c| {
+            let id = c.edge.clone();
+            if let Some(e) = c.doc.edge_mut(&id) {
+                let v = if e.arrow_to() { "none" } else { "arrow" };
+                e.0.insert("toEnd".into(), serde_json::json!(v));
+            }
+        }),
         "esc" => { c.sel.clear(); c.edge.clear(); c.edit.clear(); }
         "copy" | "cut" => {
             if !c.sel.is_empty() {

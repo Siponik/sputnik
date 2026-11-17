@@ -659,6 +659,8 @@ export global S {
     in property <string> cv-err;
     in property <string> cv-edit;            // id ноды/провода, который правится на месте
     in property <int> cv-sel;
+    in property <[float]> cv-sel-box;        // рамка выделенного: x0, y0, x1, y1 (меню над ним, «приблизить»)
+    in property <string> cv-sel-kind;        // file / text / link / image / group / edge / many
     in property <string> cv-title;
     in property <string> cv-crumb;
     callback cv-click(string, bool);         // выбрать ноду ("" — снять), bool — добавить к выделению
@@ -675,7 +677,7 @@ export global S {
     callback cv-add-file(string, float, float);
     callback cv-add-image(float, float);
     callback cv-new();
-    callback cv-key(string, float, float);   // undo redo all esc copy cut paste dup group delete layout color:N
+    callback cv-key(string, float, float);   // undo redo all esc copy cut paste dup group delete layout color:N open edit arrow
     in property <[GDot]> graph-dots;
     in property <[GLine]> graph-lines;
     // граф знаний (G_NotesGraph): фильтры и панель «Читаю»
