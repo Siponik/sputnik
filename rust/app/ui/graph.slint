@@ -1,6 +1,6 @@
 // Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
 import { G } from "theme.slint";
-import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView } from "kit.slint";
+import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView, Tip } from "kit.slint";
 import { MdLine } from "linknote.slint";
 import { S, GDot, GLine, Opt } from "store.slint";
 
@@ -230,11 +230,13 @@ export component GraphView inherits Rectangle {
 
 component ZoomBtn inherits Rectangle {
     in property <string> t;
+    in property <string> tip;
     callback clicked;
     width: 32px; height: 32px; border-radius: 8px; border-width: 1px; border-color: G.line;
     background: za.has-hover ? G.node-hover : G.node;
     Text { text: root.t; font-size: 15px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
     za := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+    Tip { text: root.tip; on: za.has-hover; }
 }
 
 component Btn inherits Rectangle {
@@ -346,9 +348,9 @@ export component GraphPage inherits Rectangle {
     }
     VerticalLayout {
         x: gv.x + gv.width - 44px; y: 52px; width: 32px; spacing: 6px;
-        ZoomBtn { t: "+"; clicked => { gv.k = min(8, gv.k * 1.3); } }
-        ZoomBtn { t: "−"; clicked => { gv.k = max(0.3, gv.k / 1.3); } }
-        ZoomBtn { t: "⤢"; clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
+        ZoomBtn { t: "+"; tip: "Крупнее"; clicked => { gv.k = min(8, gv.k * 1.3); } }
+        ZoomBtn { t: "−"; tip: "Мельче"; clicked => { gv.k = max(0.3, gv.k / 1.3); } }
+        ZoomBtn { t: "⤢"; tip: "Весь граф"; clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
     }
     if root.rw > 0: GraphRead {
         x: parent.width - 8px - 320px; y: 8px; width: 320px; height: parent.height - 16px;
