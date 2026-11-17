@@ -1,6 +1,6 @@
 //! Модели «Знаний».
 use super::*;
-use crate::{MdRow, NoteRow};
+use crate::{MdRow, NoteRow, TreeRow};
 use slint::{Model, VecModel};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -40,6 +40,60 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         list.push(NoteRow { path: ss(p.clone()), title: ss(title_of(p)), sub: ss(*kind), cur: false });
     }
     g.set_notes(model(list));
+    // дерево папок (G_Notes): папки — сначала, потом заметки; открыты папки текущей заметки и те, что открыли руками
+    let mut dirs: Vec<String> = vec![];
+    for (f, ..) in &items {
+        let mut cur = String::new();
+        for part in f.split('/').filter(|x| !x.is_empty()) {
+            cur = if cur.is_empty() { part.to_string() } else { format!("{cur}/{part}") };
+            if !dirs.contains(&cur) {
+                dirs.push(cur.clone());
+            }
+        }
+    }
+    dirs.sort_by_key(|d| d.to_lowercase());
+    let hues = super::graph::groups(app);
+    let searching = !q.is_empty();
+    let open = |d: &str| {
+        let auto = searching || u.note_path.starts_with(&format!("{d}/"));
+        auto != u.note_fold.iter().any(|x| x == d)
+    };
+    let mut tree: Vec<TreeRow> = vec![];
+    fn walk(dir: &str, depth: i32, dirs: &[String], items: &[(String, String, String, &str)], open: &dyn Fn(&str) -> bool,
+            title_of: &dyn Fn(&str) -> String, hue: slint::Color, tree: &mut Vec<TreeRow>) {
+        for d in dirs.iter().filter(|d| folder(d) == dir && d.as_str() != dir) {
+            let o = open(d);
+            let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
+            tree.push(TreeRow { path: ss(d.clone()), title: ss(d.rsplit('/').next().unwrap_or(d)), kind: ss("dir"), depth, open: o, n: ss(n.to_string()), hue });
+            if o {
+                walk(d, depth + 1, dirs, items, open, title_of, hue, tree);
+            }
+        }
+        if depth == 0 && dir.is_empty() {
+            return;
+        }
+        for (_, _, p, kind) in items.iter().filter(|x| x.0 == dir) {
+            tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth, open: false, n: ss(""), hue });
+        }
+    }
+    for d in dirs.iter().filter(|d| !d.contains('/')) {
+        let hue = hues.iter().find(|h| h.0 == *d).map(|h| h.1).unwrap_or(slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE));
+        let o = open(d);
+        let n = items.iter().filter(|x| x.0 == *d || x.0.starts_with(&format!("{d}/"))).count();
+        tree.push(TreeRow { path: ss(d.clone()), title: ss(d.clone()), kind: ss("dir"), depth: 0, open: o, n: ss(n.to_string()), hue });
+        if o {
+            walk(d, 1, &dirs, &items, &open, &title_of, hue, &mut tree);
+        }
+    }
+    let grey = slint::Color::from_rgb_u8(0xA3, 0xA5, 0xAE);
+    for (_, _, p, kind) in items.iter().filter(|x| x.0.is_empty()) {
+        tree.push(TreeRow { path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if kind.is_empty() { "note" } else { kind }), depth: 0, open: false, n: ss(""), hue: grey });
+    }
+    g.set_note_tree(model(tree));
+    // «Недавние» — последние открытые вкладки, свежие сверху
+    g.set_note_recent(model(u.note_tabs.iter().rev().take(3).map(|p| TreeRow {
+        path: ss(p.clone()), title: ss(title_of(p)), kind: ss(if super::canvas::is_canvas(p) { "canvas" } else { "note" }), depth: 0, open: false, n: ss(""), hue: grey,
+    }).collect()));
     g.set_notes_count(n0.notes.len() as i32);
     g.set_note_sort(u.note_sort);
     g.set_note_path(ss(u.note_path.clone()));
