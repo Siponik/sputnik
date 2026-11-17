@@ -55,11 +55,17 @@ fn items(app: &App, m: &Menu) -> (String, Vec<MItem>) {
             }
         }
         "sphere" => super::spheres::menu_items(app, &m.id),
+        "note" if m.sub == "todo" => {
+            let n = todo_new(app, &m.id).len();
+            (format!("{} в список", super::spheres::plural(n, "задача", "задачи", "задач")), app.board_lists().iter().map(|l| it(&format!("todo:{}", text(&l["id"])), &text(&l["title"]), "board", "")).collect())
+        }
         "note" => {
             let title = app.notes.notes.iter().find(|n| n.path == m.id).map(|n| n.title.clone()).unwrap_or_default();
+            let todo = todo_new(app, &m.id).len();
             (format!("Заметка · {title}"), vec![
                 it("note-open", "Открыть", "open", ""),
                 it("note-graph", "Показать на графе", "graph", ""),
+                MItem { sub: true, off: todo == 0, ..it("sub:todo", &if todo == 0 { "Чек-лист → в задачи".to_string() } else { format!("Чек-лист → в задачи · {todo}") }, "check", "") },
                 MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
                 it("note-file", "Открыть в другой программе", "share", ""),
                 MItem { sep: true, ..it("note-rename", "Переименовать…", "edit", "") },
@@ -97,6 +103,7 @@ fn note_pick(app: &mut App, u: &mut Ui, m: &Menu, id: &str) {
     match id {
         "note-open" => { u.note_graph = false; super::wire::open_note_tab(app, u, &p); }
         "note-graph" => { super::wire::open_note_tab(app, u, &p); u.note_graph = true; }
+        x if x.starts_with("todo:") => todo_send(app, &p, &x["todo:".len()..]),
         "note-dir" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f.parent().unwrap_or(&f)); } }
         "note-file" => { if let Some(f) = note_file(app, &p) { let _ = open::that(f); } }
         "note-rename" => super::notefile::ask_rename(u, p),
@@ -174,4 +181,32 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
         }
         _ => {}
     }
+}
+
+/// Ключ отправленного пункта: хеш пути и текста (FNV-1a) — в слой уходит только он, не текст заметки.
+fn todo_key(path: &str, item: &str) -> String {
+    let mut h: u64 = 0xcbf29ce484222325;
+    for b in path.bytes().chain([0u8]).chain(item.bytes()) {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x100000001b3);
+    }
+    format!("{h:016x}")
+}
+
+/// Пункты `- [ ]` заметки, которые ещё не уходили задачами.
+fn todo_new(app: &App, path: &str) -> Vec<String> {
+    let Some(n) = app.notes.notes.iter().find(|n| n.path == path) else { return vec![] };
+    sputnik_core::notefile::open_todos(&n.body).into_iter().filter(|t| !app.layer["noteSent"][todo_key(path, t)].is_object()).collect()
+}
+
+/// «Чек-лист → в задачи»: пункты уходят задачами в список, в описании — откуда. Файл заметки не меняется.
+fn todo_send(app: &mut App, path: &str, list: &str) {
+    let items = todo_new(app, path);
+    let title = app.notes.notes.iter().find(|n| n.path == path).map(|n| n.title.clone()).unwrap_or_default();
+    for t in &items {
+        app.add_task(list, t, None, serde_json::json!({}), None, &format!("Из заметки [[{title}]]"));
+        app.touch("noteSent", &todo_key(path, t), serde_json::json!({"at": crate::state::now_ms()}));
+    }
+    let name = app.list_name(list);
+    app.say(format!("{} в «{name}»", super::spheres::plural(items.len(), "задача создана", "задачи созданы", "задач создано")));
 }

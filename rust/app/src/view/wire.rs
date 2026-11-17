@@ -1143,7 +1143,7 @@ pub fn wire(w: &AppWindow) {
     // ---------- Знания ----------
     g.on_note_search(|q| act(|_, u| u.note_q = str_(&q)));
     // заметка из списка открывается и поверх графа
-    g.on_note_open(|p| act(|app, u| { u.note_graph = false; open_note_tab(app, u, &str_(&p)); }));
+    g.on_note_open(|p| act(|app, u| { u.tab = 4; u.note_graph = false; open_note_tab(app, u, &str_(&p)); }));
     // [[ в заметке задачи (п.37): подсказка по «Знаниям» и вставка ссылки
     let ww2 = w.as_weak();
     g.on_link_search(move |t| {

@@ -303,6 +303,27 @@ export component TaskDialog inherits Overlay {
                             PRow { icon: "share"; key: "Исполнитель"; val: "Я"; arrow: false; }
                         }
                     }
+                    // Заметки «Знаний» про эту задачу: по ссылкам [[…]] и по названию
+                    Card {
+                        height: 30px + max(1, S.t-note-links.length) * 32px + 4px;
+                        CardHead { y: 0; text: "ЗАМЕТКИ"; }
+                        Rectangle {
+                            x: parent.width - lt.preferred-width - 22px; y: 0; width: lt.preferred-width + 12px; height: 30px;
+                            lt := Text { text: "＋ Связать"; font-size: 12.5px; color: la.has-hover ? G.accent-ink : G.accent; horizontal-alignment: center; vertical-alignment: center; }
+                            la := TouchArea { mouse-cursor: pointer; clicked => { S.t-notes-set(S.t-notes + (S.t-notes == "" ? "[[" : "\n[[")); nb.grab(); } }
+                        }
+                        VerticalLayout {
+                            y: 30px; padding-left: 6px; padding-right: 6px; alignment: start;
+                            if S.t-note-links.length == 0: Text { x: 10px; height: 32px; text: "Нет — напиши [[название]] в заметке"; font-size: 12px; color: #62646E; vertical-alignment: center; }
+                            for n in S.t-note-links: Rectangle {
+                                height: 32px; border-radius: 6px; background: nla.has-hover ? G.node-hover : transparent;
+                                Rectangle { x: 8px; y: 13px; width: 6px; height: 6px; border-radius: 3px; background: n.hue; }
+                                Text { x: 22px; width: parent.width - 110px; text: n.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                Text { x: parent.width - self.preferred-width - 8px; width: min(self.preferred-width, 80px); text: n.hint; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: G.dim; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                nla := TouchArea { mouse-cursor: pointer; clicked => { S.t-close(); S.note-open(n.id); } }
+                            }
+                        }
+                    }
                     // История
                     Card {
                         vertical-stretch: 1;

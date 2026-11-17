@@ -126,3 +126,28 @@ pub fn link_at(line: &str, at: usize) -> Option<String> {
     }
     None
 }
+
+/// Невыполненные пункты `- [ ] …` заметки (вне блоков кода): текст пункта без разметки,
+/// ссылки `[[Имя|подпись]]` — подписью. Для «Чек-лист → в задачи».
+pub fn open_todos(body: &str) -> Vec<String> {
+    let mut out = vec![];
+    let mut code = false;
+    for l in body.lines() {
+        let t = l.trim_start();
+        if t.starts_with("```") {
+            code = !code;
+            continue;
+        }
+        if code {
+            continue;
+        }
+        let rest = ["- [ ] ", "* [ ] ", "+ [ ] "].iter().find_map(|p| t.strip_prefix(p));
+        if let Some(r) = rest {
+            let txt = crate::mdline::plain(r.trim()).text.trim().to_string();
+            if !txt.is_empty() {
+                out.push(txt);
+            }
+        }
+    }
+    out
+}

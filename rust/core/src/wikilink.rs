@@ -33,3 +33,29 @@ pub fn links(text: &str) -> Vec<String> {
     }
     out
 }
+
+/// Заметки «про эту задачу» (блок «Заметки» в окне задачи): сначала те, на что ссылается заметка задачи `[[…]]`,
+/// потом те, чьё название целым словом есть в названии задачи (ё = е, регистр не важен). Ответ — номера в `titles`.
+pub fn about(task_title: &str, task_notes: &str, titles: &[String]) -> Vec<usize> {
+    let norm = |s: &str| s.to_lowercase().replace('ё', "е");
+    let mut out: Vec<usize> = vec![];
+    for l in links(task_notes) {
+        if let Some(i) = titles.iter().position(|t| norm(t) == norm(&l)) {
+            if !out.contains(&i) {
+                out.push(i);
+            }
+        }
+    }
+    let words: Vec<String> = norm(task_title).split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect();
+    for (i, t) in titles.iter().enumerate() {
+        let tw: Vec<String> = norm(t).split(|c: char| !c.is_alphanumeric()).filter(|w| !w.is_empty()).map(String::from).collect();
+        if tw.is_empty() || out.contains(&i) {
+            continue;
+        }
+        // все слова названия заметки идут подряд в названии задачи
+        if words.windows(tw.len()).any(|w| w == tw.as_slice()) && tw.iter().map(|w| w.chars().count()).sum::<usize>() >= 3 {
+            out.push(i);
+        }
+    }
+    out
+}

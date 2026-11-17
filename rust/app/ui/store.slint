@@ -369,6 +369,8 @@ export global S {
     callback t-close();
     callback t-title-set(string);
     callback t-notes-set(string);
+    // окно задачи, блок «Заметки»: id — путь заметки, hint — папка
+    in property <[Opt]> t-note-links;
     callback t-col(string);
     callback t-prio-set(int);
     callback t-due-set(string);
