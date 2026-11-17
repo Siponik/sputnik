@@ -632,6 +632,7 @@ export global S {
     in property <bool> note-graph;
     in property <[NoteRow]> note-tabs;
     in property <[NoteRow]> note-props;      // плашки под заголовком: тип, #теги, свойства
+    in property <[bool]> note-line-links;    // в строке есть ссылка: клик по ней открывает, Ctrl+клик — правка
     in property <[MdRow]> note-lines;        // строки заметки: вид, исходник, разметка
     in property <[NoteRow]> note-mentions;   // упомянуто без ссылки
     callback note-line-set(int, string);     // строка i заменена текстом (может быть с \n)
@@ -639,7 +640,7 @@ export global S {
     callback note-line-join(int) -> int;     // Backspace в начале: склеить с предыдущей, вернуть курсор
     callback note-commit();                  // сохранить файл, если есть правка
     callback note-hit(int, int, bool) -> int; // клик по видимому тексту строки (с Ctrl?): курсор в строке файла, -1 — открыта ссылка
-    in-out property <bool> ctrl-held;         // Ctrl зажат: клик по ссылке открывает её
+    in-out property <bool> ctrl-held;         // Ctrl зажат: клик по ссылке ставит в неё курсор
     in-out property <int> focus-keys;         // +1 — вернуть фокус окну (после Esc в строке), чтобы Ctrl и клавиши ловились
     callback note-peek-at(string, int);       // курсор в строке: если он в ссылке — показать её предпросмотр
     in property <string> peek-title;          // предпросмотр ссылки под курсором; пусто — нет

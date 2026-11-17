@@ -142,6 +142,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
                 plain: ss(r.plain),
             }).collect();
+            g.set_note_line_links(model(crate::notes::line_rows(&text).iter().map(|r| r.raw.contains("[[") || r.raw.contains("](") || r.raw.contains("://")).collect()));
             sync_lines(g, &u.note_path, rows);
             // упомянуто без ссылки: название встречается в тексте другой заметки, но не как [[ссылка]]
             let low = x.title.to_lowercase();

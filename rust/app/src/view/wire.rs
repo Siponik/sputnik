@@ -1272,8 +1272,8 @@ pub fn wire(w: &AppWindow) {
             let body = note_text(app, u);
             match crate::notes::line_hit(&body, i.max(0) as usize, at.max(0) as usize) {
                 Ok(c) => caret = c as i32,
-                // просто клик по ссылке — курсор в неё (и предпросмотр), переход — Ctrl+клик
-                Err(_) if !ctrl => caret = crate::notes::line_caret(&body, i.max(0) as usize, at.max(0) as usize) as i32,
+                // клик по ссылке — переход, Ctrl+клик — курсор в неё, чтобы поправить
+                Err(_) if ctrl => caret = crate::notes::line_caret(&body, i.max(0) as usize, at.max(0) as usize) as i32,
                 Err(link) => {
                     caret = -1;
                     if link.contains("://") {

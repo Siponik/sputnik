@@ -13,6 +13,7 @@ component LiveLine inherits Rectangle {
     in property <bool> editing;
     in property <int> caret: -1;
     in property <float> zoom: 1;
+    in property <bool> has-link;
     callback pick();
     callback commit(string);
     callback split(string, int);
@@ -57,7 +58,7 @@ component LiveLine inherits Rectangle {
     }
     st := StyledText {
         visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr";
-        x: ind; y: pad; width: parent.width - ind;
+        x: ind; y: pad; width: root.has-link ? min(self.preferred-width, parent.width - ind) : parent.width - ind;
         text: line.md;
         default-font-size: fs;
         default-font-family: line.kind == "code" ? G.mono : G.sans;
@@ -68,7 +69,8 @@ component LiveLine inherits Rectangle {
     // раскладка: в прокрутке (невидимое поле во всю строку, растёт с ней)
     // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
     // Rust переводит это место в место в строке файла (или открывает ссылку). StyledText сам клики глотает.
-    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img": hit := TextInput {
+    // в строке со ссылками сверху оформленный текст: ссылка — рука и переход по клику; Ctrl+клик или клик правее текста — правка
+    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img" && (!root.has-link || S.ctrl-held): hit := TextInput {
         x: ind; y: pad; width: parent.width - ind;
         text: line.plain;
         read-only: true;
@@ -406,6 +408,7 @@ export component NotesPage inherits Rectangle {
                 Rectangle { height: 14px; }
                 for b[i] in S.note-lines: LiveLine {
                     line: b;
+                    has-link: i < S.note-line-links.length && S.note-line-links[i];
                     zoom: root.zen ? 1.12 : 1;
                     editing: i == root.edit-i;
                     caret: root.caret;
