@@ -41,7 +41,12 @@ export component CtxMenu inherits Rectangle {
                     background: ia.has-hover && !m.off ? G.node-hover : transparent;
                     HorizontalLayout {
                         padding-left: 10px; padding-right: 10px; spacing: 10px;
-                        Icon { name: m.icon; width: 16px; y: (parent.height - 16px) / 2; c: m.red ? G.red : m.off ? G.dim : #A3A5AE; }
+                        // пункт выбора цвета — сам цвет кружком, а не значок
+                        if m.hue.alpha == 0: Icon { name: m.icon; width: 16px; y: (parent.height - 16px) / 2; c: m.red ? G.red : m.off ? G.dim : #A3A5AE; }
+                        if m.hue.alpha > 0: Rectangle { width: 16px; Rectangle {
+                            width: 14px; height: 14px; border-radius: 7px; background: m.hue;
+                            border-width: m.on ? 2px : 0; border-color: #ffffffd0;
+                        } }
                         Text { text: m.label; font-size: 13px; color: m.red ? G.red : m.off ? G.dim : G.ink; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
                         if m.on: Icon { name: "check"; width: 14px; y: (parent.height - 14px) / 2; c: G.accent; }
                         if m.key != "": Text { text: m.key; font-family: G.mono; font-size: 10px; color: #7A7C86; vertical-alignment: center; }

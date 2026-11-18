@@ -109,6 +109,9 @@ export component AppWindow inherits Window {
             if (e.modifiers.control) {
                 // Ctrl+Shift+L — к поиску списка на доске
                 if (e.modifiers.shift && (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д" || e.text == "\u{0c}")) { if (S.tab != 2) { S.go(2); } S.list-find += 1; return accept; }
+                // Ctrl+Z / Ctrl+Y в открытой заметке (холст ловит их сам, когда в фокусе)
+                if (S.tab == 4 && (e.text == "z" || e.text == "Z" || e.text == "я" || e.text == "Я" || e.text == "\u{1a}")) { S.note-undo(e.modifiers.shift); return accept; }
+                if (S.tab == 4 && (e.text == "y" || e.text == "Y" || e.text == "н" || e.text == "Н" || e.text == "\u{19}")) { S.note-undo(true); return accept; }
                 if (e.text == "k" || e.text == "л") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }

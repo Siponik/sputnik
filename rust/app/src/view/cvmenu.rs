@@ -30,7 +30,7 @@ pub fn items(u: &Ui, m: &menu::Menu) -> (String, Vec<MItem>) {
     }
     let Some(c) = u.cv.as_ref() else { return (String::new(), vec![]) };
     if m.sub == "color" {
-        return (String::from("Цвет"), COLORS.iter().map(|(k, l)| it(&format!("cv-color:{k}"), l, if k.is_empty() { "circle" } else { "accent" }, "")).collect());
+        return (String::from("Цвет"), COLORS.iter().map(|(k, l)| MItem { hue: super::canvas::hex_color(&sputnik_core::canvas::color_hex(k)).unwrap_or_default(), ..it(&format!("cv-color:{k}"), l, "circle", "") }).collect());
     }
     let n = c.doc.node(&m.id);
     let kind = n.map(|n| if n.kind() == "file" && super::canvas::is_image(n.file()) { "image" } else { n.kind() }).unwrap_or("");
