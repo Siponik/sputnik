@@ -37,7 +37,7 @@ pub fn items(m: &super::menu::Menu) -> (String, Vec<MItem>) {
     if m.sub == "color" {
         let cur = colors().get(&m.id).cloned().unwrap_or_default();
         let mut v = vec![MItem { on: cur.is_empty(), ..it("dir-color:", "По умолчанию", "circle") }];
-        v.extend(COLORS.iter().map(|(h, l)| MItem { on: cur == *h, ..it(&format!("dir-color:{h}"), l, "circle") }));
+        v.extend(COLORS.iter().map(|(h, l)| MItem { on: cur == *h, hue: super::canvas::hex_color(&format!("#{h}")).unwrap_or_default(), ..it(&format!("dir-color:{h}"), l, "circle") }));
         return (format!("{name} · цвет"), v);
     }
     (format!("Папка · {name}"), vec![

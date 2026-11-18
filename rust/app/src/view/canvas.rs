@@ -151,7 +151,7 @@ fn folder_hue(folder: &str) -> Color {
     Color::from_rgb_u8((c >> 16) as u8, (c >> 8) as u8, c as u8)
 }
 
-fn hex_color(h: &str) -> Option<Color> {
+pub fn hex_color(h: &str) -> Option<Color> {
     let v = u32::from_str_radix(h.strip_prefix('#')?, 16).ok()?;
     Some(Color::from_rgb_u8((v >> 16) as u8, (v >> 8) as u8, v as u8))
 }

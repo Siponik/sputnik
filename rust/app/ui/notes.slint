@@ -20,6 +20,7 @@ component LiveLine inherits Rectangle {
     callback join(string);
     callback move(string, int, int);
     callback leave(string);
+    callback undo(bool);
     callback pick-at(int);
     callback toggle();
     callback focus-mode();
@@ -124,6 +125,9 @@ component LiveLine inherits Rectangle {
             if (e.text == Key.Backspace && ed.cursor-position-byte-offset == 0 && ed.anchor-position-byte-offset == 0) { root.join(ed.text); return accept; }
             if (e.modifiers.control && (e.text == "e" || e.text == "E" || e.text == "у" || e.text == "У")) { root.focus-mode(); return accept; }
             if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы")) { root.commit(ed.text); return accept; }
+            // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y: строка сохраняется, и вся заметка откатывается на шаг
+            if (e.modifiers.control && (e.text == "z" || e.text == "Z" || e.text == "я" || e.text == "Я" || e.text == "\u{1a}")) { root.leave(ed.text); root.undo(e.modifiers.shift); S.focus-keys += 1; return accept; }
+            if (e.modifiers.control && (e.text == "y" || e.text == "Y" || e.text == "н" || e.text == "Н" || e.text == "\u{19}")) { root.leave(ed.text); root.undo(true); S.focus-keys += 1; return accept; }
             reject
         }
         // раскладка: в прокрутке (колонка окна прокручивается)
@@ -462,6 +466,7 @@ export component NotesPage inherits Rectangle {
                     caret: root.caret;
                     pick => { root.caret = -1; root.edit-i = i; }
                     leave(t) => { if (t != b.raw) { S.note-line-set(i, t); } if (root.edit-i == i) { root.edit-i = -1; } S.note-commit(); }
+                    undo(r) => { S.note-undo(r); }
                     commit(t) => { if (t != b.raw) { S.note-line-set(i, t); } S.note-commit(); }
                     split(t, at) => { root.caret = S.note-line-split(i, t, at); root.edit-i = i + 1; }
                     join(t) => { if (i > 0) { if (t != b.raw) { S.note-line-set(i, t); } root.caret = S.note-line-join(i); root.edit-i = i - 1; } }

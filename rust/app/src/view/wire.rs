@@ -1283,6 +1283,7 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
+    g.on_note_undo(|redo| act(|app, u| note_undo(app, u, redo)));
     // «＋ Таблица»: 3 колонки, заголовок и пустая строка — после строки, где курсор, иначе в конец
     g.on_note_table(|i| act(|app, u| {
         let n = crate::notes::line_rows(&note_text(app, u)).len();
@@ -1431,9 +1432,25 @@ fn note_set_lines(app: &App, u: &mut Ui, i: usize, t: &str, drop: usize) {
     let parts: Vec<&str> = t.split('\n').collect();
     let new = crate::notes::replace_line(&base, i, &parts, drop);
     if new != base {
+        u.note_undo.push((u.note_path.clone(), base));
+        if u.note_undo.len() > 300 { u.note_undo.remove(0); }
+        u.note_redo.clear();
         u.note_draft = new;
         u.note_dirty = true;
     }
+}
+
+/// Ctrl+Z (redo = false) / Ctrl+Y: вернуть прежний текст открытой заметки и сохранить.
+fn note_undo(app: &mut App, u: &mut Ui, redo: bool) {
+    let p = u.note_path.clone();
+    let (from, to) = if redo { (&mut u.note_redo, &mut u.note_undo) } else { (&mut u.note_undo, &mut u.note_redo) };
+    let Some(k) = from.iter().rposition(|(q, _)| *q == p) else { return };
+    let (_, text) = from.remove(k);
+    let cur = if u.note_dirty { u.note_draft.clone() } else { app.notes.notes.iter().find(|x| x.path == p).map(|x| x.body.clone()).unwrap_or_default() };
+    to.push((p, cur));
+    u.note_draft = text;
+    u.note_dirty = true;
+    save_draft(app, u);
 }
 
 pub(super) fn save_draft(app: &mut App, u: &mut Ui) {

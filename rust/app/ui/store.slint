@@ -25,7 +25,7 @@ export struct Day { ymd: string, label: string, num: string, today: bool, sel: b
 export struct SphList { id: string, name: string, letter: string, count: int }
 export struct SphCard { id: string, name: string, head: color, aside: string, sel: bool, lists: [SphList] }
 export struct ArchSph { kind: string, id: string, name: string, meta: string, date: string, head: color, letter: string, group: string, first: bool }
-export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool }
+export struct MItem { id: string, label: string, icon: string, key: string, red: bool, sep: bool, sub: bool, off: bool, on: bool, hue: color }
 export struct EdOut { text: string, a: int, b: int }
 export struct Opt { id: string, label: string, hint: string, hue: color, on: bool }
 export struct SphRow { items: [Opt], last: bool }
@@ -647,6 +647,7 @@ export global S {
     callback note-line-set(int, string);     // строка i заменена текстом (может быть с \n)
     callback note-line-split(int, string, int) -> int; // Enter: разрезать строку по курсору, вернуть курсор новой строки
     callback note-line-join(int) -> int;     // Backspace в начале: склеить с предыдущей, вернуть курсор
+    callback note-undo(bool);                // Ctrl+Z (false) / Ctrl+Y (true): прежний текст заметки
     callback note-commit();                  // сохранить файл, если есть правка
     callback note-hit(int, int, bool) -> int; // клик по видимому тексту строки (с Ctrl?): курсор в строке файла, -1 — открыта ссылка
     in-out property <bool> ctrl-held;         // Ctrl зажат: клик по ссылке ставит в неё курсор
