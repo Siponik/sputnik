@@ -233,14 +233,15 @@ export component CanvasView inherits Rectangle {
                 background: n.head;
                 Text {
                     x: 12px * min(1, root.k * 1.5); width: parent.width - 24px * min(1, root.k * 1.5) - tg.width;
-                    text: (n.kind == "link" ? n.tag : n.title).to-uppercase();
+                    // у снимка страницы в шапке — название страницы, сайт справа
+                    text: (n.kind == "link" && !(n.page && n.title != n.path) ? n.tag : n.title).to-uppercase();
                     font-family: G.mono; font-size: max(8px, 10.5px * root.k); font-weight: 600; letter-spacing: 1.4px;
                     color: #fff; vertical-alignment: center; height: parent.height; overflow: elide;
                 }
                 tg := Text {
                     x: parent.width - self.width - 12px * min(1, root.k * 1.5);
                     width: self.preferred-width;
-                    text: n.kind == "link" ? "ССЫЛКА" : (n.missing ? "НЕТ ЗАМЕТКИ" : n.tag);
+                    text: n.kind == "link" ? (n.page && n.title != n.path ? n.tag.to-uppercase() : "ССЫЛКА") : (n.missing ? "НЕТ ЗАМЕТКИ" : n.tag);
                     font-family: G.mono; font-size: max(8px, 10px * root.k); letter-spacing: 1.2px;
                     color: #ffffffb0; vertical-alignment: center; height: parent.height;
                 }
