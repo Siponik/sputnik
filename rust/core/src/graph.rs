@@ -93,7 +93,7 @@ pub fn build_with(notes: &[(String, String, Vec<String>)], missing: bool, forces
 
 /// Радиус точки: растёт с числом связей.
 pub fn radius(degree: usize) -> f64 {
-    2.6 + (degree as f64).sqrt() * 2.2
+    2.4 + (degree as f64).sqrt() * 1.3
 }
 
 /// Соседи точки (локальный граф глубины 1).
@@ -167,6 +167,11 @@ pub struct Sim {
     pub steps: f64,
     /// Точки без связей: к центру тянутся слабо — ложатся кольцом по краю (как в Obsidian).
     lone: Vec<bool>,
+    /// Порядок появления точек при пересборке и сколько уже видно (как в Obsidian — по одной).
+    rank: Vec<usize>,
+    nb: Vec<Vec<usize>>,
+    pub shown: usize,
+    grown: f64,
 }
 
 impl Sim {
@@ -195,14 +200,78 @@ impl Sim {
             (a, b, st, bias)
         }).collect();
         let (dist, charge, grav) = forces.units();
-        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0), steps: 300.0, lone: deg.iter().map(|&d| d == 0).collect() };
+        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0), steps: 300.0, lone: deg.iter().map(|&d| d == 0).collect(), rank: (0..n).collect(), nb: vec![], shown: n, grown: n as f64 };
         s.refit();
         s
     }
 
     /// Один шаг. false — уже замерло (и никто не тянет).
+    /// Пересборка с появлением точек по одной: от самой связанной — по соседям (обход в ширину).
+    pub fn grow(&mut self, edges: &[(usize, usize)]) {
+        let n = self.x.len();
+        let mut nb = vec![vec![]; n];
+        for &(a, b) in edges {
+            nb[a].push(b);
+            nb[b].push(a);
+        }
+        let mut by: Vec<usize> = (0..n).collect();
+        by.sort_by(|a, b| nb[*b].len().cmp(&nb[*a].len()));
+        let mut seen = vec![false; n];
+        let mut order = vec![];
+        for s0 in by {
+            if seen[s0] {
+                continue;
+            }
+            seen[s0] = true;
+            let mut q = std::collections::VecDeque::from([s0]);
+            while let Some(v) = q.pop_front() {
+                order.push(v);
+                for &w in &nb[v] {
+                    if !seen[w] {
+                        seen[w] = true;
+                        q.push_back(w);
+                    }
+                }
+            }
+        }
+        for (k, &v) in order.iter().enumerate() {
+            self.rank[v] = k;
+        }
+        for i in 0..n {
+            self.x[i] = 0.0;
+            self.y[i] = 0.0;
+        }
+        self.nb = nb;
+        self.shown = 0;
+        self.grown = 0.0;
+        self.alpha = 1.0;
+    }
+
+    /// Видна ли точка (при пересборке — уже появилась).
+    pub fn visible(&self, i: usize) -> bool {
+        self.rank.get(i).is_none_or(|&r| r < self.shown)
+    }
+
     pub fn tick(&mut self) -> bool {
         let n = self.x.len();
+        if self.shown < n {
+            // за ~1,5 секунды все точки на месте; новая появляется рядом с уже видным соседом
+            let before = self.shown;
+            // ~4 шага за кадр: все точки появляются примерно за 2 секунды
+            self.grown += (n as f64 / 480.0).max(0.1);
+            self.shown = (self.grown as usize).min(n);
+            for i in 0..n {
+                let r = self.rank[i];
+                if r >= before && r < self.shown {
+                    let at = self.nb.get(i).and_then(|v| v.iter().find(|&&j| self.rank[j] < before)).copied();
+                    let a = r as f64 * 2.399;
+                    let (bx, by) = at.map(|j| (self.x[j], self.y[j])).unwrap_or((0.0, 0.0));
+                    self.x[i] = bx + 6.0 * a.cos();
+                    self.y[i] = by + 6.0 * a.sin();
+                }
+            }
+            self.alpha = self.alpha.max(0.7);
+        }
         if n == 0 || (self.alpha <= 0.001 && self.held.is_none()) {
             return false;
         }
@@ -241,6 +310,16 @@ impl Sim {
             vy[i] *= 0.6;
             x[i] += vx[i];
             y[i] += vy[i];
+        }
+        if self.shown < n {
+            for i in 0..n {
+                if self.rank[i] >= self.shown {
+                    x[i] = 0.0;
+                    y[i] = 0.0;
+                    vx[i] = 0.0;
+                    vy[i] = 0.0;
+                }
+            }
         }
         if let Some((i, hx, hy)) = self.held {
             x[i] = hx;

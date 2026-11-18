@@ -420,7 +420,8 @@ impl Notes {
     /// «Пересобрать граф»: раскладка заново, с нуля — точки снова разлетаются из центра.
     pub fn graph_rebuild(&mut self) {
         let mut sm = sputnik_core::graph::Sim::new(self.graph.0.len(), &self.graph.1, self.graph_opts.forces, &[]);
-        sm.steps = 160.0;
+        sm.steps = 220.0;
+        sm.grow(&self.graph.1);
         self.sim = Some(sm);
     }
 

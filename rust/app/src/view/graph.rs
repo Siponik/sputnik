@@ -88,6 +88,12 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let named: Vec<usize> = by_deg.into_iter().take(7).filter(|&i| ns[i].degree >= 3).collect();
     let mut dots = vec![];
     let mut nd = 0;
+    // пересборка: ещё не появившиеся точки и их связи не рисуем
+    if let Some(sm) = app.notes.sim.as_ref() {
+        for (i, v) in vis.iter_mut().enumerate() {
+            *v = *v && sm.visible(i);
+        }
+    }
     for (i, p) in ns.iter().enumerate() {
         if !vis[i] {
             continue;
