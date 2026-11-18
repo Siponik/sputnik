@@ -200,9 +200,10 @@ export component CanvasView inherits Rectangle {
         }
         // нода
         if n.kind != "group": Rectangle {
-            border-radius: (n.main ? 12px : 8px) * min(1, root.k);
-            background: G.node;
-            border-width: 1px;
+            // издалека рамку и углы рисует сама плашка — иначе две рамки с разным скруглением
+            border-radius: far ? 6px : (n.main ? 12px : 8px) * max(0.75, min(1, root.k));
+            background: far ? transparent : G.node;
+            border-width: far ? 0 : 1px;
             border-color: n.sel ? nd.hue : (n.kind == "text" ? (n.colored ? n.head : G.gold.with-alpha(0.55)) : G.line);
             drop-shadow-blur: n.sel ? 18px : 0;
             drop-shadow-color: #0008;
