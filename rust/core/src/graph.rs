@@ -93,7 +93,7 @@ pub fn build_with(notes: &[(String, String, Vec<String>)], missing: bool, forces
 
 /// Радиус точки: растёт с числом связей.
 pub fn radius(degree: usize) -> f64 {
-    3.0 + (degree as f64).sqrt() * 1.6
+    2.6 + (degree as f64).sqrt() * 2.2
 }
 
 /// Соседи точки (локальный граф глубины 1).
@@ -165,6 +165,8 @@ pub struct Sim {
     pub map: (f64, f64, f64),
     /// За сколько шагов остывает: 300 — для разовой раскладки, живой граф — быстрее.
     pub steps: f64,
+    /// Точки без связей: к центру тянутся слабо — ложатся кольцом по краю (как в Obsidian).
+    lone: Vec<bool>,
 }
 
 impl Sim {
@@ -193,7 +195,7 @@ impl Sim {
             (a, b, st, bias)
         }).collect();
         let (dist, charge, grav) = forces.units();
-        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0), steps: 300.0 };
+        let mut s = Sim { x, y, vx: vec![0.0; n], vy: vec![0.0; n], lk, dist, charge, grav, alpha: 1.0, held: None, map: (0.0, 0.0, 1.0), steps: 300.0, lone: deg.iter().map(|&d| d == 0).collect() };
         s.refit();
         s
     }
@@ -232,8 +234,9 @@ impl Sim {
             vy[i] += fy;
         }
         for i in 0..n {
-            vx[i] -= x[i] * self.grav * alpha;
-            vy[i] -= y[i] * self.grav * alpha;
+            let g = if self.lone[i] { self.grav * 0.35 } else { self.grav };
+            vx[i] -= x[i] * g * alpha;
+            vy[i] -= y[i] * g * alpha;
             vx[i] *= 0.6;
             vy[i] *= 0.6;
             x[i] += vx[i];
