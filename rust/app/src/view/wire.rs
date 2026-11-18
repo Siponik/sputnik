@@ -1155,6 +1155,14 @@ pub fn wire(w: &AppWindow) {
         };
         g.set_link_found(model(found));
     });
+    g.on_table_set(|raw, c, t| {
+        let mut cells = crate::notes::table_cells(raw.as_str());
+        let c = c.max(0) as usize;
+        while cells.len() <= c { cells.push(String::new()); }
+        cells[c] = t.to_string();
+        ss(sputnik_core::edcmd::table_row(&cells))
+    });
+    g.on_table_blank(|raw| ss(sputnik_core::edcmd::table_row(&vec![String::new(); crate::notes::table_cells(raw.as_str()).len()])));
     g.on_table_cells(|raw| {
         model(crate::notes::table_cells(raw.as_str()).into_iter().map(|c| {
             // <br> внутри ячейки — перенос строки; каждая часть — своё оформление (**жирный**, _курсив_, ссылки)

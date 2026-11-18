@@ -24,3 +24,10 @@ fn blocks_go_after_line() {
     assert_eq!(apply("abc", 0, 3, "clear").0, "abc");
     assert_eq!(apply("**a** b", 0, 0, "clear").0, "a b");
 }
+
+#[test]
+fn table_row_built() {
+    use sputnik_core::edcmd::table_row;
+    assert_eq!(table_row(&["a".into(), "b|c".into(), "x\ny".into()]), "| a | b\\|c | x<br>y |");
+    assert_eq!(table_row(&["".into(), "".into()]), "|  |  |");
+}
