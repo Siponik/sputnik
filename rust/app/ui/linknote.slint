@@ -7,6 +7,11 @@ export component TableRow inherits Rectangle {
     in property <string> raw;
     in property <bool> head;
     in property <length> fs: 13.5px;
+    // в заметке ячейки правятся по клику
+    in property <bool> editable;
+    in-out property <int> edit-c: -1;
+    callback set(int, string);
+    callback add-row();
     property <[MdRow]> cells: S.table-cells(raw);
     // все ячейки одной ширины; текст переносится, строка растёт по самой высокой ячейке
     property <length> cw: root.width / max(1, root.cells.length);
@@ -17,12 +22,40 @@ export component TableRow inherits Rectangle {
         spacing: 0; padding: 0;
         for c[i] in root.cells: Rectangle {
             width: root.cw;
+            min-height: root.fs * 1.4 + 10px;
             if i > 0: Rectangle { x: 0; width: 1px; background: G.line; }
+            if i == root.edit-c: Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-width: 1px; border-color: G.accent; border-radius: 2px; }
             VerticalLayout {
                 padding-left: 9px; padding-right: 9px; padding-top: 5px; padding-bottom: 5px;
-                StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent; }
+                if i != root.edit-c: StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent; }
+                // правка ячейки прямо в таблице: Enter — готово (Shift+Enter — перенос), Tab — следующая ячейка,
+                // Ctrl+Enter — новая строка таблицы ниже, Esc — выйти
+                if i == root.edit-c: fs := FocusScope {
+                    height: ci.preferred-height;
+                    capture-key-pressed(e) => {
+                        if (e.text == Key.Return && e.modifiers.control) { root.done(i, ci.text, 0); root.add-row(); return accept; }
+                        if (e.text == Key.Return && !e.modifiers.shift) { root.done(i, ci.text, -1); return accept; }
+                        if (e.text == Key.Tab) { root.done(i, ci.text, e.modifiers.shift ? max(0, i - 1) : (i + 1 < root.cells.length ? i + 1 : 0)); return accept; }
+                        if (e.text == Key.Escape) { root.done(i, ci.text, -1); return accept; }
+                        reject
+                    }
+                    // раскладка: в прокрутке (ячейка растёт вместе со строкой таблицы, заметка прокручивается)
+                    ci := TextInput {
+                        width: root.cw - 18px; text: c.plain; single-line: false; wrap: word-wrap;
+                        font-size: root.fs; font-weight: root.head ? 600 : 400; color: G.ink;
+                        selection-background-color: #F0A04B66;
+                        init => { self.focus(); self.set-selection-offsets(999999, 999999); }
+                        changed has-focus => { if (!self.has-focus && root.edit-c == i) { root.done(i, self.text, -1); } }
+                    }
+                }
             }
+            // поверх текста: оформленный текст сам глотает клики
+            if root.editable && i != root.edit-c: TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.edit-c = i; } }
         }
+    }
+    function done(i: int, t: string, next: int) {
+        root.edit-c = next;
+        if (t != root.cells[i].plain) { root.set(i, t); }
     }
 }
 

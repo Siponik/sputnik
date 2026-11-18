@@ -501,6 +501,9 @@ export global S {
     in property <int> ed-cmd-n;
     pure callback ed-apply(string, int, int, string) -> EdOut;
     pure callback ed-sel(string, int, int) -> string;
+    // таблица: строка с заменённой ячейкой и пустая строка той же ширины
+    pure callback table-set(string, int, string) -> string;
+    pure callback table-blank(string) -> string;
     callback menu-pick(string);
     callback menu-close();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками

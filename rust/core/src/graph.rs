@@ -258,7 +258,7 @@ impl Sim {
             // за ~1,5 секунды все точки на месте; новая появляется рядом с уже видным соседом
             let before = self.shown;
             // ~4 шага за кадр: все точки появляются примерно за 2 секунды
-            self.grown += (n as f64 / 480.0).max(0.1);
+            self.grown += (n as f64 / 1000.0).max(0.045);
             self.shown = (self.grown as usize).min(n);
             for i in 0..n {
                 let r = self.rank[i];

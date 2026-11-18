@@ -106,3 +106,9 @@ pub fn apply(t: &str, a: usize, b: usize, cmd: &str) -> (String, usize, usize) {
     }
     (t.to_string(), a, b)
 }
+
+/// Строка таблицы из ячеек: «| a | b |». `|` в тексте экранируется, перенос строки — `<br>`.
+pub fn table_row(cells: &[String]) -> String {
+    let c: Vec<String> = cells.iter().map(|x| x.trim().replace('|', "\\|").replace('\n', "<br>")).collect();
+    format!("| {} |", c.join(" | "))
+}
