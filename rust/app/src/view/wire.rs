@@ -710,7 +710,7 @@ pub fn wire(w: &AppWindow) {
         app.set_priority(&id, if p == 0 { None } else { Some(p as i64) });
     }));
     g.on_dp_open_task(|| act(|app, u| {
-        if let Some((l, id)) = cur(u) { u.dp = super::datetime::open(app, &l, &id); }
+        if let Some((l, id)) = cur(u) { u.dp = super::datetime::open(app, &l, &id).map(|d| super::datetime::Dp { drop: "task", ..d }); }
     }));
     g.on_dp_words(|t| act(|_, u| if let Some(d) = u.dp.as_mut() { super::datetime::words(d, &t) }));
     g.on_dp_day(|t| act(|_, u| if let Some(d) = u.dp.as_mut() {
@@ -725,6 +725,7 @@ pub fn wire(w: &AppWindow) {
             "tomorrow" => Some(t + chrono::Duration::days(1)),
             "weekend" => Some(t + chrono::Duration::days(((5 - t.weekday().num_days_from_monday() as i64) + 7) % 7)),
             "week" => Some(t + chrono::Duration::days(7)),
+            "mon" => Some(t + chrono::Duration::days(7 - t.weekday().num_days_from_monday() as i64)),
             _ => { d.hour = None; None }
         };
         if let Some(x) = d.day { d.month = x.with_day(1).unwrap_or(x); }
@@ -814,7 +815,7 @@ pub fn wire(w: &AppWindow) {
     g.on_t_time_set(|t| act(|app, u| { if let Some((l, id)) = cur(u) { time_set(app, &l, &id, &str_(&t)); } }));
     // те же поля в раскрытой строке конвейера (п.42)
     g.on_w_time(|l, id, t| act(|app, _| time_set(app, &l, &id, &str_(&t))));
-    g.on_w_date(|l, id| act(|app, u| { u.dp = super::datetime::open(app, &l, &id); }));
+    g.on_w_date(|l, id| act(|app, u| { u.dp = super::datetime::open(app, &l, &id).map(|d| super::datetime::Dp { drop: "pipe", ..d }); }));
     g.on_w_remind(|_, id, m| act(|app, _| remind_toggle(app, &id, &m)));
     g.on_t_remind(|m| act(|app, u| {
         let Some((_, id)) = cur(u) else { return };

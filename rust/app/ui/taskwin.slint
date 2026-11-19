@@ -5,6 +5,7 @@ import { Field, Overlay, Brackets, Icon, Chev, ScrollInput, ScrollView } from "k
 import { S, Opt, Sub } from "store.slint";
 import { LinkNote } from "linknote.slint";
 import { TimeBox } from "dialogs.slint";
+import { DueDrop } from "datetime.slint";
 
 component Chip inherits Rectangle {
     in property <string> text;
@@ -268,6 +269,9 @@ export component TaskDialog inherits Overlay {
                     // Когда: срок и напоминания чипами
                     Card {
                         height: 108px;
+                        // выпадашки времени и даты выходят за карточку — не обрезать и держать над «Свойствами»
+                        clip: !(tbx.open || S.dp-drop == "task");
+                        z: tbx.open || S.dp-drop == "task" ? 20 : 0;
                         CardHead { y: 0; text: "КОГДА"; }
                         // время и дата в один ряд, как в макете G_TaskFull: время 140 px, дата — остальное
                         tbx := TimeBox { x: 10px; y: 30px; width: 140px; height: 34px; z: self.open ? 20 : 0; border-radius: 8px;
@@ -278,7 +282,8 @@ export component TaskDialog inherits Overlay {
                             Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
                             Text { x: 32px; width: parent.width - 60px; text: S.t-due-label == "" ? "Без срока" : S.t-due-label; font-size: 13px; color: S.t-due-label == "" ? G.muted : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                             Chev { x: parent.width - 20px; y: 14px; c: G.muted; }
-                            da := TouchArea { clicked => { S.dp-open-task(); } mouse-cursor: pointer; }
+                            da := TouchArea { clicked => { if (S.dp-drop == "task") { S.dp-cancel(); } else { S.drop = 0; S.dp-open-task(); } } mouse-cursor: pointer; }
+                            if S.dp-open && S.dp-drop == "task": DueDrop { x: parent.width - self.width; y: parent.height + 4px; }
                         }
                         HorizontalLayout {
                             x: 10px; y: 72px; height: 26px; width: parent.width - 20px; spacing: 0; alignment: start;

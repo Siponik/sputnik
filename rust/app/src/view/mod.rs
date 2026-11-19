@@ -203,6 +203,11 @@ pub fn start(app: App) -> AppWindow {
         match std::env::var("SPUTNIK_OPEN").unwrap_or_default().split(':').collect::<Vec<_>>().as_slice() {
             ["create", k, rest @ ..] => u.create = Some(dialogs::Create { kind: k.parse().unwrap_or(0), text: rest.join(":"), ..Default::default() }),
             ["task", l, id] => u.task = Some((l.to_string(), id.to_string())),
+            // окно задачи с открытой выпадашкой даты: task:список:id:due
+            ["task", l, id, "due"] => {
+                u.task = Some((l.to_string(), id.to_string()));
+                u.dp = datetime::open(&app, l, id).map(|d| datetime::Dp { drop: "task", ..d });
+            }
             ["hedit", id] => u.hedit = Some(habitedit::HEdit { id: id.to_string() }),
             ["search", q] => {
                 u.search = Some(q.to_string());

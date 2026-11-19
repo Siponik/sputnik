@@ -126,3 +126,53 @@ export component DatePicker inherits Node {
         }
     }
 }
+
+// Выпадашка даты у поля (§20, G_CreateDate): 268 px, месяц с ‹ ›, сегодня обведено, выбранный залит;
+// снизу «Сегодня · Завтра · Пн · +1 нед» и «Без срока». Клик по дню сразу ставит срок, время не трогает.
+// Ставится внутрь поля даты (x/y — от его нижнего края; у правого края окна — выровнять по правому краю поля). Клик мимо и Esc закрывают.
+export component DueDrop inherits Rectangle {
+    in property <bool> clearable: true;
+    width: 268px;
+    height: 44px + 22px + ceil(S.dp-cells.length / 7) * 32px + 8px + 30px + (root.clearable ? 34px : 0) + 12px;
+    z: 30;
+    // клик мимо — закрыть
+    TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; clicked => { S.dp-cancel(); } }
+    Rectangle {
+        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        TouchArea { }
+        Text { x: 12px; y: 0; height: 40px; text: S.dp-month; font-size: 13.5px; font-weight: 600; color: G.ink; vertical-alignment: center; }
+        for st[k] in [-1, 1]: Rectangle {
+            x: parent.width - 70px + k * 30px; y: 8px; width: 26px; height: 24px; border-radius: 5px;
+            border-width: 1px; border-color: G.line; background: sa.has-hover ? G.node-hover : transparent;
+            Text { text: st < 0 ? "‹" : "›"; color: G.ink; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
+            sa := TouchArea { clicked => { S.dp-month-step(st); } mouse-cursor: pointer; }
+        }
+        for d[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
+            x: 10px + i * 35px; y: 44px; width: 35px; text: d; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center;
+        }
+        for c[i] in S.dp-cells: Rectangle {
+            x: 10px + mod(i, 7) * 35px; y: 64px + floor(i / 7) * 32px; width: 33px; height: 30px; border-radius: 5px;
+            background: c.sel ? G.accent : (ca.has-hover ? G.node-hover : transparent);
+            border-width: c.today && !c.sel ? 1px : 0; border-color: G.accent;
+            Text { text: c.n; font-size: 13px; color: c.sel ? G.on-accent : (c.other ? #5A5C66 : G.ink); horizontal-alignment: center; vertical-alignment: center; }
+            ca := TouchArea { clicked => { S.dp-day(c.day); S.dp-done(); } mouse-cursor: pointer; }
+        }
+        HorizontalLayout {
+            x: 10px; y: 64px + ceil(S.dp-cells.length / 7) * 32px + 8px; width: parent.width - 20px; height: 30px; spacing: 4px;
+            for q[i] in [{ id: "today", t: "Сегодня" }, { id: "tomorrow", t: "Завтра" }, { id: "mon", t: "Пн" }, { id: "week", t: "+1 нед" }]: Rectangle {
+                horizontal-stretch: i == 2 ? 0.6 : 1;
+                border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
+                Text { text: q.t; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                qa := TouchArea { clicked => { S.dp-quick-set(q.id); S.dp-done(); } mouse-cursor: pointer; }
+            }
+        }
+        // «Без срока» — отдельной строкой снизу, как «Без времени» у времени
+        if root.clearable: Rectangle {
+            x: 10px; y: parent.height - 42px; width: parent.width - 20px; height: 30px; border-radius: 5px;
+            background: na.has-hover ? G.node-hover : transparent;
+            Text { x: 10px; text: "Без срока"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+            na := TouchArea { clicked => { S.dp-quick-set("none"); S.dp-done(); } mouse-cursor: pointer; }
+        }
+    }
+}
