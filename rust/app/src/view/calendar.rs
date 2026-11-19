@@ -181,14 +181,15 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     } else {
         let per_day = per_day_m();
         let out: Vec<Day> = per_day.iter().map(|(d, items)| {
-            let mut chips: Vec<&Item> = items.iter().collect();
-            chips.sort_by(|a0, b0| a0.s.map(|x| x.0).unwrap_or(-1.0).partial_cmp(&b0.s.map(|x| x.0).unwrap_or(-1.0)).unwrap());
-            let all: Vec<Chip> = chips.iter().filter(|x| x.chip.kind != 2).map(|x| x.chip.clone()).collect();
+            // месяц без времени (п. 47): ДР, весь день, по времени, сделанное в конце; «+N ещё» считает окно по высоте клетки
+            let chips: Vec<&Item> = items.iter().filter(|x| x.chip.kind != 2).collect();
+            let keys: Vec<(i32, Option<f64>, bool)> = chips.iter().map(|x| (x.chip.kind, x.s.map(|v| v.0), x.chip.done)).collect();
+            let all: Vec<Chip> = sputnik_core::calweek::day_order(&keys).into_iter().map(|i| { let mut c = chips[i].chip.clone(); c.time = ss(""); c }).collect();
             let busy: f64 = items.iter().filter(|x| x.chip.kind != 2).filter_map(|x| x.s.map(|(a0, b0)| b0 - a0)).sum();
             let dl = cal::day_label(d);
             let (hl, hd) = habits_line(app, d);
             Day { ymd: ss(d.clone()), label: ss(""), num: ss(format!("{:02}", dl["n"].as_u64().unwrap_or(0))), today: *d == tdy, sel: *d == u.cal_sel,
-                more: all.len().saturating_sub(3) as i32, all: model(all), blocks: model(vec![]), habits: ss(hl),
+                more: 0, all: model(all), blocks: model(vec![]), habits: ss(hl),
                 load: (busy / 480.0) as f32, in_month: &d[..7] == sel_month, hdots: model(hd), ..Default::default() }
         }).collect();
         let cnt = per_day.iter().filter(|(d, _)| &d[..7] == sel_month).flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind != 2)).count();

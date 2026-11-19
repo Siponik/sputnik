@@ -53,6 +53,8 @@ pub struct Ui {
     pub cal_down: Option<i64>,
     /// Черновик «добавить кликом» в неделе (п. 48).
     pub cal_draft: Option<calweek::Draft>,
+    /// Высота под сетку недели (без шапки и «весь день») — сетка заполняет её целиком.
+    pub cal_avail: f64,
     pub add_time: String,
     pub cal_free: Option<(String, String)>,
     pub quick: String,

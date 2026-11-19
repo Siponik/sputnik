@@ -70,3 +70,33 @@ fn grid_math() {
     assert_eq!(dur_text(90.0), "1 Ч 30 МИН");
     assert_eq!(dur_text(45.0), "45 МИН");
 }
+
+#[test]
+fn grid_fills_height() {
+    // 10 часов по 40 = 400; места 530 → ещё 3 часа: сначала позже (19, 20, 21), сетка 09–22
+    let g = WeekGrid::fit(&[vec![]], None, None, 530.0);
+    assert_eq!((g.r0, g.r1, g.height()), (9, 22, 520.0));
+    // позже кончились (дело до 23:00 уже видно) — добавляем раньше
+    let d = vec![vec![it(9.0, 10.0, 1), WItem { s: 20.0 * 60.0, e: 1440.0, kind: 1, done: false }]];
+    let g = WeekGrid::fit(&d, None, Some(24), 15.0 * 40.0 + 10.0);
+    assert_eq!((g.r0, g.r1), (9, 24));
+    let g = WeekGrid::fit(&d, None, Some(24), 17.0 * 40.0);
+    assert_eq!((g.r0, g.r1), (7, 24));
+    // все сутки влезли — растянуты на всю высоту
+    let g = WeekGrid::fit(&[vec![]], None, None, 1200.0);
+    assert_eq!((g.r0, g.r1), (0, 24));
+    assert!(g.height() > 1199.0 && g.height() <= 1200.0);
+    // дело за краем, которое влезло, перестаёт быть чипом
+    let d = vec![it(19.5, 20.5, 0)];
+    let g = WeekGrid::fit(&[d.clone()], None, None, 600.0);
+    assert_eq!(outside(&d, g.r0, g.r1).1 .0, 0);
+}
+
+#[test]
+fn month_order() {
+    // сделанное, по времени 14:00, весь день, ДР, по времени 9:00
+    let it = [(1, None, true), (1, Some(840.0), false), (1, None, false), (3, None, false), (0, Some(540.0), false)];
+    assert_eq!(day_order(&it), vec![3, 2, 4, 1, 0]);
+    assert_eq!(fit_rows(3, 4), (3, 0));
+    assert_eq!(fit_rows(6, 4), (3, 3));
+}

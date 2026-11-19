@@ -137,12 +137,42 @@ pub struct WeekGrid {
 impl WeekGrid {
     pub fn new(days: &[Vec<WItem>], up: Option<i64>, down: Option<i64>) -> Self {
         let (r0, r1) = week_range(days, up, down);
-        let ht = row_heights(days, r0, r1);
+        Self::build(days, r0, r1, 0.0)
+    }
+    fn build(days: &[Vec<WItem>], r0: i64, r1: i64, avail: f64) -> Self {
+        let mut ht = row_heights(days, r0, r1);
+        // все 24 часа влезли, а место ещё есть — растягиваем часы на остаток
+        let sum: f64 = ht.iter().sum();
+        if r0 == 0 && r1 == 24 && avail > sum {
+            let k = avail / sum;
+            for v in ht.iter_mut() {
+                *v = (*v * k * 100.0).floor() / 100.0;
+            }
+        }
         let mut y = vec![0.0];
         for v in &ht {
             y.push(y.last().unwrap() + v);
         }
         WeekGrid { r0, r1, ht, y }
+    }
+    /// Сетка заполняет высоту `avail`: после часов с делами добавляем целые часы — сначала позже, потом раньше, —
+    /// пока влезают; все 24 влезли — часы растягиваются на остаток. Пустого места под сеткой нет.
+    pub fn fit(days: &[Vec<WItem>], up: Option<i64>, down: Option<i64>, avail: f64) -> Self {
+        let (mut r0, mut r1) = week_range(days, up, down);
+        if avail <= 0.0 {
+            return Self::build(days, r0, r1, 0.0);
+        }
+        loop {
+            let h: f64 = row_heights(days, r0, r1).iter().sum();
+            if r1 < 24 && h + row_heights(days, r0, r1 + 1).last().copied().unwrap_or(ROW_PX) <= avail + 0.5 {
+                r1 += 1;
+            } else if r0 > 0 && h + ROW_PX <= avail + 0.5 {
+                r0 -= 1;
+            } else {
+                break;
+            }
+        }
+        Self::build(days, r0, r1, avail)
     }
     pub fn height(&self) -> f64 {
         *self.y.last().unwrap()
@@ -201,4 +231,25 @@ pub fn dur_text(min: f64) -> String {
         (h, 0) => format!("{h} Ч"),
         (h, r) => format!("{h} Ч {r} МИН"),
     }
+}
+
+/// Порядок дел в клетке месяца и в строке «весь день» (G_CalRules, п. 2): день рождения, весь день,
+/// по времени начала, сделанное — в конце. Дело: (вид — 3 день рождения, начало в минутах или None, сделано).
+pub fn day_order(items: &[(i32, Option<f64>, bool)]) -> Vec<usize> {
+    let mut ix: Vec<usize> = (0..items.len()).collect();
+    let key = |i: usize| {
+        let (kind, s, done) = items[i];
+        let group = if kind == 3 { 0 } else if s.is_none() { 1 } else { 2 };
+        (done as i32, group, s.unwrap_or(-1.0))
+    };
+    ix.sort_by(|&a, &b| {
+        let (ka, kb) = (key(a), key(b));
+        ka.0.cmp(&kb.0).then(ka.1.cmp(&kb.1)).then(ka.2.partial_cmp(&kb.2).unwrap()).then(a.cmp(&b))
+    });
+    ix
+}
+
+/// Сколько строк показать, если влезает `cap`: всё — или `cap − 1` и строка «+N ещё».
+pub fn fit_rows(n: usize, cap: usize) -> (usize, usize) {
+    if n <= cap { (n, 0) } else { let k = cap.saturating_sub(1); (k, n - k) }
 }
