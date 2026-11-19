@@ -73,6 +73,14 @@ pub fn blank_template(name: &str, now: u64) -> Value {
            "cols": [col(&format!("c{}", radix36(now)), "Надо", 0, 0), col(&format!("c{}", radix36(now + 1)), "Делаю", 2, 0), col("done", "Готово", 6, 0)]})
 }
 
+/// Черновик шаблона отличается от сохранённого (название, вид, поля, колонки)? Нет сохранённого — новый шаблон, true.
+/// Нужен правилу «клик мимо окна»: правленое сохраняем, нетронутое просто закрываем.
+pub fn draft_changed(saved: Option<&Value>, draft: &Value) -> bool {
+    let Some(sv) = saved else { return true };
+    let name = |x: &Value| { let n = text(&x["name"]); if n.is_empty() { text(&x["title"]) } else { n } };
+    name(sv) != name(draft) || sv["view"] != draft["view"] || a(&sv["fields"]) != a(&draft["fields"]) || a(&sv["cols"]) != a(&draft["cols"])
+}
+
 fn pick(tt: &Value) -> Json {
     let mut m = Json::new();
     if !tt["name"].is_null() {

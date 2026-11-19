@@ -829,6 +829,9 @@ impl App {
 
     pub fn rename_list(&mut self, id: &str, title: &str) {
         let Some(l) = self.lists.iter_mut().find(|x| x["id"] == id) else { return };
+        if l["title"] == title {
+            return; // то же название — в Google не ходим
+        }
         let was = l["title"].clone();
         l["title"] = json!(title);
         if id.starts_with("sh:") {

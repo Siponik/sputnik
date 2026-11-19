@@ -459,6 +459,7 @@ export global S {
     callback dp-exact-set(string);
     callback dp-dur-set(int);
     callback dp-done();
+    callback dp-dismiss();                     // клик мимо окна «Когда»: сохранить выбор, если меняли
     callback dp-cancel();
     // настройки списка (G_ListSettings)
     in property <bool> ls-open;
@@ -488,6 +489,7 @@ export global S {
     callback tp-set(string, string);
     callback tp-col(int, string, string);
     callback tp-save();
+    callback tp-dismiss();                     // клик мимо окна шаблонов: сохранить, если правили, и закрыть
     callback tp-new();
     callback tp-dup();
     callback tp-reset();
@@ -577,6 +579,7 @@ export global S {
     callback create(string);
     callback c-close();
     callback c-changed(string);
+    callback c-dismiss(string);                // клик мимо окна: создать, если можно, и закрыть
     callback c-submit(string, bool);           // текст, «и ещё»
     callback c-kind-set(int);
     callback c-dest-set(string);

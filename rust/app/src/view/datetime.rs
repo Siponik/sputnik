@@ -21,6 +21,8 @@ pub struct Dp {
     pub for_create: bool,
     /// Компактная выпадашка у поля даты («task» — окно задачи, «pipe» — Конвейер), пусто — большое окно.
     pub drop: &'static str,
+    /// Что было при открытии: клик мимо окна сохраняет, только если выбор поменяли.
+    pub start: sputnik_core::compose::Picked,
 }
 
 const MONTHS: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -44,7 +46,9 @@ pub fn open(app: &App, l: &str, id: &str) -> Option<Dp> {
         _ => (None, 0, 0),
     };
     let base = day.unwrap_or_else(|| hb::now().date());
-    Some(Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new(), for_create: false, drop: "" })
+    let mut d = Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new(), for_create: false, drop: "", ..Default::default() };
+    d.start = picked(&d);
+    Some(d)
 }
 
 /// Открыть для окна «Создать»: срок и время — из того, что уже понято (`compose::resolve`).
@@ -60,7 +64,9 @@ pub fn for_create(x: &Value, kind: i32) -> Dp {
     };
     let base = day.unwrap_or_else(|| hb::now().date());
     let title = text(&x["title"]);
-    Dp { title: if title.is_empty() { "новое".into() } else { title }, day, hour, min, dur, month: first(base), for_create: true, ..Default::default() }
+    let mut d = Dp { title: if title.is_empty() { "новое".into() } else { title }, day, hour, min, dur, month: first(base), for_create: true, ..Default::default() };
+    d.start = picked(&d);
+    d
 }
 
 /// Выбранное в окне — для «Создать».

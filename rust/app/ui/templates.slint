@@ -29,6 +29,8 @@ component Small inherits Text {
 
 export component Templates inherits Overlay {
     close => { S.tp-close(); }
+    // клик мимо окна: изменённый шаблон сохраняется, нетронутый — просто закрывается
+    dismiss => { S.tp-dismiss(); }
     property <length> w: min(1060px, root.width - 40px);
     property <length> h: min(660px, root.height - 16px);
     TouchArea { x: (root.width - w) / 2; y: max(8px, (root.height - h) / 2); width: w; height: h; }

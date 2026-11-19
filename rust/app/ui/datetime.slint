@@ -1,6 +1,6 @@
 // Выбор даты и времени (G_DateTime): слева — словами, быстрые, месяц; справа — час, минуты, «до».
 import { G } from "theme.slint";
-import { Mono, Button, Node, Field, Icon, ScrollView } from "kit.slint";
+import { Mono, Button, Node, Field, Icon, ScrollView, Catch } from "kit.slint";
 import { S } from "store.slint";
 
 component Chip inherits Rectangle {
@@ -135,8 +135,8 @@ export component DueDrop inherits Rectangle {
     width: 268px;
     height: 44px + 22px + ceil(S.dp-cells.length / 7) * 32px + 8px + 30px + (root.clearable ? 34px : 0) + 12px;
     z: 30;
-    // клик мимо — закрыть
-    TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; clicked => { S.dp-cancel(); } }
+    // клик мимо — закрыть (правило окон поверх: выбранное не теряется)
+    Catch { clicked => { S.dp-dismiss(); } }
     Rectangle {
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;

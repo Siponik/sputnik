@@ -100,6 +100,15 @@ pub fn save(app: &mut App, u: &mut Ui) {
     app.say("Шаблон сохранён — списки по нему обновились");
 }
 
+/// Клик мимо окна шаблонов: черновик сохраняется, только если его правили (или это новый шаблон).
+pub fn save_if_changed(app: &mut App, u: &mut Ui) {
+    let Some(t0) = &u.tp else { return };
+    let saved = tp::templates_from(&app.layer).into_iter().find(|x| x["id"] == t0.id.as_str());
+    if tp::draft_changed(saved.as_ref(), &t0.draft) {
+        save(app, u);
+    }
+}
+
 pub fn new(u: &mut Ui) {
     let id = format!("t{}", now());
     u.tp = Some(Tp { id, draft: tp::blank_template("Новый шаблон", now()), fresh: true });
