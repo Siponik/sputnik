@@ -1299,6 +1299,23 @@ pub fn wire(w: &AppWindow) {
         note_set_lines(app, u, at, "\n| Колонка 1 | Колонка 2 | Колонка 3 |\n|---|---|---|\n|  |  |  |\n", 0);
         save_draft(app, u);
     }));
+    // «+ колонка»: ячейка в конец каждой строки таблицы, где строка i
+    g.on_note_table_col(|i| act(|app, u| {
+        let rows = crate::notes::line_rows(&note_text(app, u));
+        let i = i.max(0) as usize;
+        let is_t = |k: usize| rows.get(k).is_some_and(|r| r.kind == "table" || r.kind == "th" || r.kind == "tsep");
+        if !is_t(i) { return; }
+        let (mut a, mut b) = (i, i);
+        while a > 0 && is_t(a - 1) { a -= 1; }
+        while is_t(b + 1) { b += 1; }
+        for k in a..=b {
+            let r = &rows[k];
+            let mut cells = crate::notes::table_cells(&r.raw);
+            cells.push(if r.kind == "tsep" { "---".into() } else { String::new() });
+            note_set_lines(app, u, k, &sputnik_core::edcmd::table_row(&cells), 1);
+        }
+        save_draft(app, u);
+    }));
     super::canvas::wire(&g);
     g.on_note_hit(|i, at, ctrl| {
         let mut caret = 0;

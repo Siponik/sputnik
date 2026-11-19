@@ -12,6 +12,7 @@ export component TableRow inherits Rectangle {
     in-out property <int> edit-c: -1;
     callback set(int, string);
     callback add-row();
+    callback add-col();
     property <[MdRow]> cells: S.table-cells(raw);
     // все ячейки одной ширины; текст переносится, строка растёт по самой высокой ячейке
     property <length> cw: root.width / max(1, root.cells.length);
@@ -50,8 +51,28 @@ export component TableRow inherits Rectangle {
                 }
             }
             // поверх текста: оформленный текст сам глотает клики
-            if root.editable && i != root.edit-c: TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.edit-c = i; } }
+            if root.editable && i != root.edit-c: TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.edit-c = i; }
+                changed has-hover => { root.hovn = max(0, root.hovn + (self.has-hover ? 1 : -1)); } }
         }
+    }
+    // наведение на строку: «+» справа — колонка, «+» снизу слева — строка ниже
+    property <int> hovn;
+    property <bool> show-plus: root.editable && (root.hovn > 0 || root.edit-c >= 0);
+    Rectangle {
+        visible: root.show-plus;
+        x: root.width - 9px; y: (root.height - 18px) / 2; width: 18px; height: 18px; border-radius: 9px;
+        background: pc.has-hover ? G.accent : G.node; border-width: 1px; border-color: pc.has-hover ? G.accent : G.line;
+        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pc.has-hover ? #1C1D21 : G.muted; }
+        pc := TouchArea { mouse-cursor: pointer; clicked => { root.add-col(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
+        Tip { text: "Добавить колонку"; on: pc.has-hover; }
+    }
+    Rectangle {
+        visible: root.show-plus;
+        x: -9px; y: root.height - 9px; width: 18px; height: 18px; border-radius: 9px;
+        background: pr.has-hover ? G.accent : G.node; border-width: 1px; border-color: pr.has-hover ? G.accent : G.line;
+        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pr.has-hover ? #1C1D21 : G.muted; }
+        pr := TouchArea { mouse-cursor: pointer; clicked => { root.add-row(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
+        Tip { text: "Добавить строку ниже"; on: pr.has-hover; }
     }
     function done(i: int, t: string, next: int) {
         root.edit-c = next;
@@ -86,7 +107,7 @@ export component MdLine inherits Rectangle {
     }
 }
 import { G } from "theme.slint";
-import { ScrollInput, Icon } from "kit.slint";
+import { ScrollInput, Icon, Tip } from "kit.slint";
 import { S, Opt, MdRow } from "store.slint";
 import { ScrollView } from "kit.slint";
 
