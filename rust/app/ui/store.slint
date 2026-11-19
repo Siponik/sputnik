@@ -26,7 +26,7 @@ export struct Block { title: string, sub: string, y: float, h: float, x: float, 
 // длинная привычка — фон дня (п. 47); top/bot — видны ли начало и конец
 export struct WkBg { y: float, h: float, text: string, top: bool, bot: bool }
 export struct Label { text: string, y: float, small: bool }
-export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int], bg: [WkBg], up: string, down: string, up-h: int, down-h: int }
+export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int], all-tips: [CalTip], bg: [WkBg], up: string, down: string, up-h: int, down-h: int }
 export struct SphList { id: string, name: string, letter: string, count: int }
 export struct SphCard { id: string, name: string, head: color, aside: string, sel: bool, lists: [SphList] }
 export struct ArchSph { kind: string, id: string, name: string, meta: string, date: string, head: color, letter: string, group: string, first: bool }
@@ -252,6 +252,7 @@ export global S {
     pure callback cal-time-at(float) -> string;      // y → «17:00»
     callback cal-draft(string, float, float);        // день, y начала и конца протяжки
     callback cal-draft-cancel();
+    callback cal-avail(float);                       // высота под сетку недели изменилась
     callback cal-draft-kind(bool);                   // тип в окне сменили — запомнить
     callback cal-draft-add(string, bool);            // название, событие?
     in property <int> draft-col: -1;

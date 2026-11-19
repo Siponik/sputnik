@@ -43,7 +43,7 @@ component Month inherits Rectangle {
         font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center;
     }
     Rectangle { y: 24px; height: 1px; background: G.line; }
-    for d[i] in S.days: Rectangle {
+    for d[i] in S.days: cell := Rectangle {
         x: mod(i, 7) * root.cw;
         y: 24px + floor(i / 7) * root.ch;
         width: root.cw;
@@ -60,21 +60,31 @@ component Month inherits Rectangle {
         ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
         Text { x: 10px; y: 8px; text: d.num; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: d.today ? G.accent : (d.in-month ? G.ink : #55575F); }
         if d.today: Text { x: parent.width - self.preferred-width - 10px; y: 9px; text: "СЕГОДНЯ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.accent; }
+        // дела без времени: ДР — розовая плашка с тортиком, дальше точка цвета и название; не влезло — «+N ещё»
+        property <int> cap: max(1, floor((root.ch - 26px - 12px) / 18px));
+        property <int> shown: d.all.length <= self.cap ? d.all.length : self.cap - 1;
         VerticalLayout {
-            x: 8px; y: 26px; width: parent.width - 12px;
-            height: parent.height - 40px;
-            spacing: 2px;
+            x: 4px; y: 24px; width: parent.width - 8px;
+            height: parent.height - 34px;
+            spacing: 0;
             alignment: start;
-            for c[k] in d.all: HorizontalLayout {
-                visible: k < max(1, floor((root.ch - 44px) / 18px));
-                height: k < max(1, floor((root.ch - 44px) / 18px)) ? 16px : 0;
-                spacing: 5px;
-                Rectangle { width: 6px; height: 6px; y: 5px; border-radius: 3px; background: c.hue; }
-                if c.kind == 3: Icon { name: "birthday"; width: 10px; y: (parent.height - 10px) / 2; c: #8A8C96; }
-                if c.time != "": Text { text: c.time; font-family: G.mono; font-size: 9.5px; color: #8A8C96; vertical-alignment: center; }
-                Text { text: c.title; font-size: 11.5px; color: c.done ? G.dim : G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+            for c[k] in d.all: Rectangle {
+                visible: k < cell.shown;
+                height: k < cell.shown ? (c.kind == 3 ? 23px : 18px) : 0;
+                if c.kind == 3: Rectangle {
+                    y: 0; height: 20px;
+                    border-radius: 4px;
+                    background: #F08CC029;
+                    Icon { x: 6px; name: "birthday"; width: 11px; y: (parent.height - 11px) / 2; c: #F08CC0; }
+                    Text { x: 22px; width: parent.width - 26px; text: c.title; font-size: 11.5px; color: #F08CC0; vertical-alignment: center; height: parent.height; overflow: elide; }
+                }
+                if c.kind != 3: Rectangle {
+                    Rectangle { x: 4px; width: 6px; height: 6px; y: (parent.height - 6px) / 2; border-radius: 3px; background: c.hue; opacity: c.done ? 0.5 : 1; }
+                    Text { x: 16px; width: parent.width - 18px; text: c.title; font-size: 11.5px; color: c.done ? G.dim : #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
+                }
+                TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
             }
-            if d.more > 0: Text { text: "+ ЕЩЁ " + d.more; font-family: G.mono; font-size: 9px; color: #7A7C86; }
+            if d.all.length > cell.shown: Text { height: 16px; x: 4px; text: "+" + (d.all.length - cell.shown) + " ещё"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
         }
         // привычки — полоска внизу клетки: золото — сделано, пунктир — впереди
         for v[k] in d.hdots: Rectangle {

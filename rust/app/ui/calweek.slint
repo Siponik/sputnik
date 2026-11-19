@@ -29,6 +29,7 @@ component Mark inherits Rectangle {
 component AllDay inherits Rectangle {
     in property <Chip> c;
     in property <int> more;
+    callback hovered(bool);
     property <color> pink: #F08CC0;
     height: 20px;
     border-radius: 4px;
@@ -47,7 +48,7 @@ component AllDay inherits Rectangle {
         }
         if root.more > 0: Text { text: "+" + root.more; font-family: G.mono; font-size: 9.5px; color: G.muted; vertical-alignment: center; }
     }
-    TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
+    TouchArea { changed has-hover => { root.hovered(self.has-hover); } clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
 }
 
 // Чип «↑ 07:00 · ЕЩЁ 1 РАНЬШЕ» над или под сеткой; клик раскрывает часы до этого дела, повторный — сворачивает.
@@ -154,6 +155,10 @@ export component Week inherits Rectangle {
         if (root.tip-id == id) { root.tip-on = false; }
     }
 
+    // сетка заполняет высоту под шапкой и «весь день» (часы добавляет и растягивает Rust)
+    init => { S.cal-avail((self.height - root.head-h - root.ad-h) / 1px - 2); }
+    changed height => { S.cal-avail((self.height - root.head-h - root.ad-h) / 1px - 2); }
+
     // подсветка «сегодня» на всю высоту, разделители колонок
     if S.today-col >= 0: Rectangle { x: root.gut + S.today-col * root.colw; width: root.colw; background: G.accent.transparentize(0.965); }
     for d[i] in S.days: Rectangle { x: root.gut + i * root.colw; width: 1px; background: G.line-soft; }
@@ -183,7 +188,14 @@ export component Week inherits Rectangle {
         width: root.colw;
         height: root.ad-h;
         background: root.dragging && root.gy < 0 && floor((root.gx - root.gut) / root.colw) == i ? G.accent-wash : transparent;
-        if d.all.length > 0: AllDay { x: 4px; y: 5px; width: parent.width - 8px; c: d.all[0]; more: d.more; }
+        if d.all.length > 0: AllDay {
+            x: 4px; y: 5px; width: parent.width - 8px; c: d.all[0]; more: d.more;
+            hovered(h) => {
+                if (h && d.all-tips.length > 0) {
+                    root.show-tip(d.all-tips[0], "ad" + d.ymd, self.absolute-position.x - root.absolute-position.x, self.absolute-position.y - root.absolute-position.y, self.width);
+                } else { root.hide-tip("ad" + d.ymd); }
+            }
+        }
     }
 
     // ---------- чипы «раньше» ----------
@@ -254,7 +266,7 @@ export component Week inherits Rectangle {
                     }
                     moved => { if (root.sel-on) { root.sel-y1 = max(0px, min(parent.height, self.mouse-y)); } }
                 }
-                if root.hv-col == i: DashBox {
+                if root.hv-col == i && ga.has-hover: DashBox {
                     x: 4px; y: root.hv-y + 1px; width: parent.width - 8px; height: 37px;
                     c: G.accent.transparentize(0.3);
                     Text { x: 6px; y: 3px; text: "+ " + root.hv-label; font-family: G.mono; font-size: 10px; color: G.accent; }
@@ -397,7 +409,8 @@ export component Week inherits Rectangle {
     // ---------- чипы «позже» ----------
     for d[i] in S.days: Rectangle {
         x: root.gut + i * root.colw;
-        y: root.height - root.down-h;
+        // сразу под последней строкой сетки, а не у края ноды
+        y: root.top-h + min(sv.height, S.grid-h * 1px + 1px);
         width: root.colw;
         height: root.down-h;
         if d.down != "": Edge { x: 3px; y: 4px; text: d.down; up: false; hour: d.down-h; room: root.colw - 6px; }

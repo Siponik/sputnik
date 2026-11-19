@@ -60,7 +60,9 @@ pub fn fill(app: &mut App) {
     }
     app.calendars = vec![json!({"id": "primary", "summary": "Основной", "primary": true, "accessRole": "owner", "selected": true, "backgroundColor": "#6FA2F2"})];
     app.events = vec![ev("e1", "Планёрка", 0, "10:00", "10:30"), ev("e2", "Обед с Олей", 1, "13:00", "14:00"), ev("e3", "Ревью ассетов", 2, "16:00", "17:30"),
-        ev("e4", "Тренировка", 3, "19:00", "20:00"), ev("e5", "Созвон «Таверна»", 0, "11:15", "12:30")];
+        ev("e4", "Тренировка", 3, "19:00", "20:00"), ev("e5", "Созвон «Таверна»", 0, "11:15", "12:30"),
+        json!({"id": "bd1", "calId": "primary", "summary": "Аня · 30 лет", "status": "confirmed", "eventType": "birthday",
+            "start": {"date": day(1)}, "end": {"date": day(2)}})];
     let t = 1.0;
     app.layer["spheres"] = json!({"sp1": {"name": "Работа", "color": "clay", "icon": "case", "order": 1, "t": t}, "sp2": {"name": "Личное", "color": "personal", "icon": "home", "order": 2, "t": t}, "sp3": {"name": "Фриланс 2025", "color": "gold", "order": 3, "archived": true, "archivedAt": 1762041600000.0, "t": t}});
     app.layer["lists"] = json!({

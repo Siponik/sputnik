@@ -18,12 +18,28 @@ fn witem(x: &Item) -> Option<WItem> {
     x.s.map(|(s, e)| WItem { s, e, kind: x.chip.kind.min(2), done: x.chip.done })
 }
 
+/// Высота строк чипов над и под сеткой (как в calweek.slint).
+const UP_H: f64 = 26.0;
+const DOWN_H: f64 = 28.0;
+
 /// Видимые часы недели и дела по дням.
 pub fn grid(app: &App, u: &Ui) -> (Vec<String>, Vec<Vec<Item>>, WeekGrid) {
     let days = cal::period_days(&u.cal_sel, "week");
     let items: Vec<Vec<Item>> = days.iter().map(|d| day_items(app, u, d)).collect();
     let w: Vec<Vec<WItem>> = items.iter().map(|it| it.iter().filter_map(witem).collect()).collect();
-    let g = WeekGrid::new(&w, u.cal_up, u.cal_down);
+    // сетка заполняет высоту ноды; строки чипов «раньше/позже» отнимают место, только когда они есть
+    let avail = u.cal_avail;
+    let mut g = WeekGrid::fit(&w, u.cal_up, u.cal_down, avail);
+    for _ in 0..3 {
+        let up = u.cal_up.is_some() || w.iter().any(|d| cw::outside(d, g.r0, g.r1).0 .0 > 0);
+        let down = u.cal_down.is_some() || w.iter().any(|d| cw::outside(d, g.r0, g.r1).1 .0 > 0);
+        let a = avail - if up { UP_H } else { 0.0 } - if down { DOWN_H } else { 0.0 };
+        let next = WeekGrid::fit(&w, u.cal_up, u.cal_down, a);
+        if (next.r0, next.r1, next.height()) == (g.r0, g.r1, g.height()) {
+            break;
+        }
+        g = next;
+    }
     (days, items, g)
 }
 
@@ -89,12 +105,16 @@ pub fn render(app: &App, u: &Ui, g: &S) -> Vec<(String, Vec<Item>)> {
                     tip: CalTip::default(), rows: model(rows), more: more as i32 }
             }
         }).collect();
-        let all: Vec<Chip> = its.iter().filter(|x| x.s.is_none()).map(|x| x.chip.clone()).collect();
+        // «весь день»: день рождения первым, сделанное в конце
+        let ad: Vec<&Item> = its.iter().filter(|x| x.s.is_none()).collect();
+        let order = cw::day_order(&ad.iter().map(|x| (x.chip.kind, None, x.chip.done)).collect::<Vec<_>>());
+        let all: Vec<Chip> = order.iter().map(|&i| ad[i].chip.clone()).collect();
+        let all_tips: Vec<CalTip> = order.iter().map(|&i| tip(d, ad[i])).collect();
         let dl = cal::day_label(d);
         let (hl, hd) = super::calendar::habits_line(app, d);
         Day { ymd: ss(d.clone()), label: ss(super::calendar::short_up(d)), num: ss(dl["n"].to_string()), today: *d == tdy, sel: *d == u.cal_sel,
             more: all.len().saturating_sub(1) as i32, all: model(all), blocks: model(blocks), habits: ss(hl), load: 0.0, in_month: true, hdots: model(hd),
-            bg: model(bg), up: ss(fb.map(|f| cw::chip_text(true, nb, f)).unwrap_or_default()), down: ss(fa.map(|f| cw::chip_text(false, na, f)).unwrap_or_default()),
+            all_tips: model(all_tips), bg: model(bg), up: ss(fb.map(|f| cw::chip_text(true, nb, f)).unwrap_or_default()), down: ss(fa.map(|f| cw::chip_text(false, na, f)).unwrap_or_default()),
             up_h: fb.map(|f| (f / 60.0).floor() as i32).unwrap_or(-1), down_h: fa.map(|f| ((f + 60.0) / 60.0).ceil() as i32).unwrap_or(-1) }
     }).collect();
     g.set_cal_any_up(out.iter().any(|d| !d.up.is_empty()));
@@ -160,6 +180,7 @@ pub fn wire(g: &S) {
         gr.y_at(gr.min_at(y as f64, 15.0)) as f32
     }).unwrap_or(y));
     g.on_cal_time_at(|y| peek(|app, u| ss(cal::from_min(grid(app, u).2.min_at(y as f64, 15.0) as i64))).unwrap_or_default());
+    g.on_cal_avail(|h| act(|_, u| u.cal_avail = h as f64));
     g.on_cal_draft(|day, y0, y1| act(|app, u| {
         let gr = grid(app, u).2;
         u.cal_draft = Some(draft_of(&gr, &day, y0 as f64, y1 as f64));
