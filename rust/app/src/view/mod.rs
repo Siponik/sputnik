@@ -42,6 +42,8 @@ pub struct Ui {
     pub menu: Option<menu::Menu>,
     pub tp: Option<tpl::Tp>,
     pub tab: i32,
+    /// Окно настроек открыто поверх текущего раздела (Ctrl+, или ⚙).
+    pub set_open: bool,
     pub board: String,
     /// Выбранная карточка канбана (id задачи), пусто — выбора нет.
     pub board_sel: String,
@@ -195,6 +197,11 @@ pub fn start(app: App) -> AppWindow {
         // для проверки окна: SPUTNIK_TAB=2 SPUTNIK_BOARD=icons
         if let Ok(t) = std::env::var("SPUTNIK_TAB") {
             u.tab = t.parse().unwrap_or(0);
+            // 5 — настройки: окно поверх «Сегодня»
+            if u.tab == 5 {
+                u.tab = 0;
+                u.set_open = true;
+            }
         }
         if let Ok(b) = std::env::var("SPUTNIK_BOARD") {
             u.board = b;
@@ -252,7 +259,11 @@ fn render(app: &App) {
             2 => board::render(app, &mut u, &g),
             3 => habits::render(app, &u, &g),
             4 => notes::render(app, &u, &g),
-            _ => settings::render(app, &u, &g),
+            _ => {}
+        }
+        // настройки — окно поверх раздела: считаются, только пока открыты
+        if u.set_open {
+            settings::render(app, &u, &g);
         }
         if u.tab != 0 {
             // счётчик «Сегодня» в шапке считается всегда
@@ -273,6 +284,7 @@ fn shell(app: &App, u: &Ui, g: &S) {
     g.set_tab_order(model(settings::tab_order(app)));
     let f = &app.flags;
     g.set_tab(u.tab);
+    g.set_set_open(u.set_open);
     let wd = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
     let now_l = chrono::Local::now();
     g.set_now_label(ss(format!("{} {} · {}", wd[chrono::Datelike::weekday(&now_l).num_days_from_monday() as usize], now_l.format("%d.%m"), now_l.format("%H:%M"))));

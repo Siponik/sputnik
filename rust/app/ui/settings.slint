@@ -1,6 +1,7 @@
-// Настройки: Вид, Что показывать, Напоминания, Синхронизация, Клавиши.
+// Настройки: Вид, Что показывать, Напоминания, Синхронизация, Клавиши, Знания.
+// Открываются окном поверх раздела (SettingsWin): ⚙, Ctrl+, или «Настройки» в поиске; цифры 1–6 — разделы (клавиши — app.slint).
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon, ScrollView } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon, ScrollView, Overlay } from "kit.slint";
 import { S, Opt } from "store.slint";
 
 component Sw inherits Rectangle {
@@ -143,8 +144,27 @@ component Note inherits Text {
 }
 
 export component SettingsPage inherits Rectangle {
+    callback close;
+    // набранная, но не подтверждённая Enter папка заметок — окно сохранит её при клике мимо
+    out property <string> typed-root;
     // строка «Найти настройку»
     property <string> q;
+    // Смена раздела: содержимое въезжает снизу, если раздел ниже в списке, и сверху — если выше.
+    // snap — поставить начальное положение без анимации, через кадр (Timer) — плавно к месту.
+    property <int> cur: S.set-tab;
+    property <int> last: S.set-tab;
+    property <bool> snap;
+    property <length> off: 0;
+    property <float> op: 1;
+    animate off, op { duration: root.snap ? 0ms : G.mid; easing: ease-out; }
+    changed cur => {
+        root.snap = true;
+        root.off = (root.cur > root.last ? 1 : -1) * 18px;
+        root.op = 0;
+        root.last = root.cur;
+        tin.running = true;
+    }
+    tin := Timer { interval: 16ms; running: false; triggered => { self.running = false; root.snap = false; root.off = 0; root.op = 1; } }
     function pick(tab: int) { S.set-tab = tab; root.q = ""; fq.clear(); S.set-find(""); }
     // Ctrl+K на этом экране — сюда, а не в общий поиск
     property <int> find-ask: S.set-find-focus;
@@ -163,8 +183,21 @@ export component SettingsPage inherits Rectangle {
         border-width: 1px;
         border-color: G.line;
         Text { x: 12px; y: 0; height: 32px; text: "НАСТРОЙКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; }
-        Text { x: parent.width - self.preferred-width - 12px; y: 0; height: 32px; text: "CTRL ,"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; }
+        // закрыть окно: «ESC ×» в шапке меню
+        Rectangle {
+            x: parent.width - self.width - 6px; y: 4px; width: xl.preferred-width + 16px; height: 24px;
+            border-radius: 4px;
+            background: xa.has-hover ? G.node-hover : transparent;
+            xl := Text { x: 8px; text: "ESC ×"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: xa.has-hover ? G.ink : #7A7C86; vertical-alignment: center; height: parent.height; }
+            xa := TouchArea { clicked => { root.close(); } mouse-cursor: pointer; }
+        }
         Rectangle { y: 31px; height: 1px; background: G.line; }
+        // выбранный раздел — одна плашка, переезжает к пункту (шаг строки 36 + 2 px)
+        if root.q == "": Rectangle {
+            x: 9px; y: 82px + S.set-tab * 38px; width: parent.width - 18px; height: 36px;
+            border-radius: 6px; border-width: 1px; border-color: G.accent; background: #2E2620;
+            animate y { duration: G.mid; easing: ease-out; }
+        }
         if root.q == "": VerticalLayout {
             x: 9px; y: 82px; width: parent.width - 18px;
             spacing: 2px;
@@ -172,11 +205,10 @@ export component SettingsPage inherits Rectangle {
             for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ЗНАНИЯ"]: Rectangle {
                 height: 36px;
                 border-radius: 6px;
-                border-width: S.set-tab == i ? 1px : 0;
-                border-color: G.accent;
-                background: S.set-tab == i ? #2E2620 : (ta.has-hover ? G.node-hover : transparent);
-                Text { x: 10px; text: "0" + (i + 1); font-family: G.mono; font-size: 9.5px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
-                Text { x: 32px; text: t; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: S.set-tab == i ? G.ink : #A3A5AE; vertical-alignment: center; height: parent.height; }
+                background: S.set-tab != i && ta.has-hover ? G.node-hover : transparent;
+                // номер — клавиша раздела (1–6, пока окно открыто)
+                Text { x: 10px; text: "0" + (i + 1); font-family: G.mono; font-size: 9.5px; color: S.set-tab == i ? G.accent : #7A7C86; vertical-alignment: center; height: parent.height; animate color { duration: G.mid; } }
+                Text { x: 32px; text: t; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: S.set-tab == i ? G.ink : #A3A5AE; vertical-alignment: center; height: parent.height; animate color { duration: G.mid; } }
                 ta := TouchArea { clicked => { S.set-tab = i; } mouse-cursor: pointer; }
             }
         }
@@ -207,7 +239,8 @@ export component SettingsPage inherits Rectangle {
     }
     // разделы
     ScrollView {
-        x: root.cx - 6px; y: 14px; width: root.cw + 12px; height: parent.height - 14px;
+        x: root.cx - 6px; y: 14px + root.off; width: root.cw + 12px; height: parent.height - 14px;
+        opacity: root.op;
         VerticalLayout {
             padding: 6px;
             padding-bottom: 30px;
@@ -356,7 +389,7 @@ export component SettingsPage inherits Rectangle {
             if S.set-tab == 5: Sec {
                 main: true; num: "01"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
                 Text { text: "Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."; color: #A3A5AE; font-size: 13px; wrap: word-wrap; }
-                Field { width: 100%; mono: true; font-size: 12px; text: S.notes-root; accepted(t) => { S.notes-root-set(t); } }
+                Field { width: 100%; mono: true; font-size: 12px; text: S.notes-root; edited(t) => { root.typed-root = t; } accepted(t) => { root.typed-root = ""; S.notes-root-set(t); } }
                 Note { text: "РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"; }
             }
             if S.set-tab == 4: Sec {
@@ -368,6 +401,7 @@ export component SettingsPage inherits Rectangle {
                     ["Ctrl+K, /", "поиск"],
                     ["R, F5", "синхронизировать"],
                     ["Ctrl+,", "настройки"],
+                    ["1 … 6, ↑ ↓", "в настройках: разделы"],
                     ["Shift+1…9", "отметить привычку"],
                     ["[ ]", "предыдущий / следующий список на доске"],
                     ["Ctrl+Shift+L", "найти список на доске"],
@@ -439,5 +473,37 @@ export component SettingsPage inherits Rectangle {
             Rectangle { width: 1px; background: G.line; }
             Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ЗНАНИЯ"][min(S.set-tab, 5)]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
+    }
+}
+
+// Окно настроек поверх текущего раздела: фон затемнён, клик мимо — закрыть (всё и так сохраняется сразу,
+// набранную, но не подтверждённую папку заметок окно сохраняет само). Появляется плавно: всплывает на 14 px.
+export component SettingsWin inherits Overlay {
+    property <bool> shown;
+    close => { S.set-close(); }
+    dismiss => {
+        if (page.typed-root != S.notes-root && page.typed-root != "") { S.notes-root-set(page.typed-root); }
+        S.set-close();
+    }
+    opacity: root.shown ? 1 : 0;
+    animate opacity { duration: G.mid; easing: ease-out; }
+    tshow := Timer { interval: 16ms; running: true; triggered => { self.running = false; root.shown = true; } }
+    // клик по самому окну не закрывает его
+    TouchArea { x: win.x; y: win.y; width: win.width; height: win.height; }
+    win := Rectangle {
+        width: min(1120px, parent.width - 96px);
+        height: min(760px, parent.height - 96px);
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2 + (root.shown ? 0 : 14px);
+        animate y { duration: G.mid; easing: ease-out; }
+        border-radius: 12px;
+        background: G.ground;
+        border-width: 1px;
+        border-color: G.line-strong;
+        drop-shadow-blur: 40px;
+        drop-shadow-color: #000c;
+        clip: true;
+        Image { width: 100%; height: 100%; source: @image-url("dot.svg"); horizontal-tiling: repeat; vertical-tiling: repeat; }
+        page := SettingsPage { width: 100%; height: 100%; close => { root.dismiss(); } }
     }
 }

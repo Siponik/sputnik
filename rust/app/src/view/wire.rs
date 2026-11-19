@@ -135,12 +135,19 @@ pub fn wire(w: &AppWindow) {
     g.on_win_max(move || { if let Some(w) = ww.upgrade() { let m = w.window().is_maximized(); w.window().set_maximized(!m); w.global::<S>().set_win_maxed(!m); } });
     let ww = w.as_weak();
     g.on_win_close(move || { if let Some(w) = ww.upgrade() { let _ = w.hide(); } let _ = slint::quit_event_loop(); });
+    // 5 — настройки: не раздел, а окно поверх текущего раздела
     g.on_go(|i| act(|app, u| {
+        if i == 5 {
+            u.set_open = true;
+            return;
+        }
+        u.set_open = false;
         u.tab = i;
         if i == 4 {
             app.notes.rescan();
         }
     }));
+    g.on_set_close(|| act(|_, u| u.set_open = false));
     g.on_tab_step(|cur, dir| {
         let mut out = cur as i64;
         crate::state::with(|app| {
@@ -1749,7 +1756,7 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| u.tab = i as i32)));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| if i == 5 { u.set_open = true } else { u.tab = i as i32 })));
         }
     }
     for l in app.board_lists() {
