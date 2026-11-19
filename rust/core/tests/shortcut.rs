@@ -33,3 +33,12 @@ fn when_to_make_link() {
     assert!(dev_build("D:/x/target/debug/sputnik.exe"));
     assert!(!dev_build(EXE));
 }
+
+#[test]
+fn icon_refresh_once_per_rev() {
+    assert!(icon_refresh_due(None, EXE));
+    assert!(icon_refresh_due(Some("0"), EXE));
+    assert!(!icon_refresh_due(Some(ICON_REV), EXE));
+    assert!(!icon_refresh_due(Some(&format!("{ICON_REV}\r\n")), EXE));
+    assert!(!icon_refresh_due(None, r"D:\Projects\sputnik\rust\target\release\sputnik.exe"));
+}
