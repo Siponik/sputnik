@@ -43,6 +43,8 @@ pub struct Notes {
     pub graph_opts: GraphOpts,
     /// Живая раскладка: точки доезжают до мест на глазах, их можно тянуть.
     pub sim: Option<sputnik_core::graph::Sim>,
+    /// Когда началась пересборка графа (точки появляются по времени).
+    pub grow_t: Option<std::time::Instant>,
 }
 
 /// Разбор заметки через pulldown-cmark (MIT): [[ссылки]] в любой форме ([[Имя]], [[Имя|подпись]], [[Имя#раздел]]),
@@ -422,7 +424,12 @@ impl Notes {
         let mut sm = sputnik_core::graph::Sim::new(self.graph.0.len(), &self.graph.1, self.graph_opts.forces, &[]);
         sm.steps = 220.0;
         sm.grow(&self.graph.1);
+        // камера остаётся, где была: граф вырастает в том же виде, без рывков
+        if let Some(old) = self.sim.as_ref() {
+            sm.map = old.map;
+        }
         self.sim = Some(sm);
+        self.grow_t = Some(std::time::Instant::now());
     }
 
     /// Шаг живой раскладки (кадр анимации). false — замерло.
@@ -430,11 +437,24 @@ impl Notes {
         let Some(sm) = self.sim.as_mut() else { return false };
         let mut live = false;
         // несколько шагов за кадр: граф успокаивается за секунду-другую даже при медленной отрисовке
+        // пересборка: точки появляются по одной, по времени (как в Obsidian) — не зависит от частоты кадров
+        if let Some(t0) = self.grow_t {
+            let n = self.graph.0.len() as f64;
+            let total = (n * 0.12).clamp(3.0, 9.0);
+            let f = (t0.elapsed().as_secs_f64() / total).min(1.0);
+            // плавный разгон и торможение
+            let e = f * f * (3.0 - 2.0 * f);
+            sm.grow_to(n * e + if f >= 1.0 { 1.0 } else { 0.0 });
+            if f >= 1.0 {
+                self.grow_t = None;
+            }
+        }
         for _ in 0..4 {
             live |= sm.tick();
         }
-        // камера подстраивается плавно и не дёргается; пока тянут точку — стоит на месте
-        if sm.held.is_none() {
+        live |= sm.growing();
+        // камера подстраивается плавно и не дёргается; пока точки появляются или точку тянут — стоит на месте
+        if sm.held.is_none() && !sm.growing() {
             let old = sm.map;
             sm.refit();
             if old.2 > 0.0 {

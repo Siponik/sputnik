@@ -504,6 +504,7 @@ export global S {
     // таблица: строка с заменённой ячейкой и пустая строка той же ширины
     pure callback table-set(string, int, string) -> string;
     pure callback table-blank(string) -> string;
+    callback note-table-col(int);           // добавить колонку в таблицу, где строка i
     callback menu-pick(string);
     callback menu-close();
     in property <styled-text> c-line-md;        // строка с подсвеченными распознанными кусками

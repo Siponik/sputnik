@@ -24,6 +24,7 @@ component LiveLine inherits Rectangle {
     callback pick-at(int);
     callback toggle();
     callback focus-mode();
+    callback add-col();
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
     property <bool> wrapped: ed.preferred-height > root.fs * 1.9;
     property <int> arrow;
@@ -46,6 +47,7 @@ component LiveLine inherits Rectangle {
     tbr := TableRow { visible: root.tbl; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; editable: true;
         set(c, t) => { root.commit(S.table-set(line.raw, c, t)); }
         add-row => { root.commit(line.raw + "\n" + S.table-blank(line.raw)); }
+        add-col => { root.add-col(); }
     }
     ta := TouchArea { enabled: !root.tbl || S.ctrl-held; mouse-cursor: MouseCursor.text; clicked => {
         if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
@@ -434,6 +436,10 @@ export component NotesPage inherits Rectangle {
             property <length> cw: min(root.zen ? 780px : 700px, self.width - 64px);
             // высота прокрутки — вся заметка целиком, до «Ссылаются сюда» включительно
             content-height: nbody.preferred-height;
+            // другая заметка — с начала; заметка стала короче — не оставлять текст за краем
+            property <string> path: S.note-path;
+            changed path => { self.viewport-y = 0; }
+            changed content-height => { self.viewport-y = max(self.viewport-y, min(0px, self.visible-height - self.content-height)); }
             nbody := VerticalLayout {
                 x: (sv.width - sv.cw) / 2; y: 0; width: sv.cw;
                 padding-top: 22px; padding-bottom: 40px; spacing: 0; alignment: start;
@@ -479,6 +485,7 @@ export component NotesPage inherits Rectangle {
                     }
                     pick-at(at) => { root.caret = S.note-hit(i, at, S.ctrl-held); if (root.caret >= 0) { root.edit-i = i; } else { root.edit-i = -1; } }
                     toggle => { S.note-todo(i); }
+                    add-col => { S.note-table-col(i); }
                     focus-mode => { root.zen = !root.zen; }
                 }
                 // клик под текстом — новая строка в конце
