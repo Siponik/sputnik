@@ -764,7 +764,16 @@ pub fn wire(w: &AppWindow) {
         }
     }));
     g.on_dp_dur_set(|m| act(|_, u| if let Some(d) = u.dp.as_mut() { d.dur = m as i64 }));
-    g.on_dp_done(|| act(|app, u| {
+    g.on_dp_done(|| act(|app, u| dp_done(app, u)));
+    // Клик мимо окна «Когда»: выбранное сохраняется, если его меняли; не трогали — просто закрыть.
+    g.on_dp_dismiss(|| act(|app, u| {
+        if u.dp.as_ref().is_some_and(|d| super::datetime::picked(d) != d.start) {
+            dp_done(app, u);
+        } else {
+            u.dp = None;
+        }
+    }));
+    fn dp_done(app: &mut App, u: &mut Ui) {
         if let Some(d) = u.dp.take() {
             if d.for_create {
                 if let Some(c) = u.create.as_mut() { c.m.when = Some(super::datetime::picked(&d)); }
@@ -772,7 +781,7 @@ pub fn wire(w: &AppWindow) {
                 super::datetime::apply(app, &d);
             }
         }
-    }));
+    }
     g.on_dp_cancel(|| act(|_, u| u.dp = None));
     g.on_ls_show(|| act(|_, u| u.ls = true));
     g.on_tp_show(|| act(|app, u| u.tp = Some(super::tpl::open(app, &sputnik_core::j::text(&sputnik_core::templates::board_of(&u.board, &app.layer)["id"])))));
@@ -781,6 +790,10 @@ pub fn wire(w: &AppWindow) {
     g.on_tp_set(|k, v| act(|_, u| super::tpl::set(u, &k, &v)));
     g.on_tp_col(|i, k, v| act(|_, u| super::tpl::col(u, i, &k, &v)));
     g.on_tp_save(|| act(|app, u| super::tpl::save(app, u)));
+    g.on_tp_dismiss(|| act(|app, u| {
+        super::tpl::save_if_changed(app, u);
+        u.tp = None;
+    }));
     g.on_tp_new(|| act(|_, u| super::tpl::new(u)));
     g.on_tp_dup(|| act(|_, u| super::tpl::dup(u)));
     g.on_tp_reset(|| act(|app, u| super::tpl::reset(app, u)));
@@ -1015,6 +1028,15 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_c_sub_del(|i| act(|_, u| if let Some(c) = u.create.as_mut() {
         if (i as usize) < c.subs.len() { c.subs.remove(i as usize); }
+    }));
+    // Клик мимо окна «Создать»: набранное создаётся, если его можно создать, окно закрывается в любом случае.
+    g.on_c_dismiss(|t| act(|app, u| {
+        if let Some(mut c) = u.create.take() {
+            c.text = str_(&t);
+            if !c.text.trim().is_empty() {
+                submit(app, &c);
+            }
+        }
     }));
     g.on_c_submit(|t, more| act(|app, u| {
         let Some(mut c) = u.create.clone() else { return };

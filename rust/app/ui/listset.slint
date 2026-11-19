@@ -144,6 +144,9 @@ export component ListSettings inherits Overlay {
     property <length> sph-x;
     property <length> sph-y;
     close => { S.ls-close(); }
+    // клик мимо окна: набранное название сохраняется (пустое — нет), остальное и так сохраняется сразу
+    dismiss => { S.ls-set("name", root.typed-name); S.ls-close(); }
+    property <string> typed-name: S.ls-name;
     TouchArea { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
     dlg := Node {
         x: (parent.width - self.width) / 2;
@@ -161,7 +164,7 @@ export component ListSettings inherits Overlay {
             padding: 22px; padding-bottom: 14px; spacing: 0;
             Text { text: "Название"; color: #A3A5AE; font-size: 13px; }
             Rectangle { height: 8px; }
-            name := Field { height: 38px; font-size: 14px; text: S.ls-name; accepted(t) => { S.ls-set("name", t); } }
+            name := Field { height: 38px; font-size: 14px; text: S.ls-name; edited(t) => { root.typed-name = t; } accepted(t) => { S.ls-set("name", t); } }
             Rectangle { height: 6px; }
             Row { label: "Сфера";
                 // выпадающий выбор сферы: текущая на кнопке, список — поверх окна

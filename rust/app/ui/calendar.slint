@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя — calweek.slint.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Chev, Tip, Hatch, CSeg, Icon, ScrollView } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Chev, Tip, Hatch, CSeg, Icon, ScrollView, Catch } from "kit.slint";
 import { S, Day, Chip, Opt } from "store.slint";
 import { Week } from "calweek.slint";
 
@@ -132,6 +132,11 @@ export component CalendarPage inherits Rectangle {
     property <length> fh: min(400px, self.height - 64px - 16px);
     property <length> fy: max(64px, min(64px + 86px, self.height - root.fh - 8px));
     property <bool> form: root.adding || S.add-time != "";
+    // что набрано в форме — для клика мимо неё (правило окон поверх)
+    property <string> f-name;
+    property <string> f-time;
+    property <bool> f-time-set;
+    changed form => { root.f-name = ""; root.f-time-set = false; }
     // выбор месяца и года по клику на «МАРТ 2027»
     property <bool> mp-open;
     property <int> mp-year;
@@ -304,6 +309,13 @@ export component CalendarPage inherits Rectangle {
     }
 
     // ---------- форма «добавить на этот день» (G_CalAdd) ----------
+    // клик мимо формы: есть название — добавить, нет — просто закрыть
+    if root.form: Catch {
+        clicked => {
+            if (root.f-name != "") { S.cal-add("", root.f-time-set ? root.f-time : S.add-time, root.f-name, root.add-event); root.adding = false; }
+            else { root.adding = false; S.cal-add-close(); }
+        }
+    }
     if root.form: Rectangle {
         x: panel.x - 24px; y: root.fy; width: root.pw + 24px; height: root.fh;
         border-radius: 12px;
@@ -328,6 +340,7 @@ export component CalendarPage inherits Rectangle {
                 height: 40px;
                 placeholder: "Название";
                 init => { self.grab(); }
+                edited(t) => { root.f-name = t; }
                 accepted(t) => { if (t != "") { S.cal-add("", tm.text, t, root.add-event); self.clear(); root.adding = false; } }
                 escape => { root.adding = false; S.cal-add-close(); }
             }
@@ -359,7 +372,7 @@ export component CalendarPage inherits Rectangle {
                     background: G.accent-wash;
                     Text { x: 12px; text: S.day-title; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 20px; }
                 }
-                tm := Field { width: 86px; height: 32px; mono: true; placeholder: "весь день"; text: S.add-time; }
+                tm := Field { width: 86px; height: 32px; mono: true; placeholder: "весь день"; text: S.add-time; edited(t) => { root.f-time = t; root.f-time-set = true; } }
             }
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout {

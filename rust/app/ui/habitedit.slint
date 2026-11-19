@@ -3,7 +3,7 @@
 // правки пишутся в слой сразу (серия не сбрасывается), высота окна — по содержимому.
 // Окно «Создать» (dialogs.slint) не тронуто — оно в другой ветке.
 import { G } from "theme.slint";
-import { Brackets, Field, Icon, Chev, Overlay, ScrollInput } from "kit.slint";
+import { Brackets, Field, Icon, Chev, Overlay, ScrollInput, Catch } from "kit.slint";
 import { S } from "store.slint";
 
 component Cap inherits Text {
@@ -37,7 +37,7 @@ component HTime inherits Rectangle {
     callback picked(string);
     property <int> my;
     out property <bool> open: root.my > 0 && S.drop == root.my;
-    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
+    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } root.typed = ""; S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
     width: 104px;
     height: 34px;
     border-radius: 8px;
@@ -63,8 +63,9 @@ component HTime inherits Rectangle {
             reject
         }
     }
-    // клик мимо закрывает выпадающий список
-    if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
+    // клик мимо: набранное в поле время ставится (если понятно), потом список закрывается
+    property <string> typed;
+    if root.open: Catch { z: 19; clicked => { root.put(root.typed); S.drop = 0; } }
     if root.open: Rectangle {
         x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
@@ -73,6 +74,7 @@ component HTime inherits Rectangle {
         inp := Field {
             x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
             placeholder: "730, 17, 19:30…";
+            edited(t) => { root.typed = t; }
             accepted(t) => { root.put(t); S.drop = 0; }
             escape => { S.drop = 0; }
         }

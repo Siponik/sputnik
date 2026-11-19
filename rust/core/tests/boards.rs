@@ -58,3 +58,25 @@ fn boardedit() {
         _ => return None,
     }));
 }
+
+// Правило «клик мимо окна»: окно шаблонов сохраняет черновик, только если его правили.
+#[test]
+fn template_draft_changed() {
+    let lay = json!({});
+    let all = t::templates_from(&lay);
+    let work = all.iter().find(|x| x["id"] == "work").cloned().unwrap();
+    // открыли и ничего не трогали — сохранять нечего
+    assert!(!t::draft_changed(Some(&work), &work.clone()));
+    // правка названия, вида или колонки — сохранить
+    let mut d = work.clone();
+    d["name"] = json!("Работа 2");
+    assert!(t::draft_changed(Some(&work), &d));
+    let mut d = work.clone();
+    d["view"] = json!("list");
+    assert!(t::draft_changed(Some(&work), &d));
+    let mut d = work.clone();
+    d["cols"][0]["name"] = json!("Новые");
+    assert!(t::draft_changed(Some(&work), &d));
+    // новый шаблон (в слое его ещё нет) — сохранить
+    assert!(t::draft_changed(None, &t::blank_template("Новый", 1)));
+}

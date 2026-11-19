@@ -1,7 +1,7 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
 import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView } from "kit.slint";
-import { Sat } from "kit.slint";
+import { Sat, Catch } from "kit.slint";
 import { LinkNote } from "linknote.slint";
 import { S, Opt, Sub, Found, DpCell } from "store.slint";
 import { TextEdit } from "std-widgets.slint";
@@ -188,7 +188,7 @@ export component TimeBox inherits Box {
     in property <bool> clearable;
     property <int> my;
     out property <bool> open: root.my > 0 && S.drop == root.my;
-    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
+    function toggle() { if (root.open) { S.drop = 0; } else { if (S.c-popen != "") { S.c-prop(S.c-popen); } root.typed = ""; S.drop-n += 1; root.my = S.drop-n; S.drop = root.my; } }
     width: 104px;
     border-color: root.open ? CK.accent : G.line;
     function put(raw: string) {
@@ -210,8 +210,9 @@ export component TimeBox inherits Box {
             reject
         }
     }
-    // клик мимо закрывает выпадающий список
-    if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
+    // клик мимо: набранное в поле время ставится (если понятно), потом список закрывается
+    property <string> typed;
+    if root.open: Catch { z: 19; clicked => { root.put(root.typed); S.drop = 0; } }
     if root.open: Rectangle {
         x: 0; y: parent.height + 4px; width: 344px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
@@ -220,6 +221,7 @@ export component TimeBox inherits Box {
         inp := Field {
             x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
             placeholder: "1730, 17, 5pm…";
+            edited(t) => { root.typed = t; }
             accepted(t) => { root.put(t); S.drop = 0; }
             escape => { S.drop = 0; }
         }
@@ -621,6 +623,8 @@ export component CreateDialog inherits Overlay {
     property <bool> dp: S.dp-open;
     changed dp => { if (self.dp) { keys.focus(); } else { line.grab(); } }
     close => { S.c-close(); }
+    // клик мимо окна: есть название — создать (если всего хватает), иначе просто закрыть
+    dismiss => { S.c-dismiss(line.text); }
     property <bool> inner;   // фокус в подзадаче или заметке — клавиши без Alt не перехватывать
     property <length> W: min(840px, self.width - 32px);
     property <length> body-h: S.c-kind == 0 ? 0px : (S.c-kind == 1 ? eb.height : (S.c-kind == 2 ? hb2.height : bb.height));
