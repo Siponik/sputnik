@@ -242,6 +242,12 @@ export global S {
     callback cal-add-close();
     callback cal-shift(int);
     callback cal-today();
+    callback cal-goto(int, int);              // год, месяц (0–11) из выбора по клику на «МАРТ 2027»
+    in property <int> cal-y;                  // выбранный год и месяц (0–11)
+    in property <int> cal-m;
+    in property <int> cal-now-y;              // сейчас
+    in property <int> cal-now-m;
+    in property <bool> cal-away;              // ушли с текущей недели/месяца — «к сейчас» ярче
     callback cal-mode-set(string);
     callback cal-pick(string);
     callback cal-filter(string);

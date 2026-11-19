@@ -483,6 +483,17 @@ pub fn wire(w: &AppWindow) {
         u.cal_down = None;
         u.cal_draft = None;
     }));
+    g.on_cal_goto(|y, m| act(|_, u| {
+        use chrono::Datelike;
+        let cur = chrono::NaiveDate::parse_from_str(&u.cal_sel, "%Y-%m-%d").unwrap_or_default();
+        let first = chrono::NaiveDate::from_ymd_opt(y, (m + 1) as u32, 1).unwrap_or(cur);
+        let last = (first + chrono::Months::new(1)).pred_opt().unwrap_or(first);
+        let day = cur.day().min(last.day());
+        u.cal_sel = first.with_day(day).unwrap_or(first).format("%Y-%m-%d").to_string();
+        u.cal_up = None;
+        u.cal_down = None;
+        u.cal_draft = None;
+    }));
     g.on_cal_mode_set(|m| act(|_, u| u.cal_mode = str_(&m)));
     g.on_cal_pick(|d| act(|_, u| u.cal_sel = str_(&d)));
     g.on_cal_filter(|f| act(|_, u| {

@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя — calweek.slint.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Hatch, CSeg, Icon, ScrollView } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Chev, Hatch, CSeg, Icon, ScrollView } from "kit.slint";
 import { S, Day, Chip, Opt } from "store.slint";
 import { Week } from "calweek.slint";
 
@@ -19,18 +19,6 @@ component Sq inherits Rectangle {
     qa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
-component Filter inherits Rectangle {
-    in property <Opt> f;
-    height: 28px;
-    width: fl.preferred-width + 34px;
-    border-radius: 6px;
-    border-width: 1px;
-    border-color: f.on ? f.hue.transparentize(0.25) : G.line;
-    background: f.on ? f.hue.transparentize(0.92) : (fa.has-hover ? G.node-hover : transparent);
-    Rectangle { x: 11px; y: (parent.height - 6px) / 2; width: 6px; height: 6px; border-radius: 1.5px; background: f.hue; opacity: f.on ? 1 : 0.6; }
-    fl := Text { x: 23px; text: f.label; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: f.on ? G.ink : G.dim; vertical-alignment: center; height: parent.height; }
-    fa := TouchArea { clicked => { S.cal-filter(f.id); } mouse-cursor: pointer; }
-}
 
 
 
@@ -144,34 +132,76 @@ export component CalendarPage inherits Rectangle {
     property <length> fh: min(400px, self.height - 64px - 16px);
     property <length> fy: max(64px, min(64px + 86px, self.height - root.fh - 8px));
     property <bool> form: root.adding || S.add-time != "";
+    // выбор месяца и года по клику на «МАРТ 2027»
+    property <bool> mp-open;
+    property <int> mp-year;
+    // «Показывать»: список типов с галочками
+    property <bool> sh-open;
 
     // ---------- панель ----------
-    Rectangle {
+    // слева «НЕДЕЛЯ | МЕСЯЦ», стрелки, месяц и год постоянной ширины (стрелки не прыгают), «к сейчас»;
+    // справа — что показывать, выпадающим списком
+    bar := Rectangle {
         x: root.mx; y: 8px; width: parent.width - 2 * root.mx; height: 48px;
         border-radius: 8px;
         background: G.node;
         border-width: 1px;
         border-color: G.line;
         HorizontalLayout {
-            padding-left: 13px;
+            padding-left: 9px;
             padding-right: 9px;
-            spacing: 10px;
-            alignment: start;
-            Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; horizontal-stretch: 0; }
-            Text { text: S.cal-sub; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center; horizontal-stretch: 1; overflow: elide; }
-            Rectangle { width: 2px; }
-            Sq { y: 9px; icon: "prev"; clicked => { S.cal-shift(-1); } }
-            Sq { y: 9px; icon: "next"; clicked => { S.cal-shift(1); } }
-            Rectangle { width: 2px; }
-            Button { y: 9px; height: 30px; text: "Сегодня"; clicked => { S.cal-today(); } }
-            Rectangle { width: 1px; height: 28px; y: 10px; background: G.line; }
-            for f in S.cal-filters: Filter { y: 10px; f: f; }
-        }
-        CSeg {
-            x: parent.width - self.width - 9px; y: 8px;
-            items: ["НЕДЕЛЯ", "МЕСЯЦ"];
-            current: S.cal-mode == "month" ? 1 : 0;
-            picked(i) => { S.cal-mode-set(i == 1 ? "month" : "week"); }
+            spacing: 8px;
+            
+            CSeg {
+                y: 8px;
+                items: ["НЕДЕЛЯ", "МЕСЯЦ"];
+                current: S.cal-mode == "month" ? 1 : 0;
+                picked(i) => { root.mp-open = false; S.cal-mode-set(i == 1 ? "month" : "week"); }
+            }
+            Rectangle { width: 1px; height: 20px; y: 14px; background: G.line; }
+            Sq { y: 10px; icon: "prev"; clicked => { root.mp-open = false; S.cal-shift(-1); } }
+            Sq { y: 10px; icon: "next"; clicked => { root.mp-open = false; S.cal-shift(1); } }
+            // месяц и год постоянной ширины: клик — выбрать и перейти
+            mbtn := Rectangle {
+                y: 10px; width: 150px; height: 28px;
+                border-radius: 7px;
+                background: mba.has-hover && !root.mp-open ? G.node-hover : transparent;
+                border-width: 1px;
+                border-color: root.mp-open ? G.accent : G.line;
+                Text { x: 10px; width: parent.width - 30px; text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                Chev { x: parent.width - 20px; y: (parent.height - 10px) / 2; c: G.muted; up: root.mp-open; }
+                mba := TouchArea { mouse-cursor: pointer; clicked => { root.mp-year = S.cal-y; root.mp-open = !root.mp-open; } }
+            }
+            // «к сейчас» — только когда сегодня не видно
+            if S.cal-away: Rectangle {
+                y: 10px; width: nt.preferred-width + 32px; height: 28px;
+                border-radius: 7px;
+                background: na.has-hover ? G.node-hover : transparent;
+                DashBox { c: na.has-hover ? G.line-strong : G.line; }
+                Rectangle { x: 10px; y: 11px; width: 6px; height: 6px; border-radius: 3px; background: G.accent; }
+                nt := Text { x: 22px; text: "К СЕЙЧАС"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1px; color: na.has-hover ? G.ink : G.muted; vertical-alignment: center; height: parent.height; }
+                na := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-today(); } }
+            }
+            Rectangle { horizontal-stretch: 1; }
+            // что показывать: точки включённых типов, клик — список с галочками
+            Rectangle {
+                y: 10px; width: shl.preferred-width + 24px; height: 28px;
+                border-radius: 7px;
+                border-width: 1px;
+                border-color: root.sh-open ? G.accent : (sba.has-hover ? G.line-strong : G.line);
+                background: sba.has-hover ? G.node-hover : transparent;
+                shl := HorizontalLayout {
+                    padding-left: 10px; spacing: 3px; alignment: start;
+                    st := Text { text: "ПОКАЗЫВАТЬ"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1px; color: G.ink; vertical-alignment: center; }
+                    Rectangle { width: 5px; }
+                    for f in S.cal-filters: Rectangle {
+                        width: f.on ? 6px : 0px; visible: f.on;
+                        Rectangle { y: 11px; width: 6px; height: 6px; border-radius: 3px; background: f.hue; }
+                    }
+                }
+                Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; c: G.muted; up: root.sh-open; }
+                sba := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; root.sh-open = !root.sh-open; } }
+            }
         }
     }
 
@@ -388,5 +418,109 @@ export component CalendarPage inherits Rectangle {
         visible: self.opacity > 0;
         animate opacity { duration: 120ms; }
         TouchArea { clicked => { S.cal-draft-cancel(); } }
+    }
+
+    // ---------- выбор месяца и года (G_CalHead) ----------
+    if root.mp-open || root.sh-open: TouchArea { clicked => { root.mp-open = false; root.sh-open = false; } }
+    if root.mp-open: Rectangle {
+        x: bar.x + mbtn.x;
+        y: bar.y + bar.height + 4px;
+        width: 240px;
+        height: mpl.preferred-height;
+        border-radius: 9px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.accent;
+        drop-shadow-blur: 24px;
+        drop-shadow-offset-y: 12px;
+        drop-shadow-color: #0000008c;
+        TouchArea { }
+        mfs := FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => { if e.text == Key.Escape { root.mp-open = false; return accept; } reject }
+        }
+        mpl := VerticalLayout {
+            HorizontalLayout {
+                padding: 10px; padding-left: 12px; padding-right: 12px;
+                Sq { icon: "prev"; clicked => { root.mp-year -= 1; } }
+                Text { text: root.mp-year; font-family: G.mono; font-size: 13px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; horizontal-stretch: 1; }
+                Sq { icon: "next"; clicked => { root.mp-year += 1; } }
+            }
+            VerticalLayout {
+                padding-left: 12px; padding-right: 12px; padding-bottom: 10px;
+                spacing: 6px;
+                for row in 4: HorizontalLayout {
+                    spacing: 6px;
+                    for col in 3: Rectangle {
+                        property <int> m: row * 3 + col;
+                        property <bool> cur: root.mp-year == S.cal-y && self.m == S.cal-m;
+                        property <bool> now: root.mp-year == S.cal-now-y && self.m == S.cal-now-m;
+                        height: 34px;
+                        border-radius: 6px;
+                        background: self.cur ? G.accent : (ma.has-hover ? G.node-hover : transparent);
+                        border-width: self.now && !self.cur ? 1px : 0px;
+                        border-color: G.accent.transparentize(0.4);
+                        Text {
+                            text: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"][parent.m];
+                            font-family: G.mono; font-size: 11px; font-weight: 500; letter-spacing: 1.1px;
+                            color: parent.cur ? G.on-accent : (parent.now ? G.accent : G.ink);
+                            horizontal-alignment: center; vertical-alignment: center;
+                        }
+                        ma := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-goto(root.mp-year, parent.m); } }
+                    }
+                }
+            }
+            Rectangle { height: 1px; background: G.line-soft; }
+            Rectangle {
+                height: 32px;
+                Text {
+                    x: 12px; height: parent.height; vertical-alignment: center;
+                    text: "СЕЙЧАС · " + ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"][S.cal-now-m] + " " + S.cal-now-y;
+                    font-family: G.mono; font-size: 10px; color: G.muted; letter-spacing: 0.6px;
+                }
+                Text {
+                    x: parent.width - self.width - 12px; height: parent.height; vertical-alignment: center;
+                    text: "СЕЙЧАС"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.1px;
+                    color: nwa.has-hover ? G.ink : G.accent;
+                    nwa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-today(); } }
+                }
+            }
+        }
+    }
+
+    // ---------- «Показывать»: галочки, окно не закрывается ----------
+    if root.sh-open: Rectangle {
+        x: bar.x + bar.width - self.width - 9px;
+        y: bar.y + bar.height + 4px;
+        width: 220px;
+        height: shp.preferred-height;
+        border-radius: 9px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.line;
+        drop-shadow-blur: 24px;
+        drop-shadow-offset-y: 12px;
+        drop-shadow-color: #0000008c;
+        TouchArea { }
+        FocusScope {
+            init => { self.focus(); }
+            key-pressed(e) => { if e.text == Key.Escape { root.sh-open = false; return accept; } reject }
+        }
+        shp := VerticalLayout {
+            padding-top: 6px; padding-bottom: 6px;
+            for f in S.cal-filters: Rectangle {
+                height: 32px;
+                background: fa.has-hover ? G.node-hover : transparent;
+                Rectangle {
+                    x: 12px; y: 9px; width: 14px; height: 14px; border-radius: 4px;
+                    background: f.on ? G.accent : transparent;
+                    border-width: f.on ? 0px : 1.5px; border-color: G.line;
+                    if f.on: Icon { x: 2px; y: 2px; name: "check"; width: 10px; c: #1A1B1F; stroke-width: 2px; }
+                }
+                Rectangle { x: 36px; y: 12.5px; width: 7px; height: 7px; border-radius: 3.5px; background: f.hue; }
+                Text { x: 52px; height: parent.height; vertical-alignment: center; text: f.label; font-size: 13px; color: G.ink; }
+                fa := TouchArea { mouse-cursor: pointer; clicked => { S.cal-filter(f.id); } }
+            }
+        }
     }
 }

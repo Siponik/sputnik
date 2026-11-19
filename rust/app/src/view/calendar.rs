@@ -5,7 +5,7 @@ use crate::{Chip, Day, Opt};
 use sputnik_core::calendar as cal;
 use sputnik_core::habits as hb;
 
-pub const FILTERS: [(&str, &str, &str); 4] = [("events", "События", "#A3A5AE"), ("tasks", "Задачи", "clay"), ("habits", "Привычки", "gold"), ("bdays", "Дни рождения", "violet")];
+pub const FILTERS: [(&str, &str, &str); 4] = [("events", "События", "#A3A5AE"), ("tasks", "Задачи", "clay"), ("habits", "Привычки", "gold"), ("bdays", "Дни рождения", "#F08CC0")];
 
 /// Всё, что есть у дня: (минуты начала/конца или None для «весь день», элемент-чип).
 pub struct Item {
@@ -17,7 +17,7 @@ pub struct Item {
     pub src: String,
 }
 
-fn on(u: &Ui, f: &str) -> bool {
+pub(super) fn on(u: &Ui, f: &str) -> bool {
     !u.cal_off.iter().any(|x| x == f)
 }
 
@@ -105,6 +105,7 @@ pub(super) fn habits_line(app: &App, day: &str) -> (String, Vec<i32>) {
 }
 
 const MONTHS_UP: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
+const MONTHS_SHORT_UP: [&str; 12] = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
 const MONTHS_GEN_UP: [&str; 12] = ["ЯНВАРЯ", "ФЕВРАЛЯ", "МАРТА", "АПРЕЛЯ", "МАЯ", "ИЮНЯ", "ИЮЛЯ", "АВГУСТА", "СЕНТЯБРЯ", "ОКТЯБРЯ", "НОЯБРЯ", "ДЕКАБРЯ"];
 
 fn pd(d: &str) -> chrono::NaiveDate {
@@ -126,13 +127,29 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_cal_mode(ss(mode));
     let sd = pd(&u.cal_sel);
     use chrono::Datelike;
-    g.set_cal_title(ss(format!("{} {}", MONTHS_UP[sd.month0() as usize], sd.year())));
+    // постоянной ширины кнопка: в неделе «16–22 НОЯ 2026», в месяце «МАРТ 2027»
+    g.set_cal_title(ss(if mode == "week" {
+        let a = cal::start_of_week(sd);
+        let b = a + chrono::Duration::days(6);
+        let m3 = |d: chrono::NaiveDate| MONTHS_SHORT_UP[d.month0() as usize];
+        if a.month() == b.month() { format!("{}–{} {} {}", a.day(), b.day(), m3(b), b.year()) }
+        else { format!("{} {}–{} {} {}", a.day(), m3(a), b.day(), m3(b), b.year()) }
+    } else { format!("{} {}", MONTHS_UP[sd.month0() as usize], sd.year()) }));
     let mdays = { let (y, m) = (sd.year(), sd.month()); let nx = if m == 12 { chrono::NaiveDate::from_ymd_opt(y + 1, 1, 1) } else { chrono::NaiveDate::from_ymd_opt(y, m + 1, 1) }; nx.map(|x| x.pred_opt().unwrap().day()).unwrap_or(30) };
     g.set_cal_sub(ss(if mode == "week" { format!("НЕДЕЛЯ {}", sd.iso_week().week()) } else { format!("{} ИЗ {}", sd.day(), mdays) }));
     g.set_free_col(-1);
     g.set_free_free(-1);
     u.cal_free = None;
-    g.set_cal_filters(model(FILTERS.iter().map(|(id, l, c)| Opt { id: ss(*id), label: ss(l.to_uppercase()), hint: ss(""), hue: color(c), on: on(u, id) }).collect()));
+    {
+        let tdy = pd(&today_s());
+        g.set_cal_y(sd.year());
+        g.set_cal_m(sd.month0() as i32);
+        g.set_cal_now_y(tdy.year());
+        g.set_cal_now_m(tdy.month0() as i32);
+        let same = if mode == "week" { cal::start_of_week(sd) == cal::start_of_week(tdy) } else { (sd.year(), sd.month()) == (tdy.year(), tdy.month()) };
+        g.set_cal_away(!same);
+    }
+    g.set_cal_filters(model(FILTERS.iter().map(|(id, l, c)| Opt { id: ss(*id), label: ss(*l), hint: ss(""), hue: color(c), on: on(u, id) }).collect()));
     let tdy = today_s();
     let sel_month = &u.cal_sel[..7];
     let per_day_m = || -> Vec<(String, Vec<Item>)> { days.iter().map(|d| (d.clone(), day_items(app, u, d))).collect() };
