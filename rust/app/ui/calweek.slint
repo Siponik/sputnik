@@ -1,0 +1,354 @@
+// Неделя календаря по макету G_CalWeek / G_CalRules (п. 47): видны часы с делами (по умолчанию 09–19), ничего не сжато;
+// что за краем — чипы «↑ раньше / ↓ позже» в своей колонке. Дела в одно время — один блок «N ДЕЛ» со строками внутри,
+// длинная привычка — золотой фон. Наведение на дело — всплывашка. Задачи со временем тянутся мышью.
+// Все расчёты (часы, высоты, группы) — в Rust: sputnik_core::calweek.
+import { G } from "theme.slint";
+import { DashBox, ScrollView } from "kit.slint";
+import { S, Day, Block, Chip, CalTip, BlockRow } from "store.slint";
+
+// Значок дела: задача — кружок, событие — черта слева (рисует блок), привычка — квадрат, сделанное — галочка.
+component Mark inherits Rectangle {
+    in property <int> kind;
+    in property <bool> done;
+    in property <color> hue;
+    width: 10px;
+    height: 10px;
+    if root.done: Rectangle {
+        border-radius: 3px; background: #45464D;
+        Text { text: "✓"; color: G.ink; font-size: 8px; horizontal-alignment: center; vertical-alignment: center; }
+    }
+    if !root.done && root.kind != 0: Rectangle {
+        x: 1px; y: 1px; width: 8px; height: 8px;
+        border-radius: root.kind == 1 ? 4px : 2px;
+        border-width: 1.5px;
+        border-color: root.kind == 2 ? G.gold : root.hue;
+    }
+}
+
+// Чип дня в строке «ВЕСЬ ДЕНЬ»; день рождения — розовая плашка.
+component AllDay inherits Rectangle {
+    in property <Chip> c;
+    in property <int> more;
+    property <color> pink: #F08CC0;
+    height: 20px;
+    border-radius: 4px;
+    background: c.kind == 3 ? root.pink.transparentize(0.84) : (c.done ? #25262B : c.hue.transparentize(0.9));
+    border-width: c.kind == 3 ? 0 : 1px;
+    border-color: c.done ? G.line : c.hue.transparentize(0.45);
+    HorizontalLayout {
+        padding-left: 6px;
+        padding-right: 6px;
+        spacing: 5px;
+        if c.kind != 3: Mark { y: 5px; kind: c.kind; done: c.done; hue: c.hue; }
+        Text {
+            text: (c.kind == 3 ? "ДР · " : "") + c.title;
+            color: c.kind == 3 ? root.pink : (c.done ? G.dim : G.ink);
+            font-size: 11.5px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1;
+        }
+        if root.more > 0: Text { text: "+" + root.more; font-family: G.mono; font-size: 9.5px; color: G.muted; vertical-alignment: center; }
+    }
+    TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
+}
+
+// Чип «↑ 07:00 · ЕЩЁ 1 РАНЬШЕ» над или под сеткой; клик раскрывает часы до этого дела, повторный — сворачивает.
+component Edge inherits Rectangle {
+    in property <string> text;
+    in property <bool> up;
+    in property <int> hour;
+    in property <length> room;
+    width: min(et.preferred-width + 16px, root.room);
+    height: 20px;
+    border-radius: 4px;
+    background: ea.has-hover ? G.accent.transparentize(0.82) : G.accent.transparentize(0.9);
+    border-width: 1px;
+    border-color: G.accent.transparentize(0.5);
+    et := Text { x: 8px; width: parent.width - 16px; text: root.text; font-family: G.mono; font-size: 9px; font-weight: 500; letter-spacing: 0.7px; color: G.accent; vertical-alignment: center; height: parent.height; overflow: elide; }
+    ea := TouchArea { clicked => { S.cal-edge(root.up, root.hour); } mouse-cursor: pointer; }
+}
+
+// Всплывашка дела: полное название, дата и время, список/сфера, заметка.
+component TipCard inherits Rectangle {
+    in property <CalTip> t;
+    width: 250px;
+    height: tl.preferred-height;
+    border-radius: 8px;
+    background: G.node;
+    border-width: 1px;
+    border-color: G.line;
+    drop-shadow-blur: 28px;
+    drop-shadow-offset-y: 10px;
+    drop-shadow-color: #0000008C;
+    clip: true;
+    tl := VerticalLayout {
+        Rectangle { height: 3px; background: t.hue; }
+        VerticalLayout {
+            padding: 12px;
+            padding-top: 10px;
+            spacing: 6px;
+            Text { text: t.title; font-size: 13.5px; font-weight: 600; color: G.ink; wrap: word-wrap; }
+            Text { text: t.when; font-family: G.mono; font-size: 10.5px; color: G.muted; wrap: word-wrap; }
+            if t.src != "": Text { text: t.src; font-family: G.mono; font-size: 9.5px; font-weight: 500; letter-spacing: 0.8px; color: t.hue; wrap: word-wrap; }
+            if t.note != "": VerticalLayout {
+                spacing: 6px;
+                Rectangle { height: 1px; background: G.line-soft; }
+                Text { text: t.note; font-size: 12px; color: #C9CAD0; wrap: word-wrap; }
+            }
+        }
+    }
+}
+
+export component Week inherits Rectangle {
+    property <length> gut: 38px;
+    property <length> colw: (self.width - root.gut) / max(1, S.days.length);
+    // чипы есть хоть у одного дня (или раскрыто — остаётся «свернуть») — строка под них
+    property <bool> any-up: S.cal-any-up || S.cal-up;
+    property <bool> any-down: S.cal-any-down || S.cal-down;
+    property <length> head-h: 34px;
+    property <length> ad-h: 30px;
+    property <length> up-h: root.any-up ? 26px : 0;
+    property <length> down-h: root.any-down ? 28px : 0;
+    property <length> top-h: root.head-h + root.ad-h + root.up-h;
+    // перетаскивание задачи
+    property <bool> dragging;
+    property <bool> dropped;
+    property <string> d-list;
+    property <string> d-id;
+    property <string> d-title;
+    property <length> gx;
+    property <length> gy;
+    property <length> d-h;
+    // всплывашка
+    property <bool> tip-on;
+    property <CalTip> tip;
+    property <length> tip-x;
+    property <length> tip-y;
+    property <string> tip-id;
+
+    function show-tip(t: CalTip, id: string, bx: length, by: length, bw: length) {
+        root.tip = t;
+        root.tip-id = id;
+        // справа от блока, если места нет — слева; не ниже окна
+        root.tip-x = bx + bw + 258px <= root.width ? bx + bw + 6px : max(0px, bx - 256px);
+        root.tip-y = max(0px, min(by, root.height - 180px));
+        root.tip-on = true;
+    }
+    function hide-tip(id: string) {
+        if (root.tip-id == id) { root.tip-on = false; }
+    }
+
+    // подсветка «сегодня» на всю высоту, разделители колонок
+    if S.today-col >= 0: Rectangle { x: root.gut + S.today-col * root.colw; width: root.colw; background: G.accent.transparentize(0.965); }
+    for d[i] in S.days: Rectangle { x: root.gut + i * root.colw; width: 1px; background: G.line-soft; }
+
+    // ---------- шапки дней ----------
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: 0;
+        width: root.colw;
+        height: root.head-h;
+        background: ha.has-hover ? G.node-hover : transparent;
+        Text { text: d.label; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: d.today ? G.accent : (d.sel ? G.ink : #B5B7C0); horizontal-alignment: center; vertical-alignment: center; }
+        if d.sel && !d.today: Rectangle { y: parent.height - 2px; height: 2px; x: 12px; width: parent.width - 24px; background: G.accent-line; }
+        ha := TouchArea { clicked => { S.cal-pick(d.ymd); } }
+    }
+    Rectangle { y: root.head-h - 1px; height: 1px; background: G.line-soft; }
+
+    // ---------- весь день ----------
+    Text {
+        x: 0; y: root.head-h; width: root.gut; height: root.ad-h;
+        text: "ВЕСЬ\nДЕНЬ"; font-family: G.mono; font-size: 8px; letter-spacing: 0.8px; color: G.dim;
+        horizontal-alignment: center; vertical-alignment: center;
+    }
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: root.head-h;
+        width: root.colw;
+        height: root.ad-h;
+        background: root.dragging && root.gy < 0 && floor((root.gx - root.gut) / root.colw) == i ? G.accent-wash : transparent;
+        if d.all.length > 0: AllDay { x: 4px; y: 5px; width: parent.width - 8px; c: d.all[0]; more: d.more; }
+    }
+
+    // ---------- чипы «раньше» ----------
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: root.head-h + root.ad-h;
+        width: root.colw;
+        height: root.up-h;
+        if d.up != "": Edge { x: 3px; y: 3px; text: d.up; up: true; hour: d.up-h; room: root.colw - 6px; }
+        if d.up == "" && S.cal-up && i == 0: Edge { x: 3px; y: 3px; text: "↓ СВЕРНУТЬ РАННИЕ ЧАСЫ"; up: true; hour: -1; room: root.colw * 3; }
+    }
+    Rectangle { y: root.top-h - 1px; height: 1px; background: G.line; }
+
+    sv := ScrollView {
+        x: 0;
+        y: root.top-h;
+        width: root.width;
+        height: root.height - root.top-h - root.down-h;
+        content-height: S.grid-h * 1px + 1px;
+        grid := Rectangle {
+            width: sv.width;
+            height: S.grid-h * 1px + 1px;
+            // часы: линия и подпись «09» по центру узкого столбца
+            for l in S.hours: Rectangle {
+                y: l.y * 1px; height: 1px; width: parent.width; background: G.line-soft;
+            }
+            for l in S.hours: Text {
+                x: 0; y: l.y * 1px + 3px; width: root.gut;
+                text: l.text; font-family: G.mono; font-size: 10px; color: G.dim; horizontal-alignment: center;
+            }
+            Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
+            for d[i] in S.days: Rectangle {
+                x: root.gut + i * root.colw;
+                width: root.colw;
+                background: root.dragging && root.gy >= 0 && floor((root.gx - root.gut) / root.colw) == i ? G.accent.transparentize(0.94) : transparent;
+                // длинная привычка — фон с золотыми линиями на начале и конце
+                for b in d.bg: Rectangle {
+                    x: 1px; y: b.y * 1px; width: parent.width - 1px; height: b.h * 1px;
+                    background: G.gold.transparentize(0.94);
+                    if b.top: Rectangle { y: 0; height: 1px; background: G.gold.transparentize(0.5); }
+                    if b.bot: Rectangle { y: parent.height - 1px; height: 1px; background: G.gold.transparentize(0.5); }
+                    Text { x: 6px; y: 3px; width: parent.width - 10px; text: b.text; font-family: G.mono; font-size: 8.5px; font-weight: 500; letter-spacing: 0.7px; color: G.gold; opacity: 0.85; overflow: elide; }
+                }
+                TouchArea { clicked => { S.cal-grid-click(d.ymd, self.mouse-y / 1px); } }
+                // самое свободное окно недели
+                if S.free-col == i: DashBox {
+                    x: 3px; y: S.free-y * 1px + 2px; width: parent.width - 6px; height: max(24px, S.free-h * 1px - 4px);
+                    c: G.gold;
+                    background: #E8C65A0C;
+                    Text { text: "СВОБОДНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.gold; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                }
+                for b in d.blocks: Rectangle {
+                    x: 4px;
+                    y: b.y * 1px;
+                    width: parent.width - 8px;
+                    height: b.h * 1px;
+                    border-radius: 5px;
+                    background: b.kind == 4 ? G.accent.transparentize(0.92) : (b.done ? #25262B : (b.kind == 2 ? G.gold.transparentize(0.92) : b.hue.transparentize(0.9)));
+                    border-width: b.kind == 2 && !b.done ? 0 : 1px;
+                    border-color: b.kind == 4 ? G.accent.transparentize(0.5) : (b.done ? G.line : b.hue.transparentize(0.45));
+                    opacity: root.dragging && root.d-id == b.id ? 0.35 : 1;
+                    clip: true;
+                    if b.kind == 2 && !b.done: DashBox { c: G.gold.transparentize(0.25); }
+                    // событие календаря — вертикальная черта слева
+                    if b.kind == 0 && !b.done: Rectangle { x: 5px; y: 5px; width: 3px; height: min(parent.height - 10px, 26px); border-radius: 2px; background: b.hue; }
+                    // одно дело в одну строку (короче 45 мин)
+                    if b.kind != 4 && b.one: HorizontalLayout {
+                        padding-left: b.kind == 0 && !b.done ? 13px : 6px;
+                        padding-right: 6px;
+                        spacing: 6px;
+                        if b.kind != 0 || b.done: Mark { y: (parent.height - 10px) / 2; kind: b.kind; done: b.done; hue: b.hue; }
+                        if b.sub != "": Text { text: b.sub; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
+                        Text { text: b.title; font-size: 12px; color: b.done ? G.dim : G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                    }
+                    // одно дело, длинное: значок, время (если не ровно по часу), название на сколько влезет строк
+                    if b.kind != 4 && !b.one: HorizontalLayout {
+                        padding: 5px;
+                        padding-left: b.kind == 0 && !b.done ? 13px : 7px;
+                        padding-right: 6px;
+                        spacing: 6px;
+                        if b.kind != 0 || b.done: VerticalLayout { Rectangle { height: 2px; } Mark { kind: b.kind; done: b.done; hue: b.hue; } Rectangle { } }
+                        VerticalLayout {
+                            horizontal-stretch: 1;
+                            if b.sub != "": Text { text: b.sub; font-family: G.mono; font-size: 10px; color: G.muted; }
+                            Text { text: b.title; font-size: 12px; color: b.done ? G.dim : G.ink; wrap: word-wrap; overflow: elide; vertical-stretch: 1; }
+                        }
+                    }
+                    // «N ДЕЛ · 11–13»: строки без времени, не влезло — «+N ещё»
+                    if b.kind == 4: VerticalLayout {
+                        padding-left: 7px;
+                        padding-right: 7px;
+                        padding-top: 4px;
+                        alignment: start;
+                        Text { height: 16px; text: b.title; font-family: G.mono; font-size: 9px; font-weight: 500; letter-spacing: 0.7px; color: G.accent; vertical-alignment: center; }
+                        for r in b.rows: Rectangle {
+                            height: 28px;
+                            Rectangle { y: 0; height: 1px; background: G.line-soft; }
+                            if r.chip.kind == 0 && !r.chip.done: Rectangle { x: 0; y: 5px; width: 3px; height: 18px; border-radius: 2px; background: r.chip.hue; }
+                            if r.chip.kind != 0 || r.chip.done: Mark { x: 0; y: 9px; kind: r.chip.kind; done: r.chip.done; hue: r.chip.hue; }
+                            Text { x: 16px; width: parent.width - 16px; height: parent.height; text: r.chip.title; font-size: 12px; color: r.chip.done ? G.dim : G.ink; vertical-alignment: center; overflow: elide; }
+                            ra := TouchArea {
+                                mouse-cursor: pointer;
+                                changed has-hover => {
+                                    if (self.has-hover) {
+                                        root.show-tip(r.tip, r.chip.id, self.absolute-position.x - root.absolute-position.x, self.absolute-position.y - root.absolute-position.y, self.width);
+                                    } else { root.hide-tip(r.chip.id); }
+                                }
+                                clicked => {
+                                    if (r.chip.kind == 1) { S.open-task(r.chip.list-id, r.chip.id); } else if (r.chip.kind == 2) { S.habit-tap(r.chip.id); } else { S.open-event(r.chip.id); }
+                                }
+                            }
+                        }
+                        if b.more > 0: Text { height: 16px; text: "+" + b.more + " ещё"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
+                    }
+                    if b.kind != 4: ba := TouchArea {
+                        mouse-cursor: pointer;
+                        changed has-hover => {
+                            if (self.has-hover && !root.dragging) {
+                                root.show-tip(b.tip, b.id, self.absolute-position.x - root.absolute-position.x, self.absolute-position.y - root.absolute-position.y, self.width);
+                            } else { root.hide-tip(b.id); }
+                        }
+                        pointer-event(e) => {
+                            if (e.kind == PointerEventKind.down) { root.dropped = false; }
+                            if (e.kind == PointerEventKind.up && root.dragging) {
+                                root.dragging = false;
+                                root.dropped = true;
+                                S.cal-drop(root.d-list, root.d-id, S.days[max(0, min(S.days.length - 1, floor((root.gx - root.gut) / root.colw)))].ymd, root.gy < 0 ? -1 : root.gy / 1px);
+                            }
+                        }
+                        moved => {
+                            if (b.kind == 1 && !b.done && !root.dragging && abs(self.mouse-y - self.pressed-y) + abs(self.mouse-x - self.pressed-x) > 6px) {
+                                root.dragging = true;
+                                root.tip-on = false;
+                                root.d-list = b.list-id;
+                                root.d-id = b.id;
+                                root.d-title = b.title;
+                                root.d-h = b.h * 1px;
+                            }
+                            if (root.dragging) {
+                                root.gx = self.absolute-position.x - grid.absolute-position.x + self.mouse-x;
+                                root.gy = self.absolute-position.y - grid.absolute-position.y + self.mouse-y - self.pressed-y;
+                            }
+                        }
+                        clicked => {
+                            if (!root.dropped) {
+                                if (b.kind == 1) { S.open-task(b.list-id, b.id); } else if (b.kind == 0) { S.open-event(b.id); } else { S.habit-tap(b.id); }
+                            }
+                        }
+                    }
+                }
+            }
+            // «сейчас» — провод с сокетом
+            if S.now-col >= 0: Rectangle {
+                x: root.gut + S.now-col * root.colw;
+                y: S.now-y * 1px;
+                width: root.colw;
+                height: 1.5px;
+                background: G.accent;
+                Rectangle { x: -4px; y: -3.5px; width: 8px; height: 8px; border-radius: 2px; background: G.accent; }
+            }
+            if root.dragging: Rectangle {
+                x: root.gut + floor((root.gx - root.gut) / root.colw) * root.colw + 4px;
+                y: max(0, root.gy);
+                width: root.colw - 8px;
+                height: max(22px, root.d-h);
+                border-radius: 5px;
+                border-width: 1.5px;
+                border-color: G.accent;
+                background: G.accent-wash;
+                Text { x: 6px; y: 4px; text: root.d-title; font-size: 12px; color: G.accent-ink; overflow: elide; width: parent.width - 12px; }
+            }
+        }
+    }
+
+    // ---------- чипы «позже» ----------
+    for d[i] in S.days: Rectangle {
+        x: root.gut + i * root.colw;
+        y: root.height - root.down-h;
+        width: root.colw;
+        height: root.down-h;
+        if d.down != "": Edge { x: 3px; y: 4px; text: d.down; up: false; hour: d.down-h; room: root.colw - 6px; }
+        if d.down == "" && S.cal-down && i == 0: Edge { x: 3px; y: 4px; text: "↑ СВЕРНУТЬ ПОЗДНИЕ ЧАСЫ"; up: false; hour: -1; room: root.colw * 3; }
+    }
+
+    if root.tip-on: TipCard { x: root.tip-x; y: root.tip-y; t: root.tip; }
+}

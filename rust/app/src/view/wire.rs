@@ -473,11 +473,13 @@ pub fn wire(w: &AppWindow) {
     g.on_cal_shift(|d| act(|_, u| {
         let mode = if u.cal_mode == "month" { "month" } else { "week" };
         u.cal_sel = sputnik_core::calendar::shift_period(&u.cal_sel, mode, d as i64);
-        u.cal_bands.clear();
+        u.cal_up = None;
+        u.cal_down = None;
     }));
     g.on_cal_today(|| act(|_, u| {
         u.cal_sel = today_s();
-        u.cal_bands.clear();
+        u.cal_up = None;
+        u.cal_down = None;
     }));
     g.on_cal_mode_set(|m| act(|_, u| u.cal_mode = str_(&m)));
     g.on_cal_pick(|d| act(|_, u| u.cal_sel = str_(&d)));
@@ -489,10 +491,13 @@ pub fn wire(w: &AppWindow) {
         if let Some((d, t)) = u.cal_free.clone() { u.cal_sel = d; u.add_time = t; }
     }));
     g.on_cal_add_close(|| act(|_, u| u.add_time.clear()));
-    g.on_cal_band(|a0| act(|_, u| u.cal_bands.push(a0 as i64)));
+    g.on_cal_edge(|up, h| act(|_, u| {
+        let slot = if up { &mut u.cal_up } else { &mut u.cal_down };
+        *slot = if slot.is_some() || h < 0 { None } else { Some(h as i64) };
+    }));
     g.on_cal_grid_click(|d, y| act(|app, u| {
         u.cal_sel = str_(&d);
-        let m = super::calendar::min_at(app, u, y as f64);
+        let m = super::calweek::min_at(app, u, y as f64);
         u.add_time = sputnik_core::calendar::from_min(m);
     }));
     g.on_cal_add(|d, tm, title, ev| act(|app, u| {
@@ -531,7 +536,7 @@ pub fn wire(w: &AppWindow) {
             (Some(a0), Some(b0)) => (cr::to_min(b0) - cr::to_min(a0)).max(15),
             _ => 60,
         };
-        let m = super::calendar::min_at(app, u, y as f64);
+        let m = super::calweek::min_at(app, u, y as f64);
         let st = sputnik_core::calendar::from_min(m);
         let en = sputnik_core::calendar::from_min((m + len).min(1439));
         app.schedule(&l, &t, &d, json!({"s": st, "e": en}));

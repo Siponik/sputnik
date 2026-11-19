@@ -18,10 +18,15 @@ export struct InboxRow { list-id: string, id: string, title: string, list: strin
 export struct HabitChip { id: string, name: string, icon: string, hue: color, done: bool, count: int, goal: int }
 export struct HabitCard { id: string, name: string, icon: string, hue: color, streak: int, streak-label: string, line: string, sched: string, done: bool, count: int, goal: int, week: [int], off: bool, sched-up: string, unit-up: string, foot: string, foot-hi: bool, now-i: int, letter: string }
 export struct MonthRow { id: string, name: string, icon: string, hue: color, cells: [int] }
-export struct Block { title: string, sub: string, y: float, h: float, x: float, w: float, hue: color, done: bool, kind: int, list-id: string, id: string }
+// всплывашка дела в неделе: название, «ЧТ 19 НОЯ · 11:00–13:00 · 2 Ч», «РАБОТА · ЗАКАЗ», заметка
+export struct CalTip { title: string, when: string, src: string, note: string, hue: color }
+export struct BlockRow { chip: Chip, tip: CalTip }
+// блок недели: kind 0 событие · 1 задача · 2 привычка · 3 ДР · 4 «N дел» (rows, more — «+N ещё»); one — в одну строку
+export struct Block { title: string, sub: string, y: float, h: float, x: float, w: float, hue: color, done: bool, kind: int, list-id: string, id: string, one: bool, tip: CalTip, rows: [BlockRow], more: int }
+// длинная привычка — фон дня (п. 47); top/bot — видны ли начало и конец
+export struct WkBg { y: float, h: float, text: string, top: bool, bot: bool }
 export struct Label { text: string, y: float, small: bool }
-export struct Band { y: float, h: float, text: string, a: int }
-export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int] }
+export struct Day { ymd: string, label: string, num: string, today: bool, sel: bool, all: [Chip], blocks: [Block], habits: string, load: float, more: int, in-month: bool, hdots: [int], bg: [WkBg], up: string, down: string, up-h: int, down-h: int }
 export struct SphList { id: string, name: string, letter: string, count: int }
 export struct SphCard { id: string, name: string, head: color, aside: string, sel: bool, lists: [SphList] }
 export struct ArchSph { kind: string, id: string, name: string, meta: string, date: string, head: color, letter: string, group: string, first: bool }
@@ -205,7 +210,11 @@ export global S {
     in property <string> cal-mode;             // week | month
     in property <[Day]> days;
     in property <[Label]> hours;
-    in property <[Band]> bands;
+    in property <bool> cal-up;                // неделя раскрыта вверх/вниз кликом по чипу
+    in property <bool> cal-down;
+    in property <bool> cal-any-up;            // хоть у одного дня есть чип «↑ раньше» / «↓ позже»
+    in property <bool> cal-any-down;
+    in property <int> today-col: -1;          // колонка сегодня (now-col — только если «сейчас» в видимых часах)
     in property <float> grid-h;
     in property <float> now-y;
     in property <int> now-col;
@@ -240,7 +249,7 @@ export global S {
     callback cal-drop(string, string, string, float); // список, задача, день, y в сетке (−1 — весь день)
     callback cal-grid-click(string, float);   // день, y в сетке → форма с временем
     in property <string> add-time;
-    callback cal-band(int);
+    callback cal-edge(bool, int);             // чип «↑ раньше» (true) / «↓ позже»: раскрыть до часа или свернуть
     callback open-event(string);
 
     // ---------- Привычки ----------

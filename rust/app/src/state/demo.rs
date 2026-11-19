@@ -50,7 +50,7 @@ pub fn fill(app: &mut App) {
         "home": [task("h1", "Купить корм коту", Some(0), false), task("h4", "Сдать показания счётчиков", Some(0), false), task("h5", "Пропс «Бочка»", Some(-2), false), task("h2", "Позвонить в управляющую", Some(1), false),
                  task("h3", "Записаться к врачу", Some(5), false), task("h4", "Оплатить интернет", Some(0), false)],
         "study": [task("s1", "Урок 12: скульптинг", Some(0), false), task("s2", "Урок 13: ретопология", Some(4), false)],
-        "hab": [task("hb1", "Вода", None, false), task("hb2", "Зарядка", None, false), task("hb3", "Чтение", None, false)],
+        "hab": [task("hb1", "Вода", None, false), task("hb2", "Зарядка", None, false), task("hb3", "Чтение", None, false), task("hb4", "Работа", None, false)],
     });
     app.tasks["work"].as_array_mut().unwrap().push(json!({"id": "w1a", "title": "Список вопросов", "parent": "w1", "status": "needsAction", "position": "1"}));
     for (l, id, title, k) in [("work", "wa1", "Иконки v1", -4), ("home", "ha1", "Вынести коробки", -4), ("icons", "ia1", "Ретопология меча", -5), ("study", "sa1", "Урок 11: сетка", -6), ("work", "wa2", "Квитанция за газ", -21)] {
@@ -60,7 +60,7 @@ pub fn fill(app: &mut App) {
     }
     app.calendars = vec![json!({"id": "primary", "summary": "Основной", "primary": true, "accessRole": "owner", "selected": true, "backgroundColor": "#6FA2F2"})];
     app.events = vec![ev("e1", "Планёрка", 0, "10:00", "10:30"), ev("e2", "Обед с Олей", 1, "13:00", "14:00"), ev("e3", "Ревью ассетов", 2, "16:00", "17:30"),
-        ev("e4", "Тренировка", 3, "19:00", "20:00")];
+        ev("e4", "Тренировка", 3, "19:00", "20:00"), ev("e5", "Созвон «Таверна»", 0, "11:15", "12:30")];
     let t = 1.0;
     app.layer["spheres"] = json!({"sp1": {"name": "Работа", "color": "clay", "icon": "case", "order": 1, "t": t}, "sp2": {"name": "Личное", "color": "personal", "icon": "home", "order": 2, "t": t}, "sp3": {"name": "Фриланс 2025", "color": "gold", "order": 3, "archived": true, "archivedAt": 1762041600000.0, "t": t}});
     app.layer["lists"] = json!({
@@ -82,6 +82,7 @@ pub fn fill(app: &mut App) {
     app.layer["habits"] = json!({
         "hb1": {"days": [0, 1, 2, 3, 4, 5, 6], "goal": {"n": 8, "unit": "стаканов"}, "icon": "💧", "color": "work", "createdAt": day(-30), "t": t},
         "hb2": {"days": [0, 1, 2, 3, 4], "part": "morning", "icon": "🏃", "color": "personal", "createdAt": day(-30), "t": t},
+        "hb4": {"days": [0, 1, 2, 3, 4], "icon": "💼", "color": "gold", "createdAt": day(-30), "win": {"s": "08:00", "e": "17:00"}, "t": t},
         "hb3": {"days": [0, 1, 2, 3, 4, 5, 6], "part": "evening", "icon": "📖", "color": "study", "createdAt": day(-30), "win": {"s": "21:00", "e": "22:00"}, "t": t},
     });
     let mut log = serde_json::Map::new();

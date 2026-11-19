@@ -3,6 +3,7 @@
 //! Окно ничего не считает: после любого действия render() заново кладёт модели только активного раздела.
 pub(crate) mod board;
 mod calendar;
+mod calweek;
 mod dialogs;
 mod habitedit;
 mod habits;
@@ -47,7 +48,9 @@ pub struct Ui {
     pub cal_sel: String,
     pub cal_mode: String,
     pub cal_off: Vec<String>,
-    pub cal_bands: Vec<i64>,
+    /// Неделя раскрыта кликом по чипу «↑ раньше / ↓ позже» до этого часа.
+    pub cal_up: Option<i64>,
+    pub cal_down: Option<i64>,
     pub add_time: String,
     pub cal_free: Option<(String, String)>,
     pub quick: String,
