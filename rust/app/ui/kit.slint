@@ -232,6 +232,10 @@ export component Field inherits Rectangle {
     callback edited(string);
     callback escape();
     callback shift-enter(string);
+    // arrows: ↑/↓ не двигают курсор, а уходят наверх (выбор в списке под полем)
+    in property <bool> arrows;
+    callback up();
+    callback down();
     out property <bool> focused: ti.has-focus;
     public function grab() { ti.focus(); }
     public function clear() { ti.text = ""; }
@@ -266,6 +270,8 @@ export component Field inherits Rectangle {
         key-pressed(e) => {
             if (e.text == Key.Escape) { root.escape(); return accept; }
             if (e.text == Key.Return && e.modifiers.shift) { root.shift-enter(self.text); return accept; }
+            if (root.arrows && e.text == Key.UpArrow) { root.up(); return accept; }
+            if (root.arrows && e.text == Key.DownArrow) { root.down(); return accept; }
             reject
         }
     }

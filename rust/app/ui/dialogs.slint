@@ -824,39 +824,73 @@ export component CreateDialog inherits Overlay {
 export component SearchDialog inherits Overlay {
     in property <length> right: root.width - 300px;
     in property <length> top: 14px;
+    // ширина поля «Найти» в шапке: из неё поле и вырастает
+    in property <length> from-w: 172px;
     property <int> cur;
     property <string> q-text;
+    // открытие (каталог G_Motion): поле растёт до 400 px 180 мс, список выпадает на 6 px + fade 160 мс;
+    // закрытие быстрее — 120 мс. «Минимум» — только затухания, «выкл» — сразу.
+    property <bool> shown;
+    property <bool> closing;
+    property <bool> open: root.shown && !root.closing;
+    property <bool> has-res: root.open && root.q-text != "";
+    property <bool> moves: G.motion == 0;
+    property <duration> t-in: G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 180ms;
+    property <duration> t-out: G.motion == 2 ? 0ms : 120ms;
+    // в списке видно не больше 14 строк — стрелки дальше не уходят
+    property <int> last: min(S.found.length, 14) - 1;
     background: transparent;
-    close => { S.search-open-set(false); }
-    property <length> fw: 400px;
+    close => { root.shut(); }
+    function shut() { if (G.motion == 2) { S.search-open-set(false); } else { root.closing = true; } }
+    function up() { root.cur = max(0, root.cur - 1); }
+    function down() { root.cur = max(0, min(root.last, root.cur + 1)); }
+    // первый кадр — свёрнутое поле, потом оно раскрывается
+    Timer { interval: 1ms; running: !root.shown; triggered => { root.shown = true; } }
+    Timer { interval: max(1ms, root.t-out); running: root.closing; triggered => { S.search-open-set(false); } }
+    property <length> fw: root.open || !root.moves ? 400px : root.from-w;
+    animate fw { duration: root.moves ? (root.closing ? root.t-out : root.t-in) : 0ms; easing: root.closing ? cubic-bezier(0.4, 0, 1, 1) : cubic-bezier(0.2, 0.8, 0.2, 1); }
     property <length> pw: min(560px, root.right - 16px);
     keys := FocusScope {
         key-pressed(e) => {
-            if (e.text == Key.DownArrow) { root.cur = min(S.found.length - 1, root.cur + 1); return accept; }
-            if (e.text == Key.UpArrow) { root.cur = max(0, root.cur - 1); return accept; }
+            if (e.text == Key.DownArrow) { root.down(); return accept; }
+            if (e.text == Key.UpArrow) { root.up(); return accept; }
             reject
         }
         // поле на месте «Найти»
         Rectangle {
             x: root.right - root.fw; y: root.top; width: root.fw; height: 32px;
             border-radius: 8px; background: G.node; border-width: 1px; border-color: G.accent;
+            opacity: root.open ? 1 : (root.moves ? 1 : 0);
+            animate opacity { duration: root.closing ? root.t-out : root.t-in; easing: ease-out; }
+            drop-shadow-blur: root.open ? 18px : 0px;
+            drop-shadow-color: #0008;
+            clip: true;
             TouchArea { }
             Icon { name: "search"; x: 10px; width: 14px; y: 9px; c: G.muted; }
             q := Field {
-                x: 30px; width: parent.width - 120px; height: 30px; y: 1px;
+                x: 30px; width: max(0px, parent.width - 120px); height: 30px; y: 1px;
                 bare: true;
                 font-size: 13.5px;
+                arrows: true;
+                opacity: root.open ? 1 : 0;
+                animate opacity { duration: root.closing ? root.t-out : root.t-in; easing: ease-out; }
                 placeholder: "Найти задачу, заметку, раздел…";
                 edited(t) => { root.cur = 0; root.q-text = t; S.search(t); }
-                accepted => { S.search-go(root.cur); }
-                escape => { S.search-open-set(false); }
+                accepted => { if (!root.closing) { S.search-go(root.cur); } }
+                escape => { root.shut(); }
+                up => { root.up(); }
+                down => { root.down(); }
             }
             Text { x: parent.width - self.preferred-width - 10px; text: root.q-text == "" ? "CTRL K" : S.found.length + " найдено"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
         }
-        // результаты под полем
-        if root.q-text != "": Rectangle {
-            x: root.right - root.pw; y: root.top + 38px; width: root.pw;
-            height: min(root.height - self.y - 16px, rl.preferred-height + 41px);
+        // результаты под полем: выпадают на 6 px и проявляются
+        Rectangle {
+            visible: root.has-res || self.opacity > 0.01;
+            opacity: root.has-res ? 1 : 0;
+            animate opacity { duration: root.has-res ? (G.motion == 2 ? 0ms : 160ms) : root.t-out; easing: ease-out; }
+            x: root.right - root.pw; y: root.top + 38px - (root.has-res || !root.moves ? 0px : 6px); width: root.pw;
+            animate y { duration: root.moves ? (root.has-res ? 160ms : root.t-out) : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+            height: min(root.height - root.top - 38px - 16px, rl.preferred-height + 41px);
             border-radius: 12px;
             background: G.node;
             border-width: 1px;
@@ -934,7 +968,7 @@ export component SearchDialog inherits Overlay {
             }
         }
     }
-    init => { q.text = S.search-q; root.q-text = S.search-q; q.grab(); }
+    init => { q.text = S.search-q; root.q-text = S.search-q; root.cur = 0; q.grab(); }
 }
 
 export component Confirm inherits Overlay {

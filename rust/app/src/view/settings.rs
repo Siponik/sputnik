@@ -69,6 +69,7 @@ pub fn apply_anim(w: &crate::AppWindow, i: i64) {
     };
     g.set_fast(f);
     g.set_mid(m);
+    g.set_motion(i.clamp(0, 2) as i32);
 }
 
 /// Порядок разделов в шапке (0 Сегодня … 4 Знания); по умолчанию подряд.

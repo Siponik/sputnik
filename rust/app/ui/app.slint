@@ -197,6 +197,9 @@ export component AppWindow inherits Window {
                         width: ut.preferred-width + 24px;
                         height: 32px;
                         y: 14px;
+                        // поиск открыт — шапка слева от поля отъезжает и гаснет
+                        opacity: S.search-open ? 0 : 1;
+                        animate opacity { duration: G.motion == 2 ? 0ms : S.search-open ? 160ms : 120ms; }
                         border-radius: 8px;
                         border-width: 1px;
                         border-color: G.accent-line;
@@ -207,7 +210,11 @@ export component AppWindow inherits Window {
                     }
                     if !root.hd-compact || S.busy || S.offline: Rectangle {
                         width: st.preferred-width + 16px;
+                        opacity: S.search-open ? 0 : 1;
+                        animate opacity { duration: G.motion == 2 ? 0ms : S.search-open ? 160ms : 120ms; }
                         st := Text {
+                            x: S.search-open && G.motion == 0 ? -18px : 0px;
+                            animate x { duration: G.motion == 0 ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
                             text: S.busy ? "СИНХРОНИЗАЦИЯ…" : S.now-label;
                             font-family: G.mono; font-size: 11px; letter-spacing: 1.4px;
                             color: S.offline ? G.red : S.error != "" ? G.gold : #8A8C96;
@@ -452,7 +459,7 @@ export component AppWindow inherits Window {
         }
         if S.create-open: CreateDialog { }
         if S.he-open: HabitEditDialog { }
-        if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; }
+        if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; from-w: sbox.width; }
         if S.tp-open: Templates { }
         if S.ls-open: ListSettings { }
         if S.menu-open: CtxMenu { }
