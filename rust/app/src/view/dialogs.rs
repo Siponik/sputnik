@@ -238,7 +238,8 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_durs(model([(15, "15 мин"), (30, "30 мин"), (60, "1 час"), (120, "2 часа"), (-1, "весь день")].iter().map(|(m, l)| opt(m.to_string(), *l, *m == dur)).collect()));
     let leads = if c.kind == 3 { &rem::BDAY_LEADS[..] } else { &rem::LEADS[..] };
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
-    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале"), mins.contains(m))).take(4).collect()));
+    // у дня рождения — все варианты (их пять), у остальных — первые и выбранные
+    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| c.kind == 3 || mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале").replace("В день рождения", "в день"), mins.contains(m))).take(if c.kind == 3 { 5 } else { 4 }).collect()));
     // событие: свободно ли
     let free = match (c.kind, x["day"].as_str(), x["slot"]["s"].as_str(), x["slot"]["e"].as_str()) {
         (1, Some(day), Some(st), Some(en)) => {
@@ -252,7 +253,8 @@ fn create(app: &App, c: &Create, g: &S) {
     // событие: место; день рождения: год и «подарок заранее»; привычка: значок, частота, окно и часть дня
     g.set_c_place(ss(c.place.clone()));
     g.set_c_year(ss(c.year.clone()));
-    g.set_c_gift(model([(0i64, "Не надо"), (7, "За неделю"), (14, "За 2 недели"), (30, "За месяц")].iter().map(|(n2, l)| opt(n2.to_string(), *l, c.gift.unwrap_or(7) == *n2)).collect()));
+    g.set_c_gift(model([(0i64, "Не надо"), (3, "За 3 дня"), (7, "За неделю"), (14, "За 2 недели"), (30, "За месяц")].iter().map(|(n2, l)| opt(n2.to_string(), *l, c.gift.unwrap_or(7) == *n2)).collect()));
+    g.set_c_gift_hint(ss(gift_hint(app, c)));
     let h0 = habit.clone().unwrap_or_else(|| json!({}));
     let fr = cr::habit_freq_of(&h0, &c.hfreq);
     g.set_c_hfreq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, *l, s(&fr["kind"]) == *k)).collect()));
@@ -454,4 +456,24 @@ fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Valu
         Some(nx) if !App::is_done(t0) => { g.set_t_next_id(ss(text(&nx.0["id"]))); g.set_t_next_name(ss(text(&nx.0["name"]))); }
         _ => { g.set_t_next_id(ss("")); g.set_t_next_name(ss("")); }
     }
+}
+
+/// Подсказка под «Купить подарок»: когда и куда Спутник заведёт задачу.
+fn gift_hint(app: &App, c: &Create) -> String {
+    let days = c.gift.unwrap_or(7);
+    if c.kind != 3 || days == 0 {
+        return "Задачу заводить не буду".into();
+    }
+    let _ = app;
+    let x = resolved(c);
+    let Some(day) = x["day"].as_str() else { return format!("Задача «Подарок …» появится за {days} дн. до дня рождения") };
+    // ближайший день рождения: прошёл в этом году — берём следующий
+    let mut day = day.to_string();
+    let today = hb::now().date().format("%Y-%m-%d").to_string();
+    while day < today && day.len() == 10 {
+        let y: i32 = day[..4].parse().unwrap_or(0);
+        day = format!("{}{}", y + 1, &day[4..]);
+    }
+    let from = cr::gift_date(&day, days);
+    format!("Задача «Подарок …» появится {} — сама, в список со стикерами", cr::day_month(&from))
 }

@@ -123,8 +123,12 @@ component Preview inherits Rectangle {
                 Text { y: 4px; width: parent.width; text: S.c-pv-a; font-size: 18px; font-weight: 600; color: #fff; horizontal-alignment: center; }
                 Text { y: 30px; width: parent.width; text: S.c-pv-b; font-family: G.mono; font-size: 9px; letter-spacing: 1px; color: #fff; horizontal-alignment: center; }
             }
-            Text { x: 62px; y: 14px; width: parent.width - 72px; text: S.c-title == "" ? "День рождения" : "День рождения " + S.c-title; font-size: 13px; font-weight: 600; color: G.ink; wrap: word-wrap; }
-            Text { x: 62px; y: 34px; width: parent.width - 72px; text: S.c-pv-sub; font-size: 11.5px; color: #A3A5AE; wrap: word-wrap; }
+            // название в 2 строки не наезжает на «через N дней»: столбиком
+            VerticalLayout {
+                x: 62px; y: 12px; width: parent.width - 72px; spacing: 3px; alignment: start;
+                Text { text: S.c-title == "" ? "День рождения" : "День рождения " + S.c-title; font-size: 13px; font-weight: 600; color: G.ink; wrap: word-wrap; }
+                Text { text: S.c-pv-sub; font-size: 11.5px; color: #A3A5AE; wrap: word-wrap; }
+            }
         }
     }
 }
@@ -209,7 +213,7 @@ export component TimeBox inherits Box {
     // клик мимо закрывает выпадающий список
     if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
     if root.open: Rectangle {
-        x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
+        x: 0; y: parent.height + 4px; width: 344px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;
         TouchArea { }
@@ -223,14 +227,17 @@ export component TimeBox inherits Box {
             x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
             for q[i] in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"]: Rectangle {
                 visible: i < 3 || root.clearable;
+                // ширина по тексту + поля по 8 px, чтобы подписи не прилипали к рамке
+                horizontal-stretch: qt.preferred-width / 1px;
+                min-width: qt.preferred-width + 16px;
                 border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
-                Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                qt := Text { text: q; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                 qa := TouchArea { clicked => { root.put(["hour", "09:00", "19:00", "none"][i]); S.drop = 0; } mouse-cursor: pointer; }
             }
         }
         // часы 6×4 и минуты
         for h[i] in 24: Rectangle {
-            x: 12px + mod(i, 6) * 38px; y: 94px + floor(i / 6) * 30px; width: 35px; height: 27px; border-radius: 5px;
+            x: 12px + mod(i, 6) * 44px; y: 94px + floor(i / 6) * 30px; width: 41px; height: 27px; border-radius: 5px;
             property <string> hs: (i < 10 ? "0" : "") + i;
             property <string> nx: (i + 1 < 10 ? "0" : "") + (i + 1);
             property <bool> on: root.val != "" && root.val >= hs + ":00" && root.val < nx + ":00";
@@ -371,7 +378,11 @@ component TaskBody inherits Rectangle {
                             padding: 5px;
                             for o in S.c-popts: Rectangle {
                                 height: 28px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
-                                Rectangle { x: 10px; y: 11px; width: 6px; height: 6px; border-radius: 3px; background: o.on ? CK.accent : transparent; }
+                                if p.id != "remind": Rectangle { x: 10px; y: 11px; width: 6px; height: 6px; border-radius: 3px; background: o.on ? CK.accent : transparent; }
+                            // напоминаний можно несколько — квадратики с галочкой
+                            if p.id == "remind": Rectangle { x: 6px; y: 7px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.5px;
+                                border-color: o.on ? CK.accent : G.line-strong; background: o.on ? CK.accent : transparent;
+                                Text { text: "✓"; visible: o.on; font-size: 10px; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; } }
                                 Text { x: 24px; text: o.label; font-size: 12.5px; color: o.on ? CK.accent : G.ink; vertical-alignment: center; height: parent.height; }
                                 Text { x: parent.width - self.preferred-width - 10px; text: o.hint; font-size: 11px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
                                 oa := TouchArea { clicked => { S.c-prop-set(p.id, o.id); } mouse-cursor: pointer; }
@@ -417,7 +428,11 @@ component PropsPanel inherits Rectangle {
                         padding: 5px;
                         for o in S.c-popts: Rectangle {
                             height: 28px; border-radius: 5px; background: oa.has-hover ? G.node-hover : transparent;
-                            Rectangle { x: 10px; y: 11px; width: 6px; height: 6px; border-radius: 3px; background: o.on ? CK.accent : transparent; }
+                            if p.id != "remind": Rectangle { x: 10px; y: 11px; width: 6px; height: 6px; border-radius: 3px; background: o.on ? CK.accent : transparent; }
+                            // напоминаний можно несколько — квадратики с галочкой
+                            if p.id == "remind": Rectangle { x: 6px; y: 7px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.5px;
+                                border-color: o.on ? CK.accent : G.line-strong; background: o.on ? CK.accent : transparent;
+                                Text { text: "✓"; visible: o.on; font-size: 10px; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; } }
                             Text { x: 24px; text: o.label; font-size: 12.5px; color: o.on ? CK.accent : G.ink; vertical-alignment: center; height: parent.height; }
                             Text { x: parent.width - self.preferred-width - 10px; text: o.hint; font-size: 11px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
                             oa := TouchArea { clicked => { S.c-prop-set(p.id, o.id); } mouse-cursor: pointer; }
@@ -578,11 +593,20 @@ component BdayBody inherits Rectangle {
         }
         Cap { text: "КАЖДЫЙ ГОД · ГОД НЕОБЯЗАТЕЛЕН — НУЖЕН ДЛЯ «ИСПОЛНИТСЯ N»"; }
         Rectangle { height: 2px; }
-        Cap { text: "ПОДАРОК, НАПОМНИТЬ ЗАРАНЕЕ"; }
+        // напоминания — можно несколько сразу
+        Cap { text: "НАПОМНИТЬ · МОЖНО НЕСКОЛЬКО"; }
+        HorizontalLayout {
+            spacing: 6px; alignment: start;
+            for r in S.c-reminds: CChip { text: (r.on ? "✓ " : "") + r.label; on: r.on; clicked => { S.c-prop-set("remind", r.id); root.grab-line(); } }
+        }
+        Rectangle { height: 2px; }
+        // Спутник сам заведёт задачу «Подарок …», когда подойдёт выбранный день
+        Cap { text: "ЗАДАЧА «КУПИТЬ ПОДАРОК» — ЗАВЕСТИ ЗАРАНЕЕ"; }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for gf in S.c-gift: CChip { text: gf.label; on: gf.on; clicked => { S.c-gift-set(gf.id); root.grab-line(); } }
         }
+        Text { text: S.c-gift-hint; font-size: 11.5px; color: #8A8C96; wrap: word-wrap; }
         Rectangle { height: 4px; }
         NoteBox { hint: "Идеи подарков, размеры, что любит…"; sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
     }
