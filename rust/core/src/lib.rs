@@ -3,6 +3,7 @@
 pub mod accent;
 pub mod boardedit;
 pub mod calendar;
+pub mod calweek;
 pub mod canvas;
 pub mod notefile;
 pub mod notesync;

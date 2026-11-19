@@ -1,7 +1,7 @@
-//! Модели «Календаря»: неделя (сетка суток со сжатыми часами) и месяц, панель дня.
+//! Модели «Календаря»: шапка, месяц и панель дня; сетка недели — calweek.rs.
 use super::*;
 use super::today::{event_chip, habit_color};
-use crate::{Band, Block, Chip, Day, Label, Opt};
+use crate::{Chip, Day, Opt};
 use sputnik_core::calendar as cal;
 use sputnik_core::habits as hb;
 
@@ -12,6 +12,9 @@ pub struct Item {
     pub s: Option<(f64, f64)>,
     pub chip: Chip,
     pub sub: String,
+    /// Для всплывашки недели: заметка и откуда дело («РАБОТА · ЗАКАЗ»).
+    pub note: String,
+    pub src: String,
 }
 
 fn on(u: &Ui, f: &str) -> bool {
@@ -38,7 +41,8 @@ pub fn day_items(app: &App, u: &Ui, day: &str) -> Vec<Item> {
             _ => None,
         };
         let sub = match (st, en) { (Some(a0), Some(b0)) => format!("{}–{}", a0.format("%H:%M"), b0.format("%H:%M")), _ => String::new() };
-        out.push(Item { s: span, chip, sub });
+        let src = app.calendars.iter().find(|c| c["id"] == e["calId"]).map(|c| text(&c["summary"])).unwrap_or_default().to_uppercase();
+        out.push(Item { s: span, chip, sub, note: text(&e["description"]), src });
     }
     if on(u, "tasks") {
         for (l, t) in app.tasks_on(day) {
@@ -53,7 +57,12 @@ pub fn day_items(app: &App, u: &Ui, day: &str) -> Vec<Item> {
                 (sm, em.max(sm + 15.0))
             });
             let time = slot["s"].as_str().unwrap_or("").to_string();
+            let sph = app.sphere_of(&l).map(|x| text(&app.layer["spheres"][x.as_str()]["name"])).unwrap_or_default();
+            let ln = app.list_name(&l);
+            let src = if sph.is_empty() || sph == ln { ln } else { format!("{sph} · {ln}") }.to_uppercase();
             out.push(Item {
+                note: text(&t["notes"]),
+                src,
                 s: span,
                 sub: if time.is_empty() { String::new() } else { format!("{}–{}", time, slot["e"].as_str().unwrap_or("")) },
                 chip: Chip { title: ss(text(&t["title"])), hue: list_hue(app, &l), done: App::is_done(&t), kind: 1, list_id: ss(l.clone()), id: ss(text(&t["id"])), time: ss(time) },
@@ -67,6 +76,8 @@ pub fn day_items(app: &App, u: &Ui, day: &str) -> Vec<Item> {
             out.push(Item {
                 s: Some((n(&b["s"]).unwrap_or(0.0), n(&b["e"]).unwrap_or(30.0))),
                 sub: hb::span_label(h),
+                note: String::new(),
+                src: "ПРИВЫЧКА".into(),
                 chip: Chip { title: ss(text(&h["name"])), hue: habit_color(h), done: t(&b["done"]), kind: 2, list_id: ss(""), id: ss(text(&h["id"])), time: ss(s(&b["s"]).to_string()) },
             });
         }
@@ -75,7 +86,7 @@ pub fn day_items(app: &App, u: &Ui, day: &str) -> Vec<Item> {
 }
 
 /// Привычки дня: «2/3» и точки (1 — сделано, 2 — сегодня, ещё нет, 0 — не сделано, 3 — впереди/не по расписанию).
-fn habits_line(app: &App, day: &str) -> (String, Vec<i32>) {
+pub(super) fn habits_line(app: &App, day: &str) -> (String, Vec<i32>) {
     let hs = app.habits();
     let log = app.habit_log();
     let tdy = today_s();
@@ -101,7 +112,7 @@ fn pd(d: &str) -> chrono::NaiveDate {
 }
 
 /// «ЧТ 05».
-fn short_up(d: &str) -> String {
+pub(super) fn short_up(d: &str) -> String {
     let dl = cal::day_label(d);
     format!("{} {:02}", text(&dl["short"]).to_uppercase(), dl["n"].as_u64().unwrap_or(0))
 }
@@ -124,49 +135,11 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_cal_filters(model(FILTERS.iter().map(|(id, l, c)| Opt { id: ss(*id), label: ss(l.to_uppercase()), hint: ss(""), hue: color(c), on: on(u, id) }).collect()));
     let tdy = today_s();
     let sel_month = &u.cal_sel[..7];
-    let per_day: Vec<(String, Vec<Item>)> = days.iter().map(|d| (d.clone(), day_items(app, u, d))).collect();
+    let per_day_m = || -> Vec<(String, Vec<Item>)> { days.iter().map(|d| (d.clone(), day_items(app, u, d))).collect() };
 
     if mode == "week" {
-        let all_timed: Vec<Value> = per_day.iter().flat_map(|(_, it)| it.iter().filter_map(|x| x.s.map(|(a0, b0)| json!({"s": a0, "e": b0})))).collect();
-        let mut hot: Vec<i64> = vec![];
-        for a0 in &u.cal_bands {
-            hot.extend(*a0..24);
-        }
-        // раскрытая полоса раскрывает только себя: найдём её конец по сетке без неё
-        let base = cal::hour_layout(&all_timed, &[], 0.0);
-        let mut hot2 = vec![];
-        for b in a(&base.to_json()["bands"]) {
-            if u.cal_bands.contains(&b["a"].as_i64().unwrap_or(-1)) {
-                hot2.extend(b["a"].as_i64().unwrap_or(0)..b["b"].as_i64().unwrap_or(0));
-            }
-        }
-        let _ = hot;
-        let lay = cal::hour_layout(&all_timed, &hot2, 0.0);
-        let lj = lay.to_json();
-        g.set_grid_h(lay.height as f32);
-        g.set_hours(model(a(&lj["labels"]).iter().map(|l| Label { text: ss(text(&l["text"])), y: n(&l["top"]).unwrap_or(0.0) as f32, small: t(&l["small"]) }).collect()));
-        g.set_bands(model(a(&lj["bands"]).iter().map(|b| Band { y: n(&b["top"]).unwrap_or(0.0) as f32, h: n(&b["h"]).unwrap_or(0.0) as f32, text: ss(text(&b["text"])), a: b["a"].as_i64().unwrap_or(0) as i32 }).collect()));
-        let now_col = days.iter().position(|d| *d == tdy).map(|x| x as i32).unwrap_or(-1);
-        g.set_now_col(now_col);
-        g.set_now_y(lay.y_at(cal::now_min() as f64) as f32);
-        let out: Vec<Day> = per_day.iter().map(|(d, items)| {
-            let timed: Vec<Value> = items.iter().enumerate().filter_map(|(i, x)| x.s.map(|(a0, b0)| json!({"s": a0, "e": b0, "i": i}))).collect();
-            let blocks: Vec<Block> = cal::layout_blocks(&timed, &|m| lay.y_at(m)).iter().map(|b| {
-                let it = &items[b["i"].as_u64().unwrap_or(0) as usize];
-                let cols = b["cols"].as_f64().unwrap_or(1.0).max(1.0);
-                let col = b["col"].as_f64().unwrap_or(0.0);
-                Block { title: it.chip.title.clone(), sub: ss(if it.chip.kind == 1 { it.chip.time.to_string() } else { it.sub.clone() }), y: n(&b["top"]).unwrap_or(0.0) as f32, h: n(&b["height"]).unwrap_or(20.0) as f32,
-                    x: (col / cols) as f32, w: (1.0 / cols) as f32, hue: it.chip.hue, done: it.chip.done, kind: it.chip.kind,
-                    list_id: it.chip.list_id.clone(), id: it.chip.id.clone() }
-            }).collect();
-            let all: Vec<Chip> = items.iter().filter(|x| x.s.is_none()).map(|x| x.chip.clone()).collect();
-            let more = all.len().saturating_sub(3) as i32;
-            let dl = cal::day_label(d);
-            let (hl, hd) = habits_line(app, d);
-            Day { ymd: ss(d.clone()), label: ss(short_up(d)), num: ss(dl["n"].to_string()), today: *d == tdy, sel: *d == u.cal_sel,
-                all: model(all), blocks: model(blocks), habits: ss(hl), load: 0.0, more, in_month: true, hdots: model(hd) }
-        }).collect();
-        g.set_days(model(out));
+        let per_day = super::calweek::render(app, u, g);
+        super::calweek::render_draft(app, u, g);
         // свободное окно недели
         let mut m = Json::new();
         for (d, items) in &per_day {
@@ -192,19 +165,21 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             g.set_cal_foot_hl(ss(format!("СВОБОДНЕЕ ВСЕГО · {} {}–{}", text(&cal::day_label(&dd)["short"]).to_uppercase(), (fs / 60.0) as i64, (fe / 60.0).ceil() as i64)));
             if let Some(i) = days.iter().position(|x| *x == dd) {
                 g.set_free_col(i as i32);
-                g.set_free_y(lay.y_at(fs) as f32);
-                g.set_free_h((lay.y_at(fe) - lay.y_at(fs)) as f32);
+                let (fy, fh) = super::calweek::free_y(app, u, fs, fe);
+                g.set_free_y(fy);
+                g.set_free_h(fh);
             }
             u.cal_free = Some((dd, ts));
         } else {
             g.set_free_hint("".into());
             g.set_cal_foot_hl("".into());
         }
-        g.set_cal_rule(ss("ПН — ВС · 7 ДНЕЙ · ЗАНЯТЫЕ ЧАСЫ КРУПНО, ОСТАЛЬНОЕ СЖАТО"));
+        g.set_cal_rule(ss("ПН — ВС · 7 ДНЕЙ · ВИДНЫ ЧАСЫ С ДЕЛАМИ, ОСТАЛЬНОЕ — ЧИПАМИ"));
         let evs = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 0)).count();
         let tks = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 1)).count();
         g.set_cal_stamp(model(vec![ss("ЛИСТ · КАЛЕНДАРЬ · НЕДЕЛЯ"), ss(sd_stamp()), ss(format!("СОБЫТИЙ {:02}", evs)), ss(format!("ЗАДАЧ {:02}", tks))]));
     } else {
+        let per_day = per_day_m();
         let out: Vec<Day> = per_day.iter().map(|(d, items)| {
             let mut chips: Vec<&Item> = items.iter().collect();
             chips.sort_by(|a0, b0| a0.s.map(|x| x.0).unwrap_or(-1.0).partial_cmp(&b0.s.map(|x| x.0).unwrap_or(-1.0)).unwrap());
@@ -214,7 +189,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             let (hl, hd) = habits_line(app, d);
             Day { ymd: ss(d.clone()), label: ss(""), num: ss(format!("{:02}", dl["n"].as_u64().unwrap_or(0))), today: *d == tdy, sel: *d == u.cal_sel,
                 more: all.len().saturating_sub(3) as i32, all: model(all), blocks: model(vec![]), habits: ss(hl),
-                load: (busy / 480.0) as f32, in_month: &d[..7] == sel_month, hdots: model(hd) }
+                load: (busy / 480.0) as f32, in_month: &d[..7] == sel_month, hdots: model(hd), ..Default::default() }
         }).collect();
         let cnt = per_day.iter().filter(|(d, _)| &d[..7] == sel_month).flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind != 2)).count();
         let bds = per_day.iter().filter(|(d, _)| &d[..7] == sel_month).flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 3)).count();
@@ -263,27 +238,6 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         c
     }).collect()));
     g.set_add_time(ss(u.add_time.clone()));
-}
-
-/// y в сетке недели → минуты (шаг 15).
-pub fn min_at(app: &App, u: &Ui, y: f64) -> i64 {
-    let days = cal::period_days(&u.cal_sel, "week");
-    let all: Vec<Value> = days.iter().flat_map(|d| day_items(app, u, d).into_iter().filter_map(|x| x.s.map(|(a0, b0)| json!({"s": a0, "e": b0})))).collect();
-    let base = cal::hour_layout(&all, &[], 0.0);
-    let mut hot = vec![];
-    for b in a(&base.to_json()["bands"]) {
-        if u.cal_bands.contains(&b["a"].as_i64().unwrap_or(-1)) {
-            hot.extend(b["a"].as_i64().unwrap_or(0)..b["b"].as_i64().unwrap_or(0));
-        }
-    }
-    let lay = cal::hour_layout(&all, &hot, 0.0);
-    let mut lo = 0.0;
-    let mut hi = 1440.0;
-    for _ in 0..40 {
-        let mid = (lo + hi) / 2.0;
-        if lay.y_at(mid) < y { lo = mid } else { hi = mid }
-    }
-    (((lo / 15.0).round() * 15.0) as i64).clamp(0, 1425)
 }
 
 fn sd_stamp() -> String {
