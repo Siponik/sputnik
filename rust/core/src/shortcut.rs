@@ -36,3 +36,12 @@ pub fn needs_link(existing: Option<&[u8]>, exe: &str) -> bool {
         None => true,
     }
 }
+
+/// Номер картинки значка в exe. Поменяли значок — увеличить: при первом запуске новой версии
+/// приложение один раз попросит Windows перечитать значки, иначе ярлыки держат старый из кэша.
+pub const ICON_REV: &str = "1";
+
+/// Пора ли попросить Windows обновить значки: записанный номер (файл `icon-rev`) не совпадает с текущим.
+pub fn icon_refresh_due(saved: Option<&str>, exe: &str) -> bool {
+    !dev_build(exe) && saved.map(str::trim) != Some(ICON_REV)
+}
