@@ -108,3 +108,74 @@ pub fn free_y(app: &App, u: &Ui, s: f64, e: f64) -> (f32, f32) {
     let gr = grid(app, u).2;
     (gr.y_at(s) as f32, (gr.y_at(e) - gr.y_at(s)) as f32)
 }
+
+// ---------- Добавление кликом (п. 48, `G_CalAddFlow`) ----------
+
+/// Черновик в неделе: день, начало и конец в минутах.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Draft {
+    pub day: String,
+    pub s: f64,
+    pub e: f64,
+}
+
+/// Посчитать без изменений (наведение спрашивает, куда встанет рамка).
+fn peek<R>(f: impl FnOnce(&App, &Ui) -> R) -> Option<R> {
+    crate::state::with(|app| super::UI.with(|u| u.try_borrow().ok().map(|u| f(app, &u)))).flatten()
+}
+
+/// Черновик из протяжки мышью: от y0 до y1 (в любую сторону), шаг 15 мин; короткая протяжка (клик) — час.
+pub fn draft_of(gr: &WeekGrid, day: &str, y0: f64, y1: f64) -> Draft {
+    let (a, b) = (y0.min(y1), y0.max(y1));
+    let s = gr.min_at(a, 15.0);
+    let mut e = gr.min_at(b, 15.0);
+    if b - a < 8.0 || e <= s {
+        e = s + 60.0;
+    }
+    Draft { day: day.to_string(), s, e: e.min(1440.0) }
+}
+
+/// Черновик и окно «Добавить» в модели окна.
+pub fn render_draft(app: &App, u: &Ui, g: &S) {
+    let Some(d) = u.cal_draft.as_ref() else {
+        g.set_draft_col(-1);
+        return;
+    };
+    let (days, _, gr) = grid(app, u);
+    let col = days.iter().position(|x| *x == d.day).map(|x| x as i32).unwrap_or(-1);
+    let (y, h) = gr.place(d.s, d.e);
+    g.set_draft_col(col);
+    g.set_draft_y(y as f32);
+    g.set_draft_h(h as f32);
+    g.set_draft_time(ss(format!("{}–{}", cal::from_min(d.s as i64), cal::from_min((d.e as i64).min(1440)))));
+    let wd = cal::day_label(&d.day)["short"].as_str().unwrap_or("").to_uppercase();
+    let n = cal::day_label(&d.day)["n"].as_u64().unwrap_or(0);
+    g.set_draft_head(ss(format!("ДОБАВИТЬ · {wd} {n}")));
+    g.set_draft_event(app.setting("calAddKind") == "event");
+}
+
+pub fn wire(g: &S) {
+    g.on_cal_snap(|y| peek(|app, u| {
+        let gr = grid(app, u).2;
+        gr.y_at(gr.min_at(y as f64, 15.0)) as f32
+    }).unwrap_or(y));
+    g.on_cal_time_at(|y| peek(|app, u| ss(cal::from_min(grid(app, u).2.min_at(y as f64, 15.0) as i64))).unwrap_or_default());
+    g.on_cal_draft(|day, y0, y1| act(|app, u| {
+        let gr = grid(app, u).2;
+        u.cal_draft = Some(draft_of(&gr, &day, y0 as f64, y1 as f64));
+        u.cal_sel = day.to_string();
+        u.add_time.clear();
+    }));
+    g.on_cal_draft_cancel(|| act(|_, u| u.cal_draft = None));
+    g.on_cal_draft_kind(|ev| act(|app, _| app.set_setting("calAddKind", json!(if ev { "event" } else { "task" }))));
+    g.on_cal_draft_add(|title, ev| act(|app, u| {
+        let Some(d) = u.cal_draft.take() else { return };
+        let title = title.trim().to_string();
+        if title.is_empty() {
+            return;
+        }
+        app.set_setting("calAddKind", json!(if ev { "event" } else { "task" }));
+        let (st, en) = (cal::from_min(d.s as i64), cal::from_min((d.e as i64).min(1439)));
+        super::wire::add_on_day(app, &d.day, Some((st, en)), &title, ev);
+    }));
+}

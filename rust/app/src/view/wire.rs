@@ -475,11 +475,13 @@ pub fn wire(w: &AppWindow) {
         u.cal_sel = sputnik_core::calendar::shift_period(&u.cal_sel, mode, d as i64);
         u.cal_up = None;
         u.cal_down = None;
+        u.cal_draft = None;
     }));
     g.on_cal_today(|| act(|_, u| {
         u.cal_sel = today_s();
         u.cal_up = None;
         u.cal_down = None;
+        u.cal_draft = None;
     }));
     g.on_cal_mode_set(|m| act(|_, u| u.cal_mode = str_(&m)));
     g.on_cal_pick(|d| act(|_, u| u.cal_sel = str_(&d)));
@@ -495,34 +497,11 @@ pub fn wire(w: &AppWindow) {
         let slot = if up { &mut u.cal_up } else { &mut u.cal_down };
         *slot = if slot.is_some() || h < 0 { None } else { Some(h as i64) };
     }));
-    g.on_cal_grid_click(|d, y| act(|app, u| {
-        u.cal_sel = str_(&d);
-        let m = super::calweek::min_at(app, u, y as f64);
-        u.add_time = sputnik_core::calendar::from_min(m);
-    }));
     g.on_cal_add(|d, tm, title, ev| act(|app, u| {
         let day = if d.is_empty() { u.cal_sel.clone() } else { str_(&d) };
         let tm = tm.trim().replace('.', ":");
         let time = if tm.is_empty() { None } else { Some(if tm.len() <= 2 { format!("{:0>2}:00", tm) } else { format!("{:0>5}", tm) }) };
-        if ev {
-            let slot = time.map(|st| { let en = cr::add_min(&st, 60); (st, en) });
-            let cal = cal_of(app, &Create::default());
-            let mins = default_mins(app, 1);
-            app.create_event(&title, &day, slot, "", &mins, &cal, "", Value::Null);
-        } else {
-            let r = route::route(&title, &app.board_lists(), &app.layer, &app.tasks, None, crate::state::now_ms());
-            let Some(dest) = r.first().map(|x| text(&x["listId"])).or_else(|| app.board_lists().first().map(|l| text(&l["id"]))) else { return };
-            let mut patch = json!({});
-            if let Some(st) = time {
-                patch["slot"] = json!({"s": st, "e": cr::add_min(&st, 60)});
-            }
-            let rr = sputnik_core::reminders::default_rule(app.settings());
-            if !rr.is_null() {
-                patch["remind"] = rr;
-            }
-            app.add_task(&dest, &title, Some(&day), patch, None, "");
-            app.say(format!("Задача на {} → {}", sputnik_core::calendar::when_label(&day), app.list_name(&dest)));
-        }
+        add_on_day(app, &day, time.map(|st| { let en = cr::add_min(&st, 60); (st, en) }), &title, ev);
         u.add_time.clear();
     }));
     g.on_cal_drop(|l, id, d, y| act(|app, u| {
@@ -1322,6 +1301,7 @@ pub fn wire(w: &AppWindow) {
         save_draft(app, u);
     }));
     super::canvas::wire(&g);
+    super::calweek::wire(&g);
     g.on_note_hit(|i, at, ctrl| {
         let mut caret = 0;
         act(|app, u| {
@@ -1777,4 +1757,26 @@ fn around(body: &str, q: &str) -> String {
     if from > 0 { out = format!("…{}", out.trim_start()); }
     if chars.len() > from + 60 { out.push('…'); }
     out
+}
+
+/// Задача (список угадывается по названию) или событие в основном календаре на день, со временем или без.
+pub fn add_on_day(app: &mut App, day: &str, slot: Option<(String, String)>, title: &str, ev: bool) {
+    if ev {
+        let cal = cal_of(app, &Create::default());
+        let mins = default_mins(app, 1);
+        app.create_event(title, day, slot, "", &mins, &cal, "", Value::Null);
+    } else {
+        let r = route::route(title, &app.board_lists(), &app.layer, &app.tasks, None, crate::state::now_ms());
+        let Some(dest) = r.first().map(|x| text(&x["listId"])).or_else(|| app.board_lists().first().map(|l| text(&l["id"]))) else { return };
+        let mut patch = json!({});
+        if let Some((st, en)) = slot {
+            patch["slot"] = json!({"s": st, "e": en});
+        }
+        let rr = sputnik_core::reminders::default_rule(app.settings());
+        if !rr.is_null() {
+            patch["remind"] = rr;
+        }
+        app.add_task(&dest, title, Some(day), patch, None, "");
+        app.say(format!("Задача на {} → {}", sputnik_core::calendar::when_label(day), app.list_name(&dest)));
+    }
 }

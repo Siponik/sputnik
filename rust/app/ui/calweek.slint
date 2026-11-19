@@ -3,7 +3,7 @@
 // длинная привычка — золотой фон. Наведение на дело — всплывашка. Задачи со временем тянутся мышью.
 // Все расчёты (часы, высоты, группы) — в Rust: sputnik_core::calweek.
 import { G } from "theme.slint";
-import { DashBox, ScrollView } from "kit.slint";
+import { DashBox, ScrollView, Field, Button } from "kit.slint";
 import { S, Day, Block, Chip, CalTip, BlockRow } from "store.slint";
 
 // Значок дела: задача — кружок, событие — черта слева (рисует блок), привычка — квадрат, сделанное — галочка.
@@ -117,6 +117,24 @@ export component Week inherits Rectangle {
     property <length> gx;
     property <length> gy;
     property <length> d-h;
+    // добавление кликом: рамка под курсором (hv-*), протяжка (sel-*), окно «Добавить» (add-*)
+    property <int> hv-col: -1;
+    property <length> hv-y;
+    property <string> hv-label;
+    property <bool> sel-on;
+    property <int> sel-col: -1;
+    property <length> sel-y0;
+    property <length> sel-y1;
+    property <bool> add-ev: S.draft-event;
+    property <string> add-title;
+    property <length> dr-x: root.gut + S.draft-col * root.colw + 4px;
+    property <length> dr-y: root.top-h + S.draft-y * 1px + sv.viewport-y;
+    property <length> dr-w: root.colw - 8px;
+    property <length> pop-w: 270px;
+    property <length> pop-h: 196px;
+    property <bool> pop-right: root.dr-x + root.dr-w + 40px + root.pop-w <= root.width;
+    property <length> pop-x: root.pop-right ? root.dr-x + root.dr-w + 34px : max(4px, root.dr-x - 34px - root.pop-w);
+    property <length> pop-y: max(4px, min(root.dr-y - 30px, root.height - root.pop-h - 4px));
     // всплывашка
     property <bool> tip-on;
     property <CalTip> tip;
@@ -209,7 +227,43 @@ export component Week inherits Rectangle {
                     if b.bot: Rectangle { y: parent.height - 1px; height: 1px; background: G.gold.transparentize(0.5); }
                     Text { x: 6px; y: 3px; width: parent.width - 10px; text: b.text; font-family: G.mono; font-size: 8.5px; font-weight: 500; letter-spacing: 0.7px; color: G.gold; opacity: 0.85; overflow: elide; }
                 }
-                TouchArea { clicked => { S.cal-grid-click(d.ymd, self.mouse-y / 1px); } }
+                // пустое место: наведение — рамка на час, клик или протяжка — черновик (шаг 15 мин)
+                ga := TouchArea {
+                    mouse-cursor: crosshair;
+                    changed has-hover => { if (!self.has-hover && root.hv-col == i) { root.hv-col = -1; } }
+                    changed mouse-y => {
+                        if (self.has-hover && !root.sel-on && S.draft-col < 0) {
+                            root.hv-col = i;
+                            root.hv-y = S.cal-snap(self.mouse-y / 1px) * 1px;
+                            root.hv-label = S.cal-time-at(self.mouse-y / 1px);
+                        }
+                    }
+                    pointer-event(e) => {
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.down) {
+                            root.sel-on = true;
+                            root.sel-col = i;
+                            root.sel-y0 = self.mouse-y;
+                            root.sel-y1 = self.mouse-y;
+                            root.hv-col = -1;
+                            root.tip-on = false;
+                        }
+                        if (e.button == PointerEventButton.left && e.kind == PointerEventKind.up && root.sel-on) {
+                            root.sel-on = false;
+                            S.cal-draft(d.ymd, root.sel-y0 / 1px, root.sel-y1 / 1px);
+                        }
+                    }
+                    moved => { if (root.sel-on) { root.sel-y1 = max(0px, min(parent.height, self.mouse-y)); } }
+                }
+                if root.hv-col == i: DashBox {
+                    x: 4px; y: root.hv-y + 1px; width: parent.width - 8px; height: 37px;
+                    c: G.accent.transparentize(0.3);
+                    Text { x: 6px; y: 3px; text: "+ " + root.hv-label; font-family: G.mono; font-size: 10px; color: G.accent; }
+                }
+                if root.sel-on && root.sel-col == i && abs(root.sel-y1 - root.sel-y0) > 8px: Rectangle {
+                    x: 4px; y: min(root.sel-y0, root.sel-y1); width: parent.width - 8px; height: abs(root.sel-y1 - root.sel-y0);
+                    border-radius: 5px; background: G.accent.transparentize(0.9);
+                    DashBox { c: G.accent; }
+                }
                 // самое свободное окно недели
                 if S.free-col == i: DashBox {
                     x: 3px; y: S.free-y * 1px + 2px; width: parent.width - 6px; height: max(24px, S.free-h * 1px - 4px);
@@ -348,6 +402,87 @@ export component Week inherits Rectangle {
         height: root.down-h;
         if d.down != "": Edge { x: 3px; y: 4px; text: d.down; up: false; hour: d.down-h; room: root.colw - 6px; }
         if d.down == "" && S.cal-down && i == 0: Edge { x: 3px; y: 4px; text: "↑ СВЕРНУТЬ ПОЗДНИЕ ЧАСЫ"; up: false; hour: -1; room: root.colw * 3; }
+    }
+
+    // ---------- черновик и окно «Добавить» ----------
+    // всё, кроме черновика и окна, затемняется до 35 %; клик по затемнению — отмена
+    Rectangle {
+        background: #15161AA6;
+        opacity: S.draft-col >= 0 ? 1 : 0;
+        visible: self.opacity > 0;
+        animate opacity { duration: 120ms; }
+        TouchArea { enabled: S.draft-col >= 0; clicked => { S.cal-draft-cancel(); } }
+    }
+    if S.draft-col >= 0: Rectangle {
+        x: root.dr-x; y: root.dr-y; width: root.dr-w; height: S.draft-h * 1px;
+        border-radius: 5px;
+        background: G.accent.transparentize(0.9);
+        DashBox { c: G.accent; }
+        Text { x: 7px; y: 5px; width: parent.width - 12px; text: (root.add-title != "" ? root.add-title : "Новое") + " · " + S.draft-time; font-size: 12px; color: G.accent-ink; overflow: elide; }
+    }
+    // провод от черновика к окну
+    if S.draft-col >= 0: Rectangle {
+        property <length> y1: root.dr-y + 14px;
+        property <length> y2: root.pop-y + 17px;
+        property <length> xa: root.pop-right ? root.dr-x + root.dr-w : root.pop-x + root.pop-w;
+        property <length> xb: root.pop-right ? root.pop-x : root.dr-x;
+        property <length> xm: (self.xa + self.xb) / 2;
+        Rectangle { x: min(parent.xa, parent.xm); y: parent.y1; width: abs(parent.xm - parent.xa); height: 1.5px; background: G.accent; }
+        Rectangle { x: parent.xm; y: min(parent.y1, parent.y2); width: 1.5px; height: abs(parent.y2 - parent.y1) + 1.5px; background: G.accent; }
+        Rectangle { x: min(parent.xm, parent.xb); y: parent.y2; width: abs(parent.xb - parent.xm); height: 1.5px; background: G.accent; }
+        Rectangle { x: parent.xb - 4px; y: parent.y2 - 3.25px; width: 8px; height: 8px; border-radius: 2px; background: G.accent; }
+    }
+    if S.draft-col >= 0: Rectangle {
+        x: root.pop-x; y: root.pop-y; width: root.pop-w; height: root.pop-h;
+        border-radius: 8px;
+        background: G.node;
+        border-width: 1px;
+        border-color: G.accent;
+        drop-shadow-blur: 28px;
+        drop-shadow-offset-y: 10px;
+        drop-shadow-color: #0000008C;
+        clip: true;
+        Rectangle {
+            y: 0; height: 34px; background: G.head-main;
+            Text { x: 12px; text: S.draft-head; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; }
+            Text { x: parent.width - self.preferred-width - 12px; text: "ENTER"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #ffffffE6; vertical-alignment: center; height: parent.height; }
+        }
+        VerticalLayout {
+            y: 34px; height: parent.height - 34px;
+            padding: 12px;
+            spacing: 10px;
+            nm := Field {
+                height: 34px;
+                placeholder: "Что";
+                init => { root.add-title = ""; self.grab(); }
+                edited(t) => { root.add-title = t; }
+                accepted(t) => { if (t != "") { S.cal-draft-add(t, root.add-ev); } }
+                escape => { S.cal-draft-cancel(); }
+            }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: start;
+                Text { text: S.draft-time; font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; }
+                Rectangle { horizontal-stretch: 1; }
+                for k[i] in ["Задача", "Событие"]: Rectangle {
+                    height: 28px;
+                    width: kt.preferred-width + 22px;
+                    border-radius: 6px;
+                    border-width: 1px;
+                    border-color: (i == 1) == root.add-ev ? G.accent : G.line;
+                    background: (i == 1) == root.add-ev ? G.accent-wash : transparent;
+                    kt := Text { text: k; font-size: 12.5px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                    TouchArea { clicked => { root.add-ev = i == 1; S.cal-draft-kind(i == 1); nm.grab(); } mouse-cursor: pointer; }
+                }
+            }
+            Rectangle { vertical-stretch: 1; }
+            HorizontalLayout {
+                spacing: 6px;
+                alignment: end;
+                Button { text: "Отмена"; clicked => { S.cal-draft-cancel(); } }
+                Button { text: "Добавить"; primary: true; clicked => { if (nm.text != "") { S.cal-draft-add(nm.text, root.add-ev); } } }
+            }
+        }
     }
 
     if root.tip-on: TipCard { x: root.tip-x; y: root.tip-y; t: root.tip; }

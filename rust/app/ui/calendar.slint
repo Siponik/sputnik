@@ -364,4 +364,19 @@ export component CalendarPage inherits Rectangle {
             Text { text: S.cal-stamp[3]; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
     }
+
+    // добавление кликом в неделе: всё вокруг недели тоже затемняется, клик — отмена (сама неделя затемняет себя)
+    for r in [
+        { x: 0px, y: 0px, w: root.width, h: main.y + 34px },
+        { x: 0px, y: main.y + 34px, w: main.x, h: root.height },
+        { x: main.x + main.width, y: main.y + 34px, w: root.width, h: root.height },
+        { x: main.x, y: main.y + main.height, w: main.width, h: root.height },
+    ]: Rectangle {
+        x: r.x; y: r.y; width: r.w - r.x; height: r.h;
+        background: #15161AA6;
+        opacity: S.cal-mode == "week" && S.draft-col >= 0 ? 1 : 0;
+        visible: self.opacity > 0;
+        animate opacity { duration: 120ms; }
+        TouchArea { clicked => { S.cal-draft-cancel(); } }
+    }
 }

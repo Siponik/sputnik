@@ -139,6 +139,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
 
     if mode == "week" {
         let per_day = super::calweek::render(app, u, g);
+        super::calweek::render_draft(app, u, g);
         // свободное окно недели
         let mut m = Json::new();
         for (d, items) in &per_day {

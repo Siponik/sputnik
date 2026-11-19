@@ -247,7 +247,19 @@ export global S {
     callback cal-filter(string);
     callback cal-add(string, string, string, bool); // день, время, название, событие?
     callback cal-drop(string, string, string, float); // список, задача, день, y в сетке (−1 — весь день)
-    callback cal-grid-click(string, float);   // день, y в сетке → форма с временем
+    // добавление кликом (п. 48): наведение спрашивает, куда встанет рамка; протяжка/клик — черновик; окно рядом
+    pure callback cal-snap(float) -> float;          // y под курсором → y начала (шаг 15 мин)
+    pure callback cal-time-at(float) -> string;      // y → «17:00»
+    callback cal-draft(string, float, float);        // день, y начала и конца протяжки
+    callback cal-draft-cancel();
+    callback cal-draft-kind(bool);                   // тип в окне сменили — запомнить
+    callback cal-draft-add(string, bool);            // название, событие?
+    in property <int> draft-col: -1;
+    in property <float> draft-y;
+    in property <float> draft-h;
+    in property <string> draft-time;
+    in property <string> draft-head;
+    in property <bool> draft-event;
     in property <string> add-time;
     callback cal-edge(bool, int);             // чип «↑ раньше» (true) / «↓ позже»: раскрыть до часа или свернуть
     callback open-event(string);

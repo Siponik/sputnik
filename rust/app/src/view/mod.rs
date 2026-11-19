@@ -51,6 +51,8 @@ pub struct Ui {
     /// Неделя раскрыта кликом по чипу «↑ раньше / ↓ позже» до этого часа.
     pub cal_up: Option<i64>,
     pub cal_down: Option<i64>,
+    /// Черновик «добавить кликом» в неделе (п. 48).
+    pub cal_draft: Option<calweek::Draft>,
     pub add_time: String,
     pub cal_free: Option<(String, String)>,
     pub quick: String,
