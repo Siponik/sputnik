@@ -178,10 +178,10 @@
 :root[data-theme="light"] .sd.over { box-shadow: 12px 0 32px rgba(46, 44, 39, .14); }
 
 /* ---------- Настройки (окно 880×720) — по design/screens/Settings.dc.html; всё под .stg- ---------- */
-.stg-back { background: rgba(0, 0, 0, .45); z-index: 40; }
-:root[data-theme="light"] .stg-back { background: rgba(46, 44, 39, .22); }
-@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .stg-back { background: rgba(46, 44, 39, .22); } }
-.stg-win { position: fixed; z-index: 41; left: 50%; top: 50%; translate: -50% -50%; width: min(880px, calc(100vw - 32px)); height: min(720px, calc(100vh - 32px)); display: grid; grid-template-columns: 220px minmax(0, 1fr); border-radius: 20px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; }
+.stg-back { background: rgba(0, 0, 0, .3); z-index: 40; backdrop-filter: blur(6px) saturate(.9); -webkit-backdrop-filter: blur(6px) saturate(.9); }
+:root[data-theme="light"] .stg-back { background: rgba(46, 44, 39, .14); }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .stg-back { background: rgba(46, 44, 39, .14); } }
+.stg-win { position: fixed; z-index: 41; left: 50%; top: 50%; translate: -50% -50%; width: min(820px, calc(100vw - 96px)); height: min(640px, calc(100vh - 96px)); display: grid; grid-template-columns: 220px minmax(0, 1fr); border-radius: 20px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; }
 :root[data-theme="light"] .stg-win { box-shadow: 0 30px 70px rgba(46, 44, 39, .2); }
 .stg-nav { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 20px 12px; background: var(--wash); border-right: 1px solid var(--hairline); min-height: 0; }
 /* Плашка выбранного раздела: одна на всё меню, переезжает к пункту (Settings.svelte, ind). */

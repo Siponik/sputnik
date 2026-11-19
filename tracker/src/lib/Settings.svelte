@@ -1,5 +1,5 @@
 <script>
-  // Настройки (0.6): окно 880×720, ⚙ в шапке и Ctrl+, (docs/design-v2.md — «Настройки»). Слева вкладки и «Найти настройку»,
+  // Настройки (0.6): окно 820×640 по центру, фон размыт — видно, что под ним приложение (19.11), ⚙ в шапке и Ctrl+, (docs/design-v2.md — «Настройки»). Слева вкладки и «Найти настройку»,
   // справа группы строк «заголовок + пояснение + управление». Всё меняется сразу, без «Сохранить».
   import { onMount, tick } from 'svelte';
   import { fade, fly, pop } from './motion.js';
@@ -165,8 +165,8 @@
   <div class="tx"><b>{title}</b>{#if hint}<span data-s={cls}>{hint}</span>{/if}</div>
 {/snippet}
 
-<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 160 }}></button>
-<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" transition:pop>
+<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 200 }}></button>
+<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" in:pop={{ duration: 220, start: 0.94 }} out:pop={{ out: true, start: 0.97 }}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <nav class="stg-nav" aria-label="Разделы настроек" bind:this={navEl} onkeydown={navKey}>
     <h2>Настройки</h2>
