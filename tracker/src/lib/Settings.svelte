@@ -165,8 +165,8 @@
   <div class="tx"><b>{title}</b>{#if hint}<span data-s={cls}>{hint}</span>{/if}</div>
 {/snippet}
 
-<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 200 }}></button>
-<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" in:pop={{ duration: 220, start: 0.94 }} out:pop={{ out: true, start: 0.97 }}>
+<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 160 }}></button>
+<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" transition:pop>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <nav class="stg-nav" aria-label="Разделы настроек" bind:this={navEl} onkeydown={navKey}>
     <h2>Настройки</h2>
