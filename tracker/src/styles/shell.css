@@ -183,7 +183,13 @@
 @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) .stg-back { background: rgba(46, 44, 39, .22); } }
 .stg-win { position: fixed; z-index: 41; left: 50%; top: 50%; translate: -50% -50%; width: min(880px, calc(100vw - 32px)); height: min(720px, calc(100vh - 32px)); display: grid; grid-template-columns: 220px minmax(0, 1fr); border-radius: 20px; background: var(--raised); border: 1px solid var(--edge); box-shadow: 0 30px 70px rgba(0, 0, 0, .5); overflow: hidden; }
 :root[data-theme="light"] .stg-win { box-shadow: 0 30px 70px rgba(46, 44, 39, .2); }
-.stg-nav { display: flex; flex-direction: column; gap: 2px; padding: 20px 12px; background: var(--wash); border-right: 1px solid var(--hairline); min-height: 0; }
+.stg-nav { position: relative; display: flex; flex-direction: column; gap: 2px; padding: 20px 12px; background: var(--wash); border-right: 1px solid var(--hairline); min-height: 0; }
+/* Плашка выбранного раздела: одна на всё меню, переезжает к пункту (Settings.svelte, ind). */
+.stg-ind { position: absolute; left: 12px; right: 12px; top: 0; border-radius: 10px; background: var(--raised); box-shadow: inset 2px 0 0 var(--clay); pointer-events: none; transition: translate var(--dur-3) var(--ease-out), height var(--dur-3) var(--ease-out); }
+.stg-nav > button { position: relative; }
+.stg-nav > button .n { margin-left: auto; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 5px; border: 1px solid var(--hairline); background: var(--bg); color: var(--ink-faint); font: 500 11px/16px var(--font-sans); text-align: center; opacity: .7; }
+.stg-nav > button .dot + .n { margin-left: 8px; }
+.stg-nav > button[aria-current="true"] .n { color: var(--ink-soft); opacity: 1; }
 .stg-nav h2 { margin: 0 8px 14px; font: 600 22px/28px var(--font-display); }
 .stg-srch { display: flex; align-items: center; gap: 8px; height: 34px; margin: 0 2px 10px; padding: 0 10px; border-radius: 10px; border: 1px solid var(--hairline); background: var(--bg); color: var(--ink-faint); font-size: 13px; flex: none; }
 .stg-srch:focus-within { border-color: var(--clay); }
@@ -192,7 +198,7 @@
 .stg-srch input::placeholder { color: var(--ink-faint); }
 .stg-nav > button { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 10px; border: 0; border-radius: 10px; background: none; color: var(--ink-soft); font: 500 13.5px/1 var(--font-sans); text-align: left; cursor: pointer; flex: none; }
 .stg-nav > button:hover { background: var(--raised); color: var(--ink); }
-.stg-nav > button[aria-current="true"] { background: var(--raised); color: var(--ink); box-shadow: inset 2px 0 0 var(--clay); }
+.stg-nav > button[aria-current="true"] { color: var(--ink); }
 .stg-nav > button.dim { opacity: .45; }
 .stg-nav > button:focus-visible { outline: 2px solid var(--clay); outline-offset: -2px; }
 .stg-nav .tic { width: 17px; height: 17px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
