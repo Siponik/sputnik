@@ -7,7 +7,7 @@ import { TodayPage } from "today.slint";
 import { BoardPage } from "board.slint";
 import { CalendarPage } from "calendar.slint";
 import { HabitsPage } from "habits.slint";
-import { SettingsPage } from "settings.slint";
+import { SettingsWin } from "settings.slint";
 import { NotesPage } from "notes.slint";
 import { CreateDialog, SearchDialog, Confirm } from "dialogs.slint";
 import { HabitEditDialog } from "habitedit.slint";
@@ -106,13 +106,29 @@ export component AppWindow inherits Window {
                 if (e.text == Key.Escape) { S.t-close(); S.c-close(); S.search-open-set(false); S.confirm-no(); S.ls-close(); S.dp-cancel(); S.menu-close(); S.tp-close(); S.card-key("esc"); return accept; }
                 return reject;
             }
+            // Окно настроек: цифры 1–6 и ↑↓ — его разделы (вкладки шапки в это время цифрами не переключаются),
+            // Esc и Ctrl+, — закрыть, Ctrl+K и / — «Найти настройку». Остальные клавиши разделов молчат.
+            if (S.set-open) {
+                if (e.text == Key.Escape) { S.set-close(); return accept; }
+                if (e.modifiers.control) {
+                    if (e.text == "," || e.text == "б") { S.set-close(); return accept; }
+                    if (e.text == "k" || e.text == "л") { S.set-find-focus += 1; return accept; }
+                    if (e.text == "w" || e.text == "ц") { S.win-close(); return accept; }
+                    return reject;
+                }
+                if (e.text == "/" || e.text == ".") { S.set-find-focus += 1; return accept; }
+                if (!e.modifiers.alt && !e.modifiers.shift && e.text >= "1" && e.text <= "6") { S.set-tab = e.text.to-float() - 1; return accept; }
+                if (e.text == Key.DownArrow) { S.set-tab = Math.mod(S.set-tab + 1, 6); return accept; }
+                if (e.text == Key.UpArrow) { S.set-tab = Math.mod(S.set-tab + 5, 6); return accept; }
+                return reject;
+            }
             if (e.modifiers.control) {
                 // Ctrl+Shift+L — к поиску списка на доске
                 if (e.modifiers.shift && (e.text == "l" || e.text == "L" || e.text == "д" || e.text == "Д" || e.text == "\u{0c}")) { if (S.tab != 2) { S.go(2); } S.list-find += 1; return accept; }
                 // Ctrl+Z / Ctrl+Y в открытой заметке (холст ловит их сам, когда в фокусе)
                 if (S.tab == 4 && (e.text == "z" || e.text == "Z" || e.text == "я" || e.text == "Я" || e.text == "\u{1a}")) { S.note-undo(e.modifiers.shift); return accept; }
                 if (S.tab == 4 && (e.text == "y" || e.text == "Y" || e.text == "н" || e.text == "Н" || e.text == "\u{19}")) { S.note-undo(true); return accept; }
-                if (e.text == "k" || e.text == "л") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
+                if (e.text == "k" || e.text == "л") { S.search-open-set(true); return accept; }
                 if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
                 if (e.text == "," || e.text == "б") { S.go(5); return accept; }
                 if ((e.text == "." || e.text == "ю") && S.tab == 2) { S.ls-show(); return accept; }
@@ -122,7 +138,7 @@ export component AppWindow inherits Window {
             }
             if (e.text == Key.Escape && S.tab == 2 && S.sph-open) { if (S.sph-edit != "") { S.sph-show(""); } else { S.sph-close(); } return accept; }
             if (e.text == Key.F5 || e.text == "r" || e.text == "к") { S.refresh(); return accept; }
-            if (e.text == "/" || e.text == ".") { if (S.tab == 5) { S.set-find-focus += 1; } else { S.search-open-set(true); } return accept; }
+            if (e.text == "/" || e.text == ".") { S.search-open-set(true); return accept; }
             if (e.text == "n" || e.text == "т") { S.create(""); return accept; }
             if (e.text >= "1" && e.text <= "5" && !e.modifiers.shift) { S.go(S.tab-order[min(4, e.text.to-float() - 1)]); return accept; }
             if (e.text == "q" || e.text == "й") { S.go(root.tab-near(-1)); return accept; }
@@ -259,8 +275,8 @@ export component AppWindow inherits Window {
                         width: 40px; height: 32px; y: 14px;
                         border-radius: 8px;
                         border-width: 1px;
-                        border-color: S.tab == 5 ? G.accent-line : (ga.has-hover ? G.line-strong : G.line);
-                        Icon { name: "settings"; width: 15px; height: 15px; x: (parent.width - 15px) / 2; y: (parent.height - 15px) / 2; c: S.tab == 5 ? G.accent : G.ink; }
+                        border-color: S.set-open ? G.accent-line : (ga.has-hover ? G.line-strong : G.line);
+                        Icon { name: "settings"; width: 15px; height: 15px; x: (parent.width - 15px) / 2; y: (parent.height - 15px) / 2; c: S.set-open ? G.accent : G.ink; }
                         ga := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
                         Tip { text: "Настройки"; on: ga.has-hover; }
                     }
@@ -418,7 +434,6 @@ export component AppWindow inherits Window {
                 if S.signed-in && S.tab == 2: BoardPage { }
                 if S.signed-in && S.tab == 3: HabitsPage { }
                 if S.signed-in && S.tab == 4: NotesPage { }
-                if S.tab == 5: SettingsPage { }
             }
         }
 
@@ -457,6 +472,7 @@ export component AppWindow inherits Window {
             background: G.accent;
             animate x, width { duration: 220ms; easing: ease-out; }
         }
+        if S.set-open: SettingsWin { }
         if S.create-open: CreateDialog { }
         if S.he-open: HabitEditDialog { }
         if S.search-open: SearchDialog { right: sbox.absolute-position.x + sbox.width; top: sbox.absolute-position.y; from-w: sbox.width; }
