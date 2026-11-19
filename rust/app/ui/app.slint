@@ -456,7 +456,7 @@ export component AppWindow inherits Window {
         if S.tp-open: Templates { }
         if S.ls-open: ListSettings { }
         if S.menu-open: CtxMenu { }
-        if S.dp-open: Rectangle {
+        if S.dp-open && S.dp-drop == "": Rectangle {
             TouchArea { }
             DatePicker { max-h: parent.height - 16px; x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
         }

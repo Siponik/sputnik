@@ -19,6 +19,8 @@ pub struct Dp {
     pub said: String,
     /// Выбор для окна «Создать», а не для задачи.
     pub for_create: bool,
+    /// Компактная выпадашка у поля даты («task» — окно задачи, «pipe» — Конвейер), пусто — большое окно.
+    pub drop: &'static str,
 }
 
 const MONTHS: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
@@ -42,7 +44,7 @@ pub fn open(app: &App, l: &str, id: &str) -> Option<Dp> {
         _ => (None, 0, 0),
     };
     let base = day.unwrap_or_else(|| hb::now().date());
-    Some(Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new(), for_create: false })
+    Some(Dp { task: (l.into(), id.into()), title: text(&t0["title"]), day, hour, min, dur, month: first(base), said: String::new(), for_create: false, drop: "" })
 }
 
 /// Открыть для окна «Создать»: срок и время — из того, что уже понято (`compose::resolve`).
@@ -134,9 +136,11 @@ pub fn apply(app: &mut App, d: &Dp) {
 pub fn render(app: &App, u: &Ui, g: &S) {
     let Some(d) = &u.dp else {
         g.set_dp_open(false);
+        g.set_dp_drop(ss(""));
         return;
     };
     g.set_dp_open(true);
+    g.set_dp_drop(ss(d.drop));
     g.set_dp_title(ss(d.title.to_uppercase()));
     g.set_dp_month(ss(format!("{} {}", MONTHS[d.month.month0() as usize], d.month.year())));
     let today = hb::now().date();

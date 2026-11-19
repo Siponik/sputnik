@@ -4,6 +4,7 @@ import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView } from "k
 import { LinkNote } from "linknote.slint";
 import { S, PipeRow } from "store.slint";
 import { TimeBox } from "dialogs.slint";
+import { DueDrop } from "datetime.slint";
 
 component StageChip inherits Rectangle {
     in property <string> text;
@@ -163,7 +164,9 @@ component PipeLine inherits Rectangle {
             Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
             Text { x: 32px; width: parent.width - 56px; text: S.pipe-due; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
             Chev { x: parent.width - 20px; y: 12px; c: G.muted; }
-            dta := TouchArea { clicked => { S.w-date(r.list-id, r.id); } mouse-cursor: pointer; }
+            z: S.dp-drop == "pipe" ? 30 : 0;
+            dta := TouchArea { clicked => { if (S.dp-drop == "pipe") { S.dp-cancel(); } else { S.drop = 0; S.w-date(r.list-id, r.id); } } mouse-cursor: pointer; }
+            if S.dp-open && S.dp-drop == "pipe": DueDrop { x: 0; y: parent.height + 4px; }
         }
         ptb := TimeBox { x: rx + min(196px, (parent.width - rx - 20px) * 0.4) + 6px; y: 12px; width: 128px; height: 34px; z: self.open ? 20 : 0; border-radius: 8px;
             val: S.pipe-time; label: S.pipe-time-label; empty: "Весь день"; clearable: true; picked(t) => { S.w-time(r.list-id, r.id, t); } }
