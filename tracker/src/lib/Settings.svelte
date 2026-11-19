@@ -2,9 +2,9 @@
   // Настройки (0.6): окно 880×720, ⚙ в шапке и Ctrl+, (docs/design-v2.md — «Настройки»). Слева вкладки и «Найти настройку»,
   // справа группы строк «заголовок + пояснение + управление». Всё меняется сразу, без «Сохранить».
   import { onMount, tick } from 'svelte';
-  import { fade, pop } from './motion.js';
+  import { fade, fly, pop } from './motion.js';
   import * as shell from './shell.js';
-  import { settingsKeys } from './keys.js';
+  import { settingsKeys, typing, plain } from './keys.js';
   import { calendarsAll, backupsLast, openPlace } from './api.js';
   import { BOT_NAME } from './sharedbot.js';
   import { ACCENTS, accentOf } from './accent.js';
@@ -23,10 +23,17 @@
   const offline = $derived(isOffline());
 
   let tab = $state(tab0);
+  // Направление смены раздела: содержимое въезжает снизу, если раздел ниже в списке, и сверху — если выше.
+  let dir = $state(0);
+  function setTab(id) {
+    if (!id || id === tab) return;
+    dir = shell.tabDir(tab, id);
+    tab = id;
+  }
   let q = $state('');
   const found = $derived(shell.searchSettings(q));
   const hit = $derived(new Set(found.map((r) => r.id)));
-  $effect(() => { if (found.length && !found.some((r) => r.tab === tab)) tab = found[0].tab; });
+  $effect(() => { if (found.length && !found.some((r) => r.tab === tab)) setTab(found[0].tab); });
   const cur = $derived(shell.SETTINGS_TABS.find((t) => t.id === tab));
 
   const v = (k, d) => settings?.[k]?.v ?? d;
@@ -108,10 +115,27 @@
   function navKey(e) {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
     e.preventDefault();
-    tab = shell.stepTab(tab, e.key === 'ArrowDown' ? 1 : -1);
+    setTab(shell.stepTab(tab, e.key === 'ArrowDown' ? 1 : -1));
     tick().then(() => navEl?.querySelector('[aria-current="true"]')?.focus());
   }
+  // Подсветка раздела слева — одна плашка, она переезжает к выбранному пункту (а не мигает на месте).
+  let ind = $state(null);
+  $effect(() => {
+    void tab; void q;
+    tick().then(() => {
+      const b = navEl?.querySelector('[aria-current="true"]');
+      if (b) ind = { top: b.offsetTop, h: b.offsetHeight };
+    });
+  });
   function key(e) {
+    // Цифры 1–6 — разделы настроек. Пока окно открыто, цифры принадлежат ему: вкладки шапки (1–4) не переключаются.
+    const d = plain(e) && !e.shiftKey && !typing(e) && !document.querySelector('.ddm') ? shell.digitTab(e.code) : null;
+    if (d) {
+      e.preventDefault(); e.stopPropagation();
+      setTab(d);
+      tick().then(() => navEl?.querySelector('[aria-current="true"]')?.focus());
+      return;
+    }
     if (e.key === 'Escape') {
       e.preventDefault(); e.stopPropagation();
       if (q && document.activeElement?.classList.contains('stg-q')) q = ''; else onclose();
@@ -141,8 +165,8 @@
   <div class="tx"><b>{title}</b>{#if hint}<span data-s={cls}>{hint}</span>{/if}</div>
 {/snippet}
 
-<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 160 }}></button>
-<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" transition:pop>
+<button class="drawer-back stg-back" type="button" aria-label="Закрыть настройки" onclick={onclose} transition:fade={{ duration: 200 }}></button>
+<div class="stg-win" role="dialog" aria-modal="true" aria-label="Настройки" in:pop={{ duration: 220, start: 0.94 }} out:pop={{ out: true, start: 0.97 }}>
   <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
   <nav class="stg-nav" aria-label="Разделы настроек" bind:this={navEl} onkeydown={navKey}>
     <h2>Настройки</h2>
@@ -150,20 +174,22 @@
       <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6" /><path d="M20 20l-4.5-4.5" /></svg>
       <input class="stg-q" bind:value={q} placeholder="Найти настройку" aria-label="Найти настройку" />
     </label>
-    {#each shell.SETTINGS_TABS as t (t.id)}
-      <button type="button" aria-current={tab === t.id} class:dim={q && !found.some((x) => x.tab === t.id)} onclick={() => (tab = t.id)}>
+    {#if ind}<span class="stg-ind" aria-hidden="true" style="translate: 0 {ind.top}px; height: {ind.h}px"></span>{/if}
+    {#each shell.SETTINGS_TABS as t, i (t.id)}
+      <button type="button" aria-current={tab === t.id} class:dim={q && !found.some((x) => x.tab === t.id)} title="{t.name} · {i + 1}" onclick={() => setTab(t.id)}>
         <svg class="tic" viewBox="0 0 24 24" aria-hidden="true">{@html TAB_ICONS[t.id]}</svg>{t.name}
         {#if t.id === 'upd' && upd.found}<b class="dot" title="Есть новая версия"></b>{/if}
+        <kbd class="n">{i + 1}</kbd>
       </button>
     {/each}
     {#if q && !found.length}<p class="stg-none">Такой настройки нет.</p>{/if}
-    <div class="ver">Спутник {version}<br />Ctrl + , — открыть настройки<br />? — все клавиши</div>
+    <div class="ver">Спутник {version}<br />Ctrl + , — открыть настройки<br />1–{shell.SETTINGS_TABS.length} — разделы<br />? — все клавиши</div>
   </nav>
 
   <div class="stg-pane">
-    <div class="stg-ph"><h3>{cur?.name}</h3><button type="button" class="x" aria-label="Закрыть" title="Закрыть · Esc" onclick={onclose}>×</button></div>
+    <div class="stg-ph">{#key tab}<h3 in:fly={{ y: dir * 6, duration: 180 }}>{cur?.name}</h3>{/key}<button type="button" class="x" aria-label="Закрыть" title="Закрыть · Esc" onclick={onclose}>×</button></div>
     {#key tab}
-    <div class="stg-body" in:fade={{ duration: 140 }}>
+    <div class="stg-body" in:fly={{ y: dir * 16, duration: 220 }}>
       {#if tab === 'look'}
         <div class="stg-grp">
           <div class="it" class:hit={hit.has('theme')}>{@render tx('theme', 'Тема', 'Тёмная — основная. «Как в Windows» переключается вместе с системой.')}

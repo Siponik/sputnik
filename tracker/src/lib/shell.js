@@ -233,6 +233,18 @@ export function stepTab(cur, dir, tabs = SETTINGS_TABS) {
   return tabs[(i + dir + tabs.length) % tabs.length].id;
 }
 
+/** Цифра 1–9 (верхний ряд или цифровой блок) → раздел настроек с этим номером; другое — null. */
+export function digitTab(code, tabs = SETTINGS_TABS) {
+  const m = /^(?:Digit|Numpad)([1-9])$/.exec(code ?? '');
+  return m ? tabs[Number(m[1]) - 1]?.id ?? null : null;
+}
+
+/** Куда ехать при смене раздела: 1 — вниз по списку, -1 — вверх, 0 — тот же. */
+export function tabDir(from, to, tabs = SETTINGS_TABS) {
+  const a = tabs.findIndex((t) => t.id === from), b = tabs.findIndex((t) => t.id === to);
+  return a < 0 || b < 0 || a === b ? 0 : b > a ? 1 : -1;
+}
+
 // ---------- Порядок вкладок в шапке ----------
 
 /** Вкладки шапки в исходном порядке. Свой порядок — settings.tabs.v (массив id), синхронизируется со слоем. */

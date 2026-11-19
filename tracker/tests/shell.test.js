@@ -220,3 +220,15 @@ test('порядок вкладок шапки: свой, без мусора, �
   assert.ok(!shell.tabsDefault(shell.moveTab(o, 'board', 0)));
   assert.equal(shell.searchSettings('порядок меню')[0].id, 'tabs');
 });
+
+test('настройки: цифры выбирают раздел, направление перехода', () => {
+  assert.equal(shell.digitTab('Digit1'), 'look');
+  assert.equal(shell.digitTab('Numpad3'), 'rem');
+  assert.equal(shell.digitTab('Digit6'), 'keys');
+  assert.equal(shell.digitTab('Digit7'), null);
+  assert.equal(shell.digitTab('Digit0'), null);
+  assert.equal(shell.digitTab('KeyA'), null);
+  assert.equal(shell.tabDir('look', 'sync'), 1);
+  assert.equal(shell.tabDir('keys', 'show'), -1);
+  assert.equal(shell.tabDir('rem', 'rem'), 0);
+});
