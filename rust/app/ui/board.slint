@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire, Pop } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { Pipe } from "pipe.slint";
 import { SpheresPage, ArchSpheres } from "spheres.slint";
@@ -863,7 +863,7 @@ export component BoardPage inherits Rectangle {
     }
     if root.menu: Rectangle {
         TouchArea { clicked => { root.menu = false; } }
-        Rectangle {
+        Pop {
             x: 440px;
             y: 60px;
             width: 220px;

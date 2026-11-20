@@ -1,7 +1,7 @@
 // «Привычки» по макетам G_Habits и G_HabitsMonth: панель-нода сверху, ряд «Сегодня», карточки 3 в ряд,
 // справа — панель выбранной привычки; «Месяц» — таблица привычка × день с меню дня.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg, Icon, ScrollView } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, DashBox, CSeg, Icon, ScrollView, Pop } from "kit.slint";
 import { S, HabitCard, Opt } from "store.slint";
 
 component Circ inherits Sat {
@@ -311,7 +311,7 @@ component MonthTable inherits Rectangle {
         }
     }
     // меню дня
-    if root.m-day > 0: Rectangle {
+    if root.m-day > 0: Pop {
         x: min(root.m-x, root.width - 250px); y: root.m-y;
         width: 240px; height: 196px;
         border-radius: 8px;

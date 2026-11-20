@@ -146,6 +146,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         g.set_cal_m(sd.month0() as i32);
         g.set_cal_now_y(tdy.year());
         g.set_cal_now_m(tdy.month0() as i32);
+        g.set_cal_pos(cal::period_pos(&u.cal_sel, mode) as i32);
         let same = if mode == "week" { cal::start_of_week(sd) == cal::start_of_week(tdy) } else { (sd.year(), sd.month()) == (tdy.year(), tdy.month()) };
         g.set_cal_away(!same);
     }

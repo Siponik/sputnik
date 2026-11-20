@@ -1,6 +1,6 @@
 // Конвейер: строка — ассет, дорожка этапов; клик по этапу переносит, «→» — следующий.
 import { G } from "theme.slint";
-import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView } from "kit.slint";
+import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView, Pop } from "kit.slint";
 import { LinkNote } from "linknote.slint";
 import { S, PipeRow } from "store.slint";
 import { TimeBox } from "dialogs.slint";
@@ -250,7 +250,7 @@ component PipeLine inherits Rectangle {
         }
     }
     if open && root.rpop: TouchArea { x: 0; y: 0; width: parent.width; height: parent.height; z: 29; clicked => { root.rpop = false; } }
-    if open && root.rpop: Rectangle {
+    if open && root.rpop: Pop {
         x: 36px + min(440px, parent.width * 0.5) + 24px; y: 82px + 4px; width: 200px; height: S.pipe-reminds.length * 30px + 10px; z: 30;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;
