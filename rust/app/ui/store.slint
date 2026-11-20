@@ -699,6 +699,21 @@ export global S {
     pure callback note-col(int, string, int, int) -> int; // стрелки: та же колонка на строке to (из, текст, байт, в)
     pure callback byte-len(string) -> int;
     callback note-todo(int);                 // галочка пункта «- [ ]»
+    // заметка задачи по строкам (окно задачи, Конвейер): всё — по её тексту, без состояния
+    in property <[MdRow]> t-note-lines;       // строки заметки открытой задачи
+    in property <[bool]> t-note-links-at;     // в каких строках ссылки
+    in property <[MdRow]> pipe-note-lines;    // строки заметки раскрытой строки Конвейера
+    in property <[bool]> pipe-note-links;
+    pure callback md-replace(string, int, string, int) -> string; // заменить drop строк с i на текст
+    pure callback md-split(string, int, string, int) -> EdOut;     // Enter в строке i (её текст, курсор): новый текст и курсор следующей строки
+    pure callback md-join(string, int, string) -> EdOut;           // Backspace в начале строки i: склеить с предыдущей
+    pure callback md-todo(string, int) -> string;                  // «- [ ]» ⇄ «- [x]» в строке i
+    pure callback md-col(string, string, int, int) -> int;         // стрелки: та же колонка на строке to
+    callback md-hit(string, int, int, bool) -> int;                // клик по тексту строки: курсор, -1 — ссылка (md-last-link)
+    callback md-last-link() -> string;
+    callback md-open(string) -> bool;                              // открыть ссылку; true — открыта заметка «Знаний»
+    callback md-mark(string, string);                              // запомнить текст до правки (ключ заметки)
+    callback md-undo(string, string, bool) -> string;              // Ctrl+Z / Ctrl+Y: прежний текст
     // канвас (.canvas): координаты — в единицах холста
     in property <bool> note-canvas;          // открыта вкладка-канвас
     in property <[CvNode]> cv-nodes;

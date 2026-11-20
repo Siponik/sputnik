@@ -106,6 +106,7 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_id(ss(id));
     g.set_t_title(ss(text(&t0["title"])));
     g.set_t_notes(ss(text(&t0["notes"])));
+    super::notes::sync_task_note(g, false, &format!("{list}|{id}"), &text(&t0["notes"]));
     // блок «Заметки»: заметки по ссылкам [[…]] и по названию задачи (G_NotesSearch, окно задачи)
     let titles: Vec<String> = app.notes.notes.iter().map(|n| n.title.clone()).collect();
     let gs = super::graph::groups(app);

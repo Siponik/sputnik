@@ -3,7 +3,7 @@
 import { G } from "theme.slint";
 import { Field, Overlay, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop, LabelHint } from "kit.slint";
 import { S, Opt, Sub } from "store.slint";
-import { LinkNote } from "linknote.slint";
+import { MdNote } from "mdnote.slint";
 import { TimeBox } from "dialogs.slint";
 import { DueDrop } from "datetime.slint";
 
@@ -244,6 +244,7 @@ export component TaskDialog inherits Overlay {
                 Card {
                     x: 24px; y: sub-h + (root.note-full ? 0 : 10px); width: root.lw; height: lh - sub-h - (root.note-full ? 0 : 10px);
                     border-color: nb.focused ? G.accent-line : G.line;
+                    animate border-color { duration: G.fast; }
                     Text { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; }
                     Text { x: 84px; y: 0; height: 30px; text: "MARKDOWN"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
                     Rectangle {
@@ -252,9 +253,9 @@ export component TaskDialog inherits Overlay {
                         Icon { x: 4px; y: 4px; width: 14px; height: 14px; name: root.note-full ? "minimize" : "expand"; c: na.has-hover ? G.ink : #C9CAD0; }
                         na := TouchArea { clicked => { root.note-full = !root.note-full; } mouse-cursor: pointer; }
                     }
-                    nb := LinkNote {
+                    nb := MdNote {
                         x: 12px; y: 34px; width: parent.width - 24px; height: parent.height - 44px;
-                        text: S.t-notes; font-size: 13.5px;
+                        text: S.t-notes; lines: S.t-note-lines; links: S.t-note-links-at; key: S.t-list + "|" + S.t-id;
                         edited(t) => { S.t-notes-set(t); }
                         opened => { S.t-close(); }
                     }

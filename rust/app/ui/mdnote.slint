@@ -1,0 +1,85 @@
+// Заметка задачи (окно задачи, раскрытая строка Конвейера): markdown оформлен сразу,
+// строка под курсором показывает разметку и правится — как в «Знаниях». Набор сохраняется сразу.
+// Клик по ссылке — переход, Ctrl+клик — правка; клик по квадратику «- [ ]» — отметить.
+import { G } from "theme.slint";
+import { S, MdRow } from "store.slint";
+import { ScrollView } from "kit.slint";
+import { LiveLine } from "notes.slint";
+
+export component MdNote inherits Rectangle {
+    in property <string> text;
+    in property <[MdRow]> lines;
+    in property <[bool]> links;
+    // какая заметка открыта (список|задача): смена — правка заканчивается, свой журнал Ctrl+Z
+    in property <string> key;
+    in property <float> zoom: 0.93;
+    in property <string> hint: "Заметка… **жирный**, - список, - [ ] дело, [[ — ссылка на «Знания»";
+    out property <bool> focused: root.edit-i >= 0;
+    callback edited(string);
+    // открыта заметка «Знаний» — окно можно закрыть
+    callback opened();
+    property <int> edit-i: -1;
+    property <int> caret: -1;
+    changed key => { root.edit-i = -1; }
+    // править последнюю строку (курсор в конец)
+    public function grab() { root.caret = -1; root.edit-i = max(0, root.lines.length - 1); }
+    function put(t: string) { if (t != root.text) { root.edited(t); } }
+    function mark() { S.md-mark(root.key, root.text); }
+    if root.text == "" && root.edit-i < 0: Text {
+        x: 0; y: 2px; width: parent.width; text: root.hint; font-size: 14.5px * root.zoom; color: #6E7079; wrap: word-wrap;
+    }
+    sv := ScrollView {
+        x: 0; y: 0; width: parent.width; height: parent.height;
+        content-height: max(body.preferred-height + 40px, self.height);
+        // клик под текстом — правка последней строки (если она не пустая — новая строка)
+        TouchArea {
+            y: body.preferred-height; height: max(40px, sv.height - body.preferred-height);
+            mouse-cursor: MouseCursor.text;
+            clicked => {
+                if (root.lines.length > 0 && root.lines[root.lines.length - 1].raw != "") { root.mark(); root.put(root.text + "\n"); }
+                root.caret = -1; root.edit-i = max(0, root.lines.length - 1);
+            }
+        }
+        body := VerticalLayout {
+            x: 0; y: 0; width: sv.width - 8px;
+            alignment: start; spacing: 0;
+            for b[i] in root.lines: LiveLine {
+                line: b;
+                zoom: root.zoom;
+                has-link: i < root.links.length && root.links[i];
+                editing: i == root.edit-i;
+                caret: root.caret;
+                pick => { root.mark(); root.caret = -1; root.edit-i = i; }
+                typed(t) => { root.put(S.md-replace(root.text, i, t, 1)); }
+                leave(t) => { if (t != b.raw) { root.put(S.md-replace(root.text, i, t, 1)); } if (root.edit-i == i) { root.edit-i = -1; } }
+                commit(t) => { if (t != b.raw) { root.put(S.md-replace(root.text, i, t, 1)); } }
+                undo(r) => { root.put(S.md-undo(root.key, root.text, r)); }
+                split(t, at) => {
+                    root.mark();
+                    let r = S.md-split(root.text, i, t, at);
+                    root.put(r.text);
+                    root.caret = r.a; root.edit-i = i + 1;
+                }
+                join(t) => {
+                    if (i > 0) {
+                        root.mark();
+                        let r = S.md-join(root.text, i, t);
+                        root.put(r.text);
+                        root.caret = r.a; root.edit-i = i - 1;
+                    }
+                }
+                move(t, d, at) => {
+                    if (t != b.raw) { root.put(S.md-replace(root.text, i, t, 1)); }
+                    if (i + d >= 0 && i + d < root.lines.length) { root.caret = S.md-col(root.text, t, at, i + d); root.edit-i = i + d; }
+                }
+                pick-at(at) => {
+                    let c = S.md-hit(root.text, i, at, S.ctrl-held);
+                    if (c >= 0) { root.mark(); root.caret = c; root.edit-i = i; }
+                    else { root.edit-i = -1; if (S.md-open(S.md-last-link())) { root.opened(); } }
+                }
+                linked(l) => { if (S.md-open(l)) { root.opened(); } }
+                toggle => { root.mark(); root.put(S.md-todo(root.text, i)); }
+            }
+        }
+    }
+}
