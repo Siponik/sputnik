@@ -1180,22 +1180,7 @@ pub fn wire(w: &AppWindow) {
         };
         g.set_link_found(model(found));
     });
-    g.on_table_set(|raw, c, t| {
-        let mut cells = crate::notes::table_cells(raw.as_str());
-        let c = c.max(0) as usize;
-        while cells.len() <= c { cells.push(String::new()); }
-        cells[c] = t.to_string();
-        ss(sputnik_core::edcmd::table_row(&cells))
-    });
-    g.on_table_blank(|raw| ss(sputnik_core::edcmd::table_row(&vec![String::new(); crate::notes::table_cells(raw.as_str()).len()])));
-    g.on_table_cells(|raw| {
-        model(crate::notes::table_cells(raw.as_str()).into_iter().map(|c| {
-            // <br> внутри ячейки — перенос строки; каждая часть — своё оформление (**жирный**, _курсив_, ссылки)
-            let c2 = c.replace("<br />", "\n").replace("<br/>", "\n").replace("<br>", "\n").replace("<BR>", "\n");
-            let md = c2.split('\n').map(|part| crate::notes::inline_md(part.trim())).collect::<Vec<_>>().join("\n\n");
-            crate::MdRow { kind: ss("p"), raw: ss(c.clone()), md: slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&c2)), plain: ss(c2) }
-        }).collect())
-    });
+    super::notetable::wire(&g);
     g.on_md_rows(|t| {
         // [[ссылка]] показываем акцентом, без скобок
         let re = |l: &str| {
@@ -1211,9 +1196,7 @@ pub fn wire(w: &AppWindow) {
             out.push_str(rest); out
         };
         let body = t.lines().map(re).collect::<Vec<_>>().join("\n");
-        model(crate::notes::line_rows(&body).into_iter().map(|r| {
-            crate::MdRow { kind: ss(r.kind), raw: ss(r.raw), md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)), plain: ss(r.plain) }
-        }).collect())
+        model(crate::notes::line_rows(&body).into_iter().map(super::md_row).collect())
     });
     g.on_link_chips(|t| model(crate::state::peek(|app| sputnik_core::wikilink::links(t.as_str()).into_iter().map(|title| {
         let path = app.notes.notes.iter().find(|n| n.title.to_lowercase() == title.to_lowercase()).map(|n| n.path.clone()).unwrap_or_default();
@@ -1319,30 +1302,6 @@ pub fn wire(w: &AppWindow) {
     g.on_note_line_set(|i, t| act(|app, u| note_set_lines(app, u, i as usize, &str_(&t), 1)));
     g.on_note_commit(|| act(|app, u| save_draft(app, u)));
     g.on_note_undo(|redo| act(|app, u| note_undo(app, u, redo)));
-    // «＋ Таблица»: 3 колонки, заголовок и пустая строка — после строки, где курсор, иначе в конец
-    g.on_note_table(|i| act(|app, u| {
-        let n = crate::notes::line_rows(&note_text(app, u)).len();
-        let at = if i >= 0 { (i as usize + 1).min(n) } else { n };
-        note_set_lines(app, u, at, "\n| Колонка 1 | Колонка 2 | Колонка 3 |\n|---|---|---|\n|  |  |  |\n", 0);
-        save_draft(app, u);
-    }));
-    // «+ колонка»: ячейка в конец каждой строки таблицы, где строка i
-    g.on_note_table_col(|i| act(|app, u| {
-        let rows = crate::notes::line_rows(&note_text(app, u));
-        let i = i.max(0) as usize;
-        let is_t = |k: usize| rows.get(k).is_some_and(|r| r.kind == "table" || r.kind == "th" || r.kind == "tsep");
-        if !is_t(i) { return; }
-        let (mut a, mut b) = (i, i);
-        while a > 0 && is_t(a - 1) { a -= 1; }
-        while is_t(b + 1) { b += 1; }
-        for k in a..=b {
-            let r = &rows[k];
-            let mut cells = crate::notes::table_cells(&r.raw);
-            cells.push(if r.kind == "tsep" { "---".into() } else { String::new() });
-            note_set_lines(app, u, k, &sputnik_core::edcmd::table_row(&cells), 1);
-        }
-        save_draft(app, u);
-    }));
     super::canvas::wire(&g);
     super::calweek::wire(&g);
     g.on_note_hit(|i, at, ctrl| {
@@ -1541,17 +1500,21 @@ pub fn wire(w: &AppWindow) {
 /// Несохранённую правку текущей заметки — сохранить, прежде чем уйти с неё (на другую вкладку,
 /// заметку из списка, по ссылке). Иначе правка терялась или, хуже, текст одной заметки попадал в другую.
 /// Текст заметки с учётом несохранённой правки.
-fn note_text(app: &App, u: &Ui) -> String {
+pub(super) fn note_text(app: &App, u: &Ui) -> String {
     if u.note_dirty { return u.note_draft.clone(); }
     app.notes.notes.iter().find(|x| x.path == u.note_path).map(|x| x.body.clone()).unwrap_or_default()
 }
 
 /// Заменить `drop` строк тела, начиная с `i`, на `t` (строки через \n). Пишет в черновик.
-fn note_set_lines(app: &App, u: &mut Ui, i: usize, t: &str, drop: usize) {
+pub(super) fn note_set_lines(app: &App, u: &mut Ui, i: usize, t: &str, drop: usize) {
+    note_set_parts(app, u, i, &t.split('\n').collect::<Vec<_>>(), drop);
+}
+
+/// Строки заметки с `i`-й: `drop` прежних заменяются на `parts` (пусто — просто убрать).
+pub(super) fn note_set_parts(app: &App, u: &mut Ui, i: usize, parts: &[&str], drop: usize) {
     if u.note_path.is_empty() { return; }
     let base = note_text(app, u);
-    let parts: Vec<&str> = t.split('\n').collect();
-    let new = crate::notes::replace_line(&base, i, &parts, drop);
+    let new = crate::notes::replace_line(&base, i, parts, drop);
     if new != base {
         u.note_undo.push((u.note_path.clone(), base));
         if u.note_undo.len() > 300 { u.note_undo.remove(0); }

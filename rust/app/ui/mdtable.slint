@@ -1,0 +1,362 @@
+// Таблица заметки целиком (как редактор таблиц Obsidian, вид — «Система G»): ячейка правится на месте,
+// Tab / Shift+Tab — соседняя ячейка, Enter — ячейка ниже (в последней строке — новая строка), Shift+Enter —
+// перенос внутри ячейки, стрелки на краю текста — соседняя ячейка, Alt+стрелки — передвинуть строку / колонку,
+// Ctrl+Enter — строка ниже, Esc — выйти. Ручки слева у строки и сверху у колонки, правый клик — меню
+// (вставить, дублировать, передвинуть, удалить, выровнять, отсортировать). Ширина колонок — по содержимому.
+// Сами правки делает Rust (sputnik_core::mdtable), сюда приходит готовая таблица.
+import { G } from "theme.slint";
+import { Icon, Tip } from "kit.slint";
+import { S, MdRow, TModel } from "store.slint";
+
+// Ручка строки (слева) или колонки (сверху): клик — меню строки/колонки.
+component Grip inherits Rectangle {
+    in property <bool> on;
+    in property <bool> vert;
+    in property <string> tip;
+    callback open(length, length);
+    property <duration> t-fade: G.motion == 2 ? 0ms : G.motion == 1 ? 90ms : 140ms;
+    border-radius: 4px;
+    background: ga.has-hover ? G.accent-line : G.node;
+    border-width: 1px; border-color: ga.has-hover ? G.accent : G.line;
+    opacity: root.on || ga.has-hover ? 1 : 0;
+    animate opacity, background { duration: root.t-fade; }
+    Icon { name: "more"; width: 12px; height: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: ga.has-hover ? G.accent : G.muted;
+        transform-rotation: root.vert ? 90deg : 0deg; }
+    ga := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { root.open(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
+    }
+    Tip { text: root.tip; on: ga.has-hover; }
+}
+
+component TCell inherits TouchArea {
+    in property <MdRow> cell;
+    // граница слева / сверху; ручка колонки (над шапкой) и строки (слева); поля под ручки
+    in property <bool> bl;
+    in property <bool> bt;
+    in property <bool> col-grip;
+    in property <bool> row-grip;
+    in property <bool> col-on;
+    in property <bool> row-on;
+    in property <length> gx;
+    in property <length> gy;
+    callback open-row(length, length);
+    callback open-col(length, length);
+    callback hovered();
+    changed has-hover => { if (self.has-hover) { root.hovered(); } }
+    in property <bool> head;
+    in property <int> align;
+    in property <length> fs;
+    in property <bool> editing;
+    in property <bool> editable;
+    // как встать в ячейку: 0 — курсор в конец, 1 — в начало, 2 — выделить всё
+    in property <int> enter-as;
+    in property <bool> lit;
+    in property <float> flash;
+    callback pick();
+    callback nav(string);
+    callback edited(string);
+    callback blur();
+    callback ctx(length, length);
+    property <duration> t-fade: G.motion == 2 ? 0ms : G.motion == 1 ? 90ms : 140ms;
+    min-height: root.fs * 1.4 + 10px;
+    Rectangle {
+        background: root.lit ? G.accent-wash : (root.head ? G.bg : transparent);
+        animate background { duration: root.t-fade; }
+    }
+    // только что вставленная / передвинутая строка — вспыхивает и гаснет
+    Rectangle { background: G.accent-wash; opacity: root.flash; }
+    VerticalLayout {
+        padding-left: 9px; padding-right: 9px; padding-top: 5px; padding-bottom: 5px;
+        if !root.editing: HorizontalLayout {
+            alignment: root.align == 2 ? LayoutAlignment.center : (root.align == 3 ? LayoutAlignment.end : LayoutAlignment.stretch);
+            st := StyledText {
+                width: root.align >= 2 ? min(self.preferred-width, root.width - 18px) : root.width - 18px;
+                text: root.cell.md; default-font-size: root.fs; default-color: root.head ? G.ink : G.ink.mix(G.muted, 0.85);
+                link-color: G.accent;
+                link-clicked(l) => { S.note-link(l); }
+            }
+        }
+        if root.editing: FocusScope {
+            height: ci.preferred-height;
+            property <int> arrow-from;
+            property <string> arrow-key;
+            // ячейка, из которой ушли, могла забрать фокус, пропадая, — проверить ещё раз
+            // (а после вставки таблицы фокус ещё раз уходит окну) — первые ~200 мс возвращать его в ячейку
+            property <int> settled;
+            Timer { interval: 40ms; running: parent.settled < 5; triggered => { parent.settled += 1; if (!ci.has-focus) { ci.start(); } } }
+            // стрелка: поле двигает курсор само; не сдвинулся — значит, край текста, идём в соседнюю ячейку
+            Timer {
+                interval: 1ms;
+                running: parent.arrow-key != "";
+                triggered => {
+                    if (ci.cursor-position-byte-offset == parent.arrow-from) { root.nav(parent.arrow-key); }
+                    parent.arrow-key = "";
+                }
+            }
+            capture-key-pressed(e) => {
+                if (e.modifiers.alt && !e.modifiers.control) {
+                    if (e.text == Key.UpArrow) { root.nav("row-up"); return accept; }
+                    if (e.text == Key.DownArrow) { root.nav("row-down"); return accept; }
+                    if (e.text == Key.LeftArrow) { root.nav("col-move-left"); return accept; }
+                    if (e.text == Key.RightArrow) { root.nav("col-move-right"); return accept; }
+                }
+                if (e.text == Key.Tab || e.text == Key.Backtab) { root.nav(e.modifiers.shift || e.text == Key.Backtab ? "backtab" : "tab"); return accept; }
+                if (e.text == Key.Return && e.modifiers.control) { root.nav("ctrl-enter"); return accept; }
+                if (e.text == Key.Return && !e.modifiers.shift) { root.nav("enter"); return accept; }
+                if (e.text == Key.Escape) { root.nav("esc"); return accept; }
+                if (e.modifiers.control && (e.text == "s" || e.text == "S" || e.text == "ы" || e.text == "Ы")) { root.nav("save"); return accept; }
+                if (e.modifiers.control && (e.text == "z" || e.text == "Z" || e.text == "я" || e.text == "Я" || e.text == "\u{1a}")) { root.nav(e.modifiers.shift ? "redo" : "undo"); return accept; }
+                if (e.modifiers.control && (e.text == "y" || e.text == "Y" || e.text == "н" || e.text == "Н" || e.text == "\u{19}")) { root.nav("redo"); return accept; }
+                if (!e.modifiers.shift && !e.modifiers.control && ci.cursor-position-byte-offset == ci.anchor-position-byte-offset) {
+                    if (e.text == Key.UpArrow) { self.arrow-from = ci.cursor-position-byte-offset; self.arrow-key = "up"; }
+                    if (e.text == Key.DownArrow) { self.arrow-from = ci.cursor-position-byte-offset; self.arrow-key = "down"; }
+                    if (e.text == Key.LeftArrow) { self.arrow-from = ci.cursor-position-byte-offset; self.arrow-key = "left"; }
+                    if (e.text == Key.RightArrow) { self.arrow-from = ci.cursor-position-byte-offset; self.arrow-key = "right"; }
+                }
+                reject
+            }
+            // раскладка: в прокрутке (ячейка растёт вместе со строкой таблицы, заметка прокручивается)
+            ci := TextInput {
+                text: root.cell.plain; single-line: false; wrap: word-wrap;
+                font-size: root.fs; font-weight: root.head ? 600 : 400; color: G.ink;
+                horizontal-alignment: root.align == 2 ? TextHorizontalAlignment.center : (root.align == 3 ? TextHorizontalAlignment.right : TextHorizontalAlignment.left);
+                selection-background-color: G.accent.with-alpha(0.4);
+                init => { root.edited(self.text); self.start(); }
+                public function start() {
+                    self.focus();
+                    if (root.enter-as == 2) { self.select-all(); } else if (root.enter-as == 1) { self.set-selection-offsets(0, 0); } else { self.set-selection-offsets(999999, 999999); }
+                }
+                edited => { root.edited(self.text); }
+                changed has-focus => { if (!self.has-focus) { root.blur(); } }
+            }
+        }
+    }
+    // рамка ячейки, которую правят: проявляется, переезжая из ячейки в ячейку
+    Rectangle {
+        x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px;
+        border-width: 1.5px; border-color: G.accent; border-radius: 3px;
+        opacity: root.editing ? 1 : 0;
+        animate opacity { duration: root.t-fade; }
+    }
+    // оформленный текст сам глотает клики; с Ctrl — переход по ссылке в ячейке
+    if root.editable && !root.editing && !S.ctrl-held: TouchArea {
+        mouse-cursor: MouseCursor.text;
+        clicked => { root.pick(); }
+        pointer-event(e) => {
+            if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) {
+                root.ctx(self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y);
+            }
+        }
+    }
+    // границы ячейки: слева и сверху, рамка вокруг — у таблицы
+    if root.bl: Rectangle { x: 0; width: 1px; background: G.line; }
+    if root.bt: Rectangle { y: 0; height: 1px; background: G.line; }
+    if root.col-grip: Grip {
+        x: (parent.width - 26px) / 2; y: -root.gy + 1px; width: 26px; height: 12px;
+        on: root.col-on;
+        tip: "Колонка: вставить, передвинуть, выровнять, удалить";
+        open(x, y) => { root.open-col(x, y); }
+    }
+    if root.row-grip: Grip {
+        vert: true;
+        x: -root.gx + 3px; y: (parent.height - 22px) / 2; width: 14px; height: 22px;
+        on: root.row-on;
+        tip: "Строка: вставить, передвинуть, удалить";
+        open(x, y) => { root.open-row(x, y); }
+    }
+}
+
+export component TableBlock inherits TouchArea {
+    // вся таблица: строки файла через «\n»
+    in property <string> block;
+    // номер первой строки таблицы в заметке
+    in property <int> line;
+    in property <length> fs: 13.5px;
+    // место под таблицу (без полей под ручки)
+    in property <length> avail;
+    in property <bool> editable;
+    // в заметке правят обычную строку — из таблицы вышли
+    in property <bool> line-edit;
+    changed line-edit => { if (self.line-edit && root.er >= 0) { root.leave(); } }
+    // ушли из таблицы стрелкой: -1 — вверх, 1 — вниз
+    callback exit(int);
+    property <TModel> m: S.table-model(root.block);
+    // поля под ручки и «+»
+    property <length> gx: root.editable ? 20px : 0px;
+    property <length> gy: root.editable ? 14px : 0px;
+    property <length> gr: root.editable ? 22px : 0px;
+    // колонки по содержимому; не влезает — все сжимаются поровну, текст переносится
+    property <float> k: min(root.fs / 1px, (root.avail - root.gr) / 1px / max(1, root.m.sum));
+    property <length> tw: root.m.sum * root.k * 1px;
+    out property <length> full-h: root.gy + grid.preferred-height + root.gy;
+    width: root.gx + root.tw + root.gr;
+    height: root.full-h;
+    // правка: строка, колонка (-1 — не правим), как встать, набранный текст
+    property <int> er: -1;
+    property <int> ec: -1;
+    property <int> how;
+    property <string> draft;
+    // строка/колонка под мышью и подсвеченные ручкой
+    property <int> hr: -1;
+    property <int> hc: -1;
+    property <int> lit-r: -1;
+    property <int> lit-c: -1;
+    property <int> flash-r: -1;
+    property <float> flash-a;
+    animate flash-a { duration: G.motion == 2 ? 0ms : 700ms; easing: ease-out; }
+    property <bool> appear;
+    opacity: root.appear || G.motion == 2 ? 1 : 0;
+    animate opacity { duration: G.motion == 1 ? 120ms : 180ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Timer { interval: 1ms; running: !root.appear; triggered => { root.appear = true; root.take(); } }
+
+    function cell(r: int, c: int) -> MdRow { root.m.cells[r * root.m.cols + c] }
+    // набранное (draft) кладёт сама ячейка, когда в неё встали, — после правки из Rust таблица
+    // приходит на кадр позже, чем «куда встать», поэтому здесь её не читаем
+    function edit(r: int, c: int, how: int) {
+        root.er = max(0, r);
+        root.ec = max(0, c);
+        root.how = how;
+    }
+    // набранное — в файл (если поменялось)
+    function save() {
+        if (root.er >= 0 && root.er < root.m.rows && root.ec < root.m.cols && root.draft != root.cell(root.er, root.ec).plain) {
+            S.note-tcell(root.line, root.er, root.ec, root.draft);
+        }
+    }
+    function leave() { root.save(); root.er = -1; root.ec = -1; }
+    // фокус может уйти и ненадолго (подсказка-окошко забирает его себе) — набранное сохраняем, ячейку не закрываем;
+    // закрывает её Esc, клик в другую ячейку или в строку заметки, стрелка за край таблицы
+    // после правки из Rust (меню, новая таблица) или вход стрелкой из соседней строки заметки
+    function take() {
+        // пустой блок — не первая строка таблицы (у строк ниже тот же номер первой строки)
+        if (root.block == "") { return; }
+        if (S.tf-n != S.tf-done && S.tf-line == root.line) {
+            S.tf-done = S.tf-n;
+            root.edit(S.tf-r, S.tf-c, S.tf-all ? 2 : 0);
+            root.flash(S.tf-r);
+        }
+        if (S.tk-n != S.tk-done && S.tk-line == root.line) {
+            S.tk-done = S.tk-n;
+            // сверху — курсор в начало ячейки, снизу — в конец
+            root.edit(min(S.tk-r, root.m.rows - 1), 0, S.tk-r >= 999 ? 0 : 1);
+        }
+    }
+    function flash(r: int) {
+        if (G.motion == 2) { return; }
+        root.flash-r = r;
+        root.flash-a = 0.9;
+        ft.running = true;
+    }
+    ft := Timer { interval: 16ms; running: false; triggered => { self.running = false; root.flash-a = 0; } }
+    property <int> tfn: S.tf-n;
+    property <int> tkn: S.tk-n;
+    changed tfn => { root.take(); }
+    changed tkn => { root.take(); }
+    function op(o: string) { root.save(); S.note-top(root.line, o, root.er, root.ec); }
+    function nav(key: string) {
+        let r = root.er;
+        let c = root.ec;
+        let last-r = r + 1 >= root.m.rows;
+        let last-c = c + 1 >= root.m.cols;
+        if (key == "tab") {
+            if (!last-c) { root.save(); root.edit(r, c + 1, 2); } else if (!last-r) { root.save(); root.edit(r + 1, 0, 2); } else { root.save(); S.note-top(root.line, "row-below", r, 0); }
+        } else if (key == "backtab") {
+            if (c > 0) { root.save(); root.edit(r, c - 1, 2); } else if (r > 0) { root.save(); root.edit(r - 1, root.m.cols - 1, 2); }
+        } else if (key == "enter") {
+            if (!last-r) { root.save(); root.edit(r + 1, c, 0); } else { root.op("row-below"); }
+        } else if (key == "ctrl-enter") {
+            root.op("row-below");
+        } else if (key == "up") {
+            if (r > 0) { root.save(); root.edit(r - 1, c, 0); } else { root.leave(); root.exit(-1); }
+        } else if (key == "down") {
+            if (!last-r) { root.save(); root.edit(r + 1, c, 0); } else { root.leave(); root.exit(1); }
+        } else if (key == "left") {
+            if (c > 0) { root.save(); root.edit(r, c - 1, 0); } else if (r > 0) { root.save(); root.edit(r - 1, root.m.cols - 1, 0); }
+        } else if (key == "right") {
+            if (!last-c) { root.save(); root.edit(r, c + 1, 1); } else if (!last-r) { root.save(); root.edit(r + 1, 0, 1); }
+        } else if (key == "esc") {
+            root.leave();
+            S.focus-keys += 1;
+        } else if (key == "save") {
+            root.save();
+        } else if (key == "undo" || key == "redo") {
+            root.leave();
+            S.note-undo(key == "redo");
+            S.focus-keys += 1;
+        } else {
+            root.op(key);
+        }
+    }
+    function menu(r: int, c: int, part: string, x: length, y: length) {
+        root.leave();
+        root.lit-r = part == "col" ? -1 : r;
+        root.lit-c = part == "row" ? -1 : c;
+        S.menu-ctx("tbl", root.line + ":" + r + ":" + c + ":" + part, x, y);
+    }
+    // меню закрылось — подсветка гаснет
+    property <bool> menu-open: S.menu-open;
+    changed menu-open => { if (!self.menu-open) { root.lit-r = -1; root.lit-c = -1; } }
+
+    // наведение на таблицу (с полями под ручки) — показать ручки и «+»
+    changed has-hover => { if (!self.has-hover) { root.hr = -1; root.hc = -1; } }
+    grid := VerticalLayout {
+        x: root.gx; y: root.gy; width: root.tw; height: self.preferred-height;
+        spacing: 0; padding: 0;
+        for r in root.m.rows: HorizontalLayout {
+                spacing: 0; padding: 0;
+                for c in root.m.cols: TCell {
+                    width: root.m.w[c] * root.k * 1px;
+                    cell: root.cell(r, c);
+                    head: root.m.head && r == 0;
+                    align: root.m.align[c];
+                    fs: root.fs;
+                    editable: root.editable;
+                    editing: root.er == r && root.ec == c;
+                    enter-as: root.how;
+                    lit: (root.lit-r == r && root.lit-c < 0) || (root.lit-c == c && root.lit-r < 0) || (root.lit-r == r && root.lit-c == c);
+                    flash: r == root.flash-r ? root.flash-a : 0;
+                    bl: c > 0;
+                    bt: r > 0;
+                    gx: root.gx;
+                    gy: root.gy;
+                    col-grip: root.editable && r == 0;
+                    row-grip: root.editable && c == 0;
+                    col-on: root.has-hover && (root.hc == c || root.ec == c);
+                    row-on: root.has-hover && (root.hr == r || root.er == r);
+                    hovered => { root.hr = r; root.hc = c; }
+                    pick => { root.save(); root.edit(r, c, 0); }
+                    nav(k) => { root.nav(k); }
+                    edited(t) => { root.draft = t; }
+                    blur => { if (root.er == r && root.ec == c) { root.save(); } }
+                    ctx(x, y) => { root.menu(r, c, "cell", x, y); }
+                    open-row(x, y) => { root.menu(r, c, "row", x, y); }
+                    open-col(x, y) => { root.menu(r, c, "col", x, y); }
+                }
+        }
+    }
+    // рамка таблицы
+    Rectangle {
+        x: root.gx; y: root.gy; width: root.tw; height: grid.preferred-height;
+        border-width: 1px; border-color: G.line; border-radius: 4px;
+    }
+    // «+» справа — колонка в конец, «+» снизу — строка в конец
+    if root.editable: Rectangle {
+        x: root.gx + root.tw + 4px; y: root.gy; width: 16px; height: grid.preferred-height; border-radius: 4px;
+        background: pc.has-hover ? G.accent-wash : transparent; border-width: 1px; border-color: pc.has-hover ? G.accent-line : G.line-soft;
+        opacity: root.has-hover || root.er >= 0 ? 1 : 0;
+        animate opacity, background { duration: G.motion == 2 ? 0ms : 140ms; }
+        Icon { name: "plus"; width: 10px; x: 3px; y: (parent.height - 10px) / 2; c: pc.has-hover ? G.accent : G.dim; }
+        pc := TouchArea { mouse-cursor: pointer; clicked => { root.leave(); S.note-top(root.line, "col-right", 0, root.m.cols - 1); } }
+        Tip { text: "Добавить колонку"; on: pc.has-hover; }
+    }
+    if root.editable: Rectangle {
+        x: root.gx; y: root.gy + grid.preferred-height + 2px; width: root.tw; height: 11px; border-radius: 4px;
+        background: pr.has-hover ? G.accent-wash : transparent; border-width: 1px; border-color: pr.has-hover ? G.accent-line : G.line-soft;
+        opacity: root.has-hover || root.er >= 0 ? 1 : 0;
+        animate opacity, background { duration: G.motion == 2 ? 0ms : 140ms; }
+        Icon { name: "plus"; width: 9px; x: (parent.width - 9px) / 2; y: 1px; c: pr.has-hover ? G.accent : G.dim; }
+        pr := TouchArea { mouse-cursor: pointer; clicked => { root.leave(); S.note-top(root.line, "row-below", root.m.rows - 1, 0); } }
+        Tip { text: "Добавить строку · Ctrl+Enter в ячейке"; on: pr.has-hover; }
+    }
+}

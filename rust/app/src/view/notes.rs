@@ -214,7 +214,7 @@ pub struct LiveModel {
 impl LiveModel {
     /// Обновить строки; новая модель (сменилась заметка) — вернуть её, чтобы отдать окну.
     pub fn sync(&mut self, key: &str, rows: Vec<MdRow>) -> Option<slint::ModelRc<MdRow>> {
-        let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw;
+        let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw && a.block == b.block && a.top == b.top && a.tn == b.tn;
         match &self.m {
             Some(m) if self.key == key => {
                 let old: Vec<MdRow> = m.iter().collect();
@@ -246,12 +246,7 @@ impl LiveModel {
 
 /// Строки текста для показа и правки по строкам.
 pub fn live_rows(text: &str) -> Vec<MdRow> {
-    crate::notes::line_rows(text).into_iter().map(|r| MdRow {
-        kind: ss(r.kind),
-        raw: ss(r.raw),
-        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-        plain: ss(r.plain),
-    }).collect()
+    crate::notes::line_rows(text).into_iter().map(super::md_row).collect()
 }
 
 /// В каких строках есть ссылки (там клик по тексту — переход, правка — Ctrl+клик).

@@ -14,6 +14,7 @@ mod notes;
 mod graph;
 mod notefile;
 mod notedir;
+mod notetable;
 mod edmenu;
 pub mod datetime;
 pub mod listset;
@@ -36,6 +37,8 @@ use std::cell::RefCell;
 pub struct Ui {
     /// Команда меню правки строки заметки и её номер.
     pub ed_cmd: (String, i32),
+    /// Куда встать в таблице заметки после её правки.
+    pub tf: notetable::Focus,
     /// Открытый выбор даты и времени (G_DateTime).
     pub dp: Option<datetime::Dp>,
     pub ls: bool,
@@ -175,6 +178,19 @@ pub fn graph_hold(id: &str, px: f64, py: f64) {
     }
 }
 
+/// Строка заметки для окна (живой вид, «Чтение», холст, граф).
+pub(crate) fn md_row(r: crate::notes::LineRow) -> crate::MdRow {
+    crate::MdRow {
+        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
+        kind: ss(r.kind),
+        raw: ss(r.raw),
+        plain: ss(r.plain),
+        top: r.top,
+        tn: r.tn,
+        block: ss(r.block),
+    }
+}
+
 pub fn act(f: impl FnOnce(&mut App, &mut Ui)) {
     crate::state::with(|app| UI.with(|u| f(app, &mut u.borrow_mut())));
 }
@@ -277,6 +293,7 @@ fn render(app: &App) {
         menu::render(app, &u, &g);
         g.set_ed_cmd(ss(u.ed_cmd.0.clone()));
         g.set_ed_cmd_n(u.ed_cmd.1);
+        notetable::render(&u, &g);
     });
 }
 
