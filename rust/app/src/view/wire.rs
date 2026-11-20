@@ -1204,7 +1204,7 @@ pub fn wire(w: &AppWindow) {
                 match rest[a + 2..].find("]]") {
                     Some(b) => { out.push_str(&rest[..a]); let inner = &rest[a + 2..a + 2 + b];
                         let shown = inner.split('|').next_back().unwrap_or(inner);
-                        out.push_str(&format!("<font color=\"#F0A04B\">{shown}</font>")); rest = &rest[a + 4 + b..]; }
+                        out.push_str(&format!("<font color=\"#{:06X}\">{shown}</font>", super::accent_hex())); rest = &rest[a + 4 + b..]; }
                     None => break,
                 }
             }
@@ -1712,7 +1712,7 @@ fn mark(title: &str, q: &str) -> slint::StyledText {
         let mut j = i;
         while j < chars.len() && on[j] == st { j += 1; }
         let part: String = chars[i..j].iter().collect();
-        if st { md.push_str(&format!("<font color=\"#F0A04B\">**{}**</font>", esc(&part))); } else { md.push_str(&esc(&part)); }
+        if st { md.push_str(&format!("<font color=\"#{:06X}\">**{}**</font>", super::accent_hex(), esc(&part))); } else { md.push_str(&esc(&part)); }
         i = j;
     }
     slint::StyledText::from_markdown(&md).unwrap_or_else(|_| slint::StyledText::from_plain_text(title))
@@ -1756,7 +1756,7 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     }
     for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
-            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("clay"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| if i == 5 { u.set_open = true } else { u.tab = i as i32 })));
+            out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("accent"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| if i == 5 { u.set_open = true } else { u.tab = i as i32 })));
         }
     }
     for l in app.board_lists() {
@@ -1770,7 +1770,7 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     // действие: новая заметка с этим названием (Ctrl+Enter)
     let t = q.trim().to_string();
     if !app.notes.notes.iter().any(|n| search::norm(&n.title) == search::norm(&t)) {
-        out.push((Found { kind: ss("действие"), title: ss(format!("Новая заметка «{t}»")), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&format!("Новая заметка «{t}»"), ""), hue: color("clay"), due: ss(""), smark: Default::default() },
+        out.push((Found { kind: ss("действие"), title: ss(format!("Новая заметка «{t}»")), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&format!("Новая заметка «{t}»"), ""), hue: color("accent"), due: ss(""), smark: Default::default() },
             Box::new(move |app, u| { u.tab = 4; u.note_graph = false; new_note(app, u, &t); })));
     }
     let names = [("задача", "Задачи"), ("заметка", "Заметки"), ("раздел", "Разделы и списки"), ("действие", "Действия")];

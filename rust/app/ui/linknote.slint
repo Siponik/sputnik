@@ -44,7 +44,7 @@ export component TableRow inherits Rectangle {
                     ci := TextInput {
                         width: root.cw - 18px; text: c.plain; single-line: false; wrap: word-wrap;
                         font-size: root.fs; font-weight: root.head ? 600 : 400; color: G.ink;
-                        selection-background-color: #F0A04B66;
+                        selection-background-color: G.accent.with-alpha(0.4);
                         init => { self.focus(); self.set-selection-offsets(999999, 999999); }
                         changed has-focus => { if (!self.has-focus && root.edit-c == i) { root.done(i, self.text, -1); } }
                     }

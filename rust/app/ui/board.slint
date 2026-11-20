@@ -41,7 +41,7 @@ component SideCol inherits Rectangle {
                     visible: root.q == "" || r.header || r.name.to-lowercase() == root.q.to-lowercase();
                     height: !self.visible ? 0 : r.header ? 26px : 30px;
                     border-radius: 6px;
-                    background: r.active && !S.sph-open && !S.arch-open ? #2B2622 : (sa.has-hover && !r.header ? G.node-hover : transparent);
+                    background: r.active && !S.sph-open && !S.arch-open ? G.accent-wash : (sa.has-hover && !r.header ? G.node-hover : transparent);
                     border-width: r.active && !S.sph-open && !S.arch-open ? 1px : 0;
                     border-color: G.accent;
                     if r.header: Rectangle {
@@ -170,7 +170,7 @@ component Kanban inherits Rectangle {
                 width: root.pitch;
                 property <bool> hot: col.limit > 0;
                 property <bool> drop-here: root.dragging && root.drop-col == ci;
-                property <color> head: ci == 0 ? #3D3E45 : hot ? #8A5320 : col.hue.mix(#1a1a1a, 0.5);
+                property <color> head: ci == 0 ? #3D3E45 : hot ? G.head-main : col.hue.mix(#1a1a1a, 0.5);
                 nd := Rectangle {
                     // все колонки — по содержимому (не выше доски); при перетаскивании — до низа, чтобы было куда бросить
                     x: 0; y: 0; width: root.colw; height: root.dragging ? parent.height : min(parent.height, 30px + vl.preferred-height + 2px);
@@ -216,7 +216,7 @@ component Kanban inherits Rectangle {
                                 changed ins-before => { if (self.ins-before && self.visible) { root.drop-i = k; } }
                                 changed ins-after => { if (self.ins-after && self.visible) { root.drop-i = k + 1; } }
                                 border-radius: 8px;
-                                background: lead ? #2E2722 : (ca.has-hover ? G.node-hover : #2A2B30);
+                                background: lead ? G.accent-wash : (ca.has-hover ? G.node-hover : #2A2B30);
                                 border-width: 1px;
                                 border-color: root.dragging && root.drag-id == c.id ? G.accent : c.sel ? G.accent : lead ? G.accent : G.line;
                                 opacity: root.dragging && root.drag-id == c.id ? 0.4 : (c.sel && root.fly-on ? 0 : 1);
@@ -534,7 +534,7 @@ component ListView inherits Rectangle {
         clip: true;
         Rectangle {
             x: 0; y: 0; height: 36px;
-            background: #9A5A22;
+            background: G.head-main;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
                 Text { text: S.board-title.to-uppercase() + " · ВСЕ ЗАДАЧИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
@@ -643,7 +643,7 @@ component Gallery inherits Rectangle {
                     border-radius: 8px;
                     border-width: 1px;
                     border-color: S.pipe-stage < 0 ? G.accent : G.line;
-                    background: S.pipe-stage < 0 ? #2B2622 : transparent;
+                    background: S.pipe-stage < 0 ? G.accent-wash : transparent;
                     at := Text { text: st; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                     TouchArea { clicked => { S.pipe-stage-set(-1); } mouse-cursor: pointer; }
                 }
@@ -652,7 +652,7 @@ component Gallery inherits Rectangle {
                     border-radius: 8px;
                     border-width: 1px;
                     border-color: S.pipe-stage == i ? G.accent : G.line;
-                    background: S.pipe-stage == i ? #2B2622 : (ba.has-hover ? G.node-hover : transparent);
+                    background: S.pipe-stage == i ? G.accent-wash : (ba.has-hover ? G.node-hover : transparent);
                     bt := Text { text: st; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                     ba := TouchArea { clicked => { S.pipe-stage-set(i); } mouse-cursor: pointer; }
                 }
@@ -674,7 +674,7 @@ component Gallery inherits Rectangle {
                     ga := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; }
                     Rectangle {
                         x: 0; y: 0; height: 180px;
-                        background: #2B2520;
+                        background: G.accent-wash;
                         if r.has-thumb: Image { width: parent.width; height: parent.height; source: r.thumb; image-fit: cover; }
                         if !r.has-thumb: Text { width: parent.width - 40px; x: 20px; height: parent.height; text: "Перетащи или вставь картинку · Ctrl V"; font-size: 12.5px; color: #A3A5AE; wrap: word-wrap; horizontal-alignment: center; vertical-alignment: center; }
                         if r.size != "": Text { x: parent.width - self.preferred-width - 10px; y: parent.height - 20px; text: r.size; font-family: G.mono; font-size: 9.5px; color: #ffffffc0; }
@@ -702,7 +702,7 @@ component Archive inherits Rectangle {
         clip: true;
         Rectangle {
             x: 0; y: 0; height: 34px;
-            background: #9A5A22;
+            background: G.head-main;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
                 Text { text: "АРХИВ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
@@ -725,7 +725,7 @@ component Archive inherits Rectangle {
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: o.on ? G.accent : G.line;
-                background: o.on ? #2B2622 : (oa.has-hover ? G.node-hover : transparent);
+                background: o.on ? G.accent-wash : (oa.has-hover ? G.node-hover : transparent);
                 if o.id != "": Rectangle { x: 12px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: o.hue; }
                 ot := Text { x: o.id == "" ? 13px : 25px; text: o.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
                 oa := TouchArea { clicked => { S.arch-sphere-set(o.id); } mouse-cursor: pointer; }

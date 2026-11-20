@@ -352,7 +352,7 @@ export component CanvasView inherits Rectangle {
                 single-line: true;
                 font-size: max(11px, 13px * root.k);
                 color: G.ink;
-                selection-background-color: #F0A04B66;
+                selection-background-color: G.accent.with-alpha(0.4);
                 selection-foreground-color: #FFFFFF;
                 init => { self.focus(); self.select-all(); }
                 key-pressed(e) => {
@@ -506,7 +506,7 @@ export component CanvasView inherits Rectangle {
             le := TextInput {
                 x: 8px; width: parent.width - 16px; height: parent.height;
                 text: e.label; font-size: 12px; color: G.ink; vertical-alignment: center;
-                selection-background-color: #F0A04B66; selection-foreground-color: #FFFFFF;
+                selection-background-color: G.accent.with-alpha(0.4); selection-foreground-color: #FFFFFF;
                 init => { self.focus(); self.select-all(); }
                 accepted => { S.cv-text(e.id, self.text); fs.focus(); }
                 key-pressed(k) => { if (k.text == Key.Escape) { S.cv-text(e.id, self.text); fs.focus(); return accept; } reject }

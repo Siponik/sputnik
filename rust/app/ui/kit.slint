@@ -399,7 +399,7 @@ export component ScrollInput inherits Flickable {
         x: 0; y: 0; width: root.width; height: max(root.height, self.preferred-height + 4px);
         font-size: root.font-size; color: root.ink;
         single-line: false; wrap: word-wrap;
-        selection-background-color: #F0A04B66; selection-foreground-color: #FFFFFF;
+        selection-background-color: G.accent.with-alpha(0.4); selection-foreground-color: #FFFFFF;
         edited => { root.edited(self.text); }
         key-pressed(e) => {
             if (e.text == Key.Escape) { root.escape(); return accept; }

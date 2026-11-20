@@ -22,9 +22,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let tdy = today_s();
     let hs: Vec<Value> = app.habits().into_iter().filter(|h| u.habit_part == "all" || hb::part_of(h) == u.habit_part).collect();
     g.set_habit_mode(ss(u.habit_mode.clone()));
-    let mut parts = vec![Opt { id: ss("all"), label: ss("Все"), hint: ss(""), hue: color("clay"), on: u.habit_part == "all" }];
+    let mut parts = vec![Opt { id: ss("all"), label: ss("Все"), hint: ss(""), hue: color("accent"), on: u.habit_part == "all" }];
     for p in a(&hb::parts()) {
-        parts.push(Opt { id: ss(text(&p["id"])), label: ss(text(&p["name"])), hint: ss(""), hue: color("clay"), on: u.habit_part == s(&p["id"]) });
+        parts.push(Opt { id: ss(text(&p["id"])), label: ss(text(&p["name"])), hint: ss(""), hue: color("accent"), on: u.habit_part == s(&p["id"]) });
     }
     g.set_parts(model(parts));
     let all = app.habits();

@@ -51,6 +51,7 @@ fn index() -> serde_json::Value {
 pub fn apply_accent(w: &crate::AppWindow, i: i64) {
     let a = &ACCENTS[(i.clamp(0, 5)) as usize];
     let g = w.global::<crate::G>();
+    super::set_accent_hex(a.1);
     g.set_accent(hex(a.1));
     g.set_accent_ink(hex(a.2));
     g.set_accent_wash(hex(a.3));

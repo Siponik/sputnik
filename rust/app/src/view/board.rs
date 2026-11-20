@@ -264,7 +264,7 @@ fn stickers_by_due(app: &App, id: &str, sel: &str) -> Vec<Column> {
     let plus = |k| sputnik_core::dates::ymd(sputnik_core::dates::add_days(d0, k));
     let (tmr, wk) = (plus(1), plus(7));
     let items: Vec<Value> = app.tasks_of(id).iter().filter(|t| App::top(t) && (!App::is_done(t) || day10(&t["completed"]) == tdy)).cloned().collect();
-    let lanes = [("late", "Просрочено", "red"), ("today", "Сегодня", "clay"), ("tmr", "Завтра", "gold"), ("week", "На неделе", "blue"), ("later", "Позже", "violet"), ("none", "Без срока", "")];
+    let lanes = [("late", "Просрочено", "red"), ("today", "Сегодня", "accent"), ("tmr", "Завтра", "gold"), ("week", "На неделе", "blue"), ("later", "Позже", "violet"), ("none", "Без срока", "")];
     lanes.iter().map(|(k, name, c)| {
         let ts: Vec<&Value> = items.iter().filter(|t| {
             let d = day10(&t["due"]);

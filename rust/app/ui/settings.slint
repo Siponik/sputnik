@@ -40,7 +40,7 @@ component TChip inherits Rectangle {
     border-radius: 5px;
     border-width: 1px;
     border-color: o.on ? G.accent-line.mix(G.accent, 0.4) : G.line;
-    background: o.on ? #2C2620 : (ta.has-hover ? G.node-hover : transparent);
+    background: o.on ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
     Rectangle { visible: o.hue != #00000000; x: 12px; y: 12px; width: 6px; height: 6px; border-radius: 1.5px; background: o.hue; opacity: o.on ? 1 : 0.5; }
     tl := Text { x: o.hue == #00000000 ? 12px : 24px; width: parent.width - self.x - 12px; text: o.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: o.on ? G.ink : #7A7C86; vertical-alignment: center; height: parent.height; overflow: elide; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
@@ -171,10 +171,9 @@ export component SettingsPage inherits Rectangle {
     changed find-ask => { fq.grab(); }
     property <length> mx: 8px;
     property <length> cx: root.mx + 264px;
-    property <length> rw: 260px;
-    // предпросмотр справа — только когда хватает ширины (масштаб 125–150 % и маленькие экраны)
-    property <bool> prev: S.set-tab == 0 && self.width >= 1100px;
-    property <length> cw: root.prev ? self.width - root.cx - root.rw - 24px - root.mx : self.width - root.cx - root.mx - 12px;
+    property <length> cw: self.width - root.cx - root.mx - 12px;
+    // чипов «Что показывать» в ряд: столько, сколько точно влезет (чип не шире 240 px)
+    property <int> per: max(1, floor((root.cw - 40px) / 248px));
     // навигация
     Rectangle {
         x: root.mx; y: 20px; width: 240px; height: parent.height - 40px;
@@ -195,7 +194,7 @@ export component SettingsPage inherits Rectangle {
         // выбранный раздел — одна плашка, переезжает к пункту (шаг строки 36 + 2 px)
         if root.q == "": Rectangle {
             x: 9px; y: 82px + S.set-tab * 38px; width: parent.width - 18px; height: 36px;
-            border-radius: 6px; border-width: 1px; border-color: G.accent; background: #2E2620;
+            border-radius: 6px; border-width: 1px; border-color: G.accent; background: G.accent-wash;
             animate y { duration: G.mid; easing: ease-out; }
         }
         if root.q == "": VerticalLayout {
@@ -330,20 +329,20 @@ export component SettingsPage inherits Rectangle {
                     height: lf.preferred-height;
                     lf := VerticalLayout {
                         spacing: 8px;
-                        for row in ceil(S.set-lists.length / 4): HorizontalLayout {
+                        for row in ceil(S.set-lists.length / root.per): HorizontalLayout {
                             spacing: 8px; alignment: start;
-                            for k in 4: Rectangle {
-                                width: row * 4 + k < S.set-lists.length ? tc.width : 0;
+                            for k in root.per: Rectangle {
+                                width: row * root.per + k < S.set-lists.length ? tc.width : 0;
                                 height: 30px;
-                                tc := TChip { visible: row * 4 + k < S.set-lists.length; o: S.set-lists[min(row * 4 + k, S.set-lists.length - 1)]; clicked => { S.set-toggle("list", S.set-lists[row * 4 + k].id); } }
+                                tc := TChip { visible: row * root.per + k < S.set-lists.length; o: S.set-lists[min(row * root.per + k, S.set-lists.length - 1)]; clicked => { S.set-toggle("list", S.set-lists[row * root.per + k].id); } }
                             }
                         }
-                        for row in ceil(S.set-cals.length / 4): HorizontalLayout {
+                        for row in ceil(S.set-cals.length / root.per): HorizontalLayout {
                             spacing: 8px; alignment: start;
-                            for k in 4: Rectangle {
-                                width: row * 4 + k < S.set-cals.length ? cc.width : 0;
+                            for k in root.per: Rectangle {
+                                width: row * root.per + k < S.set-cals.length ? cc.width : 0;
                                 height: 30px;
-                                cc := TChip { visible: row * 4 + k < S.set-cals.length; o: S.set-cals[min(row * 4 + k, S.set-cals.length - 1)]; clicked => { S.set-toggle("cal", S.set-cals[row * 4 + k].id); } }
+                                cc := TChip { visible: row * root.per + k < S.set-cals.length; o: S.set-cals[min(row * root.per + k, S.set-cals.length - 1)]; clicked => { S.set-toggle("cal", S.set-cals[row * root.per + k].id); } }
                             }
                         }
                     }
@@ -440,38 +439,6 @@ export component SettingsPage inherits Rectangle {
                     if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
                 }
             }
-        }
-    }
-    // справа: предпросмотр (Вид) и штамп
-    if root.prev: Rectangle {
-        x: parent.width - root.mx - root.rw; y: 20px; width: root.rw; height: 248px;
-        border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
-        Rectangle { y: 0; height: 32px; background: G.head-main;
-            Text { x: 12px; text: "ПРЕДПРОСМОТР"; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; } }
-        Rectangle {
-            x: 14px; y: 44px; width: parent.width - 28px; height: 156px;
-            border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
-            Text { x: 40px; y: 10px; text: "СЕГОДНЯ   КАЛЕНДАРЬ"; font-family: G.mono; font-size: 8.5px; letter-spacing: 1px; color: G.ink; }
-            Rectangle { x: 0; y: 34px; height: 1px; background: G.line; }
-            Rectangle { x: 14px; y: 56px; width: 72px; height: 34px; border-radius: 4px; background: #2C2D33; border-width: 1px; border-color: G.line; }
-            Rectangle { x: 86px; y: 72px; width: 46px; height: 1.5px; background: G.accent; }
-            Rectangle { x: 130px; y: 50px; width: parent.width - 144px; height: 92px; border-radius: 6px; border-width: 1px; border-color: G.accent; }
-        }
-        Text { x: 14px; y: 208px; width: parent.width - 28px; text: "Так выглядят шапка и ноды с акцентом."; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
-    }
-    if root.prev: Rectangle { x: root.cx + root.cw; y: 42px; width: 24px; height: 1.5px; background: G.accent; }
-    if root.prev && root.height >= 400px: Rectangle {
-        x: parent.width - root.mx - root.rw; y: parent.height - 86px; width: root.rw; height: 52px;
-        border-radius: 6px; border-width: 1px; border-color: G.line;
-        Text { x: 8px; y: 6px; text: "ЛИСТ · НАСТРОЙКИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
-        Rectangle { x: 0; y: 24px; height: 1px; background: G.line; }
-        HorizontalLayout {
-            y: 24px; height: 28px;
-            Text { text: S.now-label; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
-            Rectangle { width: 1px; background: G.line; }
-            Text { text: "РАЗДЕЛОВ 06"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
-            Rectangle { width: 1px; background: G.line; }
-            Text { text: ["ВИД", "ПОКАЗ", "НАПОМ.", "СИНХР.", "КЛАВИШИ", "ЗНАНИЯ"][min(S.set-tab, 5)]; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
     }
 }

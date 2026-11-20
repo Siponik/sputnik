@@ -85,7 +85,7 @@ component DayRow inherits Rectangle {
     in property <bool> next;
     height: next ? 86px : 40px;
     border-radius: next ? 8px : 0;
-    background: next ? #2E2722 : (ta.has-hover ? G.node-hover : transparent);
+    background: next ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
     border-width: next ? 1px : 0;
     border-color: G.accent;
     ta := TouchArea { clicked => { S.open-task(item.list-id, item.id); } mouse-cursor: pointer; }
@@ -185,7 +185,7 @@ export component TodayPage inherits Rectangle {
             Rectangle {
                 x: 0; y: 0; height: 34px;
                 border-radius: 11px;
-                background: #8A5320;
+                background: G.head-main;
                 Rectangle { y: parent.height - 11px; height: 11px; background: parent.background; }
                 HorizontalLayout {
                     padding-left: 12px;
@@ -341,7 +341,7 @@ export component TodayPage inherits Rectangle {
             border-width: 1px;
             border-color: G.line;
             Rectangle {
-                x: 0; y: 0; height: 30px; border-radius: 7px; background: #8A5320;
+                x: 0; y: 0; height: 30px; border-radius: 7px; background: G.head-main;
                 Rectangle { y: 23px; height: 7px; background: parent.background; }
                 HorizontalLayout {
                     padding-left: 12px; padding-right: 10px;
