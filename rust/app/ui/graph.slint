@@ -1,6 +1,6 @@
 // Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
 import { G } from "theme.slint";
-import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView, Tip, GSeg } from "kit.slint";
+import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView, Tip, LabelHint, GSeg } from "kit.slint";
 import { MdLine } from "linknote.slint";
 import { S, GDot, GLine, Opt } from "store.slint";
 
@@ -102,8 +102,7 @@ export component GraphFilters inherits Rectangle {
                 height: 28px;
                 background: ga.has-hover ? G.node-hover : transparent;
                 Rectangle { x: 12px; y: 10px; width: 8px; height: 8px; border-radius: 2px; background: gr.on ? gr.hue : transparent; border-width: 1.5px; border-color: gr.hue; }
-                Text { x: 28px; text: gr.label; font-size: 13px; color: gr.on ? G.ink : G.dim; vertical-alignment: center; width: parent.width - 70px; overflow: elide; }
-                Text { x: parent.width - 12px - self.preferred-width; text: gr.hint; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; }
+                LabelHint { x: 28px; width: parent.width - 40px; height: parent.height; label: gr.label; hint: gr.hint; label-size: 13px; label-color: gr.on ? G.ink : G.dim; mono: true; hint-color: G.muted; }
                 ga := TouchArea { mouse-cursor: pointer; clicked => { S.graph-group(gr.id); } }
             }
         }

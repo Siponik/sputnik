@@ -8,7 +8,7 @@ import { MdLine, TableRow } from "linknote.slint";
 import { GraphPage, ModeSwitch } from "graph.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
-component LiveLine inherits Rectangle {
+export component LiveLine inherits Rectangle {
     in property <MdRow> line;
     in property <bool> editing;
     in property <int> caret: -1;
@@ -25,6 +25,9 @@ component LiveLine inherits Rectangle {
     callback toggle();
     callback focus-mode();
     callback add-col();
+    // набор в строке (заметка задачи сохраняет сразу) и клик по ссылке в оформленном тексте
+    callback typed(string);
+    callback linked(string);
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
     property <bool> wrapped: ed.preferred-height > root.fs * 1.9;
     property <int> arrow;
@@ -83,7 +86,7 @@ component LiveLine inherits Rectangle {
         default-font-family: line.kind == "code" ? G.mono : G.sans;
         default-color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
         link-color: G.accent;
-        link-clicked(l) => { S.note-link(l); }
+        link-clicked(l) => { root.linked(l); }
     }
     // раскладка: в прокрутке (невидимое поле во всю строку, растёт с ней)
     // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
@@ -148,7 +151,7 @@ component LiveLine inherits Rectangle {
             selection-background-color: G.accent.with-alpha(0.4);
             selection-foreground-color: #FFFFFF;
             changed has-focus => { if (!self.has-focus && root.editing) { root.leave(self.text); } }
-            edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); }
+            edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); root.typed(self.text); }
             cursor-position-changed => { if (root.editing) { S.note-peek-at(self.text, self.cursor-position-byte-offset); } }
         }
     }
@@ -489,6 +492,7 @@ export component NotesPage inherits Rectangle {
                     toggle => { S.note-todo(i); }
                     add-col => { S.note-table-col(i); }
                     focus-mode => { root.zen = !root.zen; }
+                    linked(l) => { S.note-link(l); }
                 }
                 // клик под текстом — новая строка в конце
                 Rectangle {

@@ -139,13 +139,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             }
             g.set_note_props(model(pills));
             // текст режима «Чтение»
-            let rows: Vec<MdRow> = crate::notes::line_rows(&text).into_iter().map(|r| MdRow {
-                kind: ss(r.kind),
-                raw: ss(r.raw),
-                md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-                plain: ss(r.plain),
-            }).collect();
-            g.set_note_line_links(model(crate::notes::line_rows(&text).iter().map(|r| r.raw.contains("[[") || r.raw.contains("](") || r.raw.contains("://")).collect()));
+            let rows = live_rows(&text);
+            g.set_note_line_links(model(line_links(&text)));
             sync_lines(g, &u.note_path, rows);
             // упомянуто без ссылки: название встречается в тексте другой заметки, но не как [[ссылка]]
             let low = x.title.to_lowercase();
@@ -207,18 +202,21 @@ pub fn snippet(body: &str, title: &str) -> String {
     t
 }
 
-thread_local! {
-    /// Строки открытой заметки: одна модель на всё время, меняются только изменённые строки —
-    /// иначе строка, которую сейчас правят, пересоздаётся и теряет курсор.
-    static LINES: RefCell<(String, Option<Rc<VecModel<MdRow>>>)> = const { RefCell::new((String::new(), None)) };
+/// Строки заметки одной моделью на всё время: меняются только изменённые строки —
+/// иначе строка, которую сейчас правят, пересоздаётся и теряет курсор.
+/// Одна на «Знания», окно задачи и строку Конвейера (ключ — какая заметка открыта).
+#[derive(Default)]
+pub struct LiveModel {
+    key: String,
+    m: Option<Rc<VecModel<MdRow>>>,
 }
 
-fn sync_lines(g: &S, path: &str, rows: Vec<MdRow>) {
-    LINES.with(|c| {
-        let mut c = c.borrow_mut();
+impl LiveModel {
+    /// Обновить строки; новая модель (сменилась заметка) — вернуть её, чтобы отдать окну.
+    pub fn sync(&mut self, key: &str, rows: Vec<MdRow>) -> Option<slint::ModelRc<MdRow>> {
         let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw;
-        match &c.1 {
-            Some(m) if c.0 == path => {
+        match &self.m {
+            Some(m) if self.key == key => {
                 let old: Vec<MdRow> = m.iter().collect();
                 let pre = old.iter().zip(&rows).take_while(|(a, b)| same(a, b)).count();
                 let max_suf = old.len().min(rows.len()) - pre;
@@ -234,12 +232,55 @@ fn sync_lines(g: &S, path: &str, rows: Vec<MdRow>) {
                 for k in pre + common..n_end {
                     m.insert(k, rows[k].clone());
                 }
+                None
             }
             _ => {
                 let m = Rc::new(VecModel::from(rows));
-                g.set_note_lines(m.clone().into());
-                *c = (path.to_string(), Some(m));
+                self.key = key.to_string();
+                self.m = Some(m.clone());
+                Some(m.into())
             }
+        }
+    }
+}
+
+/// Строки текста для показа и правки по строкам.
+pub fn live_rows(text: &str) -> Vec<MdRow> {
+    crate::notes::line_rows(text).into_iter().map(|r| MdRow {
+        kind: ss(r.kind),
+        raw: ss(r.raw),
+        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
+        plain: ss(r.plain),
+    }).collect()
+}
+
+/// В каких строках есть ссылки (там клик по тексту — переход, правка — Ctrl+клик).
+pub fn line_links(text: &str) -> Vec<bool> {
+    crate::notes::line_rows(text).iter().map(|r| r.raw.contains("[[") || r.raw.contains("](") || r.raw.contains("://")).collect()
+}
+
+thread_local! {
+    static LINES: RefCell<LiveModel> = RefCell::new(LiveModel::default());
+    static TASK_LINES: RefCell<LiveModel> = RefCell::new(LiveModel::default());
+    static PIPE_LINES: RefCell<LiveModel> = RefCell::new(LiveModel::default());
+}
+
+/// Заметка задачи в окне задачи (`pipe` = false) или в раскрытой строке Конвейера: строки для правки.
+pub fn sync_task_note(g: &S, pipe: bool, key: &str, text: &str) {
+    let slot = if pipe { &PIPE_LINES } else { &TASK_LINES };
+    slot.with(|c| {
+        if let Some(m) = c.borrow_mut().sync(key, live_rows(text)) {
+            if pipe { g.set_pipe_note_lines(m) } else { g.set_t_note_lines(m) }
+        }
+    });
+    let links = model(line_links(text));
+    if pipe { g.set_pipe_note_links(links) } else { g.set_t_note_links_at(links) }
+}
+
+fn sync_lines(g: &S, path: &str, rows: Vec<MdRow>) {
+    LINES.with(|c| {
+        if let Some(m) = c.borrow_mut().sync(path, rows) {
+            g.set_note_lines(m);
         }
     });
 }
