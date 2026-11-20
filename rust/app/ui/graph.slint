@@ -174,7 +174,8 @@ export component GraphView inherits Rectangle {
         height: root.height;
         viewbox-width: root.width / 1px;
         viewbox-height: root.height / 1px;
-        stroke: l.near ? G.accent : G.line-strong;
+        // подсвеченная связь — цвета точки под мышью (цвет её папки), не акцента
+        stroke: l.near ? l.hue : G.line-strong;
         stroke-width: l.near ? 1.4px : 1px;
         opacity: l.near ? 0.9 : (S.graph-sel != "" ? 0.22 : 0.4);
         MoveTo { x: (root.width / 2 + (l.x1 - 500) * root.base * root.k + root.ox) / 1px; y: (root.height / 2 + (l.y1 - 500) * root.base * root.k + root.oy) / 1px; }
