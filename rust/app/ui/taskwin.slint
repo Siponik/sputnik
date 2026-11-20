@@ -1,7 +1,7 @@
 // Окно задачи (G_TaskFull, п.34, 36, 38): большое окно по центру, одно для всех видов доски.
 // Шапка цвета сферы, название, полоса колонок, слева подзадачи и заметка, справа «Когда», «Свойства», «История».
 import { G } from "theme.slint";
-import { Field, Overlay, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop } from "kit.slint";
+import { Field, Overlay, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop, LabelHint } from "kit.slint";
 import { S, Opt, Sub } from "store.slint";
 import { LinkNote } from "linknote.slint";
 import { TimeBox } from "dialogs.slint";
@@ -323,8 +323,7 @@ export component TaskDialog inherits Overlay {
                             for n in S.t-note-links: Rectangle {
                                 height: 32px; border-radius: 6px; background: nla.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 8px; y: 13px; width: 6px; height: 6px; border-radius: 3px; background: n.hue; }
-                                Text { x: 22px; width: parent.width - 110px; text: n.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                Text { x: parent.width - self.preferred-width - 8px; width: min(self.preferred-width, 80px); text: n.hint; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: G.muted; vertical-alignment: center; height: parent.height; overflow: elide; }
+                                LabelHint { x: 22px; width: parent.width - 30px; height: parent.height; label: n.label; hint: n.hint; label-size: 13px; mono: true; hint-size: 9.5px; hint-spacing: 1px; hint-color: G.muted; }
                                 nla := TouchArea { mouse-cursor: pointer; clicked => { S.t-close(); S.note-open(n.id); } }
                             }
                         }
@@ -342,8 +341,7 @@ export component TaskDialog inherits Overlay {
                                 for h in S.t-hist: Rectangle {
                                     height: 26px;
                                     Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: h.hue; }
-                                    Text { x: 24px; width: parent.width - 80px; text: h.label; font-size: 12px; color: #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
-                                    Text { x: parent.width - self.preferred-width - 10px; text: h.hint; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                                    LabelHint { x: 24px; width: parent.width - 34px; height: parent.height; label: h.label; hint: h.hint; label-size: 12px; label-color: #C9CAD0; mono: true; hint-size: 10px; hint-color: G.muted; }
                                 }
                                 if S.t-hist.length == 0: Text { x: 10px; height: 26px; text: "Пока пусто"; font-size: 12px; color: #62646E; vertical-alignment: center; }
                             }
@@ -437,8 +435,7 @@ export component TaskDialog inherits Overlay {
                             height: 30px; border-radius: 5px;
                             background: lia.has-hover ? G.node-hover : transparent;
                             Rectangle { x: 10px; y: 12px; width: 7px; height: 7px; border-radius: 1.5px; background: l.hue; }
-                            Text { x: 26px; width: parent.width - 90px; text: l.label; color: l.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; overflow: elide; }
-                            Text { x: parent.width - self.preferred-width - 10px; text: l.hint; color: #7A7C86; font-size: 11px; vertical-alignment: center; height: parent.height; }
+                            LabelHint { x: 26px; width: parent.width - 36px; height: parent.height; label: l.label; hint: l.hint; label-color: l.on ? G.accent-ink : G.ink; label-size: 13px; }
                             lia := TouchArea { clicked => { root.lists-open = false; S.t-move(l.id); } }
                         }
                     }

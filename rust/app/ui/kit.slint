@@ -510,3 +510,31 @@ export component ScrollView inherits Rectangle {
         pos <=> f.viewport-x;
     }
 }
+
+// Строка выпадающего списка «название слева — подпись справа» (список и его сфера, привычка и счёт…).
+// Подпись занимает свою ширину, но не больше 40% строки (если название короткое — сколько свободно);
+// название обрезается многоточием и никогда не заходит под подпись. Длинная подпись тоже с многоточием.
+export component LabelHint inherits Rectangle {
+    in property <string> label;
+    in property <string> hint;
+    in property <color> label-color: G.ink;
+    in property <color> hint-color: #7A7C86;
+    in property <length> label-size: 12.5px;
+    in property <length> hint-size: 11px;
+    in property <int> label-weight: 400;
+    in property <bool> mono;
+    in property <length> hint-spacing: 0px;
+    property <length> gap: root.hint == "" ? 0px : 10px;
+    property <length> hw: root.hint == "" ? 0px : min(hn.preferred-width, max(root.width * 0.4, root.width - lb.preferred-width - root.gap));
+    lb := Text {
+        x: 0; y: 0; width: max(0px, root.width - root.hw - root.gap); height: root.height;
+        text: root.label; color: root.label-color; font-size: root.label-size; font-weight: root.label-weight;
+        vertical-alignment: center; overflow: elide;
+    }
+    hn := Text {
+        x: root.width - root.hw; y: 0; width: root.hw; height: root.height;
+        text: root.hint; color: root.hint-color; font-size: root.hint-size; letter-spacing: root.hint-spacing;
+        font-family: root.mono ? G.mono : "";
+        horizontal-alignment: right; vertical-alignment: center; overflow: elide;
+    }
+}
