@@ -66,7 +66,7 @@ component Card inherits Rectangle {
         Cell { x: 0; y: 0; st: st; hue: h.hue; }
         Text {
             y: 24px; width: 20px;
-            text: ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"][i];
+            text: [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")][i];
             font-family: G.mono; font-size: 8.5px; letter-spacing: 0.6px;
             color: i == h.now-i ? G.accent : #7A7C86; horizontal-alignment: center;
         }
@@ -81,7 +81,7 @@ component Card inherits Rectangle {
         border-width: h.done ? 0 : 1px;
         border-color: h.hue;
         bt := Text {
-            text: h.done ? "✓ Сделано" : (h.goal > 1 ? "+1" : "Отметить");
+            text: h.done ? @tr("✓ Сделано") : (h.goal > 1 ? "+1" : @tr("Отметить"));
             font-size: 13px; font-weight: 500;
             color: h.done ? #1C1D21 : G.ink;
             horizontal-alignment: center; vertical-alignment: center;
@@ -99,7 +99,7 @@ component Panel inherits Rectangle {
     Rectangle {
         height: 34px; y: 0;
         background: S.hp-hue.mix(#1C1D21, 0.5);
-        Text { x: 13px; width: parent.width - 150px; overflow: elide; text: S.hp-name + " · ПАНЕЛЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+        Text { x: 13px; width: parent.width - 150px; overflow: elide; text: @tr("{} · ПАНЕЛЬ", S.hp-name); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
         Text { x: parent.width - self.preferred-width - 46px; text: S.hp-sched; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
         // правка привычки — окно G_HabitEdit
         Icon { x: parent.width - 32px; y: 9px; width: 16px; height: 16px; name: "edit"; c: #fff;
@@ -120,7 +120,7 @@ component Panel inherits Rectangle {
             Text { text: S.hp-streak; font-size: 64px; font-weight: 200; color: G.ink; vertical-alignment: center; }
             Text { text: S.hp-label; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.gold; vertical-alignment: center; y: 8px; }
         }
-        Text { text: "ВЕХИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; }
+        Text { text: @tr("ВЕХИ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; }
         Rectangle {
             height: 34px;
             property <length> tw: self.width - 34px;
@@ -143,7 +143,7 @@ component Panel inherits Rectangle {
         Rectangle {
             height: 22px + ceil(S.hp-cells.length / 7) * 30px;
             property <length> cw: self.width / 7;
-            for w[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text { x: i * parent.cw; y: 0; height: 14px; width: parent.cw; text: w; font-family: G.mono; font-size: 9px; color: #7A7C86; horizontal-alignment: center; }
+            for w[i] in [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")]: Text { x: i * parent.cw; y: 0; height: 14px; width: parent.cw; text: w; font-family: G.mono; font-size: 9px; color: #7A7C86; horizontal-alignment: center; }
             for c[i] in S.hp-cells: Rectangle {
                 visible: c.hint != "blank";
                 x: mod(i, 7) * parent.cw + 2px;
@@ -165,7 +165,7 @@ component Panel inherits Rectangle {
             HorizontalLayout {
                 for v[i] in S.hp-stats: Rectangle {
                     Text { x: 10px; y: 8px; text: v; font-size: 20px; font-weight: 300; color: G.ink; }
-                    Text { x: 10px; y: 38px; text: ["ЛУЧШАЯ", "ВСЕГО", "ЗА МЕСЯЦ"][i]; font-family: G.mono; font-size: 8.5px; letter-spacing: 1.2px; color: #7A7C86; }
+                    Text { x: 10px; y: 38px; text: [@tr("ЛУЧШАЯ"), @tr("ВСЕГО"), @tr("ЗА МЕСЯЦ")][i]; font-family: G.mono; font-size: 8.5px; letter-spacing: 1.2px; color: #7A7C86; }
                     if i < 2: Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
                 }
             }
@@ -173,7 +173,7 @@ component Panel inherits Rectangle {
         Rectangle { height: 2px; }
         HorizontalLayout {
             height: 30px;
-            Text { width: 106px; text: "ОКНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+            Text { width: 106px; text: @tr("ОКНО"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
             Text { text: S.hp-win; font-family: G.mono; font-size: 12px; color: G.ink; vertical-alignment: center; }
             Text { text: "  " + S.hp-part; font-family: G.mono; font-size: 9px; color: #7A7C86; vertical-alignment: center; }
             Rectangle { }
@@ -181,7 +181,7 @@ component Panel inherits Rectangle {
         HorizontalLayout {
             height: 30px;
             spacing: 6px;
-            Text { width: 100px; text: "НАПОМНИТЬ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+            Text { width: 100px; text: @tr("НАПОМНИТЬ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
             for r[i] in ["TELEGRAM", "WINDOWS"]: Rectangle {
                 width: rt.preferred-width + 20px;
                 border-radius: 5px;
@@ -209,7 +209,7 @@ component Toolbar inherits Rectangle {
         spacing: 10px;
         alignment: start;
         Circ { y: 8px; text: "ФЛАГ"; }
-        Text { text: "ПРИВЫЧКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; }
+        Text { text: @tr("ПРИВЫЧКИ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.6px; color: G.ink; vertical-alignment: center; }
         Text { text: month ? S.hm-title : S.habit-meta; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; }
         Rectangle { width: 1px; height: 24px; y: 12px; background: G.line; }
         if !month: HorizontalLayout {
@@ -229,7 +229,7 @@ component Toolbar inherits Rectangle {
     CSeg {
         x: parent.width - 140px - 9px - self.width; y: 8px;
         width: 134px;
-        items: ["СЕГОДНЯ", "МЕСЯЦ"];
+        items: [@tr("СЕГОДНЯ"), @tr("МЕСЯЦ")];
         current: month ? 1 : 0;
         picked(i) => { S.habit-mode-set(i == 1 ? "month" : "today"); }
     }
@@ -238,7 +238,7 @@ component Toolbar inherits Rectangle {
         width: 102px; height: 30px;
         border-radius: 6px;
         background: na.has-hover ? G.accent-ink : G.accent;
-        Text { text: "＋ Привычка"; font-size: 13px; font-weight: 500; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+        Text { text: @tr("＋ Привычка"); font-size: 13px; font-weight: 500; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
         na := TouchArea { clicked => { S.habit-new(); } mouse-cursor: pointer; }
     }
 }
@@ -261,16 +261,16 @@ component MonthTable inherits Rectangle {
     Rectangle {
         height: 34px; y: 0;
         background: #7A6620;
-        Text { x: 13px; text: "ПРИВЫЧКА × ДЕНЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
-        Text { x: parent.width - self.preferred-width - 13px; text: "SPACE — ОТМЕТИТЬ · X — ПРОПУСК · O — НЕ СЧИТАТЬ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
+        Text { x: 13px; text: @tr("ПРИВЫЧКА × ДЕНЬ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+        Text { x: parent.width - self.preferred-width - 13px; text: @tr("SPACE — ОТМЕТИТЬ · X — ПРОПУСК · O — НЕ СЧИТАТЬ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
     }
     Rectangle {
         y: 34px; height: 46px;
-        Text { x: 14px; text: "ПРИВЫЧКА"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+        Text { x: 14px; text: @tr("ПРИВЫЧКА"); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
         for d[i] in S.month-days: Rectangle {
             x: root.name-w + i * root.cpitch;
             width: root.cpitch;
-            property <bool> we: i < S.hm-wd.length && (S.hm-wd[i] == "СБ" || S.hm-wd[i] == "ВС");
+            property <bool> we: i < S.hm-wd.length && (S.hm-wd[i] == @tr("СБ") || S.hm-wd[i] == @tr("ВС"));
             Text { y: 10px; width: parent.width; text: i < S.hm-wd.length ? S.hm-wd[i] : ""; font-family: G.mono; font-size: 8.5px; color: parent.we ? G.gold : #7A7C86; horizontal-alignment: center; }
             Text { y: 22px; width: parent.width; text: d; font-family: G.mono; font-size: 10.5px; font-weight: i + 1 == S.hm-today ? 700 : 400; color: i + 1 == S.hm-today ? G.accent : #A3A5AE; horizontal-alignment: center; }
         }
@@ -303,7 +303,7 @@ component MonthTable inherits Rectangle {
         x: 14px; y: 80px + S.habit-month.length * 47px + 10px; height: 22px;
         spacing: 8px;
         alignment: start;
-        for l[i] in ["сделано", "не всё", "пропуск", "не по расписанию", "сегодня"]: HorizontalLayout {
+        for l[i] in [@tr("сделано"), @tr("не всё"), @tr("пропуск"), @tr("не по расписанию"), @tr("сегодня")]: HorizontalLayout {
             spacing: 6px;
             Cell { y: 4px; width: 14px; height: 14px; st: [1, 2, 0, 3, 4][i]; hue: G.gold; red-miss: true; }
             Text { text: l; font-size: 12px; color: #A3A5AE; vertical-alignment: center; }
@@ -323,19 +323,19 @@ component MonthTable inherits Rectangle {
         clip: true;
         Rectangle {
             height: 32px; y: 0; background: G.head-main;
-            Text { x: 12px; text: root.m-name.to-uppercase() + " · " + root.m-day + " ЧИСЛО"; font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 40px; }
+            Text { x: 12px; text: @tr("{} · {} ЧИСЛО", root.m-name.to-uppercase(), root.m-day); font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 40px; }
             Icon { name: "close"; width: 12px; x: parent.width - 26px; y: (parent.height - 12px) / 2; c: #ffffffb0; }
             TouchArea { x: parent.width - 32px; width: 32px; clicked => { root.m-day = -1; } mouse-cursor: pointer; }
         }
         VerticalLayout {
             y: 36px; height: parent.height - 40px;
             padding-left: 6px; padding-right: 6px;
-            for it[i] in [{ t: "Сделано", k: "SPACE", s: "done", c: G.gold }, { t: "Пропуск", k: "X", s: "none", c: G.red }, { t: "Не считать этот день", k: "O", s: "skip", c: #8A8C96 }, { t: "Очистить", k: "DEL", s: "none", c: #00000000 }]: Rectangle {
+            for it[i] in [{ t: @tr("Сделано"), k: "SPACE", s: "done", c: G.gold }, { t: @tr("Пропуск"), k: "X", s: "none", c: G.red }, { t: @tr("Не считать этот день"), k: "O", s: "skip", c: #8A8C96 }, { t: @tr("Очистить"), k: "DEL", s: "none", c: #00000000 }]: Rectangle {
                 height: 36px;
                 border-radius: 5px;
                 background: ia.has-hover ? G.node-hover : transparent;
                 Rectangle { x: 10px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: it.c; }
-                Text { x: it.t == "Очистить" ? 10px : 26px; text: it.t; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                Text { x: it.k == "DEL" ? 10px : 26px; text: it.t; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
                 Rectangle {
                     x: parent.width - self.width - 8px; y: 9px; height: 18px; width: kt.preferred-width + 12px;
                     border-radius: 3px; border-width: 1px; border-color: G.line;
@@ -364,7 +364,7 @@ export component HabitsPage inherits Rectangle {
             spacing: 10px;
             padding-right: 118px;
             alignment: start;
-            Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.gold; vertical-alignment: center; }
+            Text { text: @tr("СЕГОДНЯ"); font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.gold; vertical-alignment: center; }
             ScrollView {
                 horizontal-stretch: 1;
                 viewport-width: hc.preferred-width;
@@ -387,7 +387,7 @@ export component HabitsPage inherits Rectangle {
             x: root.mx + root.aw - self.width; y: 64px; width: 108px; height: 30px;
             border-radius: 6px; border-width: 1px; border-color: #6E7079;
             background: aa.has-hover ? G.node-hover : transparent;
-            Text { text: "Отметить все"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: @tr("Отметить все"); font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
             aa := TouchArea { clicked => { S.habit-all(); } mouse-cursor: pointer; }
         }
         ScrollView {
@@ -408,7 +408,7 @@ export component HabitsPage inherits Rectangle {
                     y: 8px + floor(i / root.cols) * 222px;
                     width: root.cw; height: 206px;
                 }
-                if S.habits.length == 0: Text { x: 8px; y: 20px; text: "Привычек пока нет — нажми «＋ Привычка» или напиши строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"; color: G.muted; font-size: 13px; wrap: word-wrap; width: root.aw; }
+                if S.habits.length == 0: Text { x: 8px; y: 20px; text: @tr("Привычек пока нет — нажми «＋ Привычка» или напиши строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"); color: G.muted; font-size: 13px; wrap: word-wrap; width: root.aw; }
                 // совет енота
                 if S.habit-tip != "": DashBox {
                     x: 8px; y: 8px + ceil(S.habits.length / root.cols) * 222px + 10px; width: root.cw * 2 + 18px; height: 72px;
@@ -418,7 +418,7 @@ export component HabitsPage inherits Rectangle {
                 }
                 Field {
                     x: 8px; y: 8px + ceil(S.habits.length / root.cols) * 222px + (S.habit-tip != "" ? 96px : 10px); width: root.cw * 2 + 18px;
-                    placeholder: "＋ Новая привычка · «чтение 20 минут вечером» · Enter";
+                    placeholder: @tr("＋ Новая привычка · «чтение 20 минут вечером» · Enter");
                     accepted(t) => { if (t != "") { S.habit-add(t); self.clear(); } }
                 }
             }
@@ -460,7 +460,7 @@ export component HabitsPage inherits Rectangle {
             width: self.w4; height: 72px;
             c: #8A7430;
             Circ { x: 12px; y: 14px; width: 44px; height: 44px; border-radius: 22px; text: "ФЛАГ"; }
-            Text { x: 70px; width: parent.width - 80px; text: "Клик по клетке — меню дня. Задним числом можно отметить любой день месяца."; font-size: 12.5px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+            Text { x: 70px; width: parent.width - 80px; text: @tr("Клик по клетке — меню дня. Задним числом можно отметить любой день месяца."); font-size: 12.5px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
         }
     }
     }

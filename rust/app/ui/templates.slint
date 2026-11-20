@@ -37,7 +37,7 @@ export component Templates inherits Overlay {
     // список шаблонов
     Node {
         x: (root.width - w) / 2; y: max(8px, (root.height - h) / 2); width: 220px; height: h;
-        num: "ШАБЛОНЫ"; title: "ДОСОК"; aside: S.tp-list.length;
+        num: @tr("ШАБЛОНЫ"); title: @tr("ДОСОК"); aside: S.tp-list.length;
         ScrollView {
             viewport-height: tpl.preferred-height;
             tpl := VerticalLayout {
@@ -53,7 +53,7 @@ export component Templates inherits Overlay {
             }
             Rectangle {
                 height: 34px;
-                Text { x: 12px; text: "+ Новый шаблон"; color: na.has-hover ? G.ink : #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                Text { x: 12px; text: @tr("+ Новый шаблон"); color: na.has-hover ? G.ink : #A3A5AE; font-size: 13px; vertical-alignment: center; }
                 na := TouchArea { clicked => { S.tp-new(); } mouse-cursor: pointer; }
             }
             }
@@ -62,7 +62,7 @@ export component Templates inherits Overlay {
     // правка
     ed := Node {
         x: (root.width - w) / 2 + 232px; y: max(8px, (root.height - h) / 2); width: w - 232px; height: h;
-        main: true; num: "ШАБЛОН"; title: S.tp-name.to-uppercase(); aside: S.tp-builtin ? "ВСТРОЕННЫЙ" : "СВОЙ";
+        main: true; num: @tr("ШАБЛОН"); title: S.tp-name.to-uppercase(); aside: S.tp-builtin ? @tr("ВСТРОЕННЫЙ") : @tr("СВОЙ");
         head: G.accent.darker(0.3);
         ScrollView {
             viewport-height: tped.preferred-height;
@@ -71,19 +71,19 @@ export component Templates inherits Overlay {
             HorizontalLayout {
                 spacing: 20px;
                 VerticalLayout { spacing: 8px;
-                    Text { text: "Название шаблона"; color: #A3A5AE; font-size: 13px; }
+                    Text { text: @tr("Название шаблона"); color: #A3A5AE; font-size: 13px; }
                     Field { height: 38px; text: S.tp-name; edited(t) => { S.tp-set("name", t); } }
                 }
                 VerticalLayout { spacing: 8px; width: 300px;
-                    Text { text: "Вид доски"; color: #A3A5AE; font-size: 13px; }
+                    Text { text: @tr("Вид доски"); color: #A3A5AE; font-size: 13px; }
                     HorizontalLayout { spacing: 4px; alignment: start;
-                        for v in [{ id: "kanban", label: "Канбан" }, { id: "pipe", label: "Конвейер" }, { id: "stickers", label: "Стикеры" }, { id: "list", label: "Список" }]: Chip {
+                        for v in [{ id: "kanban", label: @tr("Канбан") }, { id: "pipe", label: @tr("Конвейер") }, { id: "stickers", label: @tr("Стикеры") }, { id: "list", label: @tr("Список") }]: Chip {
                             text: v.label; on: S.tp-view == v.id; clicked => { S.tp-set("view", v.id); }
                         }
                     }
                 }
             }
-            Text { text: "Колонки · стрелки меняют порядок, клик по квадрату — цвет"; color: #A3A5AE; font-size: 13px; }
+            Text { text: @tr("Колонки · стрелки меняют порядок, клик по квадрату — цвет"); color: #A3A5AE; font-size: 13px; }
             Flickable {
                 height: 128px;
                 viewport-width: S.tp-cols.length * (cw + 14px) + 110px;
@@ -98,14 +98,14 @@ export component Templates inherits Overlay {
                                 accepted => { S.tp-col(i, "name", self.text); } edited => { S.tp-col(i, "name", self.text); } }
                             if !c.on: Small { x: parent.width - 22px; width: 18px; height: 30px; icon: "close"; text: ""; clicked => { S.tp-col(i, "del", ""); } }
                         }
-                        Text { x: 10px; y: 40px; text: "Лимит"; color: #A3A5AE; font-size: 12.5px; }
+                        Text { x: 10px; y: 40px; text: @tr("Лимит"); color: #A3A5AE; font-size: 12.5px; }
                         Small { x: parent.width - 66px; y: 38px; width: 18px; height: 20px; text: "−"; clicked => { S.tp-col(i, "limit", "-1"); } }
                         Text { x: parent.width - 46px; y: 38px; width: 24px; height: 20px; text: c.hint; color: G.ink; font-family: G.mono; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
                         Small { x: parent.width - 22px; y: 38px; width: 18px; height: 20px; text: "+"; clicked => { S.tp-col(i, "limit", "1"); } }
-                        Text { x: 10px; y: 66px; text: "Цвет"; color: #A3A5AE; font-size: 12.5px; }
+                        Text { x: 10px; y: 66px; text: @tr("Цвет"); color: #A3A5AE; font-size: 12.5px; }
                         Rectangle { x: parent.width - 22px; y: 69px; width: 12px; height: 12px; border-radius: 3px; background: c.hue;
                             TouchArea { clicked => { S.tp-col(i, "color", ""); } mouse-cursor: pointer; } }
-                        if c.on: Text { x: 10px; y: 92px; text: "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"; font-family: G.mono; font-size: 8.5px; color: #7A7C86; }
+                        if c.on: Text { x: 10px; y: 92px; text: @tr("ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"); font-family: G.mono; font-size: 8.5px; color: #7A7C86; }
                         if !c.on: Small { x: 6px; y: 92px; width: 24px; height: 20px; icon: "prev"; text: ""; clicked => { S.tp-col(i, "left", ""); } }
                         if !c.on: Small { x: 32px; y: 92px; width: 24px; height: 20px; icon: "next"; text: ""; clicked => { S.tp-col(i, "right", ""); } }
                     }
@@ -113,11 +113,11 @@ export component Templates inherits Overlay {
                 Rectangle {
                     x: S.tp-cols.length * (cw + 14px); width: 100px; height: 120px;
                     border-radius: 8px; border-width: 1px; border-color: aa.has-hover ? G.accent : G.line-strong;
-                    Text { text: "+\nКолонка"; color: #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                    Text { text: @tr("+\nКолонка"); color: #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
                     aa := TouchArea { clicked => { S.tp-set("col-add", ""); } mouse-cursor: pointer; }
                 }
             }
-            Text { text: "Поля карточки"; color: #A3A5AE; font-size: 13px; }
+            Text { text: @tr("Поля карточки"); color: #A3A5AE; font-size: 13px; }
             for row in ceil(S.tp-fields.length / 5): HorizontalLayout { spacing: 6px; alignment: start;
                 for k in 5: Chip {
                     property <Opt> f: S.tp-fields[min(row * 5 + k, S.tp-fields.length - 1)];
@@ -125,16 +125,16 @@ export component Templates inherits Overlay {
                     text: f.label; on: f.on; clicked => { S.tp-set("field", f.id); }
                 }
             }
-            Text { text: "Используется"; color: #A3A5AE; font-size: 13px; }
+            Text { text: @tr("Используется"); color: #A3A5AE; font-size: 13px; }
             Text { text: S.tp-used; color: G.ink; font-size: 13px; overflow: elide; }
             Rectangle { height: 6px; }
             HorizontalLayout { spacing: 8px; alignment: start;
-                Button { text: "Сохранить шаблон"; primary: true; clicked => { S.tp-save(); } }
-                Button { text: "Дублировать"; clicked => { S.tp-dup(); } }
-                if S.tp-builtin: Button { text: "Вернуть как было"; clicked => { S.tp-reset(); } }
-                Button { text: "Закрыть"; clicked => { S.tp-close(); } }
+                Button { text: @tr("Сохранить шаблон"); primary: true; clicked => { S.tp-save(); } }
+                Button { text: @tr("Дублировать"); clicked => { S.tp-dup(); } }
+                if S.tp-builtin: Button { text: @tr("Вернуть как было"); clicked => { S.tp-reset(); } }
+                Button { text: @tr("Закрыть"); clicked => { S.tp-close(); } }
             }
-            Text { text: "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."; color: #8A8C96; font-size: 12.5px; wrap: word-wrap; }
+            Text { text: @tr("Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."); color: #8A8C96; font-size: 12.5px; wrap: word-wrap; }
             }
         }
     }

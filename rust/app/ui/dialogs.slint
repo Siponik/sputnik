@@ -72,8 +72,8 @@ component Preview inherits Rectangle {
     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
     drop-shadow-blur: 16px; drop-shadow-color: #0008;
     property <color> hue: S.c-kind == 0 ? S.c-dest-hue : S.c-kind == 2 ? G.gold : (S.c-kind == 3 ? G.violet : G.blue);
-    property <string> name: S.c-title == "" ? "Название" : S.c-title;
-    Text { x: 12px; y: 8px; text: S.c-kind == 0 ? "ПОЯВИТСЯ НА ДОСКЕ" : S.c-kind == 2 ? "ПОЯВИТСЯ В «ПРИВЫЧКАХ»" : "ПОЯВИТСЯ В КАЛЕНДАРЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; }
+    property <string> name: S.c-title == "" ? @tr("Название") : S.c-title;
+    Text { x: 12px; y: 8px; text: S.c-kind == 0 ? @tr("ПОЯВИТСЯ НА ДОСКЕ") : S.c-kind == 2 ? @tr("ПОЯВИТСЯ В «ПРИВЫЧКАХ»") : @tr("ПОЯВИТСЯ В КАЛЕНДАРЕ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; }
     Rectangle {
         x: 8px; y: 30px; width: parent.width - 16px; height: parent.height - 38px;
         border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg; clip: true;
@@ -114,7 +114,7 @@ component Preview inherits Rectangle {
             Text { x: parent.width - self.preferred-width - 10px; y: 10px; height: 24px; text: S.c-pv-b; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; vertical-alignment: center; }
             Rectangle { y: 44px; height: 1px; background: G.line; }
             big := Text { x: 14px; y: 50px; text: S.c-pv-a; font-size: 40px; font-weight: 300; color: G.ink; }
-            Text { x: 24px + big.preferred-width; y: 76px; text: "ДН ПОДРЯД"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; }
+            Text { x: 24px + big.preferred-width; y: 76px; text: @tr("ДН ПОДРЯД"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #A3A5AE; }
         }
         // день рождения — плашка с датой
         if S.c-kind == 3: Rectangle {
@@ -126,7 +126,7 @@ component Preview inherits Rectangle {
             // название в 2 строки не наезжает на «через N дней»: столбиком
             VerticalLayout {
                 x: 62px; y: 12px; width: parent.width - 72px; spacing: 3px; alignment: start;
-                Text { text: S.c-title == "" ? "День рождения" : "День рождения " + S.c-title; font-size: 13px; font-weight: 600; color: G.ink; wrap: word-wrap; }
+                Text { text: S.c-title == "" ? @tr("День рождения") : @tr("День рождения {}", S.c-title); font-size: 13px; font-weight: 600; color: G.ink; wrap: word-wrap; }
                 Text { text: S.c-pv-sub; font-size: 11.5px; color: #A3A5AE; wrap: word-wrap; }
             }
         }
@@ -166,7 +166,7 @@ component DateBox inherits Box {
             Text { text: st < 0 ? "‹" : "›"; color: G.ink; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
             sa := TouchArea { clicked => { S.c-cal-step(st); } mouse-cursor: pointer; }
         }
-        for d[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
+        for d[i] in [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")]: Text {
             x: 10px + i * 36px; y: 44px; width: 36px; text: d; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center;
         }
         for c[i] in S.c-cal: Rectangle {
@@ -227,7 +227,7 @@ export component TimeBox inherits Box {
         }
         HorizontalLayout {
             x: 12px; y: 54px; width: parent.width - 24px; height: 30px; spacing: 4px;
-            for q[i] in ["Через час", "Утром 9:00", "Вечером 19:00", "Без времени"]: Rectangle {
+            for q[i] in [@tr("Через час"), @tr("Утром 9:00"), @tr("Вечером 19:00"), @tr("Без времени")]: Rectangle {
                 visible: i < 3 || root.clearable;
                 // ширина по тексту + поля по 8 px, чтобы подписи не прилипали к рамке
                 horizontal-stretch: qt.preferred-width / 1px;
@@ -269,7 +269,7 @@ component TaskBody inherits Rectangle {
         x: 0; y: 0;
         width: root.LW; height: root.height;
         spacing: 8px;
-        Cap { text: "КОГДА"; }
+        Cap { text: @tr("КОГДА"); }
         HorizontalLayout {
             height: 36px; spacing: 8px;
             z: wdate1.open || wtime0.open ? 20 : 0;
@@ -283,7 +283,7 @@ component TaskBody inherits Rectangle {
         }
         HorizontalLayout {
             spacing: 6px; alignment: start; height: 24px;
-            Text { text: "→ Попадёт"; font-size: 12.5px; font-weight: 600; color: CK.accent; vertical-alignment: center; }
+            Text { text: @tr("→ Попадёт"); font-size: 12.5px; font-weight: 600; color: CK.accent; vertical-alignment: center; }
             for l in S.c-lands: Rectangle {
                 width: lt.preferred-width + 16px; border-radius: 4px; background: G.node-hover;
                 lt := Text { text: l; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
@@ -303,7 +303,7 @@ component TaskBody inherits Rectangle {
             // подзадачи: список прокручивается, окно не растёт
             Box {
                 height: 124px;
-                Cap { x: 10px; y: 0; height: 30px; text: "ПОДЗАДАЧИ"; vertical-alignment: center; }
+                Cap { x: 10px; y: 0; height: 30px; text: @tr("ПОДЗАДАЧИ"); vertical-alignment: center; }
                 Cap { x: parent.width - self.preferred-width - 10px; y: 0; height: 30px; text: "0 / " + S.c-subs.length; vertical-alignment: center; }
                 Rectangle { y: 30px; height: 1px; background: G.line; }
                 ScrollView {
@@ -323,7 +323,7 @@ component TaskBody inherits Rectangle {
                 sf := Field {
                     x: 6px; y: parent.height - 32px; width: parent.width - 12px; height: 32px;
                     bare: true; font-size: 12.5px;
-                    placeholder: "+ подзадача · Enter";
+                    placeholder: @tr("+ подзадача · Enter");
                     accepted(t) => { S.c-sub-add(t); sf.clear(); sf.grab(); root.sub-focus(); }
                     edited(t) => { root.sub-focus(); }
                     escape => { root.grab-line(); }
@@ -333,10 +333,10 @@ component TaskBody inherits Rectangle {
             Box {
                 vertical-stretch: 1; min-height: 80px;
                 clip: true;
-                Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
+                Cap { x: 10px; y: 0; height: 30px; text: @tr("ЗАМЕТКА"); vertical-alignment: center; }
                 Rectangle { y: 30px; height: 1px; background: G.line; }
                 TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
-                Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Ракурс, референсы…"; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
+                Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: @tr("Ракурс, референсы…"); font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
                 nt := LinkNote {
                     x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
                     text: S.c-notes;
@@ -354,7 +354,7 @@ component TaskBody inherits Rectangle {
         border-radius: 8px; border-width: 1px; border-color: G.line; background: G.bg;
         pv := VerticalLayout {
             alignment: start;
-            Cap { height: 32px; text: "   СВОЙСТВА"; vertical-alignment: center; }
+            Cap { height: 32px; text: @tr("   СВОЙСТВА"); vertical-alignment: center; }
             for p[i] in S.c-props: Rectangle {
                 height: 31px;
                 z: p.id == S.c-popen ? 10 : 0;
@@ -404,7 +404,7 @@ component PropsPanel inherits Rectangle {
     border-radius: 8px; border-width: 1px; border-color: G.line; background: G.bg;
     pv := VerticalLayout {
         alignment: start;
-        Cap { height: 32px; text: "   СВОЙСТВА"; vertical-alignment: center; }
+        Cap { height: 32px; text: @tr("   СВОЙСТВА"); vertical-alignment: center; }
         for p[i] in S.c-props: Rectangle {
             height: 31px;
             z: p.id == S.c-popen ? 10 : 0;
@@ -451,9 +451,9 @@ component PropsPanel inherits Rectangle {
 component NoteBox inherits Box {
     callback sub-focus;
     callback grab-line;
-    in property <string> hint: "Заметка…";
+    in property <string> hint: @tr("Заметка…");
     height: 124px;
-    Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
+    Cap { x: 10px; y: 0; height: 30px; text: @tr("ЗАМЕТКА"); vertical-alignment: center; }
     Rectangle { y: 30px; height: 1px; background: G.line; }
     TouchArea { clicked => { nt.grab(); root.sub-focus(); } mouse-cursor: text; }
     Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: root.hint; font-size: 12.5px; color: #6E7079; wrap: word-wrap; }
@@ -478,7 +478,7 @@ component EventBody inherits Rectangle {
         width: root.LW;
         spacing: 8px;
         alignment: start;
-        Cap { text: "КОГДА"; }
+        Cap { text: @tr("КОГДА"); }
         HorizontalLayout {
             height: 36px; spacing: 8px;
             z: wtime.open || wdate2.open ? 20 : 0;
@@ -489,12 +489,12 @@ component EventBody inherits Rectangle {
             spacing: 6px; alignment: start;
             for q in S.c-quick: CChip { text: q.label; on: q.on; clicked => { S.c-quick-set(q.id); root.grab-line(); } }
         }
-        Cap { text: "ДЛИТСЯ"; }
+        Cap { text: @tr("ДЛИТСЯ"); }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             z: wend.open ? 20 : 0;
             for d in S.c-durs: CChip { text: d.label; on: d.on; clicked => { S.c-dur-set(d.id); root.grab-line(); } }
-            Text { text: "  или до"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
+            Text { text: @tr("  или до"); font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
             wend := TimeBox { height: 32px; val: S.c-end; picked(t) => { S.c-end-set(t); root.grab-line(); } }
         }
         if S.c-free != "": HorizontalLayout {
@@ -502,17 +502,17 @@ component EventBody inherits Rectangle {
             Rectangle { y: 9px; width: 8px; height: 8px; border-radius: 4px; background: S.c-free-warn ? G.red : G.green; }
             Text { text: S.c-free; font-size: 12.5px; font-weight: 600; color: S.c-free-warn ? G.red : G.green; vertical-alignment: center; }
         }
-        Cap { text: "МЕСТО"; }
+        Cap { text: @tr("МЕСТО"); }
         Field {
             height: 36px;
-            placeholder: "Адрес или ссылка на созвон";
+            placeholder: @tr("Адрес или ссылка на созвон");
             text: S.c-place;
             edited(t) => { S.c-place-set(t); root.sub-focus(); }
             accepted => { root.grab-line(); }
             escape => { root.grab-line(); }
         }
         Rectangle { height: 4px; }
-        NoteBox { height: 76px; hint: "Повестка, ссылки…"; sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
+        NoteBox { height: 76px; hint: @tr("Повестка, ссылки…"); sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
     }
     pp := PropsPanel { x: root.width - 248px; y: 0; }
 }
@@ -528,7 +528,7 @@ component HabitBody inherits Rectangle {
         width: root.LW;
         spacing: 8px;
         alignment: start;
-        Cap { text: "ЗНАЧОК"; }
+        Cap { text: @tr("ЗНАЧОК"); }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for ic in S.c-hicons: Rectangle {
@@ -537,18 +537,18 @@ component HabitBody inherits Rectangle {
                 Icon { x: 9px; y: 8px; width: 16px; height: 16px; name: ic.id; c: ic.on ? CK.accent : G.ink; }
                 ia := TouchArea { clicked => { S.c-hicon(ic.id); root.grab-line(); } mouse-cursor: pointer; }
             }
-            Text { height: 32px; text: "будет в списке привычек"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+            Text { height: 32px; text: @tr("будет в списке привычек"); font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
         }
-        Cap { text: "КОГДА"; }
+        Cap { text: @tr("КОГДА"); }
         HorizontalLayout {
             height: 36px; spacing: 8px; alignment: start;
             z: ws.open || we.open ? 20 : 0;
             ws := TimeBox { val: S.c-hwin-s; picked(t) => { S.c-hwin-s-set(t); root.grab-line(); } }
-            Text { text: "до"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
+            Text { text: @tr("до"); font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
             we := TimeBox { val: S.c-hwin-e; picked(t) => { S.c-hwin-e-set(t); root.grab-line(); } }
             for p in S.c-hpart: CChip { text: p.label; on: p.on; clicked => { S.c-hpart-set(p.id); root.grab-line(); } }
         }
-        Cap { text: "КАК ЧАСТО"; }
+        Cap { text: @tr("КАК ЧАСТО"); }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for fq in S.c-hfreq: CChip { text: fq.label; on: fq.on; clicked => { S.c-hfreq-set(fq.id); root.grab-line(); } }
@@ -560,10 +560,10 @@ component HabitBody inherits Rectangle {
         if S.c-hfreq.length > 3 && S.c-hfreq[3].on: HorizontalLayout {
             spacing: 6px; alignment: start;
             for p in S.c-hper: CChip { text: p.label; on: p.on; clicked => { S.c-hper-set(p.id); root.grab-line(); } }
-            Text { height: 32px; text: "в неделю"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+            Text { height: 32px; text: @tr("в неделю"); font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
         }
         Rectangle { height: 4px; }
-        NoteBox { hint: "Зачем и как…"; sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
+        NoteBox { hint: @tr("Зачем и как…"); sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
     }
     pp := PropsPanel { x: root.width - 248px; y: 0; }
 }
@@ -579,38 +579,38 @@ component BdayBody inherits Rectangle {
         width: root.LW;
         spacing: 8px;
         alignment: start;
-        Cap { text: "КОГДА"; }
+        Cap { text: @tr("КОГДА"); }
         HorizontalLayout {
             height: 36px; spacing: 8px;
             z: wdate3.open ? 20 : 0;
             wdate3 := DateBox { dated: true; }
             Field {
                 width: 90px; height: 36px; mono: true;
-                placeholder: "год";
+                placeholder: @tr("год");
                 text: S.c-year;
                 edited(t) => { S.c-year-set(t); root.sub-focus(); }
                 accepted => { root.grab-line(); }
                 escape => { root.grab-line(); }
             }
         }
-        Cap { text: "КАЖДЫЙ ГОД · ГОД НЕОБЯЗАТЕЛЕН — НУЖЕН ДЛЯ «ИСПОЛНИТСЯ N»"; }
+        Cap { text: @tr("КАЖДЫЙ ГОД · ГОД НЕОБЯЗАТЕЛЕН — НУЖЕН ДЛЯ «ИСПОЛНИТСЯ N»"); }
         Rectangle { height: 2px; }
         // напоминания — можно несколько сразу
-        Cap { text: "НАПОМНИТЬ · МОЖНО НЕСКОЛЬКО"; }
+        Cap { text: @tr("НАПОМНИТЬ · МОЖНО НЕСКОЛЬКО"); }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for r in S.c-reminds: CChip { text: (r.on ? "✓ " : "") + r.label; on: r.on; clicked => { S.c-prop-set("remind", r.id); root.grab-line(); } }
         }
         Rectangle { height: 2px; }
         // Спутник сам заведёт задачу «Подарок …», когда подойдёт выбранный день
-        Cap { text: "ЗАДАЧА «КУПИТЬ ПОДАРОК» — ЗАВЕСТИ ЗАРАНЕЕ"; }
+        Cap { text: @tr("ЗАДАЧА «КУПИТЬ ПОДАРОК» — ЗАВЕСТИ ЗАРАНЕЕ"); }
         HorizontalLayout {
             spacing: 6px; alignment: start;
             for gf in S.c-gift: CChip { text: gf.label; on: gf.on; clicked => { S.c-gift-set(gf.id); root.grab-line(); } }
         }
         Text { text: S.c-gift-hint; font-size: 11.5px; color: #8A8C96; wrap: word-wrap; }
         Rectangle { height: 4px; }
-        NoteBox { hint: "Идеи подарков, размеры, что любит…"; sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
+        NoteBox { hint: @tr("Идеи подарков, размеры, что любит…"); sub-focus => { root.sub-focus(); } grab-line => { root.grab-line(); } }
     }
     pp := PropsPanel { x: root.width - 248px; y: 0; }
 }
@@ -706,7 +706,7 @@ export component CreateDialog inherits Overlay {
                 width: (root.W - 66px) / 4 - 4px; height: 32px; border-radius: 6px; background: G.ink;
                 animate x { duration: 220ms; easing: ease-out; }
             }
-            for k[i] in ["Задача", "Событие", "Привычка", "День рождения"]: Rectangle {
+            for k[i] in [@tr("Задача"), @tr("Событие"), @tr("Привычка"), @tr("День рождения")]: Rectangle {
                 x: 12px + i * (root.W - 66px) / 4;
                 y: 7px;
                 width: (root.W - 66px) / 4 - 4px;
@@ -744,7 +744,7 @@ export component CreateDialog inherits Overlay {
                 ink: root.fits && line.text != "" ? transparent : G.ink;
                 font-size: 17px;
                 text: S.c-text;
-                placeholder: S.c-kind == 0 ? "Сделать иконки для клиента завтра 15:00 @работа !!" : S.c-kind == 1 ? "Созвон с Олей в пт 14:00" : S.c-kind == 2 ? "Вода 8 стаканов каждый день" : "Мама 12 марта";
+                placeholder: S.c-kind == 0 ? @tr("Сделать иконки для клиента завтра 15:00 @работа !!") : S.c-kind == 1 ? @tr("Созвон с Олей в пт 14:00") : S.c-kind == 2 ? @tr("Вода 8 стаканов каждый день") : @tr("Мама 12 марта");
                 edited(t) => { S.c-changed(t); }
                 accepted(t) => { root.submit(false); }
                 shift-enter(t) => { root.submit(true); }
@@ -790,7 +790,7 @@ export component CreateDialog inherits Overlay {
         Rectangle {
             y: root.H - 60px; height: 60px;
             Rectangle { y: 0; height: 1px; background: G.line; }
-            Text { x: 22px; width: root.W - 22px - bl.preferred-width - 40px; text: "Enter — добавить · Esc — закрыть"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; overflow: elide; }
+            Text { x: 22px; width: root.W - 22px - bl.preferred-width - 40px; text: @tr("Enter — добавить · Esc — закрыть"); font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; overflow: elide; }
             bl := HorizontalLayout {
                 x: root.W - 22px - self.preferred-width; y: 11px; height: 38px;
                 spacing: 10px;
@@ -798,14 +798,14 @@ export component CreateDialog inherits Overlay {
                     width: mt.preferred-width + 30px;
                     border-radius: 6px; border-width: 1px; border-color: #8A8C96;
                     background: ma.has-hover ? G.node-hover : transparent;
-                    mt := Text { text: "Добавить и ещё"; font-size: 13.5px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                    mt := Text { text: @tr("Добавить и ещё"); font-size: 13.5px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                     ma := TouchArea { clicked => { root.submit(true); } mouse-cursor: pointer; }
                 }
                 Rectangle {
                     width: pt.preferred-width + 34px;
                     border-radius: 6px;
                     background: pa.has-hover ? CK.accent-ink : CK.accent;
-                    pt := Text { text: ["Добавить задачу", "Добавить событие", "Добавить привычку", "Добавить день рождения"][S.c-kind]; font-size: 13.5px; font-weight: 600; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+                    pt := Text { text: [@tr("Добавить задачу"), @tr("Добавить событие"), @tr("Добавить привычку"), @tr("Добавить день рождения")][S.c-kind]; font-size: 13.5px; font-weight: 600; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; }
                     pa := TouchArea { clicked => { root.submit(false); } mouse-cursor: pointer; }
                 }
             }
@@ -878,14 +878,14 @@ export component SearchDialog inherits Overlay {
                 arrows: true;
                 opacity: root.open ? 1 : 0;
                 animate opacity { duration: root.closing ? root.t-out : root.t-in; easing: ease-out; }
-                placeholder: "Найти задачу, заметку, раздел…";
+                placeholder: @tr("Найти задачу, заметку, раздел…");
                 edited(t) => { root.cur = 0; root.q-text = t; S.search(t); }
                 accepted => { if (!root.closing) { S.search-go(root.cur); } }
                 escape => { root.shut(); }
                 up => { root.up(); }
                 down => { root.down(); }
             }
-            Text { x: parent.width - self.preferred-width - 10px; text: root.q-text == "" ? "CTRL K" : S.found.length + " найдено"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+            Text { x: parent.width - self.preferred-width - 10px; text: root.q-text == "" ? "CTRL K" : @tr("{} найдено", S.found.length); font-family: G.mono; font-size: 9.5px; letter-spacing: 1px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
         }
         // результаты под полем: выпадают на 6 px и проявляются
         Rectangle {
@@ -907,7 +907,7 @@ export component SearchDialog inherits Overlay {
                 y: 0; width: parent.width;
                 padding: 6px; padding-top: 4px;
                 alignment: start;
-                if S.found.length == 0: Text { height: 52px; x: 10px; text: "Ничего не нашлось — попробуй другое слово"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                if S.found.length == 0: Text { height: 52px; x: 10px; text: @tr("Ничего не нашлось — попробуй другое слово"); color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
                 for f[i] in S.found: VerticalLayout {
                     visible: i < 14;
                     if f.head != "": Text {
@@ -964,11 +964,11 @@ export component SearchDialog inherits Overlay {
                             border-radius: 3px; border-width: 1px; border-color: G.line;
                             kt := Text { text: k; font-family: G.mono; font-size: 8.5px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                         }
-                        Text { text: ["выбрать", "открыть", "закрыть"][i]; font-size: 12px; color: #A3A5AE; vertical-alignment: center; }
+                        Text { text: [@tr("выбрать"), @tr("открыть"), @tr("закрыть")][i]; font-size: 12px; color: #A3A5AE; vertical-alignment: center; }
                         Rectangle { width: 8px; }
                     }
                 }
-                Text { x: parent.width - self.preferred-width - 14px; text: "ё = е"; font-size: 12px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+                Text { x: parent.width - self.preferred-width - 14px; text: @tr("ё = е"); font-size: 12px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
             }
         }
     }
@@ -984,7 +984,7 @@ export component Confirm inherits Overlay {
         // высота по тексту вопроса: длинный вопрос не прячет кнопки
         height: max(170px, 30px + cl.preferred-height);
         num: "!!";
-        title: S.confirm-field ? "НАЗВАНИЕ" : "ТОЧНО?";
+        title: S.confirm-field ? @tr("НАЗВАНИЕ") : @tr("ТОЧНО?");
         head: S.confirm-field ? #3A3C46 : #8A3A2E;
         TouchArea { }
         cl := VerticalLayout {
@@ -1001,7 +1001,7 @@ export component Confirm inherits Overlay {
             HorizontalLayout {
                 spacing: 10px;
                 alignment: end;
-                b := Button { text: "Отмена"; clicked => { S.confirm-no(); } }
+                b := Button { text: @tr("Отмена"); clicked => { S.confirm-no(); } }
                 Button { text: S.confirm-yes-label; primary: true; clicked => { S.confirm-yes(f.text); } }
             }
         }

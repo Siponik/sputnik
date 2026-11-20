@@ -133,10 +133,10 @@ pub fn rules_of(r: &Value) -> Vec<Value> {
 pub fn lead_name(min: f64, kind: &str) -> String {
     for (m, name) in leads_for(kind).iter().chain(LEADS.iter()) {
         if *m as f64 == min {
-            return (*name).into();
+            return crate::i18n::tr(name).into();
         }
     }
-    format!("За {} мин", text(&num(min)))
+    crate::t!("За {} мин", text(&num(min)))
 }
 
 pub fn leads_text(mins: &[Value], kind: &str) -> String {
@@ -194,7 +194,7 @@ pub fn remind_label(remind: &Value, task: &Value, slot: &Value) -> String {
     }
     let now = now_at();
     let at = all.iter().find(|d| **d > now).copied().unwrap_or(*all.last().unwrap()).with_timezone(&Local);
-    format!("{} {}, {:02}:{:02}", at.day(), MON_SHORT[at.month0() as usize], at.hour(), at.minute())
+    format!("{} {}, {:02}:{:02}", at.day(), crate::i18n::month_abbr(at.month0() as usize, &MON_SHORT), at.hour(), at.minute())
 }
 
 fn published() -> Vec<String> {

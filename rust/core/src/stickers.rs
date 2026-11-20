@@ -15,14 +15,14 @@ pub fn default_topics() -> Value {
 }
 
 pub fn misc() -> Value {
-    json!({"id": "", "name": "Разное", "c": "var(--ink-faint)"})
+    json!({"id": "", "name": crate::t!("Разное"), "c": "var(--ink-faint)"})
 }
 
 pub fn when_lanes() -> Value {
     json!([
-        {"id": "today", "name": "Сегодня", "c": "var(--clay)"},
-        {"id": "week", "name": "На неделе", "c": "var(--ink-faint)", "sub": "до воскресенья"},
-        {"id": "later", "name": "Когда-нибудь", "c": "var(--ink-faint)", "sub": "без срока или позже"},
+        {"id": "today", "name": crate::t!("Сегодня"), "c": "var(--clay)"},
+        {"id": "week", "name": crate::t!("На неделе"), "c": "var(--ink-faint)", "sub": crate::t!("до воскресенья")},
+        {"id": "later", "name": crate::t!("Когда-нибудь"), "c": "var(--ink-faint)", "sub": crate::t!("без срока или позже")},
     ])
 }
 
@@ -97,14 +97,14 @@ pub fn due_label(due: &str, today: &str, slot: &Value, hide_today: bool) -> Valu
     }
     let k = (d(due) - d(today)).num_days();
     if k < 0 {
-        return json!({"text": format!("просрочено · {}", if k == -1 { "вчера".into() } else { short(due) }), "cls": "late"});
+        return json!({"text": crate::t!("просрочено · {}", if k == -1 { crate::t!("вчера").into() } else { short(due) }), "cls": "late"});
     }
     let at = if t(&slot["s"]) { format!(", {}", text(&slot["s"])) } else { String::new() };
     if k == 0 {
-        return json!({"text": if hide_today && at.is_empty() { String::new() } else { format!("сегодня{at}") }, "cls": "soon"});
+        return json!({"text": if hide_today && at.is_empty() { String::new() } else { format!("{}{at}", crate::t!("сегодня")) }, "cls": "soon"});
     }
     if k == 1 {
-        return json!({"text": format!("завтра{at}"), "cls": ""});
+        return json!({"text": format!("{}{at}", crate::t!("завтра")), "cls": ""});
     }
     if due <= week_end(today).as_str() {
         return json!({"text": format!("{}{at}", crate::i18n::wd_sun(dow(due) as usize).to_lowercase()), "cls": ""});
@@ -212,12 +212,12 @@ pub fn people_lanes(tasks: &[Value], o_: &LaneOpts) -> Vec<Value> {
         if !t(&p["joined"]) && its.is_empty() {
             continue;
         }
-        let name = if s(&p["email"]) == o_.me { json!("Я") } else { p["name"].clone() };
+        let name = if s(&p["email"]) == o_.me { json!(crate::t!("Я")) } else { p["name"].clone() };
         out.push(json!({"id": p["email"], "name": name, "c": p["color"], "m": p, "sub": "", "items": order(&its, o_.lay_tasks, o_.today, o_.sort)}));
     }
     let known: Vec<String> = out.iter().map(|l| text(&l["id"])).collect();
     let none: Vec<Value> = tasks.iter().filter(|x| { let w = who(x); w.is_empty() || !known.contains(&w) }).cloned().collect();
-    out.push(json!({"id": "", "name": "Ничьи", "c": "var(--ink-faint)", "m": null, "sub": "", "items": order(&none, o_.lay_tasks, o_.today, o_.sort)}));
+    out.push(json!({"id": "", "name": crate::t!("Ничьи"), "c": "var(--ink-faint)", "m": null, "sub": "", "items": order(&none, o_.lay_tasks, o_.today, o_.sort)}));
     out
 }
 

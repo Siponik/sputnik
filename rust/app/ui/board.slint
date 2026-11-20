@@ -19,7 +19,7 @@ component SideCol inherits Rectangle {
             height: 30px;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
-                Text { text: "СФЕРЫ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: G.ink; vertical-alignment: center; }
+                Text { text: @tr("СФЕРЫ"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: G.ink; vertical-alignment: center; }
                 Rectangle { }
                 Text { text: S.side-spheres; font-family: G.mono; font-size: 10.5px; color: #8A8C96; vertical-alignment: center; }
             }
@@ -29,7 +29,7 @@ component SideCol inherits Rectangle {
             height: 52px;
             property <int> lf: S.list-find;
             changed lf => { lff.grab(); }
-            lff := Field { x: 10px; y: 10px; width: parent.width - 20px; height: 32px; font-size: 13px; placeholder: "Список…"; edited(t) => { root.q = t; } }
+            lff := Field { x: 10px; y: 10px; width: parent.width - 20px; height: 32px; font-size: 13px; placeholder: @tr("Список…"); edited(t) => { root.q = t; } }
             Text { x: parent.width - self.preferred-width - 20px; y: 10px; height: 32px; text: "CTRL ⇧ L"; font-family: G.mono; font-size: 9.5px; color: #62646E; vertical-alignment: center; }
         }
         ScrollView {
@@ -67,7 +67,7 @@ component SideCol inherits Rectangle {
                             border-radius: 4px;
                             border-width: 1px;
                             border-color: #55575F;
-                            Text { text: r.view == "pipe" ? "К" : r.view == "stickers" ? "С" : r.view == "list" ? "Л" : "К"; font-family: G.mono; font-size: 9px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+                            Text { text: r.view == "pipe" ? @tr("К") : r.view == "stickers" ? @tr("С") : r.view == "list" ? @tr("Л") : @tr("К"); font-family: G.mono; font-size: 9px; color: #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                         }
                         Text { text: r.name; font-size: 13px; color: G.ink; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                         Text { text: r.count; font-family: G.mono; font-size: 10.5px; color: #8A8C96; vertical-alignment: center; }
@@ -79,7 +79,7 @@ component SideCol inherits Rectangle {
                 nl := Field {
                     height: 30px;
                     font-size: 12.5px;
-                    placeholder: "＋ Новый список";
+                    placeholder: @tr("＋ Новый список");
                     accepted(t) => { if (t != "") { S.new-list(t); self.clear(); } }
                 }
             }
@@ -101,7 +101,7 @@ component SideCol inherits Rectangle {
             Rectangle { y: 0; height: 1px; background: G.line; }
             HorizontalLayout {
                 padding-left: 10px; padding-right: 10px;
-                for d[i] in ["ШАБЛОНЫ", "АРХИВ", "ПОКАЗЫВАТЬ"]: Text {
+                for d[i] in [@tr("ШАБЛОНЫ"), @tr("АРХИВ"), @tr("ПОКАЗЫВАТЬ")]: Text {
                     text: d; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: da.has-hover ? G.ink : #8A8C96;
                     horizontal-alignment: center; vertical-alignment: center;
                     da := TouchArea { clicked => { if (i == 0) { S.tp-show(); } else if (i == 1) { S.open-archive(); } else { S.go(5); } } mouse-cursor: pointer; }
@@ -158,7 +158,7 @@ component Kanban inherits Rectangle {
         Rectangle {
             x: S.columns.length * root.pitch; y: 0; width: 124px; height: 40px;
             border-radius: 8px; border-width: 1px; border-color: addc.has-hover ? G.accent : G.line;
-            Text { text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: addc.has-hover ? G.accent : #8A8C96; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+            Text { text: @tr("+ КОЛОНКА"); font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: addc.has-hover ? G.accent : #8A8C96; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
             addc := TouchArea { clicked => { S.ls-show(); } mouse-cursor: pointer; }
         }
         cols := HorizontalLayout {
@@ -299,7 +299,7 @@ component Kanban inherits Rectangle {
                             }
                             if col.done && col.count > 2 && root.open-done != col.id: Text {
                                 height: 26px;
-                                text: "+ ЕЩЁ " + (col.count - 2) + " · СВЕРНУТО";
+                                text: @tr("+ ЕЩЁ {} · СВЕРНУТО", col.count - 2);
                                 font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96;
                                 horizontal-alignment: center; vertical-alignment: center;
                                 TouchArea { clicked => { root.open-done = col.id; } mouse-cursor: pointer; }
@@ -309,17 +309,17 @@ component Kanban inherits Rectangle {
                                 border-radius: 8px;
                                 border-width: 1px;
                                 border-color: G.accent-line;
-                                lt := Text { x: 10px; y: 9px; width: parent.width - 20px; text: col.count >= col.limit ? "Лимит " + col.limit + ". Сначала закончи одну." : "Лимит " + col.limit + ". Можно взять ещё " + (col.limit - col.count) + "."; font-size: 12.5px; color: G.accent-ink; wrap: word-wrap; }
+                                lt := Text { x: 10px; y: 9px; width: parent.width - 20px; text: col.count >= col.limit ? @tr("Лимит {}. Сначала закончи одну.", col.limit) : @tr("Лимит {}. Можно взять ещё {}.", col.limit, col.limit - col.count); font-size: 12.5px; color: G.accent-ink; wrap: word-wrap; }
                             }
-                            if col.over: Text { text: "Больше лимита — сначала доделай начатое"; color: G.red; font-size: 11px; wrap: word-wrap; }
+                            if col.over: Text { text: @tr("Больше лимита — сначала доделай начатое"); color: G.red; font-size: 11px; wrap: word-wrap; }
                             if col.cards.length == 0: Rectangle {
                                 height: 110px;
                                 Sat { x: (parent.width - 40px) / 2; y: 16px; width: 40px; height: 40px; c: G.grey; opacity: 0.8; }
-                                Text { y: 68px; width: parent.width; text: "ТУТ ПОКА ПУСТОВАТО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; horizontal-alignment: center; }
+                                Text { y: 68px; width: parent.width; text: @tr("ТУТ ПОКА ПУСТОВАТО"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; horizontal-alignment: center; }
                             }
                             // добавить в колонку
                             if root.adding == col.id: Field {
-                                placeholder: "Название · Enter — добавить, Esc — отмена";
+                                placeholder: @tr("Название · Enter — добавить, Esc — отмена");
                                 font-size: 13px;
                                 init => { self.grab(); }
                                 accepted(t) => { if (t != "") { S.add-card(S.board-id, col.id, t); self.clear(); } }
@@ -330,7 +330,7 @@ component Kanban inherits Rectangle {
                                 border-radius: 8px;
                                 border-width: 1px;
                                 border-color: aa.has-hover ? G.accent : G.line-strong;
-                                Text { x: 12px; text: "＋ Добавить задачу"; color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                                Text { x: 12px; text: @tr("＋ Добавить задачу"); color: #A3A5AE; font-size: 13px; vertical-alignment: center; }
                                 Text { x: parent.width - 20px; text: "N"; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; }
                                 aa := TouchArea { clicked => { root.adding = col.id; } mouse-cursor: pointer; }
                             }
@@ -407,7 +407,7 @@ component Stickers inherits Rectangle {
                         border-radius: 4px;
                         border-width: 1px;
                         border-color: #55575F;
-                        Field { x: 8px; y: 6px; width: parent.width - 16px; bare: true; font-size: 13px; placeholder: "+ Стикер"; accepted(t) => { if (t != "") { S.add-card(S.board-id, lane.id, t); self.clear(); } } }
+                        Field { x: 8px; y: 6px; width: parent.width - 16px; bare: true; font-size: 13px; placeholder: @tr("+ Стикер"); accepted(t) => { if (t != "") { S.add-card(S.board-id, lane.id, t); self.clear(); } } }
                     }
                 }
                 // стикеры: одно место на каждый, x/y едут при смене раскладки
@@ -509,10 +509,10 @@ component Stickers inherits Rectangle {
                             background: [#F0C56A, #8FD19A, #9DB8F5, #F0A87A, #C9A8F0][mod(i, 5)];
                         }
                     }
-                    Text { x: 102px; y: 22px; text: "Баночка · " + S.stk-jar + " за неделю"; font-size: 14px; font-weight: 600; color: G.ink; }
+                    Text { x: 102px; y: 22px; text: @tr("Баночка · {} за неделю", S.stk-jar); font-size: 14px; font-weight: 600; color: G.ink; }
                     Text { x: 102px; y: 46px; width: parent.width - 120px; text: S.stk-last; font-size: 12.5px; color: #A3A5AE; wrap: word-wrap; }
                     Text {
-                        x: 102px; y: 86px; text: "Открыть баночку"; font-size: 12.5px; color: G.accent;
+                        x: 102px; y: 86px; text: @tr("Открыть баночку"); font-size: 12.5px; color: G.accent;
                         TouchArea { clicked => { S.open-archive(); } mouse-cursor: pointer; }
                     }
                 }
@@ -537,9 +537,9 @@ component ListView inherits Rectangle {
             background: G.head-main;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
-                Text { text: S.board-title.to-uppercase() + " · ВСЕ ЗАДАЧИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                Text { text: @tr("{} · ВСЕ ЗАДАЧИ", S.board-title.to-uppercase()); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
                 Rectangle { }
-                Text { text: S.board-open + " ОТКРЫТО"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; }
+                Text { text: @tr("{} ОТКРЫТО", S.board-open); font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; }
             }
         }
         ScrollView {
@@ -573,18 +573,18 @@ component ListView inherits Rectangle {
                                 Rectangle { x: 0; y: 21px; height: 3px; border-radius: 1.5px; background: #45464D; }
                                 Rectangle { x: 0; y: 21px; width: parent.width * c.sub-done / c.sub-total; height: 3px; border-radius: 1.5px; background: G.violet; }
                             }
-                            if c.sub-total > 0: Text { text: "УРОК " + c.sub-done + "/" + c.sub-total; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; width: 76px; }
-                            Text { text: c.due == "БЕЗ СРОКА" ? "—" : c.due; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: c.overdue ? G.red : #8A8C96; vertical-alignment: center; horizontal-alignment: right; width: 110px; }
+                            if c.sub-total > 0: Text { text: @tr("УРОК {}/{}", c.sub-done, c.sub-total); font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; width: 76px; }
+                            Text { text: c.due == @tr("БЕЗ СРОКА") ? "—" : c.due; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: c.overdue ? G.red : #8A8C96; vertical-alignment: center; horizontal-alignment: right; width: 110px; }
                         }
                         Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                     }
                 }
-                if S.columns.length == 0: Empty { height: 160px; text: "Открытых задач нет"; pose: "cheer"; }
+                if S.columns.length == 0: Empty { height: 160px; text: @tr("Открытых задач нет"); pose: "cheer"; }
                 Rectangle {
                     height: 44px;
                     if root.adding == "": HorizontalLayout {
                         x: 16px; spacing: 8px;
-                        Text { text: "+ Добавить задачу"; font-size: 13px; color: aa.has-hover ? G.ink : #A3A5AE; vertical-alignment: center; }
+                        Text { text: @tr("+ Добавить задачу"); font-size: 13px; color: aa.has-hover ? G.ink : #A3A5AE; vertical-alignment: center; }
                         Rectangle { width: 18px; height: 18px; y: 13px; border-radius: 3px; border-width: 1px; border-color: #55575F;
                             Text { text: "N"; font-family: G.mono; font-size: 9px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; } }
                         Rectangle { }
@@ -592,7 +592,7 @@ component ListView inherits Rectangle {
                     aa := TouchArea { enabled: root.adding == ""; clicked => { root.adding = "x"; } mouse-cursor: pointer; }
                     if root.adding != "": Field {
                         x: 12px; y: 5px; width: parent.width - 24px;
-                        placeholder: "Название · Enter — добавить, Esc — отмена";
+                        placeholder: @tr("Название · Enter — добавить, Esc — отмена");
                         font-size: 13px;
                         init => { self.grab(); }
                         accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } }
@@ -638,7 +638,7 @@ component Gallery inherits Rectangle {
                 height: 30px;
                 spacing: 8px;
                 alignment: start;
-                for st[i] in ["Все этапы"]: Rectangle {
+                for st[i] in [@tr("Все этапы")]: Rectangle {
                     width: at.preferred-width + 26px;
                     border-radius: 8px;
                     border-width: 1px;
@@ -676,7 +676,7 @@ component Gallery inherits Rectangle {
                         x: 0; y: 0; height: 180px;
                         background: G.accent-wash;
                         if r.has-thumb: Image { width: parent.width; height: parent.height; source: r.thumb; image-fit: cover; }
-                        if !r.has-thumb: Text { width: parent.width - 40px; x: 20px; height: parent.height; text: "Перетащи или вставь картинку · Ctrl V"; font-size: 12.5px; color: #A3A5AE; wrap: word-wrap; horizontal-alignment: center; vertical-alignment: center; }
+                        if !r.has-thumb: Text { width: parent.width - 40px; x: 20px; height: parent.height; text: @tr("Перетащи или вставь картинку · Ctrl V"); font-size: 12.5px; color: #A3A5AE; wrap: word-wrap; horizontal-alignment: center; vertical-alignment: center; }
                         if r.size != "": Text { x: parent.width - self.preferred-width - 10px; y: parent.height - 20px; text: r.size; font-family: G.mono; font-size: 9.5px; color: #ffffffc0; }
                     }
                     Text { x: 12px; y: 190px; width: parent.width - 100px; text: r.title; font-size: 13.5px; font-weight: 600; color: G.ink; overflow: elide; }
@@ -705,7 +705,7 @@ component Archive inherits Rectangle {
             background: G.head-main;
             HorizontalLayout {
                 padding-left: 12px; padding-right: 12px;
-                Text { text: "АРХИВ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+                Text { text: @tr("АРХИВ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
                 Rectangle { }
                 Text { text: S.arch-info; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; }
                 Rectangle {
@@ -718,8 +718,8 @@ component Archive inherits Rectangle {
         HorizontalLayout {
             x: 16px; y: 46px; height: 32px; width: parent.width - 32px;
             spacing: 8px;
-            GSeg { items: ["ЗАДАЧИ · " + S.arch-tn, "СФЕРЫ И СПИСКИ · " + S.arch-n]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
-            Field { width: 260px; font-size: 13px; placeholder: "Найти в архиве"; edited(t) => { S.arch-q-set(t); } }
+            GSeg { items: [@tr("ЗАДАЧИ · {}", S.arch-tn), @tr("СФЕРЫ И СПИСКИ · {}", S.arch-n)]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
+            Field { width: 260px; font-size: 13px; placeholder: @tr("Найти в архиве"); edited(t) => { S.arch-q-set(t); } }
             for o in S.arch-spheres: Rectangle {
                 width: ot.preferred-width + (o.id == "" ? 26px : 40px);
                 border-radius: 8px;
@@ -754,13 +754,13 @@ component Archive inherits Rectangle {
                             border-radius: 6px;
                             border-width: 1px;
                             border-color: ra.has-hover ? G.line-strong : #6E7079;
-                            Text { text: "Вернуть"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                            Text { text: @tr("Вернуть"); font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                             ra := TouchArea { clicked => { S.toggle(r.list-id, r.id); } mouse-cursor: pointer; }
                         }
                         Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                     }
                 }
-                if S.arch-rows.length == 0: Empty { height: 200px; text: "Архив пуст: сделанное больше 3 дней назад уходит сюда само"; pose: "sleep"; }
+                if S.arch-rows.length == 0: Empty { height: 200px; text: @tr("Архив пуст: сделанное больше 3 дней назад уходит сюда само"); pose: "sleep"; }
             }
         }
     }
@@ -815,11 +815,11 @@ export component BoardPage inherits Rectangle {
                 if S.board-view != "pipe" && S.board-view != "stickers": Text { text: S.board-tpl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; }
                 if S.board-view == "pipe": Text { text: S.pipe-info; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 if S.board-view == "pipe": Rectangle { width: 1px; height: 20px; y: 14px; background: G.line; }
-                if S.board-view == "stickers": GSeg { items: ["ПО ТЕМАМ", "ПО СРОКАМ"]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
-                if S.board-view == "pipe": GSeg { items: ["СТРОКИ", "ГАЛЕРЕЯ"]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
-                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { items: ["ПО ПРОЕКТАМ", "ПО ЭТАПАМ"]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
+                if S.board-view == "stickers": GSeg { items: [@tr("ПО ТЕМАМ"), @tr("ПО СРОКАМ")]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
+                if S.board-view == "pipe": GSeg { items: [@tr("СТРОКИ"), @tr("ГАЛЕРЕЯ")]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
+                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { items: [@tr("ПО ПРОЕКТАМ"), @tr("ПО ЭТАПАМ")]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
                 Rectangle { }
-                if S.archived > 0: Text { text: "В АРХИВЕ · " + S.archived; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; vertical-alignment: center; color: #62646E; }
+                if S.archived > 0: Text { text: @tr("В АРХИВЕ · {}", S.archived); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; vertical-alignment: center; color: #62646E; }
                 Rectangle {
                     y: 7px; height: 34px;
                     width: vs.preferred-width + 8px;
@@ -830,7 +830,7 @@ export component BoardPage inherits Rectangle {
                         x: 4px;
                         padding-top: 3px; padding-bottom: 3px;
                         spacing: 2px;
-                        for v[i] in ["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ", "СПИСОК"]: Rectangle {
+                        for v[i] in [@tr("КАНБАН"), @tr("КОНВЕЙЕР"), @tr("СТИКЕРЫ"), @tr("СПИСОК")]: Rectangle {
                             property <bool> on: (S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0) == i;
                             width: vt.preferred-width + 20px;
                             border-radius: 5px;
@@ -844,7 +844,7 @@ export component BoardPage inherits Rectangle {
         }
         Rectangle {
             x: 0; y: 64px; height: parent.height - 64px - (S.board-view == "kanban" ? 24px : 0);
-            if S.board-id == "": Empty { text: "Выбери список слева или создай новый"; pose: "think"; }
+            if S.board-id == "": Empty { text: @tr("Выбери список слева или создай новый"); pose: "think"; }
             if S.board-id != "" && S.board-view == "kanban": Kanban { }
             if S.board-id != "" && S.board-view == "pipe" && !S.pipe-gallery: Pipe { }
             if S.board-id != "" && S.board-view == "pipe" && S.pipe-gallery: Gallery { }
@@ -876,7 +876,7 @@ export component BoardPage inherits Rectangle {
             drop-shadow-color: #0009;
             mv := VerticalLayout {
                 padding: 6px;
-                for m[i] in ["Настройки списка", "Переименовать", "Удалить список…"]: Rectangle {
+                for m[i] in [@tr("Настройки списка"), @tr("Переименовать"), @tr("Удалить список…")]: Rectangle {
                     height: 32px;
                     border-radius: 4px;
                     background: ma.has-hover ? G.node-hover : transparent;

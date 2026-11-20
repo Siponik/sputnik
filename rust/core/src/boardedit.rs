@@ -3,15 +3,15 @@ use crate::j::*;
 
 pub fn field_info_list() -> Value {
     json!([
-        {"id": "due", "name": "Срок", "group": "card", "what": "чип «пт» / «сегодня»"},
-        {"id": "prio", "name": "Приоритет", "group": "card", "what": "!!! слева от названия и полоска"},
-        {"id": "type", "name": "Тип", "group": "card", "what": "цвет полоски и чип «#работа»"},
-        {"id": "subtasks", "name": "Подзадачи", "group": "card", "what": "«☑ 2 из 4» на карточке"},
-        {"id": "time", "name": "Учёт времени", "group": "card", "what": "«⏱ 1 ч 15 мин», кнопка таймера"},
-        {"id": "stage", "name": "Дорожка этапов", "group": "card", "what": "полоска этапов под названием"},
-        {"id": "progress", "name": "Прогресс", "group": "card", "what": "«3 из 10 уроков» — для учёбы"},
-        {"id": "client", "name": "Клиент", "group": "drawer", "what": "поле в окне задачи + на карточке"},
-        {"id": "money", "name": "Сумма", "group": "drawer", "what": "поле в окне задачи, итог колонки"},
+        {"id": "due", "name": crate::t!("Срок"), "group": "card", "what": crate::t!("чип «пт» / «сегодня»")},
+        {"id": "prio", "name": crate::t!("Приоритет"), "group": "card", "what": crate::t!("!!! слева от названия и полоска")},
+        {"id": "type", "name": crate::t!("Тип"), "group": "card", "what": crate::t!("цвет полоски и чип «#работа»")},
+        {"id": "subtasks", "name": crate::t!("Подзадачи"), "group": "card", "what": crate::t!("«☑ 2 из 4» на карточке")},
+        {"id": "time", "name": crate::t!("Учёт времени"), "group": "card", "what": crate::t!("«⏱ 1 ч 15 мин», кнопка таймера")},
+        {"id": "stage", "name": crate::t!("Дорожка этапов"), "group": "card", "what": crate::t!("полоска этапов под названием")},
+        {"id": "progress", "name": crate::t!("Прогресс"), "group": "card", "what": crate::t!("«3 из 10 уроков» — для учёбы")},
+        {"id": "client", "name": crate::t!("Клиент"), "group": "drawer", "what": crate::t!("поле в окне задачи + на карточке")},
+        {"id": "money", "name": crate::t!("Сумма"), "group": "drawer", "what": crate::t!("поле в окне задачи, итог колонки")},
     ])
 }
 
@@ -83,9 +83,7 @@ pub fn toggle_field(fields: &[Value], f: &Value) -> Vec<Value> {
 
 /// «1 задача», «3 задачи», «5 задач».
 pub fn word(n: i64, one: &str, few: &str, many: &str) -> String {
-    let (a, b) = (n % 10, n % 100);
-    let w = if a == 1 && b != 11 { one } else if (2..=4).contains(&a) && !(12..=14).contains(&b) { few } else { many };
-    format!("{n} {w}")
+    format!("{n} {}", crate::habits::plural(n, [one, few, many]))
 }
 
 pub fn tasks_word(n: i64) -> String { word(n, "задача", "задачи", "задач") }
@@ -105,21 +103,21 @@ pub fn changes(from: &Value, draft: &Value) -> Vec<String> {
     let has = |id: &Value| fc.iter().any(|c| c["id"] == *id);
     let old = |id: &Value| fc.iter().find(|c| c["id"] == *id);
     for c in dc.iter().filter(|c| !has(&c["id"])) {
-        out.push(format!("колонка «{}»", text(&c["name"])));
+        out.push(crate::t!("колонка «{}»", text(&c["name"])));
     }
     for c in fc.iter().filter(|c| !dc.iter().any(|x| x["id"] == c["id"])) {
-        out.push(format!("убрана «{}»", text(&c["name"])));
+        out.push(crate::t!("убрана «{}»", text(&c["name"])));
     }
     for c in dc.iter().filter(|c| has(&c["id"]) && old(&c["id"]).unwrap()["name"] != c["name"]) {
-        out.push(format!("«{}»", text(&c["name"])));
+        out.push(crate::t!("«{}»", text(&c["name"])));
     }
     let kept: Vec<String> = dc.iter().filter(|c| has(&c["id"])).map(|c| text(&c["id"])).collect();
     let was: Vec<String> = fc.iter().filter(|c| kept.contains(&text(&c["id"]))).map(|c| text(&c["id"])).collect();
     if kept.join(",") != was.join(",") {
-        out.push("порядок колонок".into());
+        out.push(crate::t!("порядок колонок").into());
     }
     if dc.iter().any(|c| old(&c["id"]).is_some_and(|o| !same(&or0(&o["color"]), &or0(&c["color"])) || !same(&or0(&o["limit"]), &or0(&c["limit"])))) {
-        out.push("цвет или лимит".into());
+        out.push(crate::t!("цвет или лимит").into());
     }
     let f = |x: &Value| {
         let mut l: Vec<String> = a(&x["fields"]).iter().map(text).collect();
@@ -127,10 +125,10 @@ pub fn changes(from: &Value, draft: &Value) -> Vec<String> {
         l.join(",")
     };
     if f(from) != f(draft) {
-        out.push("поля".into());
+        out.push(crate::t!("поля").into());
     }
     if from["view"] != draft["view"] {
-        out.push("вид".into());
+        out.push(crate::t!("вид").into());
     }
     out
 }

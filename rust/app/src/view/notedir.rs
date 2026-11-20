@@ -1,4 +1,5 @@
 //! «Знания»: меню папки в дереве — цвет, «удалить только папку» (содержимое поднимается выше), «удалить со всем» (в `.trash`).
+use sputnik_core::t;
 use super::*;
 use crate::MItem;
 use std::collections::BTreeMap;
@@ -36,15 +37,15 @@ pub fn items(m: &super::menu::Menu) -> (String, Vec<MItem>) {
     let name = m.id.rsplit('/').next().unwrap_or(&m.id).to_string();
     if m.sub == "color" {
         let cur = colors().get(&m.id).cloned().unwrap_or_default();
-        let mut v = vec![MItem { on: cur.is_empty(), ..it("dir-color:", "По умолчанию", "circle") }];
-        v.extend(COLORS.iter().map(|(h, l)| MItem { on: cur == *h, hue: super::canvas::hex_color(&format!("#{h}")).unwrap_or_default(), ..it(&format!("dir-color:{h}"), l, "circle") }));
-        return (format!("{name} · цвет"), v);
+        let mut v = vec![MItem { on: cur.is_empty(), ..it("dir-color:", t!("По умолчанию"), "circle") }];
+        v.extend(COLORS.iter().map(|(h, l)| MItem { on: cur == *h, hue: super::canvas::hex_color(&format!("#{h}")).unwrap_or_default(), ..it(&format!("dir-color:{h}"), sputnik_core::i18n::tr(l), "circle") }));
+        return (t!("{} · цвет", name), v);
     }
-    (format!("Папка · {name}"), vec![
-        MItem { sub: true, ..it("sub:color", "Цвет", "spheres") },
-        MItem { sep: true, ..it("dir-dir", "Показать в папке Windows", "folder") },
-        MItem { sep: true, red: true, ..it("dir-lift", "Удалить только папку…", "trash") },
-        MItem { red: true, ..it("dir-trash", "Удалить со всем содержимым…", "trash") },
+    (t!("Папка · {}", name), vec![
+        MItem { sub: true, ..it("sub:color", t!("Цвет"), "spheres") },
+        MItem { sep: true, ..it("dir-dir", t!("Показать в папке Windows"), "folder") },
+        MItem { sep: true, red: true, ..it("dir-lift", t!("Удалить только папку…"), "trash") },
+        MItem { red: true, ..it("dir-trash", t!("Удалить со всем содержимым…"), "trash") },
     ])
 }
 
@@ -60,8 +61,8 @@ pub fn pick(app: &mut App, u: &mut Ui, dir: String, id: &str) {
     let n = files(&root.join(&dir)).len();
     match id {
         "dir-dir" => { let _ = open::that(root.join(&dir)); }
-        "dir-lift" => super::wire::ask(u, format!("Удалить папку «{name}»? Её файлы ({n}) останутся — переедут на уровень выше."), "Удалить папку", move |app, u| lift(app, u, &dir)),
-        "dir-trash" => super::wire::ask(u, format!("Удалить папку «{name}» со всем содержимым ({n})? Всё ляжет в папку .trash внутри папки заметок."), "Удалить всё", move |app, u| trash(app, u, &dir)),
+        "dir-lift" => super::wire::ask(u, t!("Удалить папку «{}»? Её файлы ({}) останутся — переедут на уровень выше.", name, n), t!("Удалить папку"), move |app, u| lift(app, u, &dir)),
+        "dir-trash" => super::wire::ask(u, t!("Удалить папку «{}» со всем содержимым ({})? Всё ляжет в папку .trash внутри папки заметок.", name, n), t!("Удалить всё"), move |app, u| trash(app, u, &dir)),
         _ => {}
     }
 }
@@ -112,7 +113,7 @@ fn lift(app: &mut App, u: &mut Ui, dir: &str) {
     u.cv = None;
     app.notes.rescan();
     super::canvas::ensure(app, u);
-    app.say(format!("Папка удалена, файлов поднято выше: {moved}"));
+    app.say(t!("Папка удалена, файлов поднято выше: {}", moved));
 }
 
 fn trash(app: &mut App, u: &mut Ui, dir: &str) {
@@ -124,7 +125,7 @@ fn trash(app: &mut App, u: &mut Ui, dir: &str) {
     let to = free(&format!(".trash/{dir}"), |p| root.join(p).exists());
     if let Some(d) = root.join(&to).parent() { let _ = std::fs::create_dir_all(d); }
     if let Err(e) = std::fs::rename(root.join(dir), root.join(&to)) {
-        app.say(format!("Не удалилось: {e}"));
+        app.say(t!("Не удалилось: {}", e));
         return;
     }
     let inside = |p: &str| p.starts_with(&format!("{dir}/"));
@@ -134,7 +135,7 @@ fn trash(app: &mut App, u: &mut Ui, dir: &str) {
     u.cv = None;
     app.notes.rescan();
     super::canvas::ensure(app, u);
-    app.say(format!("Папка «{}» — в корзине (.trash)", dir.rsplit('/').next().unwrap_or(dir)));
+    app.say(t!("Папка «{}» — в корзине (.trash)", dir.rsplit('/').next().unwrap_or(dir)));
 }
 
 /// Забыть цвет и раскрытость удалённой папки.

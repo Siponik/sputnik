@@ -80,7 +80,7 @@ pub fn resolve(text: &str, kind: i32, m: &Manual, dur: i64, today: NaiveDate) ->
     // распознанное в строке — чипы «Понял» с крестиком
     let mut toks = vec![];
     if cut_when {
-        let d = p["day"].as_str().map(|d| short(d, today)).unwrap_or_else(|| "сегодня".into());
+        let d = p["day"].as_str().map(|d| short(d, today)).unwrap_or_else(|| crate::t!("сегодня").into());
         let l = match p["time"].as_str() { Some(t) => format!("{d} · {t}"), None => d };
         toks.push(json!({"k": "when", "l": l, "over": m.when.is_some()}));
     }
@@ -114,16 +114,16 @@ pub fn resolve(text: &str, kind: i32, m: &Manual, dur: i64, today: NaiveDate) ->
 pub fn short(day: &str, today: NaiveDate) -> String {
     let Some(d) = dates::parse_ymd(day) else { return String::new() };
     match (d - today).num_days() {
-        0 => "сегодня".into(),
-        1 => "завтра".into(),
-        2 => "послезавтра".into(),
+        0 => crate::t!("сегодня").into(),
+        1 => crate::t!("завтра").into(),
+        2 => crate::t!("послезавтра").into(),
         _ => cr::short_day(day),
     }
 }
 
 /// Подпись выбранного срока для строки «Когда»: «Завтра, 12 ноября · 15:00–16:00» или «Без срока».
 pub fn when_label(day: &Value, slot: &Value, today: NaiveDate) -> String {
-    let Some(d) = day.as_str() else { return "Без срока".into() };
+    let Some(d) = day.as_str() else { return crate::t!("Без срока").into() };
     let (a, _) = when::when_text(d, None, today);
     match (slot["s"].as_str(), slot["e"].as_str()) {
         (Some(s), Some(e)) if s != e => format!("{a} · {s}–{e}"),
@@ -137,22 +137,20 @@ pub fn quick_days(today: NaiveDate) -> Vec<(&'static str, &'static str, Option<S
     let wd = today.weekday().num_days_from_monday() as i64;
     let mon = dates::add_days(today, 7 - wd);
     vec![
-        ("today", "Сегодня", Some(dates::ymd(today))),
-        ("tomorrow", "Завтра", Some(dates::ymd(dates::add_days(today, 1)))),
-        ("mon", "Пн", Some(dates::ymd(mon))),
-        ("week", "След. неделя", Some(dates::ymd(dates::add_days(today, 7)))),
-        ("none", "Без срока", None),
+        ("today", crate::t!("Сегодня"), Some(dates::ymd(today))),
+        ("tomorrow", crate::t!("Завтра"), Some(dates::ymd(dates::add_days(today, 1)))),
+        ("mon", crate::t!("Пн"), Some(dates::ymd(mon))),
+        ("week", crate::t!("След. неделя"), Some(dates::ymd(dates::add_days(today, 7)))),
+        ("none", crate::t!("Без срока"), None),
     ]
 }
 
-const WD: [&str; 7] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
-const MON3: [&str; 12] = ["янв", "фев", "мар", "апр", "мая", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 
 /// Полоса из 7 дней с сегодняшнего: (день «ГГГГ-ММ-ДД», «ПТ», «6»).
 pub fn strip(today: NaiveDate) -> Vec<(String, String, String)> {
     (0..7).map(|i| {
         let d = dates::add_days(today, i);
-        (dates::ymd(d), WD[d.weekday().num_days_from_monday() as usize].to_string(), d.day().to_string())
+        (dates::ymd(d), crate::i18n::wd(d.weekday().num_days_from_monday() as usize).to_uppercase(), d.day().to_string())
     }).collect()
 }
 
@@ -163,15 +161,15 @@ pub fn times() -> Vec<String> {
 
 /// «→ Попадёт»: колонка доски; со сроком — ещё день в «Сегодня» и неделя в календаре.
 pub fn lands(day: &Value, slot: &Value, col: &str, today: NaiveDate) -> Vec<String> {
-    let mut v = vec![format!("Доска · колонка «{col}»")];
+    let mut v = vec![crate::t!("Доска · колонка «{}»", col)];
     let Some(d) = day.as_str().and_then(dates::parse_ymd) else { return v };
     let at = slot["s"].as_str().map(|s| format!(" · {s}")).unwrap_or_default();
-    let wd = WD[d.weekday().num_days_from_monday() as usize].to_lowercase();
-    v.push(if d == today { format!("«Сегодня» сразу{at}") } else { format!("«Сегодня» в {wd} {}{at}", d.day()) });
+    let wd = crate::i18n::wd(d.weekday().num_days_from_monday() as usize).to_lowercase();
+    v.push(if d == today { crate::t!("«Сегодня» сразу{}", at) } else { crate::t!("«Сегодня» в {} {}{}", wd, d.day(), at) });
     let a = dates::add_days(d, -(d.weekday().num_days_from_monday() as i64));
     let b = dates::add_days(a, 6);
-    let m = |x: NaiveDate| MON3[x.month0() as usize];
-    v.push(if a.month() == b.month() { format!("Календарь · неделя {}–{} {}", a.day(), b.day(), m(b)) } else { format!("Календарь · неделя {} {}–{} {}", a.day(), m(a), b.day(), m(b)) });
+    let m = |x: NaiveDate| crate::i18n::month_short(x.month0() as usize);
+    v.push(if a.month() == b.month() { crate::t!("Календарь · неделя {}–{} {}", a.day(), b.day(), m(b)) } else { crate::t!("Календарь · неделя {} {}–{} {}", a.day(), m(a), b.day(), m(b)) });
     v
 }
 

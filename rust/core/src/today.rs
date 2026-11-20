@@ -99,7 +99,7 @@ pub fn understood(p: &Value, today: &str) -> Vec<Value> {
     }
     let day = if p["day"].is_null() { today.to_string() } else { j::s(&p["day"]).to_string() };
     let date = if day == today {
-        "сегодня".to_string()
+        crate::t!("сегодня").to_string()
     } else {
         crate::when::when_text(&day, None, crate::dates::parse_ymd(today).unwrap()).0.to_lowercase()
     };

@@ -1,4 +1,5 @@
 //! Граф знаний (G_NotesGraph): нода «Фильтры» слева, граф в середине, панель «Читаю» справа.
+use sputnik_core::t;
 use super::*;
 use crate::{GDot, GLine, Opt};
 use sputnik_core::graph as gr;
@@ -10,7 +11,7 @@ const HUES: [u32; 7] = [0xF0A04B, 0xB48CF0, 0x6FA2F2, 0x7FD18C, 0xE8C65A, 0xF078
 fn group(path: &str) -> String {
     match path.split_once('/') {
         Some((f, _)) => f.to_string(),
-        None => "Без папки".into(),
+        None => t!("Без папки").into(),
     }
 }
 
@@ -23,7 +24,7 @@ pub fn groups(app: &App) -> Vec<(String, Color, usize)> {
     fs.into_iter().map(|f| {
         let n = app.notes.notes.iter().filter(|x| group(&x.path) == f).count();
         let low = f.to_lowercase();
-        let c = if let Some(c) = super::notedir::color_of(&f) { c } else if low.contains("входящ") || f == "Без папки" { hex(0xA3A5AE) } else { k += 1; hex(HUES[(k - 1) % HUES.len()]) };
+        let c = if let Some(c) = super::notedir::color_of(&f) { c } else if low.contains("входящ") || f == t!("Без папки") { hex(0xA3A5AE) } else { k += 1; hex(HUES[(k - 1) % HUES.len()]) };
         (f, c, n)
     }).collect()
 }
@@ -35,7 +36,7 @@ fn when(ms: i64) -> String {
     }
     let Some(d) = chrono::Local.timestamp_millis_opt(ms).single() else { return String::new() };
     let today = chrono::Local::now().date_naive();
-    if d.date_naive() == today { format!("изменено {}", d.format("%H:%M")) } else { format!("изменено {}", d.format("%d.%m")) }
+    if d.date_naive() == today { t!("изменено {}", d.format("%H:%M")) } else { t!("изменено {}", d.format("%d.%m")) }
 }
 
 pub fn render(app: &App, u: &Ui, g: &S) {

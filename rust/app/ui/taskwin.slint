@@ -92,8 +92,8 @@ export component TaskDialog inherits Overlay {
     property <int> pop;           // 1 напоминания, 2 приоритет, 3 повтор
     property <string> repeat-label: S.t-repeats.length == 0 ? "" : S.t-repeats[0].on ? "" : S.t-repeats[1].on ? S.t-repeats[1].label : S.t-repeats.length > 2 && S.t-repeats[2].on ? S.t-repeats[2].label : S.t-repeats.length > 3 && S.t-repeats[3].on ? S.t-repeats[3].label : S.t-repeats.length > 4 && S.t-repeats[4].on ? S.t-repeats[4].label : S.t-repeats.length > 5 && S.t-repeats[5].on ? S.t-repeats[5].label : "";
     property <[Opt]> pop-items: pop == 1 ? S.t-reminds : pop == 3 ? S.t-repeats : [
-        { id: "1", label: "!!! Высокий", on: S.t-prio == 1 }, { id: "2", label: "!! Средний", on: S.t-prio == 2 },
-        { id: "3", label: "! Низкий", on: S.t-prio == 3 }, { id: "0", label: "Нет", on: S.t-prio == 0 }];
+        { id: "1", label: @tr("!!! Высокий"), on: S.t-prio == 1 }, { id: "2", label: @tr("!! Средний"), on: S.t-prio == 2 },
+        { id: "3", label: @tr("! Низкий"), on: S.t-prio == 3 }, { id: "0", label: @tr("Нет"), on: S.t-prio == 0 }];
     property <bool> done-open;
     property <int> drag-i: -1;
     property <int> drag-to: -1;
@@ -166,7 +166,7 @@ export component TaskDialog inherits Overlay {
                 property <length> sub-h: root.note-full ? 0px : min(lh * 0.4, 30px + (S.t-subs.length > 0 ? 11px : 0px) + S.t-subs-open.length * 32px + 32px + (S.t-subs-done > 0 ? 32px : 0px) + (root.done-open ? S.t-subs-donelist.length * 32px : 0px) + 2px);
                 if !root.note-full: Card {
                     x: 24px; y: 0; width: root.lw; height: sub-h;
-                    CardHead { y: 0; text: "ПОДЗАДАЧИ"; right: S.t-subs.length > 0 ? S.t-subs-done + " / " + S.t-subs.length : ""; }
+                    CardHead { y: 0; text: @tr("ПОДЗАДАЧИ"); right: S.t-subs.length > 0 ? S.t-subs-done + " / " + S.t-subs.length : ""; }
                     if S.t-subs.length > 0: Rectangle {
                         x: 10px; y: 30px; width: parent.width - 20px; height: 3px; border-radius: 1.5px; background: #45464D;
                         Rectangle { x: 0; width: parent.width * S.t-subs-done / max(1, S.t-subs.length); border-radius: 1.5px; background: G.violet; }
@@ -211,7 +211,7 @@ export component TaskDialog inherits Overlay {
                             Rectangle {
                                 height: 32px;
                                 Rectangle { y: 0; height: 1px; background: G.line-soft; }
-                                Field { x: 4px; width: parent.width - 8px; height: 32px; bare: true; font-size: 12.5px; placeholder: "＋ подзадача · Enter"; accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
+                                Field { x: 4px; width: parent.width - 8px; height: 32px; bare: true; font-size: 12.5px; placeholder: @tr("＋ подзадача · Enter"); accepted(t) => { if (t != "") { S.t-sub-add(t); self.clear(); } } }
                             }
                             if S.t-subs-done > 0: Rectangle {
                                 height: 32px;
@@ -219,7 +219,7 @@ export component TaskDialog inherits Overlay {
                                 HorizontalLayout {
                                     padding-left: 10px; spacing: 6px; alignment: start;
                                     Icon { y: 9px; width: 14px; height: 14px; name: "check"; c: G.green; }
-                                    Text { text: "сделано " + S.t-subs-done; font-size: 12.5px; color: G.muted; vertical-alignment: center; }
+                                    Text { text: @tr("сделано {}", S.t-subs-done); font-size: 12.5px; color: G.muted; vertical-alignment: center; }
                                     Chev { y: 11px; up: root.done-open; c: G.muted; }
                                 }
                                 TouchArea { clicked => { root.done-open = !root.done-open; } mouse-cursor: pointer; }
@@ -245,7 +245,7 @@ export component TaskDialog inherits Overlay {
                     x: 24px; y: sub-h + (root.note-full ? 0 : 10px); width: root.lw; height: lh - sub-h - (root.note-full ? 0 : 10px);
                     border-color: nb.focused ? G.accent-line : G.line;
                     animate border-color { duration: G.fast; }
-                    Text { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; }
+                    Text { x: 10px; y: 0; height: 30px; text: @tr("ЗАМЕТКА"); font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1.4px; color: G.muted; vertical-alignment: center; }
                     Text { x: 84px; y: 0; height: 30px; text: "MARKDOWN"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
                     Rectangle {
                         x: parent.width - 28px; y: 4px; width: 22px; height: 22px;
@@ -273,15 +273,15 @@ export component TaskDialog inherits Overlay {
                         // выпадашки времени и даты выходят за карточку — не обрезать и держать над «Свойствами»
                         clip: !(tbx.open || S.dp-drop == "task");
                         z: tbx.open || S.dp-drop == "task" ? 20 : 0;
-                        CardHead { y: 0; text: "КОГДА"; }
+                        CardHead { y: 0; text: @tr("КОГДА"); }
                         // время и дата в один ряд, как в макете G_TaskFull: время 140 px, дата — остальное
                         tbx := TimeBox { x: 10px; y: 30px; width: 140px; height: 34px; z: self.open ? 20 : 0; border-radius: 8px;
-                            val: S.t-time; label: S.t-time-label; empty: "Весь день"; clearable: true; picked(t) => { S.t-time-set(t); } }
+                            val: S.t-time; label: S.t-time-label; empty: @tr("Весь день"); clearable: true; picked(t) => { S.t-time-set(t); } }
                         Rectangle {
                             x: 156px; y: 30px; width: parent.width - 166px; height: 34px;
                             border-radius: 8px; border-width: 1px; border-color: da.has-hover ? G.accent : G.accent-line; background: G.bg;
                             Icon { x: 10px; y: 10px; width: 14px; height: 14px; name: "calendar"; c: G.muted; }
-                            Text { x: 32px; width: parent.width - 60px; text: S.t-due-label == "" ? "Без срока" : S.t-due-label; font-size: 13px; color: S.t-due-label == "" ? G.muted : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
+                            Text { x: 32px; width: parent.width - 60px; text: S.t-due-label == "" ? @tr("Без срока") : S.t-due-label; font-size: 13px; color: S.t-due-label == "" ? G.muted : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                             Chev { x: parent.width - 20px; y: 14px; c: G.muted; }
                             da := TouchArea { clicked => { if (S.dp-drop == "task") { S.dp-cancel(); } else { S.drop = 0; S.dp-open-task(); } } mouse-cursor: pointer; }
                             if S.dp-open && S.dp-drop == "task": DueDrop { x: parent.width - self.width; y: parent.height + 4px; }
@@ -302,25 +302,25 @@ export component TaskDialog inherits Overlay {
                     Card {
                         height: 30px + 4 * 32px + 2px;
                         VerticalLayout {
-                            CardHead { text: "СВОЙСТВА"; }
-                            PRow { icon: "board"; key: "Список"; val: "● " + S.t-list-name; c: S.t-hue; clicked => { root.pop = 0; root.lists-open = !root.lists-open; } }
-                            PRow { icon: "priority"; key: "Приоритет"; val: ["", "!!! Высокий", "!! Средний", "! Низкий"][S.t-prio]; clicked => { root.pop = root.pop == 2 ? 0 : 2; } }
-                            PRow { icon: "repeat"; key: "Повтор"; val: root.repeat-label; clicked => { root.pop = root.pop == 3 ? 0 : 3; } }
-                            PRow { icon: "share"; key: "Исполнитель"; val: "Я"; arrow: false; }
+                            CardHead { text: @tr("СВОЙСТВА"); }
+                            PRow { icon: "board"; key: @tr("Список"); val: "● " + S.t-list-name; c: S.t-hue; clicked => { root.pop = 0; root.lists-open = !root.lists-open; } }
+                            PRow { icon: "priority"; key: @tr("Приоритет"); val: ["", @tr("!!! Высокий"), @tr("!! Средний"), @tr("! Низкий")][S.t-prio]; clicked => { root.pop = root.pop == 2 ? 0 : 2; } }
+                            PRow { icon: "repeat"; key: @tr("Повтор"); val: root.repeat-label; clicked => { root.pop = root.pop == 3 ? 0 : 3; } }
+                            PRow { icon: "share"; key: @tr("Исполнитель"); val: @tr("Я"); arrow: false; }
                         }
                     }
                     // Заметки «Знаний» про эту задачу: по ссылкам [[…]] и по названию
                     Card {
                         height: 30px + max(1, S.t-note-links.length) * 32px + 4px;
-                        CardHead { y: 0; text: "ЗАМЕТКИ"; }
+                        CardHead { y: 0; text: @tr("ЗАМЕТКИ"); }
                         Rectangle {
                             x: parent.width - lt.preferred-width - 22px; y: 0; width: lt.preferred-width + 12px; height: 30px;
-                            lt := Text { text: "＋ Связать"; font-size: 12.5px; color: la.has-hover ? G.accent-ink : G.accent; horizontal-alignment: center; vertical-alignment: center; }
+                            lt := Text { text: @tr("＋ Связать"); font-size: 12.5px; color: la.has-hover ? G.accent-ink : G.accent; horizontal-alignment: center; vertical-alignment: center; }
                             la := TouchArea { mouse-cursor: pointer; clicked => { S.t-notes-set(S.t-notes + (S.t-notes == "" ? "[[" : "\n[[")); nb.grab(); } }
                         }
                         VerticalLayout {
                             y: 30px; padding-left: 6px; padding-right: 6px; alignment: start;
-                            if S.t-note-links.length == 0: Text { x: 10px; height: 32px; text: "Нет — напиши [[название]] в заметке"; font-size: 12px; color: #62646E; vertical-alignment: center; }
+                            if S.t-note-links.length == 0: Text { x: 10px; height: 32px; text: @tr("Нет — напиши [[название]] в заметке"); font-size: 12px; color: #62646E; vertical-alignment: center; }
                             for n in S.t-note-links: Rectangle {
                                 height: 32px; border-radius: 6px; background: nla.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 8px; y: 13px; width: 6px; height: 6px; border-radius: 3px; background: n.hue; }
@@ -333,7 +333,7 @@ export component TaskDialog inherits Overlay {
                     Card {
                         vertical-stretch: 1;
                         min-height: 80px;
-                        CardHead { y: 0; text: "ИСТОРИЯ"; }
+                        CardHead { y: 0; text: @tr("ИСТОРИЯ"); }
                         ScrollView {
                             y: 30px; height: parent.height - 36px;
                             content-height: hl.preferred-height;
@@ -344,7 +344,7 @@ export component TaskDialog inherits Overlay {
                                     Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: h.hue; }
                                     LabelHint { x: 24px; width: parent.width - 34px; height: parent.height; label: h.label; hint: h.hint; label-size: 12px; label-color: #C9CAD0; mono: true; hint-size: 10px; hint-color: G.muted; }
                                 }
-                                if S.t-hist.length == 0: Text { x: 10px; height: 26px; text: "Пока пусто"; font-size: 12px; color: #62646E; vertical-alignment: center; }
+                                if S.t-hist.length == 0: Text { x: 10px; height: 26px; text: @tr("Пока пусто"); font-size: 12px; color: #62646E; vertical-alignment: center; }
                             }
                         }
                     }
@@ -360,7 +360,7 @@ export component TaskDialog inherits Overlay {
                     x: parent.width - 24px - self.preferred-width; y: 11px; height: 34px; spacing: 10px;
                     Rectangle {
                         width: dt.preferred-width + 28px; border-radius: 8px; border-width: 1px; border-color: dla.has-hover ? G.red : G.line;
-                        dt := Text { text: "Удалить"; font-size: 13px; color: dla.has-hover ? G.red : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+                        dt := Text { text: @tr("Удалить"); font-size: 13px; color: dla.has-hover ? G.red : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                         dla := TouchArea { clicked => { S.t-delete(); } mouse-cursor: pointer; }
                     }
                     if S.t-next-id != "": Rectangle {
@@ -381,7 +381,7 @@ export component TaskDialog inherits Overlay {
                 drop-shadow-blur: 16px; drop-shadow-color: #0009;
                 VerticalLayout {
                     padding: 5px;
-                    for it[i] in ["Дублировать", "Удалить"]: Rectangle {
+                    for it[i] in [@tr("Дублировать"), @tr("Удалить")]: Rectangle {
                         height: 36px; border-radius: 5px;
                         background: ia.has-hover ? G.node-hover : transparent;
                         HorizontalLayout {

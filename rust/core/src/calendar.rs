@@ -205,7 +205,7 @@ pub fn events_by_day(events: &[Value], days: &[String]) -> Value {
     let mut out = Json::new();
     for e in events {
         let (start, end) = (&e["start"], &e["end"]);
-        let title = if t(&e["summary"]) { e["summary"].clone() } else { json!("Без названия") };
+        let title = if t(&e["summary"]) { e["summary"].clone() } else { json!(crate::t!("Без названия")) };
         let kind = if e["kind"].is_null() { json!("event") } else { e["kind"].clone() };
         let base = |id: String, sm: Value, em: Value| {
             let mut m = json!({"kind": kind, "title": title, "cal": e["calendar"], "event": e, "id": id, "s": sm, "e": em});
@@ -269,7 +269,7 @@ pub fn tasks_by_day(lists: &[Value], by_list: &Value, lay_tasks: &Value, type_of
             let em = if t(ev) { json!(to_min(s(ev))) } else if t(sv) { json!(to_min(s(sv)) + 60) } else { Value::Null };
             push_day(&mut out, days, &day.clone(), json!({
                 "kind": "task", "id": tk["id"],
-                "title": if t(&tk["title"]) { tk["title"].clone() } else { json!("Без названия") },
+                "title": if t(&tk["title"]) { tk["title"].clone() } else { json!(crate::t!("Без названия")) },
                 "task": tk, "listId": l["id"], "list": l["title"], "type": type_of(lid, s(&tk["id"])),
                 "done": done, "overdue": !done && day < today, "s": sm, "e": em,
             }));
@@ -444,11 +444,11 @@ pub fn day_label(day: &str) -> Value {
 pub fn when_label(day: &str) -> String {
     let nd = now().date();
     if day == ymd(nd) {
-        "сегодня".into()
+        crate::t!("сегодня").into()
     } else if day == ymd(add_days(nd, 1)) {
-        "завтра".into()
+        crate::t!("завтра").into()
     } else if day == ymd(add_days(nd, -1)) {
-        "вчера".into()
+        crate::t!("вчера").into()
     } else {
         crate::i18n::wd(dow(pd(day)) as usize).to_lowercase()
     }
@@ -460,5 +460,5 @@ pub fn hours_label(min: f64) -> String {
     }
     let v = ((min / 6.0 + 0.5).floor()) / 10.0;
     let s = if v.fract() == 0.0 { format!("{}", v as i64) } else { format!("{v}") };
-    format!("{} ч", s.replace('.', ","))
+    crate::t!("{} ч", s.replace('.', ","))
 }

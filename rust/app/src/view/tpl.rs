@@ -2,7 +2,7 @@
 use super::*;
 use crate::Opt;
 use serde_json::json;
-use sputnik_core::templates as tp;
+use sputnik_core::{templates as tp, t};
 
 /// Открытый шаблон: id и черновик (сохраняется кнопкой).
 #[derive(Clone, Default)]
@@ -31,11 +31,11 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let mut rows: Vec<Opt> = tp::templates_from(&app.layer).iter().map(|x| {
         let id = text(&x["id"]);
         let n = used(app, &id).len();
-        let kind = if t(&x["mine"]) { "свой" } else { "встроенный" };
+        let kind = if t(&x["mine"]) { t!("свой") } else { t!("встроенный") };
         Opt { id: ss(&id), label: ss(text(&x["name"]).max(text(&x["title"]))), hint: ss(format!("{kind} · {n}")),
             hue: color(&tp::col_color(&a(&x["cols"]).get(1).cloned().unwrap_or(Value::Null))), on: id == t0.id }
     }).collect();
-    if t0.fresh { rows.push(Opt { id: ss(&t0.id), label: ss(text(&d["name"])), hint: ss("новый · не сохранён"), hue: color(""), on: true }); }
+    if t0.fresh { rows.push(Opt { id: ss(&t0.id), label: ss(text(&d["name"])), hint: ss(t!("новый · не сохранён")), hue: color(""), on: true }); }
     g.set_tp_list(model(rows));
     g.set_tp_id(ss(&t0.id));
     g.set_tp_name(ss(text(&d["name"]).max(text(&d["title"]))));
@@ -49,7 +49,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_tp_fields(model(a(&tp::fields_list()).iter().map(|f| Opt { id: ss(text(&f["id"])), label: ss(text(&f["name"])), hint: ss(""), hue: color(""),
         on: fs.iter().any(|x| x == &f["id"]) }).collect()));
     let us = used(app, &t0.id);
-    g.set_tp_used(ss(match us.len() { 0 => "Ни один список пока не идёт за этим шаблоном".to_string(), 1 => us[0].clone(), n => format!("{} и ещё {}", us[0], n - 1) }));
+    g.set_tp_used(ss(match us.len() { 0 => t!("Ни один список пока не идёт за этим шаблоном").to_string(), 1 => us[0].clone(), n => t!("{} и ещё {}", us[0], n - 1) }));
 }
 
 pub fn set(u: &mut Ui, key: &str, v: &str) {
@@ -97,7 +97,7 @@ pub fn save(app: &mut App, u: &mut Ui) {
     let patch = json!({"name": d["name"], "view": d["view"], "fields": d["fields"], "cols": d["cols"], "removed": false});
     if tp::is_builtin(&json!(t0.id)) { app.touch("templatesEdit", &t0.id, patch); } else { app.touch("templates", &t0.id, patch); }
     t0.fresh = false;
-    app.say("Шаблон сохранён — списки по нему обновились");
+    app.say(t!("Шаблон сохранён — списки по нему обновились"));
 }
 
 /// Клик мимо окна шаблонов: черновик сохраняется, только если его правили (или это новый шаблон).

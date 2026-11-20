@@ -2,7 +2,7 @@
 use super::*;
 use crate::DpCell;
 use chrono::{Datelike, Duration, NaiveDate, Timelike};
-use sputnik_core::{create as cr, habits as hb, when};
+use sputnik_core::{create as cr, habits as hb, t, when};
 
 #[derive(Clone, Default)]
 pub struct Dp {
@@ -62,7 +62,7 @@ pub fn for_create(x: &Value, kind: i32) -> Dp {
     };
     let base = day.unwrap_or_else(|| hb::now().date());
     let title = text(&x["title"]);
-    let mut d = Dp { title: if title.is_empty() { "новое".into() } else { title }, day, hour, min, dur, month: first(base), for_create: true, ..Default::default() };
+    let mut d = Dp { title: if title.is_empty() { t!("новое").into() } else { title }, day, hour, min, dur, month: first(base), for_create: true, ..Default::default() };
     d.start = picked(&d);
     d
 }
@@ -92,11 +92,11 @@ pub fn words(d: &mut Dp, t: &str) {
         d.hour = Some((m / 60) as u32);
         d.min = (m % 60) as u32;
     }
-    d.said = if w.day.is_none() && w.time.is_none() { "Не понял — попробуй «пт 17:00» или «25.11»".into() } else { format!("Понял: {}", summary(d)) };
+    d.said = if w.day.is_none() && w.time.is_none() { t!("Не понял — попробуй «пт 17:00» или «25.11»").into() } else { t!("Понял: {}", summary(d)) };
 }
 
 pub fn summary(d: &Dp) -> String {
-    let Some(day) = d.day else { return "Без срока".into() };
+    let Some(day) = d.day else { return t!("Без срока").into() };
     let mut s0 = format!("{}, {}", sputnik_core::i18n::wd3(day.weekday().num_days_from_monday() as usize), cr::day_month(&day.format("%Y-%m-%d").to_string()));
     if let Some(h) = d.hour {
         let st = h as i64 * 60 + d.min as i64;
@@ -170,12 +170,12 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_dp_exact(ss(d.hour.map(|h| hhmm(h as i64 * 60 + d.min as i64)).unwrap_or_default()));
     g.set_dp_dur(d.dur as i32);
     let end = d.hour.map(|h| hhmm(h as i64 * 60 + d.min as i64 + 120)).unwrap_or_default();
-    g.set_dp_dur_long(ss(if end.is_empty() { "2 часа".into() } else { format!("2 часа · до {end}") }));
+    g.set_dp_dur_long(ss(if end.is_empty() { t!("2 часа").into() } else { t!("2 часа · до {}", end) }));
     g.set_dp_summary(ss(summary(d)));
     g.set_dp_said(ss(d.said.clone()));
     let tom = today + Duration::days(1);
     let wkend = today + Duration::days(((5 - today.weekday().num_days_from_monday() as i64) + 7) % 7);
     let next = today + Duration::days(7);
-    g.set_dp_quick(model([("today", "Сегодня", Some(today)), ("tomorrow", "Завтра", Some(tom)), ("weekend", "В выходные", Some(wkend)), ("week", "Через неделю", Some(next)), ("none", "Без срока", None)]
+    g.set_dp_quick(model([("today", t!("Сегодня"), Some(today)), ("tomorrow", t!("Завтра"), Some(tom)), ("weekend", t!("В выходные"), Some(wkend)), ("week", t!("Через неделю"), Some(next)), ("none", t!("Без срока"), None)]
         .iter().map(|(id, l, x)| super::dialogs::opt(*id, *l, d.day == *x)).collect()));
 }

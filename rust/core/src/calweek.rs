@@ -220,16 +220,16 @@ pub fn stack_head(n: usize, a: f64, b: f64) -> String {
 /// «↑ 07:00 · ещё 1 раньше» / «↓ 19:00 · ещё 2 позже».
 pub fn chip_text(up: bool, n: usize, first: f64) -> String {
     let m = first as i64;
-    format!("{} {:02}:{:02} · ЕЩЁ {} {}", if up { "↑" } else { "↓" }, m / 60, m % 60, n, if up { "РАНЬШЕ" } else { "ПОЗЖЕ" })
+    format!("{} {:02}:{:02} · {} {} {}", if up { "↑" } else { "↓" }, m / 60, m % 60, crate::t!("ЕЩЁ"), n, if up { crate::t!("РАНЬШЕ") } else { crate::t!("ПОЗЖЕ") })
 }
 
 /// «2 Ч», «45 МИН», «1 Ч 30 МИН».
 pub fn dur_text(min: f64) -> String {
     let m = min.max(0.0).round() as i64;
     match (m / 60, m % 60) {
-        (0, r) => format!("{r} МИН"),
-        (h, 0) => format!("{h} Ч"),
-        (h, r) => format!("{h} Ч {r} МИН"),
+        (0, r) => crate::t!("{} МИН", r),
+        (h, 0) => crate::t!("{} Ч", h),
+        (h, r) => crate::t!("{} Ч {} МИН", h, r),
     }
 }
 

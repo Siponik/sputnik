@@ -26,7 +26,7 @@ component Month inherits Rectangle {
     property <length> cw: self.width / 7;
     property <int> rows: max(1, ceil(S.days.length / 7));
     property <length> ch: (self.height - 24px) / root.rows;
-    for w[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
+    for w[i] in [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")]: Text {
         x: i * root.cw + 10px; y: 0; height: 24px; text: w;
         font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #7A7C86; vertical-alignment: center;
     }
@@ -47,7 +47,7 @@ component Month inherits Rectangle {
         }
         ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
         Text { x: 10px; y: 8px; text: d.num; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: d.today ? G.accent : (d.in-month ? G.ink : #55575F); }
-        if d.today: Text { x: parent.width - self.preferred-width - 10px; y: 9px; text: "СЕГОДНЯ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.accent; }
+        if d.today: Text { x: parent.width - self.preferred-width - 10px; y: 9px; text: @tr("СЕГОДНЯ"); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.accent; }
         // дела без времени: ДР — розовая плашка с тортиком, дальше точка цвета и название; не влезло — «+N ещё»
         property <int> cap: max(1, floor((root.ch - 26px - 12px) / 18px));
         property <int> shown: d.all.length <= self.cap ? d.all.length : self.cap - 1;
@@ -72,7 +72,7 @@ component Month inherits Rectangle {
                 }
                 TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
             }
-            if d.all.length > cell.shown: Text { height: 16px; x: 4px; text: "+" + (d.all.length - cell.shown) + " ещё"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
+            if d.all.length > cell.shown: Text { height: 16px; x: 4px; text: @tr("+{} ещё", d.all.length - cell.shown); font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
         }
         // привычки — полоска внизу клетки: золото — сделано, пунктир — впереди
         for v[k] in d.hdots: Rectangle {
@@ -233,7 +233,7 @@ export component CalendarPage inherits Rectangle {
                 visible: S.cal-away;
                 Rectangle { x: 7px; y: 7px; width: 14px; height: 14px; border-radius: 7px; border-width: 1.3px; border-color: G.muted; }
                 Rectangle { x: 12px; y: 12px; width: 4px; height: 4px; border-radius: 2px; background: G.accent; }
-                Tip { width: 100%; height: 100%; text: "К сегодня · T"; on: ta.has-hover && S.cal-away; }
+                Tip { width: 100%; height: 100%; text: @tr("К сегодня · T"); on: ta.has-hover && S.cal-away; }
                 ta := TouchArea { enabled: S.cal-away; mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-today(); } }
             }
             // ‹ МАРТ 2027 ▾ › — одна группа, месяц постоянной ширины
@@ -270,7 +270,7 @@ export component CalendarPage inherits Rectangle {
             Rectangle { horizontal-stretch: 1; }
             CSeg {
                 y: 8px;
-                items: ["НЕДЕЛЯ", "МЕСЯЦ"];
+                items: [@tr("НЕДЕЛЯ"), @tr("МЕСЯЦ")];
                 current: S.cal-mode == "month" ? 1 : 0;
                 picked(i) => { root.mp-open = false; root.sh-open = false; S.cal-mode-set(i == 1 ? "month" : "week"); }
             }
@@ -283,7 +283,7 @@ export component CalendarPage inherits Rectangle {
                 background: sba.has-hover ? G.node-hover : transparent;
                 shl := HorizontalLayout {
                     padding-left: 10px; spacing: 3px; alignment: start;
-                    st := Text { text: "ПОКАЗЫВАТЬ"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1px; color: G.ink; vertical-alignment: center; }
+                    st := Text { text: @tr("ПОКАЗЫВАТЬ"); font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1px; color: G.ink; vertical-alignment: center; }
                     Rectangle { width: 5px; }
                     for f in S.cal-filters: Rectangle {
                         width: f.on ? 6px : 0px; visible: f.on;
@@ -353,7 +353,7 @@ export component CalendarPage inherits Rectangle {
                 padding-top: 10px;
                 spacing: 0;
                 for c[i] in S.day-items: DayLine { c: c; next: i == S.day-next; }
-                if S.day-items.length == 0: Text { height: 48px; text: "Свободный день — енот дремлет"; color: G.muted; font-size: 13px; vertical-alignment: center; }
+                if S.day-items.length == 0: Text { height: 48px; text: @tr("Свободный день — енот дремлет"); color: G.muted; font-size: 13px; vertical-alignment: center; }
                 Rectangle { height: 10px; }
                 Rectangle { height: 1px; background: G.accent-line; }
                 if S.day-habits.length > 0: Text { height: 34px; text: S.day-habits-sum; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.6px; color: G.gold; vertical-alignment: center; }
@@ -367,7 +367,7 @@ export component CalendarPage inherits Rectangle {
                     height: 32px;
                     c: #6E7079;
                     background: ad.has-hover ? G.node-hover : transparent;
-                    Text { text: "＋ Добавить на этот день"; font-size: 13px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                    Text { text: @tr("＋ Добавить на этот день"); font-size: 13px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
                     ad := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
                 }
                 Rectangle { height: 12px; }
@@ -375,8 +375,8 @@ export component CalendarPage inherits Rectangle {
                     height: 76px;
                     c: #8A7430;
                     Sat { x: 11px; y: 10px; c: G.gold; }
-                    Text { x: 67px; y: 14px; width: parent.width - 78px; text: S.free-hint + ". Поставить туда задачу?"; font-size: 12.5px; color: G.ink; wrap: word-wrap; }
-                    Link { x: 67px; y: 50px; text: "Поставить"; font-size: 12.5px; clicked => { S.cal-free-take(); } }
+                    Text { x: 67px; y: 14px; width: parent.width - 78px; text: @tr("{}. Поставить туда задачу?", S.free-hint); font-size: 12.5px; color: G.ink; wrap: word-wrap; }
+                    Link { x: 67px; y: 50px; text: @tr("Поставить"); font-size: 12.5px; clicked => { S.cal-free-take(); } }
                 }
             }
         }
@@ -402,28 +402,28 @@ export component CalendarPage inherits Rectangle {
         Rectangle {
             height: 34px; y: 0;
             background: G.head-main;
-            Text { x: 13px; width: parent.width - 26px; text: S.day-head + " · ДОБАВИТЬ НА ЭТОТ ДЕНЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; overflow: elide; }
+            Text { x: 13px; width: parent.width - 26px; text: @tr("{} · ДОБАВИТЬ НА ЭТОТ ДЕНЬ", S.day-head); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #ffffff; vertical-alignment: center; height: parent.height; overflow: elide; }
             Text { x: parent.width - self.preferred-width - 13px; text: "ENTER"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #ffffffc0; vertical-alignment: center; height: parent.height; }
         }
         VerticalLayout {
             y: 34px; height: parent.height - 34px;
             padding: 16px;
             spacing: 8px;
-            Text { text: "Что добавить"; font-size: 12.5px; color: G.muted; }
+            Text { text: @tr("Что добавить"); font-size: 12.5px; color: G.muted; }
             nm := Field {
                 height: 40px;
-                placeholder: "Название";
+                placeholder: @tr("Название");
                 init => { self.grab(); }
                 edited(t) => { root.f-name = t; }
                 accepted(t) => { if (t != "") { S.cal-add("", tm.text, t, root.add-event); self.clear(); root.adding = false; } }
                 escape => { root.adding = false; S.cal-add-close(); }
             }
             Rectangle { height: 2px; }
-            Text { text: "Это"; font-size: 12.5px; color: G.muted; }
+            Text { text: @tr("Это"); font-size: 12.5px; color: G.muted; }
             HorizontalLayout {
                 spacing: 6px;
                 alignment: start;
-                for k[i] in ["Задача", "Событие"]: Rectangle {
+                for k[i] in [@tr("Задача"), @tr("Событие")]: Rectangle {
                     height: 30px;
                     width: kt.preferred-width + 26px;
                     border-radius: 6px;
@@ -435,7 +435,7 @@ export component CalendarPage inherits Rectangle {
                 }
             }
             Rectangle { height: 2px; }
-            Text { text: "Когда"; font-size: 12.5px; color: G.muted; }
+            Text { text: @tr("Когда"); font-size: 12.5px; color: G.muted; }
             HorizontalLayout {
                 spacing: 6px;
                 Rectangle {
@@ -446,7 +446,7 @@ export component CalendarPage inherits Rectangle {
                     background: G.accent-wash;
                     Text { x: 12px; text: S.day-title; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 20px; }
                 }
-                tm := Field { width: 86px; height: 32px; mono: true; placeholder: "весь день"; text: S.add-time; edited(t) => { root.f-time = t; root.f-time-set = true; } }
+                tm := Field { width: 86px; height: 32px; mono: true; placeholder: @tr("весь день"); text: S.add-time; edited(t) => { root.f-time = t; root.f-time-set = true; } }
             }
             Rectangle { vertical-stretch: 1; }
             HorizontalLayout {
@@ -454,13 +454,13 @@ export component CalendarPage inherits Rectangle {
                 alignment: end;
                 Rectangle {
                     width: 72px; height: 30px;
-                    Text { text: "Отмена"; font-size: 13px; color: ca.has-hover ? G.ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
+                    Text { text: @tr("Отмена"); font-size: 13px; color: ca.has-hover ? G.ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
                     ca := TouchArea { clicked => { root.adding = false; S.cal-add-close(); } mouse-cursor: pointer; }
                 }
                 Button {
                     height: 30px;
                     primary: true;
-                    text: "Добавить";
+                    text: @tr("Добавить");
                     clicked => { if (nm.text != "") { S.cal-add("", tm.text, nm.text, root.add-event); nm.clear(); root.adding = false; } }
                 }
             }
@@ -471,9 +471,9 @@ export component CalendarPage inherits Rectangle {
         c: #8A7430;
         Rectangle {
             x: 10px; y: 6px; width: 40px; height: 40px; border-radius: 20px; border-width: 1px; border-color: #6E7079;
-            Text { text: "ДУМАЕТ"; font-family: G.mono; font-size: 7.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: @tr("ДУМАЕТ"); font-family: G.mono; font-size: 7.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
         }
-        Text { x: 60px; width: parent.width - 70px; text: "Клик по пустому часу открывает эту форму. Esc — убрать черновик."; font-size: 12px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
+        Text { x: 60px; width: parent.width - 70px; text: @tr("Клик по пустому часу открывает эту форму. Esc — убрать черновик."); font-size: 12px; color: G.ink; wrap: word-wrap; vertical-alignment: center; height: parent.height; }
     }
 
     // ---------- обзор и штамп ----------
@@ -481,10 +481,10 @@ export component CalendarPage inherits Rectangle {
         x: root.mx; y: main.y + main.height + 16px; width: root.mw; height: 16px;
         spacing: 14px;
         alignment: start;
-        Text { text: S.cal-mode == "week" ? "ОБЗОР НЕДЕЛИ" : S.cal-foot; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: S.cal-mode == "week" ? G.ink : #8A8C96; }
+        Text { text: S.cal-mode == "week" ? @tr("ОБЗОР НЕДЕЛИ") : S.cal-foot; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.4px; color: S.cal-mode == "week" ? G.ink : #8A8C96; }
         if S.cal-mode == "week": Text { text: S.cal-foot; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
         Text { text: S.cal-foot-hl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.gold; }
-        if S.cal-mode == "month": Text { text: "ПУНКТИР — ЕЩЁ ВПЕРЕДИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
+        if S.cal-mode == "month": Text { text: @tr("ПУНКТИР — ЕЩЁ ВПЕРЕДИ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #8A8C96; }
     }
     // размерная линия
     Rectangle {
@@ -569,7 +569,7 @@ export component CalendarPage inherits Rectangle {
                         border-width: self.now && !self.cur ? 1px : 0px;
                         border-color: G.accent.transparentize(0.4);
                         Text {
-                            text: ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"][parent.m];
+                            text: [@tr("ЯНВ"), @tr("ФЕВ"), @tr("МАР"), @tr("АПР"), @tr("МАЙ"), @tr("ИЮН"), @tr("ИЮЛ"), @tr("АВГ"), @tr("СЕН"), @tr("ОКТ"), @tr("НОЯ"), @tr("ДЕК")][parent.m];
                             font-family: G.mono; font-size: 11px; font-weight: 500; letter-spacing: 1.1px;
                             color: parent.cur ? G.on-accent : (parent.now ? G.accent : G.ink);
                             horizontal-alignment: center; vertical-alignment: center;
@@ -583,12 +583,12 @@ export component CalendarPage inherits Rectangle {
                 height: 32px;
                 Text {
                     x: 12px; height: parent.height; vertical-alignment: center;
-                    text: "СЕЙЧАС · " + ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"][S.cal-now-m] + " " + S.cal-now-y;
+                    text: @tr("СЕЙЧАС · {} {}", [@tr("ЯНВ"), @tr("ФЕВ"), @tr("МАР"), @tr("АПР"), @tr("МАЙ"), @tr("ИЮН"), @tr("ИЮЛ"), @tr("АВГ"), @tr("СЕН"), @tr("ОКТ"), @tr("НОЯ"), @tr("ДЕК")][S.cal-now-m], S.cal-now-y);
                     font-family: G.mono; font-size: 10px; color: G.muted; letter-spacing: 0.6px;
                 }
                 Text {
                     x: parent.width - self.width - 12px; height: parent.height; vertical-alignment: center;
-                    text: "СЕЙЧАС"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.1px;
+                    text: @tr("СЕЙЧАС"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.1px;
                     color: nwa.has-hover ? G.ink : G.accent;
                     nwa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-today(); } }
                 }

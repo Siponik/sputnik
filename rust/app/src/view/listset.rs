@@ -1,6 +1,7 @@
 //! Настройки списка (G_ListSettings): название, сфера, порядок, «Сегодня», сводка.
 use super::*;
 use crate::Opt;
+use sputnik_core::t;
 use serde_json::json;
 
 pub fn render(app: &App, u: &Ui, g: &S) {
@@ -11,7 +12,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let title = app.lists.iter().find(|x| x["id"] == id).map(|x| text(&x["title"])).unwrap_or_default();
     g.set_ls_name(ss(&title));
     let cur = s(&ll["sphere"]);
-    let mut sp = vec![Opt { id: ss(""), label: ss("Без сферы"), hint: ss(""), hue: color(""), on: cur.is_empty() }];
+    let mut sp = vec![Opt { id: ss(""), label: ss(t!("Без сферы")), hint: ss(""), hue: color(""), on: cur.is_empty() }];
     sp.extend(app.spheres().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["name"])), hint: ss(""),
         hue: color(&sputnik_core::spheres::sphere_color(x)), on: cur == s(&x["id"]) }));
     g.set_ls_spheres(model(sp));

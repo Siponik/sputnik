@@ -1,6 +1,7 @@
 //! Канвас «Знаний»: файл `.canvas` (JSON Canvas, тот же открывает Obsidian) — ноды-заметки, карточки, картинки,
 //! группы и провода. Логика файла — `sputnik_core::canvas`; здесь — открыть, показать, править, сохранить.
 //! Камера (сдвиг и масштаб) живёт в окне (`canvas.slint`), сюда приходят только итоги действий в единицах холста.
+use sputnik_core::t;
 use super::*;
 use crate::{CvEdge, CvNode, MdRow, NoteRow};
 use sputnik_core::canvas::{self as cv, Doc, History, Side};
@@ -77,7 +78,7 @@ pub fn change(app: &mut App, u: &mut Ui, f: impl FnOnce(&mut Cv)) {
     ensure(app, u);
     let Some(c) = u.cv.as_mut() else { return };
     if !c.err.is_empty() {
-        app.say("Канвас не читается — сначала поправь файл");
+        app.say(t!("Канвас не читается — сначала поправь файл"));
         return;
     }
     let before = c.doc.encode();
@@ -97,7 +98,7 @@ fn save(app: &mut App, c: &mut Cv) {
     }
     match std::fs::write(&p, &text) {
         Ok(()) => c.last = text,
-        Err(e) => app.say(format!("Канвас не сохранился: {e}")),
+        Err(e) => app.say(t!("Канвас не сохранился: {}", e)),
     }
 }
 
@@ -117,7 +118,7 @@ pub fn new_canvas(app: &mut App, u: &mut Ui, dir: &str) {
             app.notes.rescan();
             super::wire::open_note_tab(app, u, &path);
         }
-        Err(e) => app.say(format!("Холст не создался: {e}")),
+        Err(e) => app.say(t!("Холст не создался: {}", e)),
     }
 }
 
@@ -184,7 +185,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         match n.kind() {
             "file" if is_image(n.file()) => {
                 kind = "image".into();
-                tag = "КАРТИНКА".into();
+                tag = t!("КАРТИНКА").into();
                 img = image(app, n.file());
                 title = n.file().rsplit('/').next().unwrap_or("").to_string();
             }
@@ -231,7 +232,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
                 }
                 missing = !p.ready; // ещё качается
                 if p.ready && p.meta.title.is_empty() && p.img.is_none() && p.shot.is_none() {
-                    rows = md_rows("_Сайт не отдал предпросмотр. Попробую снова при следующем запуске._", 3);
+                    rows = md_rows(t!("_Сайт не отдал предпросмотр. Попробую снова при следующем запуске._"), 3);
                 }
             }
             _ => {}

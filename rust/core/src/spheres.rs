@@ -5,12 +5,12 @@ use crate::search::ru_compare;
 
 pub fn sphere_colors() -> Value {
     json!([
-        {"id": "clay", "name": "Глина", "v": "var(--clay)"},
-        {"id": "gold", "name": "Золото", "v": "var(--gold)"},
-        {"id": "work", "name": "Синий", "v": "var(--type-work)"},
-        {"id": "study", "name": "Фиолетовый", "v": "var(--type-study)"},
-        {"id": "personal", "name": "Зелёный", "v": "var(--type-personal)"},
-        {"id": "done", "name": "Бирюзовый", "v": "var(--signal-done)"},
+        {"id": "clay", "name": crate::t!("Глина"), "v": "var(--clay)"},
+        {"id": "gold", "name": crate::t!("Золото"), "v": "var(--gold)"},
+        {"id": "work", "name": crate::t!("Синий"), "v": "var(--type-work)"},
+        {"id": "study", "name": crate::t!("Фиолетовый"), "v": "var(--type-study)"},
+        {"id": "personal", "name": crate::t!("Зелёный"), "v": "var(--type-personal)"},
+        {"id": "done", "name": crate::t!("Бирюзовый"), "v": "var(--signal-done)"},
     ])
 }
 
@@ -124,7 +124,7 @@ pub fn list_choices(lists: &[Value], lay: &Value) -> Value {
         .map(|x| json!({"id": x["id"], "name": x["name"], "color": sphere_color(x)}))
         .collect();
     if used.contains(&String::new()) && used.len() > 1 {
-        groups.push(json!({"id": "", "name": "Без сферы", "color": "var(--ink-faint)"}));
+        groups.push(json!({"id": "", "name": crate::t!("Без сферы"), "color": "var(--ink-faint)"}));
     }
     json!({"options": options, "groups": if groups.is_empty() { Value::Null } else { Value::Array(groups) }})
 }

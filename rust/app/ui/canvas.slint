@@ -242,7 +242,7 @@ export component CanvasView inherits Rectangle {
                 tg := Text {
                     x: parent.width - self.width - 12px * min(1, root.k * 1.5);
                     width: self.preferred-width;
-                    text: n.kind == "link" ? (n.page && n.title != n.path ? n.tag.to-uppercase() : "ССЫЛКА") : (n.missing ? "НЕТ ЗАМЕТКИ" : n.tag);
+                    text: n.kind == "link" ? (n.page && n.title != n.path ? n.tag.to-uppercase() : @tr("ССЫЛКА")) : (n.missing ? @tr("НЕТ ЗАМЕТКИ") : n.tag);
                     font-family: G.mono; font-size: max(8px, 10px * root.k); letter-spacing: 1.2px;
                     color: #ffffffb0; vertical-alignment: center; height: parent.height;
                 }
@@ -286,7 +286,7 @@ export component CanvasView inherits Rectangle {
                     spacing: 4px * root.k; alignment: start;
                     if n.title != n.path: Text { text: n.title; color: G.ink; font-size: max(8px, 14px * root.k); font-weight: 600; wrap: word-wrap; overflow: elide; max-height: max(8px, 14px * root.k) * 3.2; }
                     for l in n.rows: MdLine { line: l; fs: max(7px, 12px * root.k); }
-                    Text { text: n.missing ? "загружаю предпросмотр…" : n.path; color: n.missing ? G.dim : G.accent; font-size: max(7px, 11px * root.k); overflow: elide; }
+                    Text { text: n.missing ? @tr("загружаю предпросмотр…") : n.path; color: n.missing ? G.dim : G.accent; font-size: max(7px, 11px * root.k); overflow: elide; }
                 }
             }
         }
@@ -542,20 +542,20 @@ export component CanvasView inherits Rectangle {
         TouchArea { }
         HorizontalLayout {
             padding-left: 12px; padding-right: 12px; spacing: 6px; alignment: start;
-            Text { text: "ХОЛСТ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: G.ink; vertical-alignment: center; }
+            Text { text: @tr("ХОЛСТ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: G.ink; vertical-alignment: center; }
             Mono { text: S.cv-crumb; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; overflow: elide; max-width: 260px; }
             Rectangle { width: 1px; height: 22px; y: 13px; background: G.line; }
             Rectangle { width: 2px; }
-            VerticalLayout { alignment: center; ToolBtn { text: "Заметка"; icon: "plus"; outlined: true; clicked => { root.picking = !root.picking; } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Текст"; icon: "plus"; clicked => { S.cv-add("text", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Картинка"; icon: "plus"; clicked => { S.cv-add-image(root.wx(root.width / 2), root.wy(root.height / 2)); } } }
-            VerticalLayout { alignment: center; ToolBtn { text: "Группа"; clicked => { S.cv-add("group", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
+            VerticalLayout { alignment: center; ToolBtn { text: @tr("Заметка"); icon: "plus"; outlined: true; clicked => { root.picking = !root.picking; } } }
+            VerticalLayout { alignment: center; ToolBtn { text: @tr("Текст"); icon: "plus"; clicked => { S.cv-add("text", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
+            VerticalLayout { alignment: center; ToolBtn { text: @tr("Картинка"); icon: "plus"; clicked => { S.cv-add-image(root.wx(root.width / 2), root.wy(root.height / 2)); } } }
+            VerticalLayout { alignment: center; ToolBtn { text: @tr("Группа"); clicked => { S.cv-add("group", root.wx(root.width / 2), root.wy(root.height / 2)); } } }
         }
         HorizontalLayout {
             x: parent.width - self.preferred-width - 12px; width: self.preferred-width;
             spacing: 14px; alignment: end;
-            if parent.width > 900px: Mono { text: "ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"; font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
-            VerticalLayout { alignment: center; ToolBtn { text: "Авто-раскладка"; accent: true; clicked => { S.cv-key("layout", 0, 0); } } }
+            if parent.width > 900px: Mono { text: @tr("ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"); font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
+            VerticalLayout { alignment: center; ToolBtn { text: @tr("Авто-раскладка"); accent: true; clicked => { S.cv-key("layout", 0, 0); } } }
         }
     }
     // поиск заметки для «＋ Заметка»
@@ -596,7 +596,7 @@ export component CanvasView inherits Rectangle {
         Sat { x: 14px; y: 13px; width: 46px; height: 46px; }
         Text {
             x: 72px; width: parent.width - 86px; height: parent.height;
-            text: "Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка.";
+            text: @tr("Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка.");
             font-size: 12.5px; color: #C9CBD3; wrap: word-wrap; vertical-alignment: center;
         }
     }
@@ -605,8 +605,8 @@ export component CanvasView inherits Rectangle {
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.red;
         VerticalLayout {
             padding: 16px; spacing: 8px;
-            Text { text: "Канвас не читается"; font-size: 15px; font-weight: 600; color: G.ink; }
-            Text { text: S.cv-err + ". Файл не трогаем — поправь его в другой программе, и он откроется."; font-size: 12.5px; color: G.muted; wrap: word-wrap; }
+            Text { text: @tr("Канвас не читается"); font-size: 15px; font-weight: 600; color: G.ink; }
+            Text { text: @tr("{}. Файл не трогаем — поправь его в другой программе, и он откроется.", S.cv-err); font-size: 12.5px; color: G.muted; wrap: word-wrap; }
         }
     }
 }

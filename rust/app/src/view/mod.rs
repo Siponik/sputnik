@@ -24,6 +24,7 @@ pub mod spheres;
 mod today;
 mod wire;
 
+use sputnik_core::t;
 use crate::state::App;
 use crate::{AppWindow, Opt, S};
 use serde_json::Value;
@@ -286,9 +287,8 @@ fn shell(app: &App, u: &Ui, g: &S) {
     let f = &app.flags;
     g.set_tab(u.tab);
     g.set_set_open(u.set_open);
-    let wd = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
     let now_l = chrono::Local::now();
-    g.set_now_label(ss(format!("{} {} · {}", wd[chrono::Datelike::weekday(&now_l).num_days_from_monday() as usize], now_l.format("%d.%m"), now_l.format("%H:%M"))));
+    g.set_now_label(ss(format!("{} {} · {}", sputnik_core::i18n::wd(chrono::Datelike::weekday(&now_l).num_days_from_monday() as usize).to_uppercase(), now_l.format("%d.%m"), now_l.format("%H:%M"))));
     g.set_signed_in(!f.need_login);
     g.set_logging_in(f.logging_in);
     g.set_busy(f.syncing);
@@ -296,10 +296,10 @@ fn shell(app: &App, u: &Ui, g: &S) {
     g.set_error(f.error.clone().unwrap_or_default().into());
     let status = match (&f.error, f.synced_at) {
         (Some(e), _) if !f.offline => short(e, 40),
-        (_, Some(t)) => format!("синхр. {}", hm(t)),
-        _ => if app.outbox.ops.is_empty() { "не синхронизировано".into() } else { format!("в очереди {}", app.outbox.ops.len()) },
+        (_, Some(t)) => t!("синхр. {}", hm(t)),
+        _ => if app.outbox.ops.is_empty() { t!("не синхронизировано").into() } else { t!("в очереди {}", app.outbox.ops.len()) },
     };
-    let status = if !app.outbox.ops.is_empty() && f.synced_at.is_some() { format!("{status} · ждут {}", app.outbox.ops.len()) } else { status };
+    let status = if !app.outbox.ops.is_empty() && f.synced_at.is_some() { t!("{} · ждут {}", status, app.outbox.ops.len()) } else { status };
     g.set_status(status.into());
     g.set_inbox_count(app.inbox_items().len() as i32);
     g.set_status_ok(app.outbox.ops.is_empty());
@@ -312,16 +312,16 @@ fn shell(app: &App, u: &Ui, g: &S) {
     g.set_upd_open(upd.open);
     g.set_upd_frac(sputnik_core::updater::frac(upd.done, upd.total));
     g.set_upd_progress(ss(match upd.phase {
-        crate::state::update::Phase::Installing => "Проверяю подпись и ставлю…".to_string(),
-        _ if upd.attempt > 1 => format!("{} · попытка {} из {}", sputnik_core::updater::progress_text(upd.done, upd.total, upd.bps), upd.attempt, sputnik_core::updater::ATTEMPTS),
+        crate::state::update::Phase::Installing => t!("Проверяю подпись и ставлю…").to_string(),
+        _ if upd.attempt > 1 => t!("{} · попытка {} из {}", sputnik_core::updater::progress_text(upd.done, upd.total, upd.bps), upd.attempt, sputnik_core::updater::ATTEMPTS),
         _ => sputnik_core::updater::progress_text(upd.done, upd.total, upd.bps),
     }));
     g.set_upd_err(ss(upd.err.0.clone()));
     g.set_upd_hint(ss(upd.err.1.clone()));
     g.set_upd_info(ss(match &app.update.checked {
-        Some(t) if app.update.version.is_empty() => format!("Проверено в {t} — стоит последняя."),
-        Some(t) => format!("Проверено в {t}."),
-        None => "Проверяется само через 30 секунд после запуска и раз в 6 часов.".into(),
+        Some(t) if app.update.version.is_empty() => t!("Проверено в {} — стоит последняя.", t),
+        Some(t) => t!("Проверено в {}.", t),
+        None => t!("Проверяется само через 30 секунд после запуска и раз в 6 часов.").into(),
     }));
     g.set_upd_rows(model(upd_rows(app)));
     match &app.toast {
@@ -360,7 +360,7 @@ fn upd_rows(app: &App) -> Vec<Opt> {
     // ждущее обновление
     if !app.update.version.is_empty() {
         let date = s(&app.update.history[&app.update.version]["date"]);
-        block(&mut rows, format!("Вышла {}", head(&app.update.version, &date)), &app.update.notes);
+        block(&mut rows, t!("Вышла {}", head(&app.update.version, &date)), &app.update.notes);
     }
     // текущая и прошлые версии, свежие сверху
     let pend = app.update.version.clone();
@@ -371,7 +371,7 @@ fn upd_rows(app: &App) -> Vec<Opt> {
     for v in vers.into_iter().take(3) {
         let e = &app.update.history[&v];
         let h = head(&v, &s(&e["date"]));
-        block(&mut rows, if v == cur { format!("{h} · стоит сейчас") } else { h }, &s(&e["notes"]));
+        block(&mut rows, if v == cur { t!("{} · стоит сейчас", h) } else { h }, &s(&e["notes"]));
     }
     rows
 }

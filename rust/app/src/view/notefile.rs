@@ -1,5 +1,6 @@
 //! «Знания»: действия с файлами заметок — переименовать (со ссылками в других заметках и на холстах),
 //! удалить в корзину `.trash` (как Obsidian), новая заметка из шаблона папки «Шаблоны», «Связать» упоминание.
+use sputnik_core::t;
 use super::*;
 use sputnik_core::notefile as nf;
 
@@ -23,8 +24,8 @@ pub fn templates(app: &App) -> Vec<(String, String)> {
 /// Окно «Переименовать»: поле с нынешним названием.
 pub fn ask_rename(u: &mut Ui, path: String) {
     u.ask_field = Some(stem(&path).to_string());
-    let q = if super::canvas::is_canvas(&path) { "Новое название холста" } else { "Новое название заметки — ссылки на неё в других заметках и на холстах обновятся" };
-    super::wire::ask(u, q, "Переименовать", move |app, u| {
+    let q = if super::canvas::is_canvas(&path) { t!("Новое название холста") } else { t!("Новое название заметки — ссылки на неё в других заметках и на холстах обновятся") };
+    super::wire::ask(u, q, t!("Переименовать"), move |app, u| {
         let name = clean(&u.answer);
         rename(app, u, &path, &name);
     });
@@ -41,11 +42,11 @@ pub fn rename(app: &mut App, u: &mut Ui, path: &str, name: &str) {
     let dir = path.rfind('/').map_or("", |k| &path[..k + 1]);
     let new_path = format!("{dir}{name}{ext}");
     if root.join(&new_path).exists() && !new_path.eq_ignore_ascii_case(path) {
-        app.say(format!("«{name}» уже есть в этой папке"));
+        app.say(t!("«{}» уже есть в этой папке", name));
         return;
     }
     if let Err(e) = std::fs::rename(root.join(path), root.join(&new_path)) {
-        app.say(format!("Не переименовалось: {e}"));
+        app.say(t!("Не переименовалось: {}", e));
         return;
     }
     // ссылки: в заметках [[old]] → [[name]], на холстах — путь файла
@@ -80,23 +81,20 @@ pub fn rename(app: &mut App, u: &mut Ui, path: &str, name: &str) {
     app.notes.rescan();
     super::canvas::ensure(app, u);
     app.say(match files {
-        0 => format!("Переименовано в «{name}»"),
-        k => format!("Переименовано в «{name}», ссылки обновлены в {k} {}", plural(k)),
+        0 => t!("Переименовано в «{}»", name),
+        k => t!("Переименовано в «{}», ссылки обновлены в {} {}", name, k, plural(k)),
     });
 }
 
 fn plural(k: usize) -> &'static str {
-    match (k % 10, k % 100) {
-        (1, x) if x != 11 => "файле",
-        _ => "файлах",
-    }
+    sputnik_core::habits::plural(k as i64, ["файле", "файлах", "файлах"])
 }
 
 /// Удалить в корзину: файл уходит в `.trash` папки заметок, вернуть можно руками (Obsidian делает так же).
 pub fn ask_trash(app: &App, u: &mut Ui, path: String) {
     let back = if path.ends_with(".md") { app.notes.backlinks(stem(&path)).len() } else { 0 };
-    let tail = if back > 0 { format!(" Ссылок на неё: {back} — они останутся, но станут «ещё не созданными».") } else { String::new() };
-    super::wire::ask(u, format!("Удалить «{}» в корзину?{tail} Файл ляжет в папку .trash внутри папки заметок.", stem(&path)), "Удалить", move |app, u| {
+    let tail = if back > 0 { t!(" Ссылок на неё: {} — они останутся, но станут «ещё не созданными».", back) } else { String::new() };
+    super::wire::ask(u, t!("Удалить «{}» в корзину?{} Файл ляжет в папку .trash внутри папки заметок.", stem(&path), tail), t!("Удалить"), move |app, u| {
         trash(app, u, &path);
     });
 }
@@ -112,7 +110,7 @@ pub fn trash(app: &mut App, u: &mut Ui, path: &str) {
         let _ = std::fs::create_dir_all(d);
     }
     if let Err(e) = std::fs::rename(root.join(path), root.join(&to)) {
-        app.say(format!("Не удалилось: {e}"));
+        app.say(t!("Не удалилось: {}", e));
         return;
     }
     u.note_tabs.retain(|t| t != path);
@@ -124,7 +122,7 @@ pub fn trash(app: &mut App, u: &mut Ui, path: &str) {
     }
     app.notes.rescan();
     super::canvas::ensure(app, u);
-    app.say(format!("«{}» — в корзине (.trash)", stem(path)));
+    app.say(t!("«{}» — в корзине (.trash)", stem(path)));
 }
 
 /// Новая заметка `title`; `tpl` — путь шаблона или пусто.
@@ -157,20 +155,20 @@ pub fn link_mention(app: &mut App, u: &mut Ui, path: &str) {
     let Some(body) = app.notes.notes.iter().find(|n| n.path == path).map(|n| n.body.clone()) else { return };
     match nf::link_mention(&body, &title) {
         Some(b) => match app.notes.save(path, &b) {
-            Ok(()) => app.say(format!("Связано: в «{}» теперь ссылка", stem(path))),
-            Err(e) => app.say(format!("Не сохранилось: {e}")),
+            Ok(()) => app.say(t!("Связано: в «{}» теперь ссылка", stem(path))),
+            Err(e) => app.say(t!("Не сохранилось: {}", e)),
         },
-        None => app.say("Упоминание не нашлось — может, уже ссылка"),
+        None => app.say(t!("Упоминание не нашлось — может, уже ссылка")),
     }
 }
 
 /// Предпросмотр ссылки: название, подпись (папка или «адрес»), первые строки заметки.
 pub fn peek(app: &App, link: &str) -> (String, String, Vec<crate::MdRow>) {
     if link.contains("://") {
-        return (link.to_string(), "адрес в интернете · откроется в браузере".into(), vec![]);
+        return (link.to_string(), t!("адрес в интернете · откроется в браузере").into(), vec![]);
     }
     let Some(n) = app.notes.find(link) else {
-        return (link.to_string(), "заметки ещё нет · Ctrl+клик создаст".into(), vec![]);
+        return (link.to_string(), t!("заметки ещё нет · Ctrl+клик создаст").into(), vec![]);
     };
     let dir = n.path.rsplit_once('/').map(|(d, _)| d.replace('/', " › ")).unwrap_or_default();
     let rows = crate::notes::line_rows(&n.body).into_iter()
@@ -193,7 +191,7 @@ pub fn cur_dir(u: &Ui) -> String {
 /// «Папка…»: имя новой папки; в ней сразу заметка — пустые папки список не показывает.
 pub fn ask_folder(u: &mut Ui) {
     u.ask_field = Some("Новая папка".into());
-    super::wire::ask(u, "Название новой папки", "Создать", |app, u| {
+    super::wire::ask(u, t!("Название новой папки"), t!("Создать"), |app, u| {
         let name = clean(&u.answer);
         if name.is_empty() {
             return;
@@ -204,13 +202,13 @@ pub fn ask_folder(u: &mut Ui) {
         }
         let root = app.notes.root.clone().unwrap_or_default();
         if let Err(e) = std::fs::create_dir_all(root.join(&name)) {
-            app.say(format!("Папка не создалась: {e}"));
+            app.say(t!("Папка не создалась: {}", e));
             return;
         }
         let path = crate::notes::free_name(&format!("{name}/Новая заметка"), |p| root.join(p).exists());
         match app.notes.save(&path, "# Новая заметка\n\n") {
             Ok(()) => super::wire::open_note_tab(app, u, &path),
-            Err(e) => app.say(format!("Заметка не создалась: {e}")),
+            Err(e) => app.say(t!("Заметка не создалась: {}", e)),
         }
     });
 }

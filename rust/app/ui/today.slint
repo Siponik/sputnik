@@ -37,7 +37,7 @@ component Source inherits Rectangle {
         x: 0; y: 0;
         height: 30px;
         border-radius: 7px;
-        background: n.dashed || n.title == "СПИСКИ" ? #3D3E45 : n.hue.mix(#1a1a1a, 0.5);
+        background: n.dashed || n.title == @tr("СПИСКИ") ? #3D3E45 : n.hue.mix(#1a1a1a, 0.5);
         Rectangle { y: parent.height - 7px; height: 7px; background: parent.background; }
         HorizontalLayout {
             padding-left: 12px;
@@ -60,7 +60,7 @@ component Source inherits Rectangle {
             Text { text: r.right; font-family: G.mono; font-size: 11px; color: r.accent ? G.accent : #8A8C96; vertical-alignment: center; }
         }
         if r.done: Rectangle { x: 12px; y: 14px; height: 1px; width: min(parent.width - 80px, 140px); background: G.dim; }
-        if !r.fold && (!S.today-many || n.title == "СПИСКИ"): Sock { x: parent.width - 6px; y: 9px; fill: n.dashed ? #A3A5AE : (r.done ? #7C7E88 : r.hue.alpha > 0 ? r.hue : n.hue); hollow: n.dashed; }
+        if !r.fold && (!S.today-many || n.title == @tr("СПИСКИ")): Sock { x: parent.width - 6px; y: 9px; fill: n.dashed ? #A3A5AE : (r.done ? #7C7E88 : r.hue.alpha > 0 ? r.hue : n.hue); hollow: n.dashed; }
         if j > 0: Rectangle { y: 0; height: 1px; background: G.line-soft; visible: S.today-many; }
     }
 }
@@ -97,7 +97,7 @@ component DayRow inherits Rectangle {
         spacing: 12px;
         Text { text: n < 10 ? "0" + n : n; font-family: G.mono; font-size: 10.5px; color: next ? G.accent : #62646E; width: 16px; vertical-alignment: center; }
         Check2 { done: item.done; hot: next; y: 13px; toggled => { S.toggle(item.list-id, item.id); } }
-        Text { text: item.when == "" ? "ДЕНЬ" : item.when; font-family: G.mono; font-size: 11.5px; width: 42px; color: item.overdue ? G.red : (next ? G.accent-ink : #8A8C96); vertical-alignment: center; overflow: elide; }
+        Text { text: item.when == "" ? @tr("ДЕНЬ") : item.when; font-family: G.mono; font-size: 11.5px; width: 42px; color: item.overdue ? G.red : (next ? G.accent-ink : #8A8C96); vertical-alignment: center; overflow: elide; }
         Text {
             text: (item.prio == 1 ? "!!! " : "") + item.title;
             font-size: 14px;
@@ -107,7 +107,7 @@ component DayRow inherits Rectangle {
             overflow: elide;
             horizontal-stretch: 1;
         }
-        if next: Text { text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent; vertical-alignment: center; }
+        if next: Text { text: @tr("ДАЛЬШЕ"); font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent; vertical-alignment: center; }
         if !next: Rectangle { width: 6px; height: 6px; y: 17px; border-radius: 2px; background: item.done ? transparent : item.hue; }
     }
     if item.done: Rectangle { x: 136px; y: 20px; height: 1px; width: min(parent.width - 180px, 120px); background: #62646E; }
@@ -117,8 +117,8 @@ component DayRow inherits Rectangle {
         height: 30px;
         width: 220px;
         spacing: 8px;
-        Button { text: "Открыть"; primary: true; height: 30px; clicked => { S.open-task(item.list-id, item.id); } }
-        Button { text: "На завтра"; height: 30px; clicked => { S.card-menu(item.list-id, item.id, "tomorrow"); } }
+        Button { text: @tr("Открыть"); primary: true; height: 30px; clicked => { S.open-task(item.list-id, item.id); } }
+        Button { text: @tr("На завтра"); height: 30px; clicked => { S.card-menu(item.list-id, item.id, "tomorrow"); } }
     }
     if !next: Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
 }
@@ -145,9 +145,9 @@ export component TodayPage inherits Rectangle {
         property <float> VW: self.width / 1px;
         height: sv.content-height - 24px;
 
-        SecLabel { x: 20px; y: 0; width: 230px; height: 12px; text: "01 · ИСТОЧНИКИ"; }
-        SecLabel { x: cv.m0; y: 0; width: cv.m1 - cv.m0; height: 12px; text: "02 · СБОРКА ДНЯ"; }
-        SecLabel { x: cv.r0; y: 0; width: 280px; height: 12px; text: "03 · ВЫВОД"; }
+        SecLabel { x: 20px; y: 0; width: 230px; height: 12px; text: @tr("01 · ИСТОЧНИКИ"); }
+        SecLabel { x: cv.m0; y: 0; width: cv.m1 - cv.m0; height: 12px; text: @tr("02 · СБОРКА ДНЯ"); }
+        SecLabel { x: cv.r0; y: 0; width: 280px; height: 12px; text: @tr("03 · ВЫВОД"); }
 
         // провода: источник → строка дня
         for w in S.today-wires: Wire {
@@ -191,10 +191,10 @@ export component TodayPage inherits Rectangle {
                     padding-left: 12px;
                     padding-right: 12px;
                     spacing: 10px;
-                    Text { text: "СЕГОДНЯ"; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; }
+                    Text { text: @tr("СЕГОДНЯ"); font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: #ffffff; vertical-alignment: center; }
                     Text { text: S.today-label; font-family: G.mono; font-size: 11px; letter-spacing: 1.6px; color: #ffffffb8; vertical-alignment: center; overflow: elide; }
                     Rectangle { }
-                    Text { text: S.today-count + " ЗАДАЧИ · " + S.today-habits.length + " ПРИВЫЧКИ"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb8; vertical-alignment: center; }
+                    Text { text: @tr("{} ЗАДАЧИ · {} ПРИВЫЧКИ", S.today-count, S.today-habits.length); font-family: G.mono; font-size: 10.5px; letter-spacing: 1.4px; color: #ffffffb8; vertical-alignment: center; }
                 }
             }
             Rectangle {
@@ -210,7 +210,7 @@ export component TodayPage inherits Rectangle {
                     height: 34px;
                     y: 1px;
                     bare: true;
-                    placeholder: "Добавить: «завтра 17:00 рендер щита»";
+                    placeholder: @tr("Добавить: «завтра 17:00 рендер щита»");
                     font-size: 13.5px;
                     edited(t) => { S.quick-changed(t); }
                     accepted(t) => { if (t != "") { S.quick-add(t); self.clear(); S.quick-changed(""); } }
@@ -223,7 +223,7 @@ export component TodayPage inherits Rectangle {
                 x: 14px; y: 86px; height: 20px;
                 spacing: 6px;
                 alignment: start;
-                Mono { text: "ПОНЯЛ:"; vertical-alignment: center; font-size: 10px; }
+                Mono { text: @tr("ПОНЯЛ:"); vertical-alignment: center; font-size: 10px; }
                 for u in S.understood: Rectangle {
                     width: ut.preferred-width + 12px;
                     border-radius: 4px;
@@ -240,7 +240,7 @@ export component TodayPage inherits Rectangle {
             if S.day-rows.length == 0: Empty {
                 x: 0; y: S.rows-top * 1px; width: parent.width; height: 160px;
                 pose: S.done-count > 0 ? "cheer" : "hi";
-                text: S.busy ? "Загружаю задачи…" : S.done-count > 0 ? "Всё на сегодня сделано" : "На сегодня ничего — добавь первое дело сверху";
+                text: S.busy ? @tr("Загружаю задачи…") : S.done-count > 0 ? @tr("Всё на сегодня сделано") : @tr("На сегодня ничего — добавь первое дело сверху");
             }
             for t[i] in S.day-rows: DayRow {
                 x: 12px;
@@ -264,7 +264,7 @@ export component TodayPage inherits Rectangle {
                 Text { x: 10px; text: S.more-n > 0 ? "+" + S.more-n : "−"; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; height: parent.height; }
                 if S.more-n > 0: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
                 if S.more-n == 0: Chev { x: 34px; y: 15px; up: true; }
-                Text { x: 64px; text: S.more-n > 0 ? "Ещё " + S.more-n + (Math.mod(S.more-n, 10) == 1 && Math.mod(S.more-n, 100) != 11 ? " задача" : Math.mod(S.more-n, 10) >= 2 && Math.mod(S.more-n, 10) <= 4 && (Math.mod(S.more-n, 100) < 12 || Math.mod(S.more-n, 100) > 14) ? " задачи" : " задач") + " на день" : "Свернуть"; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                Text { x: 64px; text: S.more-n > 0 ? (Math.mod(S.more-n, 10) == 1 && Math.mod(S.more-n, 100) != 11 ? @tr("Ещё {} задача на день", S.more-n) : Math.mod(S.more-n, 10) >= 2 && Math.mod(S.more-n, 10) <= 4 && (Math.mod(S.more-n, 100) < 12 || Math.mod(S.more-n, 100) > 14) ? @tr("Ещё {} задачи на день", S.more-n) : @tr("Ещё {} задач на день", S.more-n)) : @tr("Свернуть"); font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 ma := TouchArea { clicked => { S.today-fold(0); } mouse-cursor: pointer; }
             }
@@ -274,7 +274,7 @@ export component TodayPage inherits Rectangle {
                 Icon { name: "check"; x: 10px; width: 10px; y: 15.5px; c: #62646E; }
                 if !S.fold-open: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
                 if S.fold-open: Chev { x: 34px; y: 15px; up: true; }
-                Text { x: 64px; text: "Сделано · " + S.fold-n; font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                Text { x: 64px; text: @tr("Сделано · {}", S.fold-n); font-size: 13px; color: G.muted; vertical-alignment: center; height: parent.height; }
                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 fa := TouchArea { clicked => { S.today-fold(1); } mouse-cursor: pointer; }
             }
@@ -288,15 +288,15 @@ export component TodayPage inherits Rectangle {
                     padding-right: 6px;
                     spacing: 10px;
                     Text { text: "+" + S.inbox.length; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; }
-                    Text { text: "От Claude ждут " + S.inbox.length + (S.inbox.length == 1 ? " задача" : S.inbox.length < 5 ? " задачи" : " задач") + ": взять в день?"; font-size: 13px; color: #A3A5AE; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
-                    Button { text: "Принять"; height: 26px; y: 6px; clicked => { S.accept-all(); } }
+                    Text { text: S.inbox.length == 1 ? @tr("От Claude ждут {} задача: взять в день?", S.inbox.length) : S.inbox.length < 5 ? @tr("От Claude ждут {} задачи: взять в день?", S.inbox.length) : @tr("От Claude ждут {} задач: взять в день?", S.inbox.length); font-size: 13px; color: #A3A5AE; vertical-alignment: center; overflow: elide; horizontal-stretch: 1; }
+                    Button { text: @tr("Принять"); height: 26px; y: 6px; clicked => { S.accept-all(); } }
                 }
                 Sock { x: -18px; y: 14px; fill: #A3A5AE; hollow: true; }
             }
             if S.today-habits.length > 0: Rectangle {
                 x: 12px; y: S.habits-top * 1px; width: parent.width - 24px; height: 92px;
                 Rectangle { x: 0; y: 0; height: 1px; background: #8A7424; }
-                Text { x: 10px; y: 14px; text: "ПРИВЫЧКИ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.6px; color: G.gold; }
+                Text { x: 10px; y: 14px; text: @tr("ПРИВЫЧКИ"); font-family: G.mono; font-size: 10px; letter-spacing: 1.6px; color: G.gold; }
                 Text { x: parent.width - self.preferred-width - 10px; y: 14px; text: S.habits-done + " / " + S.today-habits.length; font-family: G.mono; font-size: 10.5px; color: #8A8C96; }
                 ScrollView {
                     x: 10px; y: 40px; width: parent.width - 20px; height: 32px;
@@ -329,7 +329,7 @@ export component TodayPage inherits Rectangle {
         Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
         Text {
             x: main.x; y: main.y + main.height + 14px; width: main.width;
-            text: "|  —  " + S.today-label + " · ЗАДАЧ " + S.total-count + " · СДЕЛАНО " + S.done-count + "  —  |";
+            text: @tr("|  —  {} · ЗАДАЧ {} · СДЕЛАНО {}  —  |", S.today-label, S.total-count, S.done-count);
             font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #62646E; horizontal-alignment: center; overflow: elide;
         }
 
@@ -345,12 +345,12 @@ export component TodayPage inherits Rectangle {
                 Rectangle { y: 23px; height: 7px; background: parent.background; }
                 HorizontalLayout {
                     padding-left: 12px; padding-right: 10px;
-                    Text { text: "B1  ДАЛЬШЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+                    Text { text: @tr("B1  ДАЛЬШЕ"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
                     Rectangle { }
                     Text { text: S.next-time; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffb8; vertical-alignment: center; }
                 }
             }
-            Text { x: 12px; y: 44px; width: parent.width - 24px; text: S.next-title == "" ? "Пусто — можно отдохнуть" : S.next-title; font-size: 15px; font-weight: 600; color: S.next-title == "" ? G.muted : G.ink; overflow: elide; }
+            Text { x: 12px; y: 44px; width: parent.width - 24px; text: S.next-title == "" ? @tr("Пусто — можно отдохнуть") : S.next-title; font-size: 15px; font-weight: 600; color: S.next-title == "" ? G.muted : G.ink; overflow: elide; }
             Text { x: 12px; y: 72px; width: parent.width - 24px; text: S.next-meta != "" && S.next-title != "" ? S.next-meta : S.next-why; font-family: G.mono; font-size: 10.5px; letter-spacing: 1px; color: #8A8C96; overflow: elide; }
             Sock { x: -6px; y: 45px; fill: G.accent; }
         }
@@ -363,7 +363,7 @@ export component TodayPage inherits Rectangle {
             Rectangle {
                 x: 0; y: 0; height: 30px; border-radius: 7px; background: #3D3E45;
                 Rectangle { y: 23px; height: 7px; background: parent.background; }
-                Text { x: 12px; text: "B2  ИТОГ ДНЯ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
+                Text { x: 12px; text: @tr("B2  ИТОГ ДНЯ"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; }
             }
             VerticalLayout {
                 y: 30px;
@@ -371,13 +371,13 @@ export component TodayPage inherits Rectangle {
                 padding: 12px;
                 spacing: 8px;
                 HorizontalLayout {
-                    Text { text: "Задачи"; font-size: 13px; color: G.ink; }
+                    Text { text: @tr("Задачи"); font-size: 13px; color: G.ink; }
                     Rectangle { }
                     Text { text: S.done-count + " / " + S.total-count; font-family: G.mono; font-size: 12px; color: G.ink; }
                 }
                 Rectangle { height: 1px; background: G.line-soft; }
                 HorizontalLayout {
-                    Text { text: "Привычки"; font-size: 13px; color: G.ink; }
+                    Text { text: @tr("Привычки"); font-size: 13px; color: G.ink; }
                     Rectangle { }
                     Text { text: S.habits-done + " / " + S.today-habits.length; font-family: G.mono; font-size: 12px; color: G.ink; }
                 }
@@ -386,7 +386,7 @@ export component TodayPage inherits Rectangle {
                     spacing: 6px;
                     Rectangle { width: 1px; height: 8px; background: #55575F; }
                     Rectangle { height: 1px; y: 4px; background: #55575F; }
-                    Text { text: "12 Ч"; font-family: G.mono; font-size: 9px; color: #62646E; }
+                    Text { text: @tr("12 Ч"); font-family: G.mono; font-size: 9px; color: #62646E; }
                     Rectangle { height: 1px; y: 4px; background: #55575F; }
                     Rectangle { width: 1px; height: 8px; background: #55575F; }
                 }
@@ -414,7 +414,7 @@ export component TodayPage inherits Rectangle {
             Rectangle {
                 x: 0; y: 0; height: 30px; border-radius: 7px; background: #2F4F86;
                 Rectangle { y: 23px; height: 7px; background: parent.background; }
-                Text { x: 12px; width: parent.width - 24px; text: "B3  ВСТРЕЧИ · " + S.today-events.length; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; }
+                Text { x: 12px; width: parent.width - 24px; text: @tr("B3  ВСТРЕЧИ · {}", S.today-events.length); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #ffffff; vertical-alignment: center; overflow: elide; }
             }
             ScrollView {
                 y: 36px; height: parent.height - 36px; width: parent.width;
@@ -436,15 +436,15 @@ export component TodayPage inherits Rectangle {
             border-radius: 6px;
             border-width: 1px;
             border-color: G.line;
-            Text { x: 8px; y: 6px; text: "ЛИСТ · СЕГОДНЯ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
+            Text { x: 8px; y: 6px; text: @tr("ЛИСТ · СЕГОДНЯ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.ink; }
             Rectangle { x: 0; y: 24px; height: 1px; background: G.line; }
             HorizontalLayout {
                 y: 24px; height: 28px;
                 Text { text: S.now-label; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; overflow: elide; }
                 Rectangle { width: 1px; background: G.line; }
-                Text { text: "ЗАДАЧ " + S.total-count; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; overflow: elide; }
+                Text { text: @tr("ЗАДАЧ {}", S.total-count); font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; overflow: elide; }
                 Rectangle { width: 1px; background: G.line; }
-                Text { text: "ВЕРСИЯ " + S.version; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
+                Text { text: @tr("ВЕРСИЯ {}", S.version); font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; }
             }
         }
     }

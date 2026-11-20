@@ -1,4 +1,5 @@
 //! Общий Telegram-бот Спутника (bot/, Cloudflare Workers) — сеть. Ключ привязки — в слое settings.tgbot.key.
+use sputnik_core::t;
 use serde_json::{json, Value};
 use sputnik_core::sharedbot::BOT_URL;
 use std::time::Duration;
@@ -17,9 +18,9 @@ fn call(path: &str, method: &str, key: &str, body: Option<&Value>) -> Result<Val
         Ok(r) => Ok(r.into_json().unwrap_or(Value::Null)),
         Err(ureq::Error::Status(c, r)) => {
             let v: Value = r.into_json().unwrap_or(Value::Null);
-            Err(v["error"].as_str().map(String::from).unwrap_or_else(|| format!("Бот ответил {c}")))
+            Err(v["error"].as_str().map(String::from).unwrap_or_else(|| t!("Бот ответил {}", c)))
         }
-        Err(_) => Err("Бот не отвечает — проверь интернет".into()),
+        Err(_) => Err(t!("Бот не отвечает — проверь интернет").into()),
     }
 }
 

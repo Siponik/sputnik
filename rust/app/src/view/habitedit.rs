@@ -1,5 +1,6 @@
 //! Окно правки привычки (G_HabitEdit, #193): модель для ui/habitedit.slint.
 //! Правок «черновика» нет: каждое действие сразу пишется в слой (wire.rs), здесь — только чтение.
+use sputnik_core::t;
 use super::today::habit_color;
 use super::*;
 use crate::Opt;
@@ -34,7 +35,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_he_icons(model(cr::HABIT_ICONS.iter().map(|i| opt(*i, i.to_string(), icon == *i)).collect()));
     let fr = cr::habit_freq_of(&h, &Value::Null);
     let kind = s(&fr["kind"]);
-    g.set_he_freq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, (*l).to_string(), kind == *k)).collect()));
+    g.set_he_freq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, sputnik_core::i18n::tr(l).to_string(), kind == *k)).collect()));
     let dsel: Vec<i64> = a(&fr["days"]).iter().filter_map(|x| x.as_i64()).collect();
     g.set_he_days(model((0..7usize).map(|i| opt("", sputnik_core::i18n::wd(i).to_string(), dsel.contains(&(i as i64)))).collect()));
     let per = n(&fr["perWeek"]).unwrap_or(0.0) as i64;
@@ -43,12 +44,12 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     let w = hb::habit_win(&h);
     let custom = !w.is_null() && !hb::whole_part(&w);
     let part_eff = if custom { String::new() } else { hb::part_of(&h) };
-    g.set_he_part(model([("morning", "Утро"), ("day", "День"), ("evening", "Вечер"), ("any", "Любое")].iter().map(|(k, l)| opt(*k, l.to_string(), part_eff == *k)).collect()));
+    g.set_he_part(model([("morning", "Утро"), ("day", "День"), ("evening", "Вечер"), ("any", "Любое")].iter().map(|(k, l)| opt(*k, sputnik_core::i18n::tr(l).to_string(), part_eff == *k)).collect()));
     g.set_he_win_s(ss(if w.is_null() { String::new() } else { s(&w["s"]).to_string() }));
     g.set_he_win_e(ss(if w.is_null() { String::new() } else { s(&w["e"]).to_string() }));
     let goal = hb::goal_n(&h);
     g.set_he_goal_n(goal as i32);
-    g.set_he_goal(ss(if goal > 1 { format!("{} {}", goal, text(&h["goal"]["unit"])) } else { "Сделать".into() }));
+    g.set_he_goal(ss(if goal > 1 { format!("{} {}", goal, text(&h["goal"]["unit"])) } else { t!("Сделать").into() }));
     g.set_he_tg(h["remind"]["tg"] != false);
     g.set_he_wrem(h["remind"]["win"] != false);
     // заметка привычки — заметка её задачи в Google

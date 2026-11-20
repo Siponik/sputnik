@@ -2,6 +2,7 @@
 //! У каждой сферы свой календарь «Спутник · сфера …», каждая запись — одно событие.
 //! Shared — простые данные: сетевая работа идёт над копией в фоне по очереди (App::shared_job), копия потом
 //! возвращается в App. Так окно не ждёт сети, а два обмена не перетирают друг друга.
+use sputnik_core::t;
 use super::{now_ms, run, App};
 use crate::data::api::enc;
 use crate::data::google::{api, Fail};
@@ -383,7 +384,7 @@ impl Shared {
         let lk = core::list_key(id);
         match (lk, self.cal_of_list(lk)) {
             (Some(lk), Some(cal)) => Ok((lk.to_string(), cal)),
-            _ => Err(Fail::Status(404, "общий список не найден".into())),
+            _ => Err(Fail::Status(404, t!("общий список не найден").into())),
         }
     }
 
@@ -412,7 +413,7 @@ impl Shared {
         let (_, cal) = self.need(id)?;
         let cur = self.rec(&cal, task);
         if !cur.is_object() {
-            return Err(Fail::Status(404, "задача не найдена".into()));
+            return Err(Fail::Status(404, t!("задача не найдена").into()));
         }
         let next = core::edit(&cur, &core::task_patch(body, None), None);
         if core::same(Some(&next), Some(&cur)) {
@@ -503,7 +504,7 @@ impl Shared {
         if !core::is_sphere_cal(&c) {
             let ev = api("GET", &format!("{CAL}/calendars/{}/events/{}", enc(&id), core::SPHERE_KEY), None).unwrap_or(Value::Null);
             if !core::from_event(&ev).is_object() {
-                return Err(Fail::Status(400, "Это не общая сфера Спутника".into()));
+                return Err(Fail::Status(400, t!("Это не общая сфера Спутника").into()));
             }
         }
         let role = if c["accessRole"].is_null() { json!("writer") } else { c["accessRole"].clone() };
@@ -562,7 +563,7 @@ impl Shared {
 
     pub fn invite_text(cal: &str, sphere: &str) -> String {
         let link = format!("https://calendar.google.com/calendar/r?cid={}", enc(cal));
-        format!("Зову тебя в общую сферу «{sphere}» в Спутнике.\n1) Открой ссылку и добавь календарь: {link}\n2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: {cal}")
+        t!("Зову тебя в общую сферу «{}» в Спутнике.\n1) Открой ссылку и добавь календарь: {}\n2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: {}", sphere, link, cal)
     }
 }
 
@@ -601,7 +602,7 @@ impl App {
             let r = f(sh).map_err(|e| e.to_string());
             Box::new(move |app: &mut App| match r {
                 Ok(()) => app.refresh(),
-                Err(e) => app.say(format!("{fail}: {e}")),
+                Err(e) => app.say(t!("{}: {}", fail, e)),
             })
         }));
     }
@@ -616,31 +617,31 @@ impl App {
 
     pub fn accept_invite(&mut self, cal: &str) {
         let c = cal.to_string();
-        self.shared_act("Не принялось", move |sh| sh.accept(&c));
+        self.shared_act(t!("Не принялось"), move |sh| sh.accept(&c));
     }
     pub fn decline_invite(&mut self, cal: &str) {
         let c = cal.to_string();
-        self.shared_act("Не получилось", move |sh| sh.remove_sphere(&c));
+        self.shared_act(t!("Не получилось"), move |sh| sh.remove_sphere(&c));
     }
     pub fn join_sphere(&mut self, code: &str) {
         let c = code.to_string();
-        self.shared_act("Не вошёл в сферу", move |sh| sh.join(&c).map(|_| ()));
+        self.shared_act(t!("Не вошёл в сферу"), move |sh| sh.join(&c).map(|_| ()));
     }
     pub fn forget_sphere(&mut self, cal: &str) {
         let c = cal.to_string();
-        self.shared_act("Не убралось", move |sh| sh.forget(&c));
+        self.shared_act(t!("Не убралось"), move |sh| sh.forget(&c));
     }
     pub fn invite_person(&mut self, cal: &str, email: &str) {
         let (c, e) = (cal.to_string(), email.to_string());
-        self.shared_act("Не позвал", move |sh| sh.invite_person(&c, &e));
+        self.shared_act(t!("Не позвал"), move |sh| sh.invite_person(&c, &e));
     }
     pub fn remove_person(&mut self, cal: &str, email: &str) {
         let (c, e) = (cal.to_string(), email.to_string());
-        self.shared_act("Не убрал", move |sh| sh.remove_member(&c, &e));
+        self.shared_act(t!("Не убрал"), move |sh| sh.remove_member(&c, &e));
     }
     pub fn shared_remove_sphere(&mut self, cal: &str) {
         let c = cal.to_string();
-        self.shared_act("Не удалилась сфера", move |sh| sh.remove_sphere(&c));
+        self.shared_act(t!("Не удалилась сфера"), move |sh| sh.remove_sphere(&c));
     }
     pub fn apply_profile(&mut self) {
         let p = self.layer["settings"]["profile"].clone();
@@ -671,7 +672,7 @@ impl App {
                         f(app, id);
                     }
                 }
-                Err(e) => app.say(format!("Список не создался: {e}")),
+                Err(e) => app.say(t!("Список не создался: {}", e)),
             })
         }));
     }
@@ -682,7 +683,7 @@ impl App {
             let r = sh.rename_list(&i, &ti).map_err(|e| e.to_string());
             Box::new(move |app: &mut App| {
                 if let Err(e) = r {
-                    app.say(format!("Не переименовался: {e}"));
+                    app.say(t!("Не переименовался: {}", e));
                     app.refresh();
                 }
             })
@@ -707,7 +708,7 @@ impl App {
         }
         let sid = sphere_id.to_string();
         let (name, color, icon) = (sp["name"].as_str().unwrap_or("Сфера").to_string(), sp["color"].as_str().unwrap_or("clay").to_string(), sp["icon"].as_str().unwrap_or("star").to_string());
-        self.say("Делаю сферу общей…");
+        self.say(t!("Делаю сферу общей…"));
         self.shared_job(Box::new(move |sh| {
             let res = (|| -> R<(String, Vec<(String, Value)>)> {
                 let cal = sh.create_sphere(&name, &color, &icon)?;
@@ -743,9 +744,9 @@ impl App {
                     }
                     app.delete_sphere(&sid);
                     app.refresh();
-                    app.say("Сфера стала общей — позови людей");
+                    app.say(t!("Сфера стала общей — позови людей"));
                 }
-                Err(e) => app.say(format!("Не получилось сделать общей: {e}")),
+                Err(e) => app.say(t!("Не получилось сделать общей: {}", e)),
             })
         }));
     }

@@ -41,6 +41,21 @@ pub fn resolved(c: &Create) -> Value {
     cr2::resolve(&c.text, c.kind, &c.m, if c.dur == 0 { 60 } else { c.dur }, hb::now().date())
 }
 
+/// «За 15 минут» → «за 15 минут», «В момент начала» → «в начале» (в английском — просто с маленькой буквы).
+pub fn lead_lab(l: &str) -> String {
+    if sputnik_core::i18n::is_en() {
+        let l = sputnik_core::i18n::tr(l);
+        let mut ch = l.chars();
+        return ch.next().map(|f| f.to_lowercase().collect::<String>() + ch.as_str()).unwrap_or_default();
+    }
+    l.replace("За ", "за ").replace("В момент начала", "в начале").replace("В день рождения", "в день")
+}
+
+/// «5 раз» с формой слова по числу (русские три формы → английские две через .po).
+fn pl(n: i64, f: [&str; 3]) -> String {
+    format!("{n} {}", sputnik_core::habits::plural(n, f))
+}
+
 pub fn opt(id: impl Into<String>, label: impl Into<String>, on: bool) -> Opt {
     Opt { id: ss(id), label: ss(label), hint: ss(""), hue: color("accent"), on }
 }
@@ -60,7 +75,7 @@ pub fn reminds_of(r: &Value) -> (Vec<Opt>, i32) {
     let mut k = 0;
     let v = rem::LEADS.iter().filter(|x| x.0 != 5 && x.0 != 43200).map(|(m, lab)| {
         let on = mins.contains(m);
-        let mut o = opt(m.to_string(), lab.replace("За ", "за ").replace("В момент начала", "в начале"), on);
+        let mut o = opt(m.to_string(), lead_lab(lab), on);
         if on { o.hint = ss(k.to_string()); k += 1; }
         o
     }).collect();
@@ -139,7 +154,7 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
         cols.iter().map(|(c, ts)| {
             let lim = n(&c["limit"]).unwrap_or(0.0) as usize;
             let days = sputnik_core::stagelog::days_in(&l["stageLog"], s(&c["id"]), crate::state::now_ms());
-            let hint = if c["id"] == cur.as_str() { format!("{} ДН · ИДЁТ", days.max(1)) } else if days > 0 { format!("{days} ДН") } else if lim > 0 { format!("{}/{lim}", ts.len()) } else { String::new() };
+            let hint = if c["id"] == cur.as_str() { t!("{} ДН · ИДЁТ", days.max(1)) } else if days > 0 { t!("{} ДН", days) } else if lim > 0 { format!("{}/{lim}", ts.len()) } else { String::new() };
             Opt { id: ss(text(&c["id"])), label: ss(text(&c["name"])), hint: ss(hint),
                 hue: color(&sputnik_core::templates::col_color(c)), on: c["id"] == cur.as_str() }
         }).collect()
@@ -158,18 +173,18 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_reminds(model(rv));
     g.set_t_remind_n(k);
     let every = s(&l["repeat"]["every"]);
-    let mut reps = vec![opt("", "Нет", every.is_empty())];
-    reps.extend([("day", "Каждый день"), ("weekdays", "По будням"), ("week", "Каждую неделю"), ("month", "Каждый месяц"), ("year", "Каждый год")].iter().map(|(id2, lab)| opt(*id2, *lab, every == *id2)));
+    let mut reps = vec![opt("", t!("Нет"), every.is_empty())];
+    reps.extend([("day", t!("Каждый день")), ("weekdays", t!("По будням")), ("week", t!("Каждую неделю")), ("month", t!("Каждый месяц")), ("year", t!("Каждый год"))].iter().map(|(id2, lab)| opt(*id2, *lab, every == *id2)));
     g.set_t_repeats(model(reps));
     g.set_t_lists(model(list_opts(app, list)));
     let pending = app.outbox.pending_for(id);
-    g.set_t_saved(ss(if pending { if app.flags.offline { "Нет связи — сохранится, когда появится".to_string() } else { "Сохраняю…".to_string() } } else if id.starts_with("tmp-") { "Сохраняю…".into() } else { u.saved.clone().max("Сохранено в Google Tasks".into()) }));
+    g.set_t_saved(ss(if pending { if app.flags.offline { t!("Нет связи — сохранится, когда появится").to_string() } else { t!("Сохраняю…").to_string() } } else if id.starts_with("tmp-") { t!("Сохраняю…").into() } else { u.saved.clone().max(t!("Сохранено в Google Tasks").into()) }));
 }
 
 /// Куда ляжет задача из строки: выбранный руками список или угаданный.
 pub fn dest_of(app: &App, c: &Create) -> (String, String) {
     if let Some(d) = &c.dest {
-        return (d.clone(), "выбрано".into());
+        return (d.clone(), t!("выбрано").into());
     }
     let lists = app.board_lists();
     let cur = c.cur.as_deref().filter(|k| lists.iter().any(|l| l["id"] == *k));
@@ -177,7 +192,7 @@ pub fn dest_of(app: &App, c: &Create) -> (String, String) {
     if c.text.trim().is_empty() {
         let last = app.layer["settings"]["lastBoard"]["v"].as_str().filter(|k| lists.iter().any(|l| l["id"] == *k));
         if let Some(k) = cur.or(last) {
-            return (k.to_string(), if cur.is_some() { "текущая доска" } else { "по умолчанию" }.into());
+            return (k.to_string(), if cur.is_some() { t!("текущая доска") } else { t!("по умолчанию") }.into());
         }
     }
     let r = route::route(&c.text, &lists, &app.layer, &app.tasks, cur, crate::state::now_ms());
@@ -220,21 +235,21 @@ fn create(app: &App, c: &Create, g: &S) {
     let q = cr2::quick_of(&x["day"], tdy);
     g.set_c_quick(model(cr2::quick_days(tdy).iter().filter(|d| c.kind == 0 || d.0 != "none").map(|(id, l, _)| opt(*id, *l, *id == q)).collect()));
     let every = s(&x["repeat"]["every"]);
-    g.set_c_reps(model([("", "нет"), ("day", "каждый день"), ("weekdays", "по будням"), ("week", "каждую неделю"), ("month", "каждый месяц")].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect()));
+    g.set_c_reps(model([("", t!("нет")), ("day", t!("каждый день")), ("weekdays", t!("по будням")), ("week", t!("каждую неделю")), ("month", t!("каждый месяц"))].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect()));
     let meta: Vec<String> = {
-        let mut v = vec![if c.kind == 3 { x["day"].as_str().map(cr::day_month).unwrap_or_else(|| "дата?".into()) } else { cr2::when_label(&x["day"], &x["slot"], tdy) }];
-        if let Some(pr) = x["priority"].as_i64().filter(|p| *p > 0 && c.kind == 0) { v.push(["", "!!! высокий", "!! средний", "! низкий"][pr as usize].into()); }
+        let mut v = vec![if c.kind == 3 { x["day"].as_str().map(cr::day_month).unwrap_or_else(|| t!("дата?").into()) } else { cr2::when_label(&x["day"], &x["slot"], tdy) }];
+        if let Some(pr) = x["priority"].as_i64().filter(|p| *p > 0 && c.kind == 0) { v.push(["", t!("!!! высокий"), t!("!! средний"), t!("! низкий")][pr as usize].into()); }
         if !every.is_empty() { v.push(format!("↻ {}", sputnik_core::repeat::repeat_label(&x["repeat"]))); }
         v
     };
     g.set_c_meta(ss(match &habit { Some(h) => a(&h["toks"]).iter().map(|x| text(&x["l"])).collect::<Vec<_>>().join(" · "), None => meta.join(" · ") }));
     let hint = match c.kind {
-        2 => "Привычка: цель («8 стаканов»), частота («по будням», «3 раза в неделю») и часть дня («утром»).".to_string(),
-        3 => "Имя и дата: «Мама 12 марта». Каждый год, задача «Подарок» заведётся сама.".into(),
-        1 => "Событие в Google Календаре: день и время словами — «в пт 14:00» — или кнопкой «Выбрать…» (Alt+D).".into(),
+        2 => t!("Привычка: цель («8 стаканов»), частота («по будням», «3 раза в неделю») и часть дня («утром»).").to_string(),
+        3 => t!("Имя и дата: «Мама 12 марта». Каждый год, задача «Подарок» заведётся сама.").into(),
+        1 => t!("Событие в Google Календаре: день и время словами — «в пт 14:00» — или кнопкой «Выбрать…» (Alt+D).").into(),
         _ => {
             let sk = cr::suggest_kind(&c.text, p);
-            if s(&sk["kind"]) == "event" { "Похоже на встречу — можно сделать событием: Alt+2".to_string() } else { "Дата, время, @список, #тип, !!! — прямо в строке, в название они не попадут. Срок можно выбрать и кнопкой.".to_string() }
+            if s(&sk["kind"]) == "event" { t!("Похоже на встречу — можно сделать событием: Alt+2").to_string() } else { t!("Дата, время, @список, #тип, !!! — прямо в строке, в название они не попадут. Срок можно выбрать и кнопкой.").to_string() }
         }
     };
     g.set_c_hint(ss(hint));
@@ -247,16 +262,16 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_cals(model(app.writable_cals().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["summaryOverride"]).max(text(&x["summary"]))), hint: ss(""),
         hue: color(s(&x["backgroundColor"])), on: x["id"] == cal.as_str() }).collect()));
     let dur = if c.dur == 0 { 60 } else { c.dur };
-    g.set_c_durs(model([(15, "15 мин"), (30, "30 мин"), (60, "1 час"), (120, "2 часа"), (-1, "весь день")].iter().map(|(m, l)| opt(m.to_string(), *l, *m == dur)).collect()));
+    g.set_c_durs(model([(15, t!("15 мин")), (30, t!("30 мин")), (60, t!("1 час")), (120, t!("2 часа")), (-1, t!("весь день"))].iter().map(|(m, l)| opt(m.to_string(), *l, *m == dur)).collect()));
     let leads = if c.kind == 3 { &rem::BDAY_LEADS[..] } else { &rem::LEADS[..] };
     let mins = c.remind.clone().unwrap_or_else(|| default_mins(app, c.kind));
     // у дня рождения — все варианты (их пять), у остальных — первые и выбранные
-    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| c.kind == 3 || mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), l.replace("За ", "за ").replace("В момент начала", "в начале").replace("В день рождения", "в день"), mins.contains(m))).take(if c.kind == 3 { 5 } else { 4 }).collect()));
+    g.set_c_reminds(model(leads.iter().filter(|x| x.0 != 5).enumerate().filter(|(i, x)| c.kind == 3 || mins.contains(&x.0) || *i < 3).map(|(_, (m, l))| opt(m.to_string(), lead_lab(l), mins.contains(m))).take(if c.kind == 3 { 5 } else { 4 }).collect()));
     // событие: свободно ли
     let free = match (c.kind, x["day"].as_str(), x["slot"]["s"].as_str(), x["slot"]["e"].as_str()) {
         (1, Some(day), Some(st), Some(en)) => {
             let f = cr::free_check(&app.events_on(day), day, &json!({"s": st, "e": en}));
-            if f["clash"].is_string() { format!("⚠ пересекается с «{}»", text(&f["clash"])) } else if f["until"].is_string() { format!("свободно до {}", text(&f["until"])) } else { "весь вечер свободен".into() }
+            if f["clash"].is_string() { t!("⚠ пересекается с «{}»", text(&f["clash"])) } else if f["until"].is_string() { t!("свободно до {}", text(&f["until"])) } else { t!("весь вечер свободен").into() }
         }
         _ => String::new(),
     };
@@ -265,45 +280,44 @@ fn create(app: &App, c: &Create, g: &S) {
     // событие: место; день рождения: год и «подарок заранее»; привычка: значок, частота, окно и часть дня
     g.set_c_place(ss(c.place.clone()));
     g.set_c_year(ss(c.year.clone()));
-    g.set_c_gift(model([(0i64, "Не надо"), (3, "За 3 дня"), (7, "За неделю"), (14, "За 2 недели"), (30, "За месяц")].iter().map(|(n2, l)| opt(n2.to_string(), *l, c.gift.unwrap_or(7) == *n2)).collect()));
+    g.set_c_gift(model([(0i64, t!("Не надо")), (3, t!("За 3 дня")), (7, t!("За неделю")), (14, t!("За 2 недели")), (30, t!("За месяц"))].iter().map(|(n2, l)| opt(n2.to_string(), *l, c.gift.unwrap_or(7) == *n2)).collect()));
     g.set_c_gift_hint(ss(gift_hint(app, c)));
     let h0 = habit.clone().unwrap_or_else(|| json!({}));
     let fr = cr::habit_freq_of(&h0, &c.hfreq);
-    g.set_c_hfreq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, *l, s(&fr["kind"]) == *k)).collect()));
+    g.set_c_hfreq(model([("daily", t!("Каждый день")), ("weekdays", t!("По будням")), ("days", t!("Свои дни")), ("week", t!("N раз в неделю"))].iter().map(|(k, l)| opt(*k, *l, s(&fr["kind"]) == *k)).collect()));
     let dsel: Vec<i64> = a(&fr["days"]).iter().filter_map(|x| x.as_i64()).collect();
     g.set_c_hdays(model((0..7usize).map(|i| opt(i.to_string(), sputnik_core::i18n::wd(i), dsel.contains(&(i as i64)))).collect()));
     let per = n(&fr["perWeek"]).unwrap_or(0.0) as i64;
-    g.set_c_hper(model((2..=6).map(|nn| opt(nn.to_string(), cr::plural(nn, "раз", "раза", "раз"), per == nn)).collect()));
+    g.set_c_hper(model((2..=6).map(|nn| opt(nn.to_string(), pl(nn as i64, ["раз", "раза", "раз"]), per == nn)).collect()));
     g.set_c_hicons(model(cr::HABIT_ICONS.iter().map(|i| opt(*i, *i, c.hicon == *i)).collect()));
     let part_eff = if !c.hpart.is_empty() { c.hpart.clone() } else { let p = s(&h0["part"]); if p.is_empty() { "any".into() } else { p.into() } };
     let win_eff = c.hwin.clone().map(|(a0, b0)| json!({"s": a0, "e": b0})).unwrap_or_else(|| hb::part_win(&json!(part_eff)));
     let custom_win = !win_eff.is_null() && !hb::whole_part(&win_eff);
-    g.set_c_hpart(model([("morning", "Утро"), ("day", "День"), ("evening", "Вечер"), ("any", "Любое")].iter().map(|(k, l)| opt(*k, *l, part_eff == *k && !custom_win)).collect()));
+    g.set_c_hpart(model([("morning", t!("Утро")), ("day", t!("День")), ("evening", t!("Вечер")), ("any", t!("Любое"))].iter().map(|(k, l)| opt(*k, *l, part_eff == *k && !custom_win)).collect()));
     g.set_c_hwin_s(ss(s(&win_eff["s"])));
     g.set_c_hwin_e(ss(s(&win_eff["e"])));
     // превью по макетам
     {
         use chrono::Datelike;
-        const M3: [&str; 12] = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЯ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
         let tdy = hb::now().date();
         let (pa, pb, psub, hours): (String, String, String, Vec<String>) = match c.kind {
-            2 => ("0".into(), [("morning", "УТРО"), ("day", "ДЕНЬ"), ("evening", "ВЕЧЕР")].iter().find(|x| x.0 == part_eff).map(|x| x.1).unwrap_or("").into(), String::new(), vec![]),
+            2 => ("0".into(), [("morning", t!("УТРО")), ("day", t!("ДЕНЬ")), ("evening", t!("ВЕЧЕР"))].iter().find(|x| x.0 == part_eff).map(|x| x.1).unwrap_or("").into(), String::new(), vec![]),
             3 => match x["day"].as_str().and_then(sputnik_core::dates::parse_ymd) {
                 Some(d) => {
                     let mut next = chrono::NaiveDate::from_ymd_opt(tdy.year(), d.month(), d.day()).unwrap_or(d);
                     if next < tdy { next = chrono::NaiveDate::from_ymd_opt(tdy.year() + 1, d.month(), d.day()).unwrap_or(next); }
                     let left = (next - tdy).num_days();
-                    let when = match left { 0 => "сегодня".to_string(), 1 => "завтра".into(), n2 => format!("через {}", cr::plural(n2, "день", "дня", "дней")) };
-                    let age = cr::bday_year(&c.year).map(|y| format!("Исполнится {} · ", next.year() as i64 - y)).unwrap_or_default();
-                    (d.day().to_string(), M3[d.month0() as usize].into(), format!("{age}{when}"), vec![])
+                    let when = match left { 0 => t!("сегодня").to_string(), 1 => t!("завтра").into(), n2 => t!("через {}", pl(n2 as i64, ["день", "дня", "дней"])) };
+                    let age = cr::bday_year(&c.year).map(|y| t!("Исполнится {} · ", next.year() as i64 - y)).unwrap_or_default();
+                    (d.day().to_string(), sputnik_core::i18n::month_short(d.month0() as usize).to_uppercase(), format!("{age}{when}"), vec![])
                 }
-                None => ("?".into(), String::new(), "дата?".into(), vec![]),
+                None => ("?".into(), String::new(), t!("дата?").into(), vec![]),
             },
             1 => {
                 let st = x["slot"]["s"].as_str().unwrap_or("");
                 let en = x["slot"]["e"].as_str().unwrap_or("");
                 let h0 = if st.is_empty() { 9 } else { (cr::to_min(st) / 60 - 1).clamp(0, 20) };
-                (String::new(), String::new(), if st.is_empty() { "весь день".into() } else { format!("{st} – {en}") }, (h0..h0 + 4).map(|h| format!("{h:02}:00")).collect())
+                (String::new(), String::new(), if st.is_empty() { t!("весь день").into() } else { format!("{st} – {en}") }, (h0..h0 + 4).map(|h| format!("{h:02}:00")).collect())
             }
             _ => (String::new(), String::new(), String::new(), vec![]),
         };
@@ -322,7 +336,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
     g.set_c_time(ss(x["slot"]["s"].as_str().unwrap_or("")));
     g.set_c_day(ss(match sputnik_core::dates::parse_ymd(day) {
         Some(d) => { let l = cr::short_day(day); let _ = d; let mut ch = l.chars(); ch.next().map(|f| f.to_uppercase().collect::<String>() + ch.as_str()).unwrap_or_default() }
-        None => "Без срока".into(),
+        None => t!("Без срока").into(),
     }));
     g.set_c_times(strings(cr2::times()));
     g.set_c_end(ss(if c.dur < 0 { "" } else { x["slot"]["e"].as_str().unwrap_or("") }));
@@ -344,7 +358,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
     g.set_c_strip(model(cr2::strip(tdy).into_iter().map(|(id, wd, n)| Opt { on: id == day, id: ss(id), label: ss(wd), hint: ss(n), hue: color("accent") }).collect()));
     let cols = app.columns(dest);
     let col = c.col.clone().filter(|k| cols.iter().any(|x| x.0["id"] == k.as_str())).or_else(|| cols.first().map(|x| text(&x.0["id"])));
-    let col_name = cols.iter().find(|x| Some(text(&x.0["id"])) == col).map(|x| text(&x.0["name"])).unwrap_or_else(|| "Входящие".into());
+    let col_name = cols.iter().find(|x| Some(text(&x.0["id"])) == col).map(|x| text(&x.0["name"])).unwrap_or_else(|| t!("Входящие").into());
     let mut lands = cr2::lands(&x["day"], &x["slot"], &col_name, tdy);
     let rest = if lands.len() > 2 { lands.split_off(2) } else { vec![] };
     g.set_c_lands(strings(lands));
@@ -353,6 +367,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
     let leads = if c.kind == 3 { &rem::BDAY_LEADS[..] } else { &rem::LEADS[..] };
     let lab = |l: &str| {
         let l = l.replace("За ", "за ").replace("В момент начала", "в начале");
+        let l = sputnik_core::i18n::tr(&l).to_string();
         let mut ch = l.chars();
         ch.next().map(|f| f.to_lowercase().collect::<String>() + ch.as_str()).unwrap_or_default()
     };
@@ -362,25 +377,25 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
     let cal_row = |app: &App| {
         let cals = app.writable_cals();
         let c0 = cals.iter().find(|x| text(&x["id"]) == cal);
-        let mut r = row("cal", "Календарь", c0.map(|x| text(&x["summaryOverride"]).max(text(&x["summary"]))).unwrap_or_else(|| "Основной".into()));
+        let mut r = row("cal", t!("Календарь"), c0.map(|x| text(&x["summaryOverride"]).max(text(&x["summary"]))).unwrap_or_else(|| t!("Основной").into()));
         r.hue = c0.map(|x| color(s(&x["backgroundColor"]))).unwrap_or_else(|| color("clay"));
         r
     };
     g.set_c_props(model(match c.kind {
-        1 => vec![cal_row(app), row("remind", "Напомнить", if day.is_empty() { String::new() } else { lead }), row("repeat", "Повтор", if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) })],
+        1 => vec![cal_row(app), row("remind", t!("Напомнить"), if day.is_empty() { String::new() } else { lead }), row("repeat", t!("Повтор"), if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) })],
         2 => {
             let hid = app.habit_list().map(|l| text(&l["id"])).unwrap_or_default();
-            let mut r = row("list", "Список", app.habit_list().map(|l| text(&l["title"])).unwrap_or_else(|| "Привычки".into()));
+            let mut r = row("list", t!("Список"), app.habit_list().map(|l| text(&l["title"])).unwrap_or_else(|| t!("Привычки").into()));
             r.hue = list_hue(app, &hid);
             vec![r]
         }
-        3 => vec![cal_row(app), row("remind", "Напомнить", if day.is_empty() { String::new() } else { lead })],
+        3 => vec![cal_row(app), row("remind", t!("Напомнить"), if day.is_empty() { String::new() } else { lead })],
         _ => vec![
-            { let mut r = row("list", "Список", app.list_name(dest)); r.hue = list_hue(app, dest); r }
-            , row("col", "Этап", if cols.len() > 1 { col_name.clone() } else { String::new() }),
-            row("prio", "Приоритет", ["", "!!! Высокий", "!! Средний", "! Низкий"][prio.clamp(0, 3) as usize].into()),
-            row("remind", "Напомнить", if day.is_empty() { String::new() } else { lead }),
-            row("repeat", "Повтор", if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) }),
+            { let mut r = row("list", t!("Список"), app.list_name(dest)); r.hue = list_hue(app, dest); r }
+            , row("col", t!("Этап"), if cols.len() > 1 { col_name.clone() } else { String::new() }),
+            row("prio", t!("Приоритет"), ["", t!("!!! Высокий"), t!("!! Средний"), t!("! Низкий")][prio.clamp(0, 3) as usize].into()),
+            row("remind", t!("Напомнить"), if day.is_empty() { String::new() } else { lead }),
+            row("repeat", t!("Повтор"), if every.is_empty() { String::new() } else { sputnik_core::repeat::repeat_label(&x["repeat"]) }),
         ],
     }));
     g.set_c_popen(ss(c.popen.clone()));
@@ -392,9 +407,9 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         "list" => list_opts(app, dest),
         "cal" => app.writable_cals().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["summaryOverride"]).max(text(&x["summary"]))), hint: ss(""), hue: color(s(&x["backgroundColor"])), on: x["id"] == cal.as_str() }).collect(),
         "col" => cols.iter().map(|(k, _)| Opt { id: ss(text(&k["id"])), label: ss(text(&k["name"])), hint: ss(""), hue: color(&sputnik_core::templates::col_color(k)), on: Some(text(&k["id"])) == col }).collect(),
-        "prio" => [(1, "!!! Высокий"), (2, "!! Средний"), (3, "! Низкий"), (0, "Нет")].iter().map(|(n, l)| opt(n.to_string(), *l, prio == *n)).collect(),
+        "prio" => [(1, t!("!!! Высокий")), (2, t!("!! Средний")), (3, t!("! Низкий")), (0, t!("Нет"))].iter().map(|(n, l)| opt(n.to_string(), *l, prio == *n)).collect(),
         "remind" => leads.iter().filter(|x| c.kind == 3 || x.0 != 5).map(|x| opt(x.0.to_string(), lab(x.1), mins.contains(&x.0))).collect(),
-        "repeat" => [("", "нет"), ("day", "каждый день"), ("weekdays", "по будням"), ("week", "каждую неделю"), ("month", "каждый месяц"), ("year", "каждый год")].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect(),
+        "repeat" => [("", t!("нет")), ("day", t!("каждый день")), ("weekdays", t!("по будням")), ("week", t!("каждую неделю")), ("month", t!("каждый месяц")), ("year", t!("каждый год"))].iter().map(|(id, l)| opt(*id, *l, every == *id)).collect(),
         _ => vec![],
     }));
     g.set_c_subs(strings(c.subs.clone()));
@@ -444,13 +459,13 @@ fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Valu
     let dm = |d: &str| if d.len() >= 10 { format!("{}.{}", &d[8..10], &d[5..7]) } else { String::new() };
     let spans = sl::spans(log, now);
     let mut meta = vec![];
-    if let Some(f) = spans.first() { meta.push(format!("создана {}", dm(s(&f["from"])))); }
-    if let Some(c) = spans.last().filter(|x| s(&x["stage"]) == cur) { meta.push(format!("в этой колонке {} дн", c["days"])); }
+    if let Some(f) = spans.first() { meta.push(t!("создана {}", dm(s(&f["from"])))); }
+    if let Some(c) = spans.last().filter(|x| s(&x["stage"]) == cur) { meta.push(t!("в этой колонке {} дн", c["days"])); }
     let tot = sl::total_days(log, now);
-    if tot > 0 { meta.push(format!("всего {tot} дн")); }
+    if tot > 0 { meta.push(t!("всего {} дн", tot)); }
     if meta.is_empty() {
         let u = s(&t0["updated"]);
-        if u.len() >= 10 { meta.push(format!("изменена {}", dm(u))); }
+        if u.len() >= 10 { meta.push(t!("изменена {}", dm(u))); }
     }
     g.set_t_meta(ss(meta.join(" · ")));
     // история: переходы по колонкам, новые сверху
@@ -458,7 +473,7 @@ fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Valu
     let mut hist: Vec<crate::Opt> = a(log).iter().enumerate().map(|(i, e)| {
         let at = n(&e["at"]).unwrap_or(0.0) as i64;
         let when = <chrono::Local as chrono::TimeZone>::timestamp_millis_opt(&chrono::Local, at).single().map(|d| d.format("%d.%m %H:%M").to_string()).unwrap_or_default();
-        crate::Opt { id: ss(""), label: ss(if i == 0 { format!("Создана в «{}»", name_of(s(&e["stage"]))) } else { format!("→ {}", name_of(s(&e["stage"]))) }), hint: ss(when), hue: if i == 0 { color("") } else { color("green") }, on: false }
+        crate::Opt { id: ss(""), label: ss(if i == 0 { t!("Создана в «{}»", name_of(s(&e["stage"]))) } else { format!("→ {}", name_of(s(&e["stage"]))) }), hint: ss(when), hue: if i == 0 { color("") } else { color("green") }, on: false }
     }).collect();
     hist.reverse();
     g.set_t_hist(model(hist));
@@ -473,11 +488,11 @@ fn task_extra(app: &App, g: &S, list: &str, t0: &Value, cols: &[(Value, Vec<Valu
 fn gift_hint(app: &App, c: &Create) -> String {
     let days = c.gift.unwrap_or(7);
     if c.kind != 3 || days == 0 {
-        return "Задачу заводить не буду".into();
+        return t!("Задачу заводить не буду").into();
     }
     let _ = app;
     let x = resolved(c);
-    let Some(day) = x["day"].as_str() else { return format!("Задача «Подарок …» появится за {days} дн. до дня рождения") };
+    let Some(day) = x["day"].as_str() else { return t!("Задача «Подарок …» появится за {} дн. до дня рождения", days) };
     // ближайший день рождения: прошёл в этом году — берём следующий
     let mut day = day.to_string();
     let today = hb::now().date().format("%Y-%m-%d").to_string();
@@ -486,5 +501,5 @@ fn gift_hint(app: &App, c: &Create) -> String {
         day = format!("{}{}", y + 1, &day[4..]);
     }
     let from = cr::gift_date(&day, days);
-    format!("Задача «Подарок …» появится {} — сама, в список со стикерами", cr::day_month(&from))
+    t!("Задача «Подарок …» появится {} — сама, в список со стикерами", cr::day_month(&from))
 }

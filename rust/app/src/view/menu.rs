@@ -30,28 +30,28 @@ fn items(app: &App, u: &Ui, m: &Menu) -> (String, Vec<MItem>) {
             match m.sub.as_str() {
                 "view" => {
                     let cur = s(&ll["view"]);
-                    (format!("{name} · вид"), VIEWS.iter().enumerate().map(|(i, (id, l, ic))| MItem {
-                        on: cur == *id || (cur.is_empty() && *id == "kanban"), ..it(&format!("view:{id}"), l, ic, &(i + 1).to_string()) }).collect())
+                    (t!("{} · вид", name), VIEWS.iter().enumerate().map(|(i, (id, l, ic))| MItem {
+                        on: cur == *id || (cur.is_empty() && *id == "kanban"), ..it(&format!("view:{id}"), sputnik_core::i18n::tr(l), ic, &(i + 1).to_string()) }).collect())
                 }
                 "sphere" => {
                     let cur = s(&ll["sphere"]);
-                    let mut v = vec![MItem { on: cur.is_empty(), ..it("sphere:", "Без сферы", "circle", "") }];
+                    let mut v = vec![MItem { on: cur.is_empty(), ..it("sphere:", t!("Без сферы"), "circle", "") }];
                     v.extend(app.spheres().iter().map(|x| MItem { on: cur == s(&x["id"]), ..it(&format!("sphere:{}", text(&x["id"])), &text(&x["name"]), "spheres", "") }));
-                    (format!("{name} · сфера"), v)
+                    (t!("{} · сфера", name), v)
                 }
                 _ => {
                     let main = app.lists.first().map(|l| l["id"] == m.id.as_str()).unwrap_or(false);
-                    let mut del = MItem { red: !main, off: main, sep: true, ..it("delete", if main { "Основной список не удаляется" } else { "Удалить список…" }, "trash", if main { "" } else { "Del" }) };
+                    let mut del = MItem { red: !main, off: main, sep: true, ..it("delete", if main { t!("Основной список не удаляется") } else { t!("Удалить список…") }, "trash", if main { "" } else { "Del" }) };
                     del.sep = true;
                     (name, vec![
-                        it("open", "Открыть", "open", ""),
-                        it("settings", "Переименовать", "edit", ""),
-                        it("settings", "Настроить список…", "settings", "Ctrl ."),
-                        MItem { sep: true, sub: true, ..it("sub:view", "Вид", "board", "") },
-                        MItem { sub: true, ..it("sub:sphere", "Сфера", "spheres", "") },
-                        MItem { sep: true, ..it("today", if ll["hidden"] == true { "Показывать в «Сегодня»" } else { "Скрыть из «Сегодня»" }, if ll["hidden"] == true { "eye" } else { "eyeoff" }, "") },
-                        it("quiet", if ll["quiet"] == true { "Вернуть в сводку и бота" } else { "Без сводки и бота" }, "bell", ""),
-                        it("arch", "В архив", "archive", ""),
+                        it("open", t!("Открыть"), "open", ""),
+                        it("settings", t!("Переименовать"), "edit", ""),
+                        it("settings", t!("Настроить список…"), "settings", "Ctrl ."),
+                        MItem { sep: true, sub: true, ..it("sub:view", t!("Вид"), "board", "") },
+                        MItem { sub: true, ..it("sub:sphere", t!("Сфера"), "spheres", "") },
+                        MItem { sep: true, ..it("today", if ll["hidden"] == true { t!("Показывать в «Сегодня»") } else { t!("Скрыть из «Сегодня»") }, if ll["hidden"] == true { "eye" } else { "eyeoff" }, "") },
+                        it("quiet", if ll["quiet"] == true { t!("Вернуть в сводку и бота") } else { t!("Без сводки и бота") }, "bell", ""),
+                        it("arch", t!("В архив"), "archive", ""),
                         del,
                     ])
                 }
@@ -60,38 +60,38 @@ fn items(app: &App, u: &Ui, m: &Menu) -> (String, Vec<MItem>) {
         "sphere" => super::spheres::menu_items(app, &m.id),
         "note" if m.sub == "todo" => {
             let n = todo_new(app, &m.id).len();
-            (format!("{} в список", super::spheres::plural(n, "задача", "задачи", "задач")), app.board_lists().iter().map(|l| it(&format!("todo:{}", text(&l["id"])), &text(&l["title"]), "board", "")).collect())
+            (t!("{} в список", format!("{n} {}", sputnik_core::habits::plural(n as i64, ["задача", "задачи", "задач"]))), app.board_lists().iter().map(|l| it(&format!("todo:{}", text(&l["id"])), &text(&l["title"]), "board", "")).collect())
         }
         "note" => {
             let title = app.notes.notes.iter().find(|n| n.path == m.id).map(|n| n.title.clone()).unwrap_or_default();
             let todo = todo_new(app, &m.id).len();
-            (format!("Заметка · {title}"), vec![
-                it("note-open", "Открыть", "open", ""),
-                it("note-pin", if super::notes::pins().contains(&m.id) { "Открепить" } else { "Закрепить вверху папки" }, "pin", ""),
-                it("note-graph", "Показать на графе", "graph", ""),
-                MItem { sub: true, off: todo == 0, ..it("sub:todo", &if todo == 0 { "Чек-лист → в задачи".to_string() } else { format!("Чек-лист → в задачи · {todo}") }, "check", "") },
-                MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
-                it("note-file", "Открыть в другой программе", "share", ""),
-                MItem { sep: true, ..it("note-rename", "Переименовать…", "edit", "") },
-                MItem { red: true, ..it("note-trash", "Удалить в корзину", "trash", "") },
+            (t!("Заметка · {}", title), vec![
+                it("note-open", t!("Открыть"), "open", ""),
+                it("note-pin", if super::notes::pins().contains(&m.id) { t!("Открепить") } else { t!("Закрепить вверху папки") }, "pin", ""),
+                it("note-graph", t!("Показать на графе"), "graph", ""),
+                MItem { sub: true, off: todo == 0, ..it("sub:todo", &if todo == 0 { t!("Чек-лист → в задачи").to_string() } else { t!("Чек-лист → в задачи · {}", todo) }, "check", "") },
+                MItem { sep: true, ..it("note-dir", t!("Показать в папке Windows"), "folder", "") },
+                it("note-file", t!("Открыть в другой программе"), "share", ""),
+                MItem { sep: true, ..it("note-rename", t!("Переименовать…"), "edit", "") },
+                MItem { red: true, ..it("note-trash", t!("Удалить в корзину"), "trash", "") },
             ])
         }
         "newnote" => {
             let mut v = vec![
-                it("new:", "Заметка", "note", ""),
-                it("canvas:", "Холст", "canvas", ""),
-                it("folder:", "Папка…", "folder", ""),
+                it("new:", t!("Заметка"), "note", ""),
+                it("canvas:", t!("Холст"), "canvas", ""),
+                it("folder:", t!("Папка…"), "folder", ""),
             ];
             let t = super::notefile::templates(app);
             for (k, (p, title)) in t.into_iter().enumerate() {
-                v.push(MItem { sep: k == 0, ..it(&format!("tpl:{p}"), &format!("Заметка по шаблону «{title}»"), "copy", "") });
+                v.push(MItem { sep: k == 0, ..it(&format!("tpl:{p}"), &t!("Заметка по шаблону «{}»", title), "copy", "") });
             }
-            (String::from("Создать"), v)
+            (String::from(t!("Создать")), v)
         }
-        "tab" => (String::from("Вкладка"), vec![
-            it("tab-close", "Закрыть", "close", "Ctrl W"),
-            it("tab-others", "Закрыть остальные", "close", ""),
-            MItem { sep: true, ..it("note-dir", "Показать в папке Windows", "folder", "") },
+        "tab" => (String::from(t!("Вкладка")), vec![
+            it("tab-close", t!("Закрыть"), "close", "Ctrl W"),
+            it("tab-others", t!("Закрыть остальные"), "close", ""),
+            MItem { sep: true, ..it("note-dir", t!("Показать в папке Windows"), "folder", "") },
         ]),
         _ => (String::new(), vec![]),
     }
@@ -182,7 +182,7 @@ pub fn pick(app: &mut App, u: &mut Ui, id: &str) {
         "quiet" => { let q = app.ll(&l)["quiet"] == true; app.set_list_field(&l, json!({"quiet": !q})); }
         "delete" => {
             let n0 = app.tasks_of(&l).len();
-            super::wire::ask(u, format!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&l), n0), "Удалить", move |app, u| {
+            super::wire::ask(u, t!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&l), n0), t!("Удалить"), move |app, u| {
                 app.delete_list(&l);
                 u.board.clear();
             });
@@ -216,5 +216,5 @@ fn todo_send(app: &mut App, path: &str, list: &str) {
         app.touch("noteSent", &todo_key(path, t), serde_json::json!({"at": crate::state::now_ms()}));
     }
     let name = app.list_name(list);
-    app.say(format!("{} в «{name}»", super::spheres::plural(items.len(), "задача создана", "задачи созданы", "задач создано")));
+    app.say(t!("{} в «{}»", format!("{} {}", items.len(), sputnik_core::habits::plural(items.len() as i64, ["задача создана", "задачи созданы", "задач создано"])), name));
 }

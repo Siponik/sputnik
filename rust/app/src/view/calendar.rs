@@ -2,7 +2,7 @@
 use super::*;
 use super::today::{event_chip, habit_color};
 use crate::{Chip, Day, Opt};
-use sputnik_core::calendar as cal;
+use sputnik_core::{calendar as cal, t};
 use sputnik_core::habits as hb;
 
 pub const FILTERS: [(&str, &str, &str); 4] = [("events", "События", "#A3A5AE"), ("tasks", "Задачи", "accent"), ("habits", "Привычки", "gold"), ("bdays", "Дни рождения", "#F08CC0")];
@@ -77,7 +77,7 @@ pub fn day_items(app: &App, u: &Ui, day: &str) -> Vec<Item> {
                 s: Some((n(&b["s"]).unwrap_or(0.0), n(&b["e"]).unwrap_or(30.0))),
                 sub: hb::span_label(h),
                 note: String::new(),
-                src: "ПРИВЫЧКА".into(),
+                src: t!("ПРИВЫЧКА").into(),
                 chip: Chip { title: ss(text(&h["name"])), hue: habit_color(h), done: t(&b["done"]), kind: 2, list_id: ss(""), id: ss(text(&h["id"])), time: ss(s(&b["s"]).to_string()) },
             });
         }
@@ -104,9 +104,10 @@ pub(super) fn habits_line(app: &App, day: &str) -> (String, Vec<i32>) {
     (format!("{}/{}", done, hs.len()), dots)
 }
 
-const MONTHS_UP: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
 const MONTHS_SHORT_UP: [&str; 12] = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЙ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
-const MONTHS_GEN_UP: [&str; 12] = ["ЯНВАРЯ", "ФЕВРАЛЯ", "МАРТА", "АПРЕЛЯ", "МАЯ", "ИЮНЯ", "ИЮЛЯ", "АВГУСТА", "СЕНТЯБРЯ", "ОКТЯБРЯ", "НОЯБРЯ", "ДЕКАБРЯ"];
+fn month_up(m0: usize) -> String { sputnik_core::i18n::month(m0).to_uppercase() }
+fn month_gen_up(m0: usize) -> String { sputnik_core::i18n::month_gen(m0).to_uppercase() }
+fn month3_up(m0: usize) -> String { sputnik_core::i18n::month_abbr(m0, &MONTHS_SHORT_UP).to_uppercase() }
 
 fn pd(d: &str) -> chrono::NaiveDate {
     chrono::NaiveDate::parse_from_str(d, "%Y-%m-%d").unwrap_or_default()
@@ -131,12 +132,12 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_cal_title(ss(if mode == "week" {
         let a = cal::start_of_week(sd);
         let b = a + chrono::Duration::days(6);
-        let m3 = |d: chrono::NaiveDate| MONTHS_SHORT_UP[d.month0() as usize];
+        let m3 = |d: chrono::NaiveDate| month3_up(d.month0() as usize);
         if a.month() == b.month() { format!("{}–{} {} {}", a.day(), b.day(), m3(b), b.year()) }
         else { format!("{} {}–{} {} {}", a.day(), m3(a), b.day(), m3(b), b.year()) }
-    } else { format!("{} {}", MONTHS_UP[sd.month0() as usize], sd.year()) }));
+    } else { format!("{} {}", month_up(sd.month0() as usize), sd.year()) }));
     let mdays = { let (y, m) = (sd.year(), sd.month()); let nx = if m == 12 { chrono::NaiveDate::from_ymd_opt(y + 1, 1, 1) } else { chrono::NaiveDate::from_ymd_opt(y, m + 1, 1) }; nx.map(|x| x.pred_opt().unwrap().day()).unwrap_or(30) };
-    g.set_cal_sub(ss(if mode == "week" { format!("НЕДЕЛЯ {}", sd.iso_week().week()) } else { format!("{} ИЗ {}", sd.day(), mdays) }));
+    g.set_cal_sub(ss(if mode == "week" { t!("НЕДЕЛЯ {}", sd.iso_week().week()) } else { t!("{} ИЗ {}", sd.day(), mdays) }));
     g.set_free_col(-1);
     g.set_free_free(-1);
     u.cal_free = None;
@@ -150,7 +151,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         let same = if mode == "week" { cal::start_of_week(sd) == cal::start_of_week(tdy) } else { (sd.year(), sd.month()) == (tdy.year(), tdy.month()) };
         g.set_cal_away(!same);
     }
-    g.set_cal_filters(model(FILTERS.iter().map(|(id, l, c)| Opt { id: ss(*id), label: ss(*l), hint: ss(""), hue: color(c), on: on(u, id) }).collect()));
+    g.set_cal_filters(model(FILTERS.iter().map(|(id, l, c)| Opt { id: ss(*id), label: ss(sputnik_core::i18n::tr(l)), hint: ss(""), hue: color(c), on: on(u, id) }).collect()));
     let tdy = today_s();
     let sel_month = &u.cal_sel[..7];
     let per_day_m = || -> Vec<(String, Vec<Item>)> { days.iter().map(|d| (d.clone(), day_items(app, u, d))).collect() };
@@ -166,21 +167,21 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         let fut: Vec<String> = days.iter().filter(|d| d.as_str() >= tdy.as_str()).cloned().collect();
         let bw = cal::best_window(&Value::Object(m), &fut);
         let (a0, b0) = (days.first().map(|x| pd(x)).unwrap_or_default(), days.last().map(|x| pd(x)).unwrap_or_default());
-        g.set_cal_head(ss(if a0.month() == b0.month() { format!("НЕДЕЛЯ · {:02}–{:02} {}", a0.day(), b0.day(), MONTHS_GEN_UP[b0.month0() as usize]) }
-            else { format!("НЕДЕЛЯ · {:02} {} – {:02} {}", a0.day(), &MONTHS_GEN_UP[a0.month0() as usize][..6], b0.day(), &MONTHS_GEN_UP[b0.month0() as usize][..6]) }));
+        g.set_cal_head(ss(if a0.month() == b0.month() { t!("НЕДЕЛЯ · {}–{} {}", format!("{:02}", a0.day()), format!("{:02}", b0.day()), month_gen_up(b0.month0() as usize)) }
+            else { t!("НЕДЕЛЯ · {} {} – {} {}", format!("{:02}", a0.day()), month3_up(a0.month0() as usize), format!("{:02}", b0.day()), month3_up(b0.month0() as usize)) }));
         let busy: f64 = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind != 2).filter_map(|x| x.s.map(|(a0, b0)| b0 - a0))).sum();
         let hrs = (busy / 60.0).round() as i64;
-        g.set_cal_head_r(ss(format!("ЗАНЯТО {} Ч", hrs)));
+        g.set_cal_head_r(ss(t!("ЗАНЯТО {} Ч", hrs)));
         let dues = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 1 && x.s.is_none())).count();
-        g.set_cal_foot(ss(format!("ЗАГРУЗКА {} Ч · СРОКИ {}", hrs, dues)));
+        g.set_cal_foot(ss(t!("ЗАГРУЗКА {} Ч · СРОКИ {}", hrs, dues)));
         let free_day = per_day.iter().position(|(d, it)| d.as_str() >= tdy.as_str() && it.iter().all(|x| x.chip.kind == 2));
         g.set_free_free(free_day.map(|x| x as i32).unwrap_or(-1));
         if bw.is_object() {
             let (fs, fe) = (n(&bw["s"]).unwrap_or(0.0), n(&bw["e"]).unwrap_or(0.0));
             let dd = s(&bw["day"]).to_string();
             let (ts, te) = (cal::from_min(fs as i64), cal::from_min(fe as i64));
-            g.set_free_hint(ss(format!("Свободно {}–{}", ts, te)));
-            g.set_cal_foot_hl(ss(format!("СВОБОДНЕЕ ВСЕГО · {} {}–{}", text(&cal::day_label(&dd)["short"]).to_uppercase(), (fs / 60.0) as i64, (fe / 60.0).ceil() as i64)));
+            g.set_free_hint(ss(t!("Свободно {}–{}", ts, te)));
+            g.set_cal_foot_hl(ss(t!("СВОБОДНЕЕ ВСЕГО · {} {}–{}", text(&cal::day_label(&dd)["short"]).to_uppercase(), (fs / 60.0) as i64, (fe / 60.0).ceil() as i64)));
             if let Some(i) = days.iter().position(|x| *x == dd) {
                 g.set_free_col(i as i32);
                 let (fy, fh) = super::calweek::free_y(app, u, fs, fe);
@@ -192,10 +193,10 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             g.set_free_hint("".into());
             g.set_cal_foot_hl("".into());
         }
-        g.set_cal_rule(ss("ПН — ВС · 7 ДНЕЙ · ВИДНЫ ЧАСЫ С ДЕЛАМИ, ОСТАЛЬНОЕ — ЧИПАМИ"));
+        g.set_cal_rule(ss(t!("ПН — ВС · 7 ДНЕЙ · ВИДНЫ ЧАСЫ С ДЕЛАМИ, ОСТАЛЬНОЕ — ЧИПАМИ")));
         let evs = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 0)).count();
         let tks = per_day.iter().flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 1)).count();
-        g.set_cal_stamp(model(vec![ss("ЛИСТ · КАЛЕНДАРЬ · НЕДЕЛЯ"), ss(sd_stamp()), ss(format!("СОБЫТИЙ {:02}", evs)), ss(format!("ЗАДАЧ {:02}", tks))]));
+        g.set_cal_stamp(model(vec![ss(t!("ЛИСТ · КАЛЕНДАРЬ · НЕДЕЛЯ")), ss(sd_stamp()), ss(t!("СОБЫТИЙ {}", format!("{:02}", evs))), ss(t!("ЗАДАЧ {}", format!("{:02}", tks)))]));
     } else {
         let per_day = per_day_m();
         let out: Vec<Day> = per_day.iter().map(|(d, items)| {
@@ -212,21 +213,21 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         }).collect();
         let cnt = per_day.iter().filter(|(d, _)| &d[..7] == sel_month).flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind != 2)).count();
         let bds = per_day.iter().filter(|(d, _)| &d[..7] == sel_month).flat_map(|(_, it)| it.iter().filter(|x| x.chip.kind == 3)).count();
-        g.set_cal_head(ss(format!("{} {}", MONTHS_UP[sd.month0() as usize], sd.year())));
-        g.set_cal_head_r(ss(format!("{} ДНЕЙ · {} ДЕЛ", mdays, cnt)));
+        g.set_cal_head(ss(format!("{} {}", month_up(sd.month0() as usize), sd.year())));
+        g.set_cal_head_r(ss(t!("{} ДНЕЙ · {} ДЕЛ", mdays, cnt)));
         g.set_days(model(out));
         g.set_free_hint("".into());
         g.set_now_col(-1);
-        g.set_cal_foot(ss("ПОЛОСКА ВНИЗУ КЛЕТКИ"));
-        g.set_cal_foot_hl(ss("ЗОЛОТО — ПРИВЫЧКИ СДЕЛАНЫ"));
+        g.set_cal_foot(ss(t!("ПОЛОСКА ВНИЗУ КЛЕТКИ")));
+        g.set_cal_foot_hl(ss(t!("ЗОЛОТО — ПРИВЫЧКИ СДЕЛАНЫ")));
         let (a0, b0) = (days.first().map(|x| pd(x)).unwrap_or_default(), days.last().map(|x| pd(x)).unwrap_or_default());
-        g.set_cal_rule(ss(format!("{} — {} · {} НЕДЕЛЬ", a0.format("%d.%m"), b0.format("%d.%m"), days.len() / 7)));
-        g.set_cal_stamp(model(vec![ss("ЛИСТ · КАЛЕНДАРЬ · МЕСЯЦ"), ss(sd_stamp()), ss(format!("ДЕЛ {:02}", cnt)), ss(format!("ДР {:02}", bds))]));
+        g.set_cal_rule(ss(t!("{} — {} · {} НЕДЕЛЬ", a0.format("%d.%m"), b0.format("%d.%m"), days.len() / 7)));
+        g.set_cal_stamp(model(vec![ss(t!("ЛИСТ · КАЛЕНДАРЬ · МЕСЯЦ")), ss(sd_stamp()), ss(t!("ДЕЛ {}", format!("{:02}", cnt))), ss(t!("ДР {}", format!("{:02}", bds)))]));
     }
     // панель дня
     let dl = cal::day_label(&u.cal_sel);
     g.set_day_title(ss(format!("{}, {}", text(&dl["weekday"]), text(&dl["title"]))));
-    let rel = if u.cal_sel == tdy { " · СЕГОДНЯ".to_string() } else if u.cal_sel == (pd(&tdy) + chrono::Duration::days(1)).format("%Y-%m-%d").to_string() { " · ЗАВТРА".into() } else { String::new() };
+    let rel = if u.cal_sel == tdy { t!(" · СЕГОДНЯ").to_string() } else if u.cal_sel == (pd(&tdy) + chrono::Duration::days(1)).format("%Y-%m-%d").to_string() { t!(" · ЗАВТРА").into() } else { String::new() };
     g.set_day_head(ss(format!("{}{}", short_up(&u.cal_sel), rel)));
     let mut items = day_items(app, u, &u.cal_sel);
     // привычки дня — отдельным разделом
@@ -237,11 +238,11 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
         let hint = if goal > 1 { format!("{}/{}", hb::count_on(log, h, &u.cal_sel), goal) } else {
             let k = hb::stats(h, log)["streak"].as_i64().unwrap_or(0);
             let weekly = n(&h["perWeek"]).unwrap_or(0.0) > 0.0;
-            if k == 0 { String::new() } else { format!("{} {}", k, if weekly { "НЕД" } else { "ДН" }) }
+            if k == 0 { String::new() } else { format!("{} {}", k, if weekly { t!("НЕД") } else { t!("ДН") }) }
         };
         Opt { id: ss(text(&h["id"])), label: ss(text(&h["name"])), hint: ss(hint), hue: habit_color(h), on: hb::is_done(log, &h["id"], &u.cal_sel) }
     }).collect();
-    g.set_day_habits_sum(ss(format!("ПРИВЫЧКИ · {} / {}", hopts.iter().filter(|o| o.on).count(), hopts.len())));
+    g.set_day_habits_sum(ss(t!("ПРИВЫЧКИ · {} / {}", hopts.iter().filter(|o| o.on).count(), hopts.len())));
     g.set_day_habits(model(hopts));
     items.retain(|x| x.chip.kind != 2);
     items.sort_by(|a0, b0| a0.s.map(|x| x.0).unwrap_or(9999.0).partial_cmp(&b0.s.map(|x| x.0).unwrap_or(9999.0)).unwrap());
@@ -252,7 +253,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_day_items(model(items.into_iter().map(|x| {
         let mut c = x.chip;
         if c.time.is_empty() || x.s.is_none() {
-            c.time = ss("ДЕНЬ");
+            c.time = ss(t!("ДЕНЬ"));
         }
         c
     }).collect()));

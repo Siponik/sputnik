@@ -5,6 +5,7 @@
 //! (Range), до `ATTEMPTS` попыток с паузами. Потом проверка подписи тем же ключом, что и у трекера
 //! (minisign), замена работающего файла (старый → sputnik.old.exe, Windows так разрешает) и перезапуск.
 //! Ошибка — понятная причина и «Повторить» (`sputnik_core::updater::explain`).
+use sputnik_core::t;
 use super::{bg::run, App};
 use serde_json::Value;
 use sputnik_core::updater as up;
@@ -89,9 +90,9 @@ fn b64(s: &str) -> Option<String> {
 }
 
 pub fn verify(bytes: &[u8], sig_b64: &str) -> Result<(), String> {
-    let pk = minisign_verify::PublicKey::decode(&b64(PUBKEY).ok_or("ключ")?).map_err(|e| e.to_string())?;
-    let sg = minisign_verify::Signature::decode(&b64(sig_b64).ok_or("подпись не base64")?).map_err(|e| e.to_string())?;
-    pk.verify(bytes, &sg, false).map_err(|e| format!("подпись не сошлась: {e}"))
+    let pk = minisign_verify::PublicKey::decode(&b64(PUBKEY).ok_or(t!("ключ"))?).map_err(|e| e.to_string())?;
+    let sg = minisign_verify::Signature::decode(&b64(sig_b64).ok_or(t!("подпись не base64"))?).map_err(|e| e.to_string())?;
+    pk.verify(bytes, &sg, false).map_err(|e| t!("подпись не сошлась: {}", e))
 }
 
 fn agent() -> ureq::Agent {
@@ -210,7 +211,7 @@ fn fetch_once(url: &str, part: &Path, cancel: &AtomicBool, tick: &Tick, attempt:
 
 fn gunzip(bytes: &[u8]) -> Result<Vec<u8>, String> {
     let mut out = Vec::with_capacity(bytes.len() * 3);
-    flate2::read::GzDecoder::new(bytes).read_to_end(&mut out).map_err(|e| format!("распаковка: {e}"))?;
+    flate2::read::GzDecoder::new(bytes).read_to_end(&mut out).map_err(|e| t!("распаковка: {}", e))?;
     Ok(out)
 }
 
@@ -246,7 +247,7 @@ impl App {
                     Ok(v) => app.update_feed(&v, manual),
                     Err(e) if manual => {
                         let (what, _) = up::explain(&e);
-                        app.say(format!("Не проверилось: {}", what.trim_end_matches('.')));
+                        app.say(t!("Не проверилось: {}", what.trim_end_matches('.')));
                     }
                     Err(_) => {}
                 }
@@ -285,7 +286,7 @@ impl App {
                     self.update.open = true;
                 }
             }
-            _ if manual => self.say(format!("Стоит последняя версия {}", version())),
+            _ if manual => self.say(t!("Стоит последняя версия {}", version())),
             _ => {}
         }
     }
@@ -338,7 +339,7 @@ impl App {
                 }
                 Err(e) if e == "cancel" => {
                     app.update.phase = Phase::Idle;
-                    app.say("Скачивание остановлено — в следующий раз продолжу с того же места".to_string());
+                    app.say(t!("Скачивание остановлено — в следующий раз продолжу с того же места"));
                 }
                 Err(e) => {
                     app.update.phase = Phase::Failed;

@@ -27,7 +27,6 @@ fn today_d() -> NaiveDate {
 pub const WEEKDAYS: [&str; 7] = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 pub const MILESTONES: [i64; 4] = [7, 21, 50, 100];
 pub const MONTH_NAMES: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-const MONTH_SHORT: [&str; 12] = ["янв", "фев", "мар", "апр", "май", "июн", "июл", "авг", "сен", "окт", "ноя", "дек"];
 pub const MONTH_GEN: [&str; 12] = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 const WEEKDAY_FULL: [&str; 7] = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"];
 
@@ -161,7 +160,7 @@ pub fn stats(h: &Value, log: &Value) -> Value {
             };
             cells.push(json!({"date": st, "state": state, "today": diff == 0, "title": crate::i18n::day_month(d.day(), d.month0() as usize)}));
             if k == 0 && (w == 0 || d.day() <= 7) {
-                months.push(json!({"col": w, "name": MONTH_SHORT[d.month0() as usize]}));
+                months.push(json!({"col": w, "name": crate::i18n::month_short(d.month0() as usize)}));
             }
         }
     }
@@ -193,25 +192,25 @@ pub fn month_grid(h: &Value, log: &Value, year: i32, month: i32) -> Value {
         let dd = is_done(log, &h["id"], &st);
         let sch = days.contains(&dow(d));
         let (state, what) = if st > today {
-            ("fut", if sch { "по плану" } else { "не по расписанию" })
+            ("fut", if sch { crate::t!("по плану") } else { crate::t!("не по расписанию") })
         } else if dd {
             done += 1;
             sched += 1;
-            (if st == today { "today done" } else { "done" }, "сделано")
+            (if st == today { "today done" } else { "done" }, crate::t!("сделано"))
         } else if st == today {
             if sch {
                 sched += 1;
             }
-            (if sch { "today" } else { "off" }, if sch { "сегодня" } else { "не по расписанию" })
+            (if sch { "today" } else { "off" }, if sch { crate::t!("сегодня") } else { crate::t!("не по расписанию") })
         } else if st < cr {
-            ("off", "привычки ещё не было")
+            ("off", crate::t!("привычки ещё не было"))
         } else if !sch {
-            ("off", "не по расписанию")
+            ("off", crate::t!("не по расписанию"))
         } else if is_off(log, &h["id"], &st) {
-            ("off", "выходной, серия сохранена")
+            ("off", crate::t!("выходной, серия сохранена"))
         } else {
             sched += 1;
-            ("miss", "пропуск")
+            ("miss", crate::t!("пропуск"))
         };
         cells.push(json!({"key": st, "n": k, "state": state, "title": format!("{} · {what}", crate::i18n::day_month(k as u32, month as usize))}));
     }
@@ -221,11 +220,11 @@ pub fn month_grid(h: &Value, log: &Value, year: i32, month: i32) -> Value {
 pub fn schedule_label(days: &Value) -> String {
     let d = a(days);
     if d.is_empty() || d.len() == 7 {
-        return "Каждый день".into();
+        return crate::t!("Каждый день").into();
     }
     let has = |x: i64| d.iter().any(|v| int(v) == Some(x));
     if d.len() == 5 && (0..5).all(has) {
-        return "По будням".into();
+        return crate::t!("По будням").into();
     }
     let mut v: Vec<&Value> = d.iter().collect();
     v.sort_by(|x, y| cmp16(&text(x), &text(y)));
@@ -236,10 +235,10 @@ pub fn schedule_label(days: &Value) -> String {
 
 pub fn parts() -> Value {
     json!([
-        {"id": "morning", "name": "Утро", "win": {"s": "06:00", "e": "12:00"}},
-        {"id": "day", "name": "День", "win": {"s": "12:00", "e": "18:00"}},
-        {"id": "evening", "name": "Вечер", "win": {"s": "18:00", "e": "24:00"}},
-        {"id": "any", "name": "Когда угодно", "win": null},
+        {"id": "morning", "name": crate::t!("Утро"), "win": {"s": "06:00", "e": "12:00"}},
+        {"id": "day", "name": crate::t!("День"), "win": {"s": "12:00", "e": "18:00"}},
+        {"id": "evening", "name": crate::t!("Вечер"), "win": {"s": "18:00", "e": "24:00"}},
+        {"id": "any", "name": crate::t!("Когда угодно"), "win": null},
     ])
 }
 
@@ -753,10 +752,10 @@ pub fn card_line(h: &Value, log: &Value) -> String {
     let mut bits = vec![part_name(h)];
     if per_week(h) > 0.0 {
         let c = week_count(h, log, monday_of(nd));
-        bits.push(format!("{} из {} на неделе", c.0, text(&h["perWeek"])));
+        bits.push(crate::t!("{} из {} на неделе", c.0, text(&h["perWeek"])));
     } else if goal_n(h) > 0 {
         let unit = &h["goal"]["unit"];
-        bits.push(format!("{} из {} {}", count_on(log, h, &today), goal_n(h), if t(unit) { text(unit) } else { String::new() }).trim().to_string());
+        bits.push(crate::t!("{} из {} {}", count_on(log, h, &today), goal_n(h), if t(unit) { text(unit) } else { String::new() }).trim().to_string());
     } else if t(&h["win"]) || t(&h["time"]) {
         bits.push(win_label(h));
     }
@@ -769,7 +768,7 @@ pub fn card_line(h: &Value, log: &Value) -> String {
 
 pub fn schedule_line(h: &Value) -> String {
     let pw = per_week(h);
-    let first = if pw > 0.0 { format!("{} {} в неделю", text(&h["perWeek"]), plural(pw as i64, ["раз", "раза", "раз"])) } else { schedule_label(&h["days"]).to_lowercase() };
+    let first = if pw > 0.0 { crate::t!("{} {} в неделю", text(&h["perWeek"]), plural(pw as i64, ["раз", "раза", "раз"])) } else { schedule_label(&h["days"]).to_lowercase() };
     let mut bits = vec![first, part_name(h).to_lowercase()];
     if t(&h["win"]) || t(&h["time"]) {
         bits.push(win_label(h));

@@ -2,6 +2,7 @@
 use super::*;
 use super::dialogs::opt;
 use crate::Opt;
+use sputnik_core::t;
 
 pub const STARTS: [(&str, &str); 4] = [("today", "Сегодня"), ("calendar", "Календарь"), ("board", "Доска"), ("habits", "Привычки")];
 pub const REMINDS: [(i64, &str); 5] = [(-1, "Не напоминать"), (0, "В момент начала"), (15, "За 15 минут"), (60, "За час"), (1440, "За день")];
@@ -24,25 +25,25 @@ pub const TABS: [&str; 6] = ["Вид", "Что показывать", "Напо�
 /// Что ищет «Найти настройку»: раздел (номер в TABS), название, пояснение, слова для поиска.
 fn index() -> serde_json::Value {
     let rows: [(i64, &str, &str, &str); 19] = [
-        (0, "Тема", "тёмная, светлая", "оформление цвет"),
-        (0, "Акцент", "цвет кнопок и выделения", "акцентный цвет оформление палитра"),
-        (0, "Анимации", "полные, минимум, выкл", "движение провода"),
-        (0, "При запуске", "какой раздел открыть первым", "старт открывать"),
-        (0, "Порядок вкладок", "разделы в шапке и клавиши 1–5", "шапка меню переставить перетащить"),
-        (1, "Списки задач", "какие списки видны", "скрыть показывать"),
-        (1, "Календари", "какие календари Google показывать", "скрыть показывать дни рождения праздники"),
-        (2, "Напоминания задачам", "за сколько напоминать", "по умолчанию уведомления"),
-        (2, "Напоминания событиям", "за сколько напоминать", "по умолчанию уведомления встречи"),
-        (2, "Напоминания дням рождения", "за сколько напоминать", "по умолчанию уведомления др"),
-        (2, "Задачи без времени", "во сколько напоминать", "час утро"),
-        (2, "Куда слать", "Telegram и Windows", "уведомления телеграм виндовс включить выключить"),
-        (2, "Telegram-бот", "подключить по коду", "телеграм бот код отключить проверить"),
-        (3, "Синхронизировать сейчас", "Google Задачи и Календарь", "синхронизация обновить"),
-        (3, "Выйти из Google", "аккаунт", "войти выйти почта"),
-        (3, "Резервные копии", "раз в день, хранятся 14", "бэкап копия папка"),
-        (4, "Клавиши", "горячие клавиши", "сочетания хоткеи"),
-        (3, "Обновления", "проверить и поставить новую версию", "версия обновить"),
-        (5, "Папка заметок", "Markdown, Obsidian", "знания заметки папка"),
+        (0, t!("Тема"), t!("тёмная, светлая"), t!("оформление цвет")),
+        (0, t!("Акцент"), t!("цвет кнопок и выделения"), t!("акцентный цвет оформление палитра")),
+        (0, t!("Анимации"), t!("полные, минимум, выкл"), t!("движение провода")),
+        (0, t!("При запуске"), t!("какой раздел открыть первым"), t!("старт открывать")),
+        (0, t!("Порядок вкладок"), t!("разделы в шапке и клавиши 1–5"), t!("шапка меню переставить перетащить")),
+        (1, t!("Списки задач"), t!("какие списки видны"), t!("скрыть показывать")),
+        (1, t!("Календари"), t!("какие календари Google показывать"), t!("скрыть показывать дни рождения праздники")),
+        (2, t!("Напоминания задачам"), t!("за сколько напоминать"), t!("по умолчанию уведомления")),
+        (2, t!("Напоминания событиям"), t!("за сколько напоминать"), t!("по умолчанию уведомления встречи")),
+        (2, t!("Напоминания дням рождения"), t!("за сколько напоминать"), t!("по умолчанию уведомления др")),
+        (2, t!("Задачи без времени"), t!("во сколько напоминать"), t!("час утро")),
+        (2, t!("Куда слать"), t!("Telegram и Windows"), t!("уведомления телеграм виндовс включить выключить")),
+        (2, t!("Telegram-бот"), t!("подключить по коду"), t!("телеграм бот код отключить проверить")),
+        (3, t!("Синхронизировать сейчас"), t!("Google Задачи и Календарь"), t!("синхронизация обновить")),
+        (3, t!("Выйти из Google"), t!("аккаунт"), t!("войти выйти почта")),
+        (3, t!("Резервные копии"), t!("раз в день, хранятся 14"), t!("бэкап копия папка")),
+        (4, t!("Клавиши"), t!("горячие клавиши"), t!("сочетания хоткеи")),
+        (3, t!("Обновления"), t!("проверить и поставить новую версию"), t!("версия обновить")),
+        (5, t!("Папка заметок"), "Markdown, Obsidian", t!("знания заметки папка")),
     ];
     serde_json::Value::Array(rows.iter().map(|r| serde_json::json!({"tab": r.0, "title": r.1, "hint": r.2, "also": r.3})).collect())
 }
@@ -93,55 +94,55 @@ pub fn tab_order(app: &App) -> Vec<i32> {
 pub fn render(app: &App, u: &Ui, g: &S) {
     let st = &app.layer["settings"];
     let start = st["start"]["v"].as_str().unwrap_or("today");
-    g.set_set_start(model(STARTS.iter().map(|(id, l)| opt(*id, *l, *id == start)).collect()));
+    g.set_set_start(model(STARTS.iter().map(|(id, l)| opt(*id, sputnik_core::i18n::tr(l), *id == start)).collect()));
     let acc = st["accent"]["v"].as_i64().unwrap_or(0);
-    g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(a.0), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
+    g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(sputnik_core::i18n::tr(a.0)), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
     let anim = st["anim"]["v"].as_i64().unwrap_or(0);
-    g.set_set_anim(model(ANIMS.iter().enumerate().map(|(i, l)| opt(i.to_string(), *l, i as i64 == anim)).collect()));
+    g.set_set_anim(model(ANIMS.iter().enumerate().map(|(i, l)| opt(i.to_string(), sputnik_core::i18n::tr(l), i as i64 == anim)).collect()));
     let lang = st["lang"]["v"].as_str().unwrap_or("sys");
-    g.set_set_lang(model(LANGS.iter().map(|(id, l)| opt(*id, if *id == "sys" { sputnik_core::t!("Как в системе") } else { l }, *id == lang)).collect()));
+    g.set_set_lang(model(LANGS.iter().map(|(id, l)| opt(*id, if *id == "sys" { sputnik_core::t!("Как в системе") } else { *l }, *id == lang)).collect()));
     // «Куда слать» в «Напоминаниях»
     let linked = t(&st["tgbot"]["key"]);
     g.set_set_flags(model(vec![
-        Opt { id: ss("tgRemind"), label: ss("Telegram"), hint: ss(if linked { "напоминания о задачах, событиях и привычках" } else { "сначала подключи бота — ниже" }), hue: hex(0), on: st["tgRemind"]["v"] != false },
-        Opt { id: ss("notify"), label: ss("Windows"), hint: ss(if linked { "окно привычки; задачи — если Telegram выключен" } else { "окно привычки и задачи, пока Спутник открыт" }), hue: hex(0), on: st["notify"]["v"] != false },
+        Opt { id: ss("tgRemind"), label: ss("Telegram"), hint: ss(if linked { t!("напоминания о задачах, событиях и привычках") } else { t!("сначала подключи бота — ниже") }), hue: hex(0), on: st["tgRemind"]["v"] != false },
+        Opt { id: ss("notify"), label: ss("Windows"), hint: ss(if linked { t!("окно привычки; задачи — если Telegram выключен") } else { t!("окно привычки и задачи, пока Спутник открыт") }), hue: hex(0), on: st["notify"]["v"] != false },
     ]));
     let found = sputnik_core::shell::search_in(&index(), &u.set_q);
-    g.set_set_found(model(found.iter().map(|r| Opt { id: ss(r["tab"].to_string()), label: ss(text(&r["title"])), hint: ss(TABS[r["tab"].as_u64().unwrap_or(0) as usize]), hue: hex(0), on: false }).collect()));
+    g.set_set_found(model(found.iter().map(|r| Opt { id: ss(r["tab"].to_string()), label: ss(text(&r["title"])), hint: ss(sputnik_core::i18n::tr(TABS[r["tab"].as_u64().unwrap_or(0) as usize])), hue: hex(0), on: false }).collect()));
     g.set_set_lists(model(app.lists.iter().filter(|l| !sputnik_core::templates::is_habit_list(l, &app.layer)).map(|l| {
         let id = s(&l["id"]);
         let ll = app.ll(id);
-        Opt { id: ss(id), label: ss(text(&l["title"])), hint: ss(if ll["quiet"] == true { "тихий" } else { "" }), hue: list_hue(app, id), on: ll["hidden"] != true }
+        Opt { id: ss(id), label: ss(text(&l["title"])), hint: ss(if ll["quiet"] == true { t!("тихий") } else { "" }), hue: list_hue(app, id), on: ll["hidden"] != true }
     }).collect()));
     g.set_set_cals(model(app.calendars.iter().filter(|c| !s(&c["summary"]).starts_with("Спутник · ") && !s(&c["description"]).contains("sputnik-sphere")).map(|c| {
-        Opt { id: ss(text(&c["id"])), label: ss(text(&c["summary"])), hint: ss(if t(&c["primary"]) { "основной" } else { "" }), hue: color(s(&c["backgroundColor"])), on: app.cal_shown(c) }
+        Opt { id: ss(text(&c["id"])), label: ss(text(&c["summary"])), hint: ss(if t(&c["primary"]) { t!("основной") } else { "" }), hue: color(s(&c["backgroundColor"])), on: app.cal_shown(c) }
     }).collect()));
     let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, "task")).iter().filter_map(|x| x.as_i64()).collect();
     // галочки: «не напоминать» = ничего не отмечено, отдельным пунктом не показываем
-    g.set_set_remind_task(model(REMINDS.iter().filter(|(m, _)| *m >= 0).map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))).collect()));
+    g.set_set_remind_task(model(REMINDS.iter().filter(|(m, _)| *m >= 0).map(|(m, l)| opt(m.to_string(), sputnik_core::i18n::tr(l), cur.contains(m))).collect()));
     // умолчания напоминаний для событий и дней рождения — те же наборы, что в старом трекере (core::reminders::leads_for)
     let leads_model = |kind: &str| {
         let cur: Vec<i64> = a(&sputnik_core::reminders::default_mins(st, kind)).iter().filter_map(|x| x.as_i64()).collect();
-        model(sputnik_core::reminders::leads_for(kind).iter().map(|(m, l)| opt(m.to_string(), *l, cur.contains(m))).collect())
+        model(sputnik_core::reminders::leads_for(kind).iter().map(|(m, l)| opt(m.to_string(), sputnik_core::i18n::tr(l), cur.contains(m))).collect())
     };
     g.set_set_remind_event(leads_model("event"));
     g.set_set_remind_bday(leads_model("birthday"));
     let hour = st["remindHour"]["v"].as_str().unwrap_or("10:00");
-    g.set_set_remind_hour(model(HOURS.iter().map(|h| opt(*h, if *h == "off" { "не напоминать" } else { *h }, *h == hour)).collect()));
+    g.set_set_remind_hour(model(HOURS.iter().map(|h| opt(*h, if *h == "off" { t!("не напоминать") } else { *h }, *h == hour)).collect()));
     let tg = &st["tgbot"];
-    g.set_bot_name(ss(if t(&tg["key"]) { text(&tg["name"]).max("бот".into()) } else { String::new() }));
-    g.set_bot_status(ss(if !app.bot_err.is_empty() { format!("Ошибка: {}", app.bot_err) } else if let Some(at) = app.bot_at { format!("Последний обмен — {}", super::hm(at)) } else { String::new() }));
+    g.set_bot_name(ss(if t(&tg["key"]) { text(&tg["name"]).max(t!("бот").into()) } else { String::new() }));
+    g.set_bot_status(ss(if !app.bot_err.is_empty() { t!("Ошибка: {}", app.bot_err) } else if let Some(at) = app.bot_at { t!("Последний обмен — {}", super::hm(at)) } else { String::new() }));
     let f = &app.flags;
-    g.set_notes_sync_info(ss(if app.notes.root.is_none() { "Папка заметок не выбрана".to_string() } else if app.notes_sync.text.is_empty() { "Ждёт первой сверки".to_string() } else { app.notes_sync.text.clone() }));
+    g.set_notes_sync_info(ss(if app.notes.root.is_none() { t!("Папка заметок не выбрана").to_string() } else if app.notes_sync.text.is_empty() { t!("Ждёт первой сверки").to_string() } else { app.notes_sync.text.clone() }));
     g.set_notes_sync_ok(app.notes_sync.ok || app.notes_sync.text.is_empty() || app.notes_sync.busy);
-    g.set_sync_info(ss(format!(
+    g.set_sync_info(ss(t!(
         "Google: {}. Слой Спутника на Drive: {}. Правок в очереди: {}. Запуск за {} мс.",
-        if f.need_login { "не выполнен вход".to_string() } else if f.offline { "нет связи".into() } else { f.synced_at.map(|x| format!("синхронизировано в {}", super::hm(x))).unwrap_or("ещё не синхронизировано".into()) },
-        f.cloud_err.clone().map(|e| format!("ошибка — {e}")).unwrap_or_else(|| f.cloud_at.map(|x| format!("сверен в {}", super::hm(x))).unwrap_or("ещё не сверялся".into())),
+        if f.need_login { t!("не выполнен вход").to_string() } else if f.offline { t!("нет связи").into() } else { f.synced_at.map(|x| t!("синхронизировано в {}", super::hm(x))).unwrap_or(t!("ещё не синхронизировано").into()) },
+        f.cloud_err.clone().map(|e| t!("ошибка — {}", e)).unwrap_or_else(|| f.cloud_at.map(|x| t!("сверен в {}", super::hm(x))).unwrap_or(t!("ещё не сверялся").into())),
         app.outbox.ops.len(), f.load_ms)));
     g.set_backup_info(ss(match crate::data::store::last_backup() {
-        Some(b) => format!("Резервные копии слоя — раз в день, хранятся 14. Последняя: {b}"),
-        None => "Резервные копии слоя — раз в день, хранятся 14. Пока ни одной.".into(),
+        Some(b) => t!("Резервные копии слоя — раз в день, хранятся 14. Последняя: {}", b),
+        None => t!("Резервные копии слоя — раз в день, хранятся 14. Пока ни одной.").into(),
     }));
     g.set_notes_root(ss(app.notes.root.as_ref().map(|p| p.display().to_string()).unwrap_or_default()));
 }

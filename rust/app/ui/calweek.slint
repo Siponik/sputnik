@@ -42,7 +42,7 @@ component AllDay inherits Rectangle {
         spacing: 5px;
         if c.kind != 3: Mark { y: 5px; kind: c.kind; done: c.done; hue: c.hue; }
         Text {
-            text: (c.kind == 3 ? "ДР · " : "") + c.title;
+            text: (c.kind == 3 ? @tr("ДР · ") : "") + c.title;
             color: c.kind == 3 ? root.pink : (c.done ? G.dim : G.ink);
             font-size: 11.5px; vertical-alignment: center; overflow: elide; horizontal-stretch: 1;
         }
@@ -179,7 +179,7 @@ export component Week inherits Rectangle {
     // ---------- весь день ----------
     Text {
         x: 0; y: root.head-h; width: root.gut; height: root.ad-h;
-        text: "ВЕСЬ\nДЕНЬ"; font-family: G.mono; font-size: 8px; letter-spacing: 0.8px; color: G.dim;
+        text: @tr("ВЕСЬ\nДЕНЬ"); font-family: G.mono; font-size: 8px; letter-spacing: 0.8px; color: G.dim;
         horizontal-alignment: center; vertical-alignment: center;
     }
     for d[i] in S.days: Rectangle {
@@ -205,7 +205,7 @@ export component Week inherits Rectangle {
         width: root.colw;
         height: root.up-h;
         if d.up != "": Edge { x: 3px; y: 3px; text: d.up; up: true; hour: d.up-h; room: root.colw - 6px; }
-        if d.up == "" && S.cal-up && i == 0: Edge { x: 3px; y: 3px; text: "↓ СВЕРНУТЬ РАННИЕ ЧАСЫ"; up: true; hour: -1; room: root.colw * 3; }
+        if d.up == "" && S.cal-up && i == 0: Edge { x: 3px; y: 3px; text: @tr("↓ СВЕРНУТЬ РАННИЕ ЧАСЫ"); up: true; hour: -1; room: root.colw * 3; }
     }
     Rectangle { y: root.top-h - 1px; height: 1px; background: G.line; }
 
@@ -281,7 +281,7 @@ export component Week inherits Rectangle {
                     x: 3px; y: S.free-y * 1px + 2px; width: parent.width - 6px; height: max(24px, S.free-h * 1px - 4px);
                     c: G.gold;
                     background: #E8C65A0C;
-                    Text { text: "СВОБОДНО"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.gold; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+                    Text { text: @tr("СВОБОДНО"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.gold; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
                 }
                 for b in d.blocks: Rectangle {
                     x: 4px;
@@ -344,7 +344,7 @@ export component Week inherits Rectangle {
                                 }
                             }
                         }
-                        if b.more > 0: Text { height: 16px; text: "+" + b.more + " ещё"; font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
+                        if b.more > 0: Text { height: 16px; text: @tr("+{} ещё", b.more); font-family: G.mono; font-size: 10px; color: G.muted; vertical-alignment: center; }
                     }
                     if b.kind != 4: ba := TouchArea {
                         mouse-cursor: pointer;
@@ -414,7 +414,7 @@ export component Week inherits Rectangle {
         width: root.colw;
         height: root.down-h;
         if d.down != "": Edge { x: 3px; y: 4px; text: d.down; up: false; hour: d.down-h; room: root.colw - 6px; }
-        if d.down == "" && S.cal-down && i == 0: Edge { x: 3px; y: 4px; text: "↑ СВЕРНУТЬ ПОЗДНИЕ ЧАСЫ"; up: false; hour: -1; room: root.colw * 3; }
+        if d.down == "" && S.cal-down && i == 0: Edge { x: 3px; y: 4px; text: @tr("↑ СВЕРНУТЬ ПОЗДНИЕ ЧАСЫ"); up: false; hour: -1; room: root.colw * 3; }
     }
 
     // ---------- черновик и окно «Добавить» ----------
@@ -431,7 +431,7 @@ export component Week inherits Rectangle {
         border-radius: 5px;
         background: G.accent.transparentize(0.9);
         DashBox { c: G.accent; }
-        Text { x: 7px; y: 5px; width: parent.width - 12px; text: (root.add-title != "" ? root.add-title : "Новое") + " · " + S.draft-time; font-size: 12px; color: G.accent-ink; overflow: elide; }
+        Text { x: 7px; y: 5px; width: parent.width - 12px; text: (root.add-title != "" ? root.add-title : @tr("Новое")) + " · " + S.draft-time; font-size: 12px; color: G.accent-ink; overflow: elide; }
     }
     // провод от черновика к окну
     if S.draft-col >= 0: Rectangle {
@@ -466,7 +466,7 @@ export component Week inherits Rectangle {
             spacing: 10px;
             nm := Field {
                 height: 34px;
-                placeholder: "Что";
+                placeholder: @tr("Что");
                 init => { root.add-title = ""; self.grab(); }
                 edited(t) => { root.add-title = t; }
                 accepted(t) => { if (t != "") { S.cal-draft-add(t, root.add-ev); } }
@@ -477,7 +477,7 @@ export component Week inherits Rectangle {
                 alignment: start;
                 Text { text: S.draft-time; font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; }
                 Rectangle { horizontal-stretch: 1; }
-                for k[i] in ["Задача", "Событие"]: Rectangle {
+                for k[i] in [@tr("Задача"), @tr("Событие")]: Rectangle {
                     height: 28px;
                     width: kt.preferred-width + 22px;
                     border-radius: 6px;
@@ -492,8 +492,8 @@ export component Week inherits Rectangle {
             HorizontalLayout {
                 spacing: 6px;
                 alignment: end;
-                Button { text: "Отмена"; clicked => { S.cal-draft-cancel(); } }
-                Button { text: "Добавить"; primary: true; clicked => { if (nm.text != "") { S.cal-draft-add(nm.text, root.add-ev); } } }
+                Button { text: @tr("Отмена"); clicked => { S.cal-draft-cancel(); } }
+                Button { text: @tr("Добавить"); primary: true; clicked => { if (nm.text != "") { S.cal-draft-add(nm.text, root.add-ev); } } }
             }
         }
     }
