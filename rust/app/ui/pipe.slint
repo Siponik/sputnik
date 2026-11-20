@@ -1,7 +1,7 @@
 // Конвейер: строка — ассет, дорожка этапов; клик по этапу переносит, «→» — следующий.
 import { G } from "theme.slint";
 import { Node, Field, Empty, IconBtn, Brackets, Icon, Chev, ScrollView, Pop } from "kit.slint";
-import { LinkNote } from "linknote.slint";
+import { MdNote } from "mdnote.slint";
 import { S, PipeRow } from "store.slint";
 import { TimeBox } from "dialogs.slint";
 import { DueDrop } from "datetime.slint";
@@ -202,11 +202,10 @@ component PipeLine inherits Rectangle {
             border-radius: 8px; background: #2C2D33; border-width: 1px; border-color: G.line;
             Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
             IconBtn { x: parent.width - 30px; y: 4px; icon: "expand"; clicked => { S.open-task(r.list-id, r.id); } }
-            if S.pipe-note == "" && !pn.focused: Text { x: 10px; y: 30px; text: "Заметка… [[ — ссылка на «Знания»"; font-size: 12.5px; color: #62646E; }
-            pn := LinkNote {
+            pn := MdNote {
                 x: 10px; y: 30px; width: parent.width - 20px; height: parent.height - 38px;
-                font-size: 12.5px;
-                text: S.pipe-note;
+                zoom: 0.86;
+                text: S.pipe-note; lines: S.pipe-note-lines; links: S.pipe-note-links; key: r.list-id + "|" + r.id;
                 edited(t) => { S.pipe-notes-set(r.list-id, r.id, t); }
             }
         }

@@ -1399,22 +1399,9 @@ pub fn wire(w: &AppWindow) {
     g.on_note_line_split(|i, t, at| {
         let mut caret = 0;
         act(|app, u| {
-            let t = str_(&t);
-            let at = (at.max(0) as usize).min(t.len());
-            let at = (0..=at).rev().find(|k| t.is_char_boundary(*k)).unwrap_or(0);
-            let (a, b) = t.split_at(at);
-            // список продолжается: «- », «- [ ] », «> », «1. »
-            let lead = a.trim_start();
-            let pre = if lead.starts_with("- [") { "- [ ] " } else if lead.starts_with("- ") { "- " } else if lead.starts_with("* ") { "* " } else if lead.starts_with("> ") { "> " } else { "" };
-            let empty_item = !pre.is_empty() && a.trim() == pre.trim() && b.trim().is_empty();
-            if empty_item {
-                // Enter на пустом пункте — пункт кончается
-                note_set_lines(app, u, i as usize, "", 1);
-                caret = 0;
-            } else {
-                note_set_lines(app, u, i as usize, &format!("{a}\n{pre}{}", b.trim_start()), 1);
-                caret = pre.len() as i32;
-            }
+            let (lines, c) = sputnik_core::mdedit::split(&str_(&t), at.max(0) as usize);
+            note_set_lines(app, u, i as usize, &lines, 1);
+            caret = c as i32;
         });
         caret
     });
@@ -1456,6 +1443,87 @@ pub fn wire(w: &AppWindow) {
         }
     }));
     g.on_note_new(|t| act(|app, u| new_note(app, u, &t)));
+    // заметка задачи правится по строкам, как в «Знаниях»: всё считается по её тексту (окно задачи, Конвейер)
+    g.on_md_replace(|t, i, line, drop| {
+        let parts: Vec<&str> = line.split('\n').collect();
+        ss(crate::notes::replace_line(t.as_str(), i.max(0) as usize, &parts, drop.max(0) as usize))
+    });
+    g.on_md_split(|t, i, line, at| {
+        let (lines, c) = sputnik_core::mdedit::split(line.as_str(), at.max(0) as usize);
+        let parts: Vec<&str> = lines.split('\n').collect();
+        crate::EdOut { text: ss(crate::notes::replace_line(t.as_str(), i.max(0) as usize, &parts, 1)), a: c as i32, b: c as i32 }
+    });
+    g.on_md_join(|t, i, line| {
+        let i = i.max(1) as usize;
+        let ls = crate::notes::line_blocks(t.as_str());
+        let prev = ls.get(i - 1).map(|p| p.1.clone()).unwrap_or_default();
+        let c = prev.len() as i32;
+        crate::EdOut { text: ss(crate::notes::replace_line(t.as_str(), i - 1, &[&format!("{prev}{line}")], 2)), a: c, b: c }
+    });
+    g.on_md_todo(|t, i| {
+        let rows = crate::notes::line_rows(t.as_str());
+        match rows.get(i.max(0) as usize) {
+            Some(r) => ss(crate::notes::replace_line(t.as_str(), i as usize, &[&crate::notes::toggle_todo(&r.raw)], 1)),
+            None => t.clone(),
+        }
+    });
+    g.on_md_col(|t, from, byte, to| {
+        let rows = crate::notes::line_rows(t.as_str());
+        let Some(r) = rows.get(to.max(0) as usize) else { return 0 };
+        let from_pre = crate::notes::line_rows(from.as_str()).first().map_or(0, |x| x.pre);
+        let b = (byte.max(0) as usize).saturating_sub(from_pre);
+        let to_pre = if r.kind == "empty" { 0 } else { r.pre.min(r.raw.len()) };
+        (to_pre + sputnik_core::mdline::same_col(&from.as_str()[from_pre.min(from.len())..], b, &r.raw[to_pre..])) as i32
+    });
+    // клик по тексту строки: курсор в строке (≥ 0) или ссылка — её адрес в `md-link` (тогда -1)
+    g.on_md_hit(|t, i, at, ctrl| {
+        let body = t.as_str();
+        match crate::notes::line_hit(body, i.max(0) as usize, at.max(0) as usize) {
+            Ok(c) => c as i32,
+            Err(_) if ctrl => crate::notes::line_caret(body, i.max(0) as usize, at.max(0) as usize) as i32,
+            Err(link) => {
+                MD_LINK.with(|l| *l.borrow_mut() = link);
+                -1
+            }
+        }
+    });
+    g.on_md_last_link(|| ss(MD_LINK.with(|l| l.borrow().clone())));
+    // ссылка из заметки задачи: адрес — в браузере, [[заметка]] — открыть в «Знаниях» (true — окно задачи закрыть)
+    g.on_md_open(|t| {
+        if t.contains("://") {
+            let _ = open::that(t.as_str());
+            return false;
+        }
+        act(|app, u| {
+            u.tab = 4;
+            u.note_graph = false;
+            let title = t.split('#').next().unwrap_or("").trim().to_string();
+            match app.notes.find(&title).map(|n0| n0.path.clone()) {
+                Some(p) => open_note_tab(app, u, &p),
+                None => new_note(app, u, &title),
+            }
+        });
+        true
+    });
+    // Ctrl+Z / Ctrl+Y в заметке задачи: свой журнал на каждую заметку (ключ — список|задача)
+    g.on_md_mark(|k, t| MD_UNDO.with(|m| {
+        let mut m = m.borrow_mut();
+        let e = m.entry(k.to_string()).or_default();
+        if e.0.last().map(|x| x.as_str()) != Some(t.as_str()) {
+            e.0.push(t.to_string());
+            if e.0.len() > 200 { e.0.remove(0); }
+            e.1.clear();
+        }
+    }));
+    g.on_md_undo(|k, t, redo| MD_UNDO.with(|m| {
+        let mut m = m.borrow_mut();
+        let e = m.entry(k.to_string()).or_default();
+        let (from, to) = if redo { (&mut e.1, &mut e.0) } else { (&mut e.0, &mut e.1) };
+        match from.pop() {
+            Some(x) => { to.push(t.to_string()); ss(x) }
+            None => t.clone(),
+        }
+    }));
     g.on_note_link(|t| act(|app, u| {
         if t.contains("://") {
             let _ = open::that(t.as_str());
@@ -1825,4 +1893,11 @@ pub fn add_on_day(app: &mut App, day: &str, slot: Option<(String, String)>, titl
 /// Список, в котором сейчас находится человек: открытая доска (на других разделах — нет).
 fn cur_list(u: &Ui) -> Option<String> {
     (u.tab == 2 && !u.board.is_empty()).then(|| u.board.clone())
+}
+
+thread_local! {
+    /// Ссылка, по которой кликнули в заметке задачи (`md-hit` вернул -1).
+    static MD_LINK: RefCell<String> = const { RefCell::new(String::new()) };
+    /// Журнал правок заметок задач: ключ → (назад, вперёд).
+    static MD_UNDO: RefCell<std::collections::HashMap<String, (Vec<String>, Vec<String>)>> = RefCell::new(Default::default());
 }
