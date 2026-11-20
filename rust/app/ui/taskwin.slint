@@ -17,6 +17,7 @@ component Chip inherits Rectangle {
     border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent-wash : (ca.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     ct := Text { x: 10px; text: root.text; font-size: 12px; color: on ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
     ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
@@ -49,6 +50,7 @@ component PRow inherits Rectangle {
     callback clicked;
     height: 32px;
     background: pa.has-hover && arrow ? G.node-hover : transparent;
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     Rectangle { y: 0; height: 1px; background: G.line-soft; }
     Icon { x: 10px; y: 8px; width: 15px; height: 15px; name: root.icon; c: G.muted; }
     Text { x: 33px; width: 92px; text: root.key; font-size: 12.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
@@ -75,6 +77,7 @@ component StageBar inherits Rectangle {
             x: i * (root.cw + root.gap); y: 0; width: root.cw; height: 42px;
             border-radius: 8px;
             background: st == 1 ? G.accent : st == 0 ? #232A25 : (ca.has-hover ? G.node-hover : transparent);
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             border-width: st == 1 ? 0 : 1px;
             border-color: st == 0 ? #2F4A35 : #4A4B52;
             Text { x: 8px; y: 6px; width: parent.width - 16px; horizontal-alignment: center; text: (st == 0 ? "✓ " : "") + c.label; font-size: 13px; font-weight: st == 1 ? 600 : 400; color: st == 1 ? #1C1D21 : st == 0 ? G.green : #62646E; overflow: elide; }
@@ -384,6 +387,7 @@ export component TaskDialog inherits Overlay {
                     for it[i] in ["Дублировать", "Удалить"]: Rectangle {
                         height: 36px; border-radius: 5px;
                         background: ia.has-hover ? G.node-hover : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         HorizontalLayout {
                             padding-left: 10px; spacing: 8px;
                             Icon { name: i == 0 ? "copy" : "trash"; c: i == 1 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }
@@ -407,6 +411,7 @@ export component TaskDialog inherits Overlay {
                     for o in root.pop-items: Rectangle {
                         height: 30px; border-radius: 5px;
                         background: poa.has-hover ? G.node-hover : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         Text { x: 10px; width: parent.width - 36px; text: o.label; font-size: 13px; color: o.on ? G.accent-ink : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                         if o.on: Icon { x: parent.width - 24px; y: 8px; width: 14px; height: 14px; name: "check"; c: G.accent; }
                         poa := TouchArea {
@@ -435,6 +440,7 @@ export component TaskDialog inherits Overlay {
                         for l in S.t-lists: Rectangle {
                             height: 30px; border-radius: 5px;
                             background: lia.has-hover ? G.node-hover : transparent;
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             Rectangle { x: 10px; y: 12px; width: 7px; height: 7px; border-radius: 1.5px; background: l.hue; }
                             LabelHint { x: 26px; width: parent.width - 36px; height: parent.height; label: l.label; hint: l.hint; label-color: l.on ? G.accent-ink : G.ink; label-size: 13px; }
                             lia := TouchArea { clicked => { root.lists-open = false; S.t-move(l.id); } }

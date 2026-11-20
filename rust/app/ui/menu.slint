@@ -39,6 +39,7 @@ export component CtxMenu inherits Rectangle {
                     height: 32px;
                     border-radius: 6px;
                     background: ia.has-hover && !m.off ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     HorizontalLayout {
                         padding-left: 10px; padding-right: 10px; spacing: 10px;
                         // пункт выбора цвета — сам цвет кружком, а не значок

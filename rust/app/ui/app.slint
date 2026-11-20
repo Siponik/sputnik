@@ -78,6 +78,24 @@ export component AppWindow inherits Window {
     icon: @image-url("../../assets/icon/sputnik.png");
 
     // имена и иконки разделов по id (0 Сегодня · 1 Календарь · 2 Доска · 3 Привычки · 4 Знания)
+    // смена раздела (каталог G_Motion): новый раздел въезжает на 12 px со стороны направления и проявляется,
+    // 220 мс. «Минимум» — только проявление 120 мс, «выкл» — сразу.
+    property <int> pg-tab: S.tab;
+    property <int> pg-seen: -1;
+    property <bool> pg-snap;
+    property <length> pg-off;
+    property <float> pg-op: 1;
+    animate pg-off, pg-op { duration: root.pg-snap ? 0ms : (G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 220ms); easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    changed pg-tab => {
+        if (G.motion != 2 && root.pg-seen >= 0 && root.pg-tab != root.pg-seen) {
+            root.pg-snap = true;
+            root.pg-op = 0;
+            root.pg-off = G.motion == 0 ? (root.pg-tab > root.pg-seen ? 12px : -12px) : 0px;
+            tpg.running = true;
+        }
+        root.pg-seen = root.pg-tab;
+    }
+    tpg := Timer { interval: 1ms; running: false; triggered => { self.running = false; root.pg-snap = false; root.pg-off = 0; root.pg-op = 1; } }
     property <[string]> tab-names: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"];
     property <[string]> tab-icons: ["today", "calendar", "board", "habits", "notes"];
 
@@ -429,18 +447,28 @@ export component AppWindow inherits Window {
                     }
                     }
                 }
-                if S.signed-in && S.tab == 0: TodayPage { }
-                if S.signed-in && S.tab == 1: CalendarPage { }
-                if S.signed-in && S.tab == 2: BoardPage { }
-                if S.signed-in && S.tab == 3: HabitsPage { }
-                if S.signed-in && S.tab == 4: NotesPage { }
+                Rectangle {
+                    x: root.pg-off; y: 0; width: parent.width; height: parent.height;
+                    opacity: root.pg-op;
+                    if S.signed-in && S.tab == 0: TodayPage { }
+                    if S.signed-in && S.tab == 1: CalendarPage { }
+                    if S.signed-in && S.tab == 2: BoardPage { }
+                    if S.signed-in && S.tab == 3: HabitsPage { }
+                    if S.signed-in && S.tab == 4: NotesPage { }
+                }
             }
         }
 
         // Плашка
+        // плашка въезжает снизу на 12 px и проявляется, 180 мс
         if S.toast != "": Rectangle {
+            property <bool> in-place;
+            Timer { interval: 1ms; running: !parent.in-place; triggered => { parent.in-place = true; } }
+            opacity: self.in-place || G.motion == 2 ? 1 : 0;
+            animate opacity { duration: G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 180ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
             x: (parent.width - self.width) / 2;
-            y: parent.height - 64px;
+            y: parent.height - 64px + (self.in-place || G.motion != 0 ? 0px : 12px);
+            animate y { duration: G.motion == 0 ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
             width: min(tr.preferred-width + 32px, parent.width - 32px);
             height: 40px;
             border-radius: G.r-node;
@@ -481,7 +509,14 @@ export component AppWindow inherits Window {
         if S.menu-open: CtxMenu { }
         if S.dp-open && S.dp-drop == "": Rectangle {
             TouchArea { clicked => { S.dp-dismiss(); } }   // клик мимо — сохранить выбранное
-            DatePicker { max-h: parent.height - 16px; x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
+            // окно выбора даты раскрывается, как выпадающий список
+            Pop {
+                x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px);
+                y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px);
+                width: dtp.width; height: dtp.height;
+                from-right: !S.create-open;
+                dtp := DatePicker { x: 0; y: 0; max-h: root.height - 16px; }
+            }
         }
         // окно обновления (G_Status, слева): открывается само, когда вышла новая версия, и по чипу «Версия»;
         // внутри — «Что нового», потом полоса скачивания, при ошибке — причина и «Повторить»
@@ -607,6 +642,7 @@ export component AppWindow inherits Window {
     property <int> fk: S.focus-keys;
     changed fk => { keys.focus(); }
     init => {
+        root.pg-seen = S.tab;
         keys.focus();
         self.hd-compact = self.width < 1440px;
         self.hd-tight = self.width < 1240px;

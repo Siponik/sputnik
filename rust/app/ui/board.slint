@@ -42,6 +42,7 @@ component SideCol inherits Rectangle {
                     height: !self.visible ? 0 : r.header ? 26px : 30px;
                     border-radius: 6px;
                     background: r.active && !S.sph-open && !S.arch-open ? G.accent-wash : (sa.has-hover && !r.header ? G.node-hover : transparent);
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     border-width: r.active && !S.sph-open && !S.arch-open ? 1px : 0;
                     border-color: G.accent;
                     if r.header: Rectangle {
@@ -49,6 +50,7 @@ component SideCol inherits Rectangle {
                         property <bool> on: S.sph-open && S.sph-edit == r.id;
                         border-radius: 6px;
                         background: ha.has-hover || self.on ? G.accent-wash : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: ha.has-hover || self.on ? 1px : 0; border-color: G.accent;
                         ha := TouchArea { clicked => { S.sph-show(r.id); } mouse-cursor: pointer;
                             pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("sphere", r.id, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
@@ -217,6 +219,7 @@ component Kanban inherits Rectangle {
                                 changed ins-after => { if (self.ins-after && self.visible) { root.drop-i = k + 1; } }
                                 border-radius: 8px;
                                 background: lead ? G.accent-wash : (ca.has-hover ? G.node-hover : #2A2B30);
+                                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                                 border-width: 1px;
                                 border-color: root.dragging && root.drag-id == c.id ? G.accent : c.sel ? G.accent : lead ? G.accent : G.line;
                                 opacity: root.dragging && root.drag-id == c.id ? 0.4 : (c.sel && root.fly-on ? 0 : 1);
@@ -468,6 +471,7 @@ component Stickers inherits Rectangle {
                             x: 14px; y: parent.height - 32px; width: 18px; height: 18px; border-radius: 9px;
                             border-width: 1.5px; border-color: ink;
                             background: it.card.done ? ink : transparent;
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             Icon { name: "check"; width: 10px; x: 4px; y: 4px; visible: it.card.done; c: tone; stroke-width: 2.2px; }
                             TouchArea { clicked => { S.toggle(S.board-id, it.card.id); } mouse-cursor: pointer; }
                         }
@@ -555,6 +559,7 @@ component ListView inherits Rectangle {
                     for c in sec.cards: Rectangle {
                         height: 45px;
                         background: ra.has-hover ? G.node-hover : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         ra := TouchArea { clicked => { S.open-task(S.board-id, c.id); } mouse-cursor: pointer; }
                         Rectangle {
                             x: 12px; y: 15px; width: 14px; height: 14px; border-radius: 3px;
@@ -629,6 +634,7 @@ component Gallery inherits Rectangle {
                     border-width: 1px;
                     border-color: S.pipe-stage == i ? G.accent : G.line;
                     background: S.pipe-stage == i ? G.accent-wash : (ba.has-hover ? G.node-hover : transparent);
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     bt := Text { text: st; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                     ba := TouchArea { clicked => { S.pipe-stage-set(i); } mouse-cursor: pointer; }
                 }
@@ -702,6 +708,7 @@ component Archive inherits Rectangle {
                 border-width: 1px;
                 border-color: o.on ? G.accent : G.line;
                 background: o.on ? G.accent-wash : (oa.has-hover ? G.node-hover : transparent);
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 if o.id != "": Rectangle { x: 12px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: o.hue; }
                 ot := Text { x: o.id == "" ? 13px : 25px; text: o.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
                 oa := TouchArea { clicked => { S.arch-sphere-set(o.id); } mouse-cursor: pointer; }
@@ -747,8 +754,9 @@ export component BoardPage inherits Rectangle {
     property <bool> menu;
     property <bool> renaming;
     SideCol { x: 8px; y: 8px; height: parent.height - 16px; }
-    if S.arch-open: Archive { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; }
-    if S.sph-open && !S.arch-open: SpheresPage { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; }
+    // архив и сферы открываются поверх доски — проявляются и чуть вырастают (Pop)
+    if S.arch-open: Pop { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; Archive { } }
+    if S.sph-open && !S.arch-open: Pop { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; SpheresPage { } }
     area := Rectangle {
         visible: !S.arch-open && !S.sph-open;
         x: 236px;
@@ -842,6 +850,7 @@ export component BoardPage inherits Rectangle {
                     height: 32px;
                     border-radius: 4px;
                     background: ma.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     HorizontalLayout {
                         padding-left: 10px; spacing: 8px;
                         Icon { name: i == 0 ? "settings" : i == 1 ? "edit" : "trash"; c: i == 2 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }

@@ -78,6 +78,7 @@ component Card inherits Rectangle {
         height: 30px;
         border-radius: 15px;
         background: h.done ? h.hue : (ba.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         border-width: h.done ? 0 : 1px;
         border-color: h.hue;
         bt := Text {
@@ -152,6 +153,7 @@ component Panel inherits Rectangle {
                 height: 26px;
                 border-radius: 4px;
                 background: c.hint == "done" ? c.hue : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 border-width: c.hint == "done" ? 0 : 1px;
                 border-color: c.hint == "today" ? G.accent : (c.hint == "miss" ? G.red.transparentize(0.4) : #3A3B42);
                 Text { text: c.id; font-family: G.mono; font-size: 9.5px; color: c.hint == "done" ? #1C1D21 : (c.hint == "fut" || c.hint == "off" ? #7A7C86 : G.ink); horizontal-alignment: center; vertical-alignment: center; }
@@ -189,6 +191,7 @@ component Panel inherits Rectangle {
                 property <bool> on: i == 0 ? S.hp-tg : S.hp-winrem;
                 border-color: on ? G.gold : G.line;
                 background: on ? #E8C65A12 : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 rt := Text { text: r; font-family: G.mono; font-size: 9.5px; font-weight: 600; letter-spacing: 1.2px; color: parent.on ? G.ink : #7A7C86; horizontal-alignment: center; vertical-alignment: center; }
             }
             Rectangle { }
@@ -221,6 +224,7 @@ component Toolbar inherits Rectangle {
                 border-width: 1px;
                 border-color: p.on ? G.accent : G.line;
                 background: p.on ? G.accent-wash : (pa.has-hover ? G.node-hover : transparent);
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 pl := Text { text: p.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: p.on ? G.ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
                 pa := TouchArea { clicked => { S.habit-part(p.id); } mouse-cursor: pointer; }
             }
@@ -238,6 +242,7 @@ component Toolbar inherits Rectangle {
         width: 102px; height: 30px;
         border-radius: 6px;
         background: na.has-hover ? G.accent-ink : G.accent;
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         Text { text: "＋ Привычка"; font-size: 13px; font-weight: 500; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
         na := TouchArea { clicked => { S.habit-new(); } mouse-cursor: pointer; }
     }
@@ -334,6 +339,7 @@ component MonthTable inherits Rectangle {
                 height: 36px;
                 border-radius: 5px;
                 background: ia.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Rectangle { x: 10px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: it.c; }
                 Text { x: it.t == "Очистить" ? 10px : 26px; text: it.t; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
                 Rectangle {
@@ -375,6 +381,7 @@ export component HabitsPage inherits Rectangle {
                         width: h.off ? 0 : ht.preferred-width + 26px;
                         border-radius: 15px;
                         background: h.done ? h.hue : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: h.done ? 0 : 1px;
                         border-color: h.hue;
                         ht := Text { text: (h.done ? "✓ " : "") + h.name; font-size: 13px; color: h.done ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; }
@@ -387,6 +394,7 @@ export component HabitsPage inherits Rectangle {
             x: root.mx + root.aw - self.width; y: 64px; width: 108px; height: 30px;
             border-radius: 6px; border-width: 1px; border-color: #6E7079;
             background: aa.has-hover ? G.node-hover : transparent;
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             Text { text: "Отметить все"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
             aa := TouchArea { clicked => { S.habit-all(); } mouse-cursor: pointer; }
         }
