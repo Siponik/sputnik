@@ -1,6 +1,6 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop, LabelHint } from "kit.slint";
 import { Sat, Catch } from "kit.slint";
 import { LinkNote } from "linknote.slint";
 import { S, Opt, Sub, Found, DpCell } from "store.slint";
@@ -386,8 +386,7 @@ component TaskBody inherits Rectangle {
                             if p.id == "remind": Rectangle { x: 6px; y: 7px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.5px;
                                 border-color: o.on ? CK.accent : G.line-strong; background: o.on ? CK.accent : transparent;
                                 Text { text: "✓"; visible: o.on; font-size: 10px; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; } }
-                                Text { x: 24px; text: o.label; font-size: 12.5px; color: o.on ? CK.accent : G.ink; vertical-alignment: center; height: parent.height; }
-                                Text { x: parent.width - self.preferred-width - 10px; text: o.hint; font-size: 11px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                                                                LabelHint { x: 24px; width: parent.width - 34px; height: parent.height; label: o.label; hint: o.hint; label-color: o.on ? CK.accent : G.ink; }
                                 oa := TouchArea { clicked => { S.c-prop-set(p.id, o.id); } mouse-cursor: pointer; }
                             }
                         }
@@ -437,8 +436,7 @@ component PropsPanel inherits Rectangle {
                             if p.id == "remind": Rectangle { x: 6px; y: 7px; width: 14px; height: 14px; border-radius: 3px; border-width: 1.5px;
                                 border-color: o.on ? CK.accent : G.line-strong; background: o.on ? CK.accent : transparent;
                                 Text { text: "✓"; visible: o.on; font-size: 10px; color: CK.on-accent; horizontal-alignment: center; vertical-alignment: center; } }
-                            Text { x: 24px; text: o.label; font-size: 12.5px; color: o.on ? CK.accent : G.ink; vertical-alignment: center; height: parent.height; }
-                            Text { x: parent.width - self.preferred-width - 10px; text: o.hint; font-size: 11px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                                                        LabelHint { x: 24px; width: parent.width - 34px; height: parent.height; label: o.label; hint: o.hint; label-color: o.on ? CK.accent : G.ink; }
                             oa := TouchArea { clicked => { S.c-prop-set(p.id, o.id); } mouse-cursor: pointer; }
                         }
                     }
