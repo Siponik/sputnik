@@ -43,7 +43,7 @@ component Month inherits Rectangle {
             border-radius: d.today ? 6px : 0;
             border-width: d.today ? 1px : 0;
             border-color: G.accent;
-            background: d.today ? #2C2620 : (d.sel ? G.accent-wash : (ma.has-hover ? G.node-hover : transparent));
+            background: d.today ? G.accent-wash.mix(G.node, 0.7) : (d.sel ? G.accent-wash : (ma.has-hover ? G.node-hover : transparent));
         }
         ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
         Text { x: 10px; y: 8px; text: d.num; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: d.today ? G.accent : (d.in-month ? G.ink : #55575F); }
@@ -95,8 +95,8 @@ component DayLine inherits Rectangle {
     border-radius: next ? 6px : 0;
     border-width: next ? 1px : 0;
     border-color: G.accent;
-    background: next ? #2E2620 : (la.has-hover ? G.node-hover : transparent);
-    if next: Hatch { border-radius: 6px; c: #F0A04B0C; }
+    background: next ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
+    if next: Hatch { border-radius: 6px; c: G.accent.with-alpha(0.05); }
     la := TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
     Rectangle {
         x: 10px; y: 13px; width: 14px; height: 14px; border-radius: 3px;
@@ -254,8 +254,8 @@ export component CalendarPage inherits Rectangle {
 
     // провод «неделя → день»
     Rectangle { x: main.x + main.width - 4px; y: main.y + 21px; width: 28px; height: 1.5px; background: G.accent; }
-    Rectangle { x: main.x + main.width - 4px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: #6A4A28; }
-    Rectangle { x: main.x + main.width + 20px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: #6A4A28; }
+    Rectangle { x: main.x + main.width - 4px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: G.accent-line; }
+    Rectangle { x: main.x + main.width + 20px; y: main.y + 17px; width: 9px; height: 9px; border-radius: 3px; background: G.accent; border-width: 1px; border-color: G.accent-line; }
 
     // ---------- нода дня ----------
     panel := Rectangle {

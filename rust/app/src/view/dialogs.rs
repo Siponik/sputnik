@@ -40,7 +40,7 @@ pub fn resolved(c: &Create) -> Value {
 }
 
 pub fn opt(id: impl Into<String>, label: impl Into<String>, on: bool) -> Opt {
-    Opt { id: ss(id), label: ss(label), hint: ss(""), hue: color("clay"), on }
+    Opt { id: ss(id), label: ss(label), hint: ss(""), hue: color("accent"), on }
 }
 
 pub fn list_opts(app: &App, cur: &str) -> Vec<Opt> {
@@ -200,7 +200,7 @@ fn create(app: &App, c: &Create, g: &S) {
     g.set_c_prio(x["priority"].as_i64().unwrap_or(0) as i32);
     // понятое из строки — чипы с «×»
     g.set_c_toks(model(if c.kind == 2 { vec![] } else {
-        a(&x["toks"]).iter().filter(|k| c.kind == 0 || k["k"] != "prio").map(|k| Opt { id: ss(text(&k["k"])), label: ss(text(&k["l"])), hint: ss(""), hue: color("clay"), on: t(&k["over"]) }).collect()
+        a(&x["toks"]).iter().filter(|k| c.kind == 0 || k["k"] != "prio").map(|k| Opt { id: ss(text(&k["k"])), label: ss(text(&k["l"])), hint: ss(""), hue: color("accent"), on: t(&k["over"]) }).collect()
     }));
     g.set_c_understood(strings(match &habit { Some(h) if !empty => a(&h["toks"]).iter().map(|x| text(&x["l"])).collect(), _ => vec![] }));
     // срок
@@ -330,7 +330,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
             .collect();
         g.set_c_cal(model(cells));
     }
-    g.set_c_strip(model(cr2::strip(tdy).into_iter().map(|(id, wd, n)| Opt { on: id == day, id: ss(id), label: ss(wd), hint: ss(n), hue: color("clay") }).collect()));
+    g.set_c_strip(model(cr2::strip(tdy).into_iter().map(|(id, wd, n)| Opt { on: id == day, id: ss(id), label: ss(wd), hint: ss(n), hue: color("accent") }).collect()));
     let cols = app.columns(dest);
     let col = c.col.clone().filter(|k| cols.iter().any(|x| x.0["id"] == k.as_str())).or_else(|| cols.first().map(|x| text(&x.0["id"])));
     let col_name = cols.iter().find(|x| Some(text(&x.0["id"])) == col).map(|x| text(&x.0["name"])).unwrap_or_else(|| "Входящие".into());
@@ -346,7 +346,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         ch.next().map(|f| f.to_lowercase().collect::<String>() + ch.as_str()).unwrap_or_default()
     };
     let lead = leads.iter().filter(|l| mins.contains(&l.0)).map(|l| lab(l.1)).collect::<Vec<_>>().join(", ");
-    let row = |id: &str, l: &str, v: String| { let on = !v.is_empty(); Opt { id: ss(id), label: ss(l), hint: ss(if on { v } else { "—".into() }), hue: color("clay"), on } };
+    let row = |id: &str, l: &str, v: String| { let on = !v.is_empty(); Opt { id: ss(id), label: ss(l), hint: ss(if on { v } else { "—".into() }), hue: color("accent"), on } };
     let cal = cal_of(app, c);
     let cal_row = |app: &App| {
         let cals = app.writable_cals();
@@ -408,7 +408,7 @@ fn line_md(raw: &str, marks: &Value) -> slint::StyledText {
         let (f, t) = (m["from"].as_u64().unwrap_or(0) as usize, m["to"].as_u64().unwrap_or(0) as usize);
         if f < at || t > chars.len() || f >= t { continue; }
         md.push_str(&esc(&chars[at..f].iter().collect::<String>()));
-        let col = match s(&m["kind"]) { "day" | "time" | "when" | "date" => "#F0A04B", "priority" | "prio" => "#F0785F", _ => "#E0A04A" };
+        let col = match s(&m["kind"]) { "day" | "time" | "when" | "date" => format!("#{:06X}", super::accent_hex()), "priority" | "prio" => "#F0785F".into(), _ => "#E0A04A".into() };
         md.push_str(&format!("<font color=\"{col}\">{}</font>", esc(&chars[f..t].iter().collect::<String>())));
         at = t;
     }

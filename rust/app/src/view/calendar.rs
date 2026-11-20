@@ -5,7 +5,7 @@ use crate::{Chip, Day, Opt};
 use sputnik_core::calendar as cal;
 use sputnik_core::habits as hb;
 
-pub const FILTERS: [(&str, &str, &str); 4] = [("events", "События", "#A3A5AE"), ("tasks", "Задачи", "clay"), ("habits", "Привычки", "gold"), ("bdays", "Дни рождения", "#F08CC0")];
+pub const FILTERS: [(&str, &str, &str); 4] = [("events", "События", "#A3A5AE"), ("tasks", "Задачи", "accent"), ("habits", "Привычки", "gold"), ("bdays", "Дни рождения", "#F08CC0")];
 
 /// Всё, что есть у дня: (минуты начала/конца или None для «весь день», элемент-чип).
 pub struct Item {

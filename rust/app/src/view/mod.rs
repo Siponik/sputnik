@@ -383,7 +383,14 @@ fn hex(h: u32) -> Color {
     Color::from_rgb_u8((h >> 16) as u8, (h >> 8) as u8, h as u8)
 }
 
-/// Цвет из имён старого трекера (var(--clay) и т. п.), #RRGGBB или номера палитры.
+/// Текущий акцент (Настройки → Вид): ставит settings::apply_accent. Всё, что «цвета акцента», берёт его отсюда,
+/// а не постоянный оранжевый — иначе после смены акцента остаются оранжевые подтоны.
+static ACCENT: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0xF0A04B);
+pub fn set_accent_hex(x: u32) { ACCENT.store(x, std::sync::atomic::Ordering::Relaxed); }
+pub fn accent_hex() -> u32 { ACCENT.load(std::sync::atomic::Ordering::Relaxed) }
+pub fn accent() -> Color { hex(accent_hex()) }
+
+/// Цвет из имён старого трекера (var(--clay) и т. п.), #RRGGBB или номера палитры. «accent» — текущий акцент.
 pub fn color(v: &str) -> Color {
     let v = v.trim();
     if let Some(h) = v.strip_prefix('#') {
@@ -392,7 +399,8 @@ pub fn color(v: &str) -> Color {
         }
     }
     hex(match v {
-        "var(--clay)" | "clay" | "accent" => 0xF0A04B,
+        "accent" => accent_hex(),
+        "var(--clay)" | "clay" => 0xF0A04B,
         "var(--gold)" | "gold" => 0xE8C65A,
         "var(--type-work)" | "work" | "blue" => 0x6FA2F2,
         "var(--type-study)" | "study" | "violet" => 0xB48CF0,

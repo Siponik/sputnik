@@ -145,7 +145,7 @@ component LiveLine inherits Rectangle {
             font-family: line.kind == "code" ? G.mono : G.sans;
             font-weight: root.h ? 600 : 400;
             color: G.ink;
-            selection-background-color: #F0A04B66;
+            selection-background-color: G.accent.with-alpha(0.4);
             selection-foreground-color: #FFFFFF;
             changed has-focus => { if (!self.has-focus && root.editing) { root.leave(self.text); } }
             edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); }
@@ -313,7 +313,7 @@ export component NotesPage inherits Rectangle {
         Rectangle {
             x: parent.width - 42px; y: 55px; width: 32px; height: 32px; border-radius: 8px;
             background: pa.has-hover ? G.accent.brighter(0.1) : G.accent;
-            Text { text: "＋"; color: #2A1A0A; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: "＋"; color: G.on-accent; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
             Tip { text: "Новая заметка, холст или папка"; on: pa.has-hover; }
         }
@@ -379,9 +379,9 @@ export component NotesPage inherits Rectangle {
                             border-radius: 7px;
                             background: t.cur ? #FFFFFFEB : (ta.has-hover ? #FFFFFF1A : transparent);
                             tt := Text { x: 12px; width: parent.width - 38px; text: t.title; font-size: 13px; font-weight: t.cur ? 500 : 400;
-                                color: t.cur ? #5A3412 : #FFFFFFD1; vertical-alignment: center; overflow: elide; }
-                            if t.cur && S.note-dirty: Text { x: parent.width - 26px; width: 18px; text: "●"; font-size: 9px; color: #9A5A22; vertical-alignment: center; horizontal-alignment: center; }
-                            if (t.cur && !S.note-dirty) || (!t.cur && hov): Icon { name: "close"; width: 11px; x: parent.width - 23px; y: (parent.height - 11px) / 2; c: ca.has-hover ? G.red : (t.cur ? #5A341299 : #FFFFFFB0); }
+                                color: t.cur ? G.head-main.darker(0.4) : #FFFFFFD1; vertical-alignment: center; overflow: elide; }
+                            if t.cur && S.note-dirty: Text { x: parent.width - 26px; width: 18px; text: "●"; font-size: 9px; color: G.head-main; vertical-alignment: center; horizontal-alignment: center; }
+                            if (t.cur && !S.note-dirty) || (!t.cur && hov): Icon { name: "close"; width: 11px; x: parent.width - 23px; y: (parent.height - 11px) / 2; c: ca.has-hover ? G.red : (t.cur ? G.head-main.darker(0.4).with-alpha(0.6) : #FFFFFFB0); }
                             ta := TouchArea { width: parent.width - 28px; mouse-cursor: pointer; clicked => { S.note-tab-open(t.path); }
                                 pointer-event(e) => {
                                     if (e.button == PointerEventButton.middle && e.kind == PointerEventKind.up) { S.note-tab-close(t.path); }
