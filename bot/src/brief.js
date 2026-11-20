@@ -1,9 +1,9 @@
 // Утренняя сводка общего бота: задачи дня из снимка трекера + новости дня.
 // Новости собирает GitHub Actions (.github/workflows/news.yml, tools/news/) и кладёт на GitHub Pages
-// рядом со страницей data.json: { date, count, top: [{ title, url }], dota }. Бот только читает этот файл.
+// рядом со страницей data.json: { date, count, top: [{ title, url, sec }], dota: { stage, title, url, at, points } }. Бот только читает этот файл.
 // Настройки человека — таблица brief (schema.sql): время (минуты от полуночи в его поясе), дни, пауза, когда слал.
 
-import { agenda, esc, parts } from './logic.js';
+import { esc, parts } from './logic.js';
 
 export const NEWS_URL = 'https://siponik.github.io/sputnik/news/';
 export const BRIEF_AT = 8 * 60; // 08:00 по времени человека
@@ -18,24 +18,60 @@ const prefsOf = (u) => ({ at: u?.at ?? BRIEF_AT, days: u?.days === 'work' ? 'wor
 /** Разница в днях между двумя датами «ГГГГ-ММ-ДД». */
 const dayDiff = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
 
-/** Блок новостей: число, большое обновление Dota 2 и три главных со ссылками. Вчерашние — с пометкой. */
+// Вид сводки — «Система G» (docs/design-g.md): шапки разделов моно-капсом с номером «01 · …», время и счётчики
+// моноширинным, содержимое разделов — в цитате-ноде, Dota 2 — отдельной нодой со звездой.
+const WD = ['ВС', 'ПН', 'ВТ', 'СР', 'ЧТ', 'ПТ', 'СБ'];
+const MON = ['ЯНВАРЯ', 'ФЕВРАЛЯ', 'МАРТА', 'АПРЕЛЯ', 'МАЯ', 'ИЮНЯ', 'ИЮЛЯ', 'АВГУСТА', 'СЕНТЯБРЯ', 'ОКТЯБРЯ', 'НОЯБРЯ', 'ДЕКАБРЯ'];
+const SEC = { cg: 'CG   ', industry: 'ИГРЫ ', updates: 'ПАТЧИ', releases: 'ВЫХОД', hype: 'ХАЙП ' };
+const head = (n, title, count, extra = '') => `<b>${n} · ${title}</b>${count != null ? ` <code>${count}</code>` : ''}${extra}`;
+const MAX_TASKS = 8;
+
+/** Задачи дня: просроченные сверху, дальше по времени. */
+export function tasksBlock(today, tz, now) {
+  const ymd = parts(new Date(now), tz).ymd;
+  const items = (today ?? []).filter((t) => t.due === ymd || (t.due && t.due < ymd))
+    .sort((a, b) => (a.due < ymd ? -1 : 0) - (b.due < ymd ? -1 : 0) || (a.time ?? '99').localeCompare(b.time ?? '99'));
+  if (!items.length) return `${head('01', 'СЕГОДНЯ', 0)}\n<blockquote>Задач на сегодня нет — свободный день 🌙</blockquote>`;
+  const rows = items.slice(0, MAX_TASKS).map((t) => {
+    const late = t.due < ymd;
+    return `<code>${late ? '  !  ' : t.time ? t.time.padStart(5) : '  ·  '}</code>  ${esc(t.title)}${late ? ' <i>· просрочено</i>' : ''}`;
+  });
+  if (items.length > MAX_TASKS) rows.push(`<i>и ещё ${items.length - MAX_TASKS} — /today</i>`);
+  return `${head('01', 'СЕГОДНЯ', items.length)}\n<blockquote>${rows.join('\n')}</blockquote>`;
+}
+
+/** Нода Dota 2: большое обновление первые двое суток (stage 'big'). */
+export function dotaLines(dota) {
+  if (dota?.stage !== 'big' || !dota.url) return '';
+  const pts = (dota.points ?? []).slice(0, 3).map((p) => `— ${esc(p)}`);
+  return [`✦ <b>DOTA 2 · БОЛЬШОЕ ОБНОВЛЕНИЕ</b>`, `<blockquote><b>${esc(dota.title)}</b>${pts.length ? '\n' + pts.join('\n') : ''}\n<a href="${esc(dota.url)}">Открыть патчноут →</a></blockquote>`].join('\n');
+}
+
+/** Блок новостей: число и три главных со ссылками; вчерашние — с пометкой. Dota «со звездой» — строкой. */
 export function newsLines(data, ymd) {
   if (!data?.count) return '';
   const old = data.date && data.date !== ymd ? ` <i>· ${dayDiff(ymd, data.date) === 1 ? 'вчерашние' : 'позавчерашние'}</i>` : '';
-  const lines = [`📰 <b>Новости · ${data.count}</b>${old}`];
-  if (data.dota?.stage === 'big') lines.push(`✦ <a href="${esc(data.dota.url)}">Dota 2: ${esc(data.dota.title)}</a>`);
-  for (const t of (data.top ?? []).slice(0, 3)) lines.push(`• <a href="${esc(t.url)}">${esc(t.title)}</a>`);
-  return lines.join('\n');
+  const rows = [];
+  if (data.dota?.stage === 'star' && data.dota.url) rows.push(`<code>DOTA ✦</code> <a href="${esc(data.dota.url)}">${esc(data.dota.title)}</a>`);
+  for (const t of (data.top ?? []).slice(0, 3)) rows.push(`<code>${SEC[t.sec] ?? '  •  '}</code> <a href="${esc(t.url)}">${esc(t.title)}</a>`);
+  return `${head('02', 'НОВОСТИ', data.count, old)}${rows.length ? `\n<blockquote>${rows.join('\n')}</blockquote>` : ''}`;
 }
 
-/** Текст сводки и кнопка. news — data.json или null. */
+/** Текст сводки и кнопки. news — data.json или null. */
 export function briefMessage(state, news, tz, now) {
   const p = parts(new Date(now), tz);
   const fresh = news?.date && dayDiff(p.ymd, news.date) <= NEWS_OLD && dayDiff(p.ymd, news.date) >= 0 ? news : null;
-  const stale = state?.at && now - state.at > 864e5 ? '\n<i>Спутник давно не синхронизировался — список может быть старым.</i>' : '';
-  const text = [`🛰 <b>Спутник · утро</b> · ${p.d}.${String(p.m).padStart(2, '0')}`, agenda(state?.today, tz, now) + stale, newsLines(fresh, p.ymd)]
-    .filter(Boolean).join('\n\n');
-  return { text, markup: fresh?.count ? { inline_keyboard: [[{ text: 'Открыть новости', url: NEWS_URL }]] } : null };
+  const stale = state?.at && now - state.at > 864e5 ? '<i>Спутник давно не синхронизировался — список может быть старым.</i>' : '';
+  const text = [
+    `🛰 <b>СПУТНИК · УТРО</b>\n<code>${WD[p.dow]} · ${p.d} ${MON[p.m - 1]}</code>`,
+    tasksBlock(state?.today, tz, now) + (stale ? '\n' + stale : ''),
+    dotaLines(fresh?.dota),
+    newsLines(fresh, p.ymd),
+  ].filter(Boolean).join('\n\n');
+  const row = [];
+  if (fresh?.count) row.push({ text: '📰 Все новости', url: NEWS_URL });
+  if (fresh?.dota?.stage === 'big' && fresh.dota.url) row.push({ text: '✦ Патчноут', url: fresh.dota.url });
+  return { text, markup: row.length ? { inline_keyboard: [row] } : null };
 }
 
 /** Пора ли слать сводку: 'send' — да, 'wait' — подождать свежих новостей, null — не сегодня или уже отправлена. */
