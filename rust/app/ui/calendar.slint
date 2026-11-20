@@ -15,6 +15,7 @@ component Sq inherits Rectangle {
     border-width: 1px;
     border-color: G.line-strong.transparentize(0.4);
     background: qa.has-hover ? G.node-hover : transparent;
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     Icon { name: root.icon; width: 13px; x: (parent.width - 13px) / 2; y: (parent.height - 13px) / 2; c: G.ink; }
     qa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
@@ -44,6 +45,7 @@ component Month inherits Rectangle {
             border-width: d.today ? 1px : 0;
             border-color: G.accent;
             background: d.today ? G.accent-wash.mix(G.node, 0.7) : (d.sel ? G.accent-wash : (ma.has-hover ? G.node-hover : transparent));
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         }
         ma := TouchArea { clicked => { S.cal-pick(d.ymd); } }
         Text { x: 10px; y: 8px; text: d.num; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1px; color: d.today ? G.accent : (d.in-month ? G.ink : #55575F); }
@@ -96,12 +98,14 @@ component DayLine inherits Rectangle {
     border-width: next ? 1px : 0;
     border-color: G.accent;
     background: next ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     if next: Hatch { border-radius: 6px; c: G.accent.with-alpha(0.05); }
     la := TouchArea { clicked => { if (c.kind == 1) { S.open-task(c.list-id, c.id); } else { S.open-event(c.id); } } mouse-cursor: pointer; }
     Rectangle {
         x: 10px; y: 13px; width: 14px; height: 14px; border-radius: 3px;
         border-width: 1px; border-color: c.done ? #7C7E88 : (next ? G.accent : #7C7E88);
         background: c.done ? #3D3E45 : transparent;
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         visible: c.kind == 1;
         Icon { name: "check"; width: 10px; x: 2px; y: 2px; visible: c.done; c: G.ink; stroke-width: 2.2px; }
         TouchArea { clicked => { S.toggle(c.list-id, c.id); } mouse-cursor: pointer; }
@@ -230,6 +234,7 @@ export component CalendarPage inherits Rectangle {
                 border-width: 1px;
                 border-color: ta.has-hover ? G.line-strong : G.line;
                 background: ta.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 visible: S.cal-away;
                 Rectangle { x: 7px; y: 7px; width: 14px; height: 14px; border-radius: 7px; border-width: 1.3px; border-color: G.muted; }
                 Rectangle { x: 12px; y: 12px; width: 4px; height: 4px; border-radius: 2px; background: G.accent; }
@@ -245,12 +250,14 @@ export component CalendarPage inherits Rectangle {
                 Rectangle {
                     x: 1px; y: 1px; width: 27px; height: 26px;
                     background: pa.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     Icon { x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; name: "prev"; width: 12px; c: G.ink; }
                     pa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-shift(-1); } }
                 }
                 mbtn := Rectangle {
                     x: 28px; y: 1px; width: root.tw; height: 26px;
                     background: mba.has-hover && !root.mp-open ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     Rectangle { x: 0; width: 1px; background: G.line; }
                     Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
                     HorizontalLayout {
@@ -263,6 +270,7 @@ export component CalendarPage inherits Rectangle {
                 Rectangle {
                     x: 28px + root.tw; y: 1px; width: 27px; height: 26px;
                     background: nxa.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     Icon { x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; name: "next"; width: 12px; c: G.ink; }
                     nxa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-shift(1); } }
                 }
@@ -281,6 +289,7 @@ export component CalendarPage inherits Rectangle {
                 border-width: 1px;
                 border-color: root.sh-open ? G.accent : (sba.has-hover ? G.line-strong : G.line);
                 background: sba.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 shl := HorizontalLayout {
                     padding-left: 10px; spacing: 3px; alignment: start;
                     st := Text { text: "ПОКАЗЫВАТЬ"; font-family: G.mono; font-size: 10px; font-weight: 500; letter-spacing: 1px; color: G.ink; vertical-alignment: center; }
@@ -367,6 +376,7 @@ export component CalendarPage inherits Rectangle {
                     height: 32px;
                     c: #6E7079;
                     background: ad.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     Text { text: "＋ Добавить на этот день"; font-size: 13px; font-weight: 500; color: G.ink; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
                     ad := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
                 }
@@ -566,6 +576,7 @@ export component CalendarPage inherits Rectangle {
                         height: 34px;
                         border-radius: 6px;
                         background: self.cur ? G.accent : (ma.has-hover ? G.node-hover : transparent);
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: self.now && !self.cur ? 1px : 0px;
                         border-color: G.accent.transparentize(0.4);
                         Text {
@@ -620,9 +631,11 @@ export component CalendarPage inherits Rectangle {
             for f in S.cal-filters: Rectangle {
                 height: 32px;
                 background: fa.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Rectangle {
                     x: 12px; y: 9px; width: 14px; height: 14px; border-radius: 4px;
                     background: f.on ? G.accent : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     border-width: f.on ? 0px : 1.5px; border-color: G.line;
                     if f.on: Icon { x: 2px; y: 2px; name: "check"; width: 10px; c: #1A1B1F; stroke-width: 2px; }
                 }

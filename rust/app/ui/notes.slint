@@ -226,6 +226,7 @@ component TreeLine inherits Rectangle {
     Rectangle {
         x: 6px; width: parent.width - 12px; border-radius: 6px; clip: true;
         background: root.on ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         if root.on: Rectangle { x: 0; width: 2px; background: G.accent; }
         HorizontalLayout {
             padding-left: 8px + r.depth * 14px; padding-right: 10px; spacing: 7px;
@@ -258,6 +259,7 @@ component NoteList inherits VerticalLayout {
     for r in rows: Rectangle {
         height: r.path == "" ? 30px : 30px;
         background: r.path != "" && r.path == cur ? G.accent-wash : (r.path != "" && na.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         if r.path != "" && r.path == cur: Rectangle { x: 0; width: 2px; background: G.accent; }
         if r.path == "": Rectangle { x: 14px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: #7C7E88; }
         if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
@@ -318,6 +320,7 @@ export component NotesPage inherits Rectangle {
         Rectangle {
             x: parent.width - 42px; y: 55px; width: 32px; height: 32px; border-radius: 8px;
             background: pa.has-hover ? G.accent.brighter(0.1) : G.accent;
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             Text { text: "＋"; color: G.on-accent; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
             Tip { text: "Новая заметка, холст или папка"; on: pa.has-hover; }
@@ -383,6 +386,7 @@ export component NotesPage inherits Rectangle {
                             height: 30px; width: min(tt.preferred-width + 50px, 220px);
                             border-radius: 7px;
                             background: t.cur ? #FFFFFFEB : (ta.has-hover ? #FFFFFF1A : transparent);
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             tt := Text { x: 12px; width: parent.width - 38px; text: t.title; font-size: 13px; font-weight: t.cur ? 500 : 400;
                                 color: t.cur ? G.head-main.darker(0.4) : #FFFFFFD1; vertical-alignment: center; overflow: elide; }
                             if t.cur && S.note-dirty: Text { x: parent.width - 26px; width: 18px; text: "●"; font-size: 9px; color: G.head-main; vertical-alignment: center; horizontal-alignment: center; }
@@ -466,6 +470,7 @@ export component NotesPage inherits Rectangle {
                         for p in S.note-props: Rectangle {
                             width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
                             background: p.cur ? G.accent-wash : G.bg;
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
                             pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
                         }
@@ -585,6 +590,7 @@ export component NotesPage inherits Rectangle {
                     Rectangle {
                         x: parent.width - self.width - 6px; y: 5px; width: lk.preferred-width + 18px; height: 22px; border-radius: 5px;
                         background: la2.has-hover ? G.accent-line : transparent; border-width: 1px; border-color: G.accent-line;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         lk := Text { text: "Связать"; font-size: 11.5px; color: G.accent; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
                         la2 := TouchArea { mouse-cursor: pointer; clicked => { S.note-mention-link(l.path); } }
                     }

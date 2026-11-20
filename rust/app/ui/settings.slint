@@ -464,7 +464,8 @@ export component SettingsPage inherits Rectangle {
 // Окно настроек поверх текущего раздела: фон затемнён, клик мимо — закрыть (всё и так сохраняется сразу,
 // набранную, но не подтверждённую папку заметок окно сохраняет само). Появляется плавно: всплывает на 14 px.
 export component SettingsWin inherits Overlay {
-    property <bool> shown;
+    // своё появление (окно выезжает) — общее Overlay не нужно; shown ставит Overlay
+    win-pop: false;
     close => { S.set-close(); }
     dismiss => {
         if (page.typed-root != S.notes-root && page.typed-root != "") { S.notes-root-set(page.typed-root); }
@@ -472,7 +473,6 @@ export component SettingsWin inherits Overlay {
     }
     opacity: root.shown ? 1 : 0;
     animate opacity { duration: G.mid; easing: ease-out; }
-    tshow := Timer { interval: 16ms; running: true; triggered => { self.running = false; root.shown = true; } }
     // клик по самому окну не закрывает его
     TouchArea { x: win.x; y: win.y; width: win.width; height: win.height; }
     win := Rectangle {

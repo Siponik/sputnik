@@ -15,6 +15,7 @@ component Seg3 inherits Rectangle {
             width: st.preferred-width + 20px;
             border-radius: 4px;
             background: it.on ? G.ink : (sa.has-hover ? G.node-hover : transparent);
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             st := Text { text: it.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: it.on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
             sa := TouchArea { clicked => { root.picked(it.id); } mouse-cursor: pointer; }
         }
@@ -233,6 +234,7 @@ export component ListSettings inherits Overlay {
                 for o in S.ls-spheres: Rectangle {
                     height: 30px; border-radius: 5px;
                     background: soa.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     if o.id != "": Rectangle { x: 10px; y: 11.5px; width: 7px; height: 7px; border-radius: 4px; background: o.hue; }
                     Text { x: o.id == "" ? 10px : 24px; width: parent.width - self.x - 30px; text: o.label; color: o.on ? G.accent-ink : G.ink; font-size: 13px; vertical-alignment: center; height: parent.height; overflow: elide; }
                     if o.on: Icon { x: parent.width - 24px; y: 8px; width: 14px; height: 14px; name: "check"; c: G.accent; }

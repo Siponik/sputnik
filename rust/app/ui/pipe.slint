@@ -14,6 +14,7 @@ component StageChip inherits Rectangle {
     height: 30px;
     border-radius: 6px;
     background: state == 1 ? G.accent : state == 0 ? #2C3A2F : (ca.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     border-width: state == 1 ? 0 : 1px;
     border-color: state == 0 ? #3F6B47 : #4A4B52;
     HorizontalLayout {
@@ -79,6 +80,7 @@ component PipeLine inherits Rectangle {
         x: parent.width - 118px; y: 15px; width: 104px; height: 32px;
         border-radius: 8px;
         background: open ? (na.has-hover ? G.accent-ink : G.accent) : (na.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         border-width: open ? 0 : 1px;
         border-color: #55575F;
         HorizontalLayout {
@@ -143,6 +145,7 @@ component PipeLine inherits Rectangle {
                             Rectangle {
                                 x: 20px; y: 7px; width: 14px; height: 14px; border-radius: 3px;
                                 background: sb.done ? #45464D : transparent;
+                                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                                 border-width: sb.done ? 0 : 1px; border-color: #8A8C96;
                                 Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; visible: sb.done; c: G.ink; stroke-width: 2.2px; }
                             }
@@ -193,6 +196,7 @@ component PipeLine inherits Rectangle {
             Rectangle {
                 width: rpt.preferred-width + 20px; border-radius: 7px; border-width: 1px; border-color: root.rpop ? G.accent : G.line;
                 background: rpa.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 rpt := Text { text: S.pipe-remind-n > 2 ? "+" + (S.pipe-remind-n - 2) : "＋"; font-size: 12px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
                 rpa := TouchArea { clicked => { root.rpop = !root.rpop; } mouse-cursor: pointer; }
             }
@@ -258,6 +262,7 @@ component PipeLine inherits Rectangle {
             for o in S.pipe-reminds: Rectangle {
                 height: 30px; border-radius: 5px;
                 background: ra2.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Text { x: 10px; text: o.label; font-size: 13px; color: o.on ? G.accent-ink : G.ink; vertical-alignment: center; height: parent.height; }
                 if o.on: Icon { x: parent.width - 24px; y: 8px; width: 14px; height: 14px; name: "check"; c: G.accent; }
                 ra2 := TouchArea { clicked => { S.w-remind(r.list-id, r.id, o.id); } mouse-cursor: pointer; }
