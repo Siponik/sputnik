@@ -157,12 +157,7 @@ pub fn hex_color(h: &str) -> Option<Color> {
 }
 
 fn md_rows(text: &str, max: usize) -> Vec<MdRow> {
-    crate::notes::line_rows(text).into_iter().filter(|r| r.kind != "fence").take(max).map(|r| MdRow {
-        kind: ss(r.kind),
-        raw: ss(r.raw),
-        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-        plain: ss(r.plain),
-    }).collect()
+    crate::notes::line_rows(text).into_iter().filter(|r| r.kind != "fence").take(max).map(super::md_row).collect()
 }
 
 pub fn render(app: &App, u: &Ui, g: &S) {

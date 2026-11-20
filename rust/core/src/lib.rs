@@ -22,6 +22,7 @@ pub mod j;
 pub mod kanban;
 pub mod layer;
 pub mod mdline;
+pub mod mdtable;
 pub mod reminders;
 pub mod preview;
 pub mod repeat;

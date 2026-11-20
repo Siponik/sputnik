@@ -139,12 +139,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             }
             g.set_note_props(model(pills));
             // текст режима «Чтение»
-            let rows: Vec<MdRow> = crate::notes::line_rows(&text).into_iter().map(|r| MdRow {
-                kind: ss(r.kind),
-                raw: ss(r.raw),
-                md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-                plain: ss(r.plain),
-            }).collect();
+            let rows: Vec<MdRow> = crate::notes::line_rows(&text).into_iter().map(super::md_row).collect();
             g.set_note_line_links(model(crate::notes::line_rows(&text).iter().map(|r| r.raw.contains("[[") || r.raw.contains("](") || r.raw.contains("://")).collect()));
             sync_lines(g, &u.note_path, rows);
             // упомянуто без ссылки: название встречается в тексте другой заметки, но не как [[ссылка]]
@@ -216,7 +211,7 @@ thread_local! {
 fn sync_lines(g: &S, path: &str, rows: Vec<MdRow>) {
     LINES.with(|c| {
         let mut c = c.borrow_mut();
-        let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw;
+        let same = |a: &MdRow, b: &MdRow| a.kind == b.kind && a.raw == b.raw && a.block == b.block && a.top == b.top && a.tn == b.tn;
         match &c.1 {
             Some(m) if c.0 == path => {
                 let old: Vec<MdRow> = m.iter().collect();
