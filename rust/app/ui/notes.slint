@@ -1,7 +1,7 @@
 // «Знания»: слева заметки и поиск, в центре — заметка (правка сохраняется только по кнопке/Ctrl+S),
 // справа — ссылки [[…]] из неё и обратные ссылки.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView, Tip } from "kit.slint";
+import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView, Tip, Pop } from "kit.slint";
 import { S, NoteRow, TreeRow, MdRow, GDot, GLine } from "store.slint";
 import { CanvasView, CvCam } from "canvas.slint";
 import { MdLine, TableRow } from "linknote.slint";
@@ -153,7 +153,8 @@ component LiveLine inherits Rectangle {
         }
     }
     // предпросмотр ссылки, в которой стоит курсор (над строкой); Ctrl+клик — перейти
-    if editing && ed.has-focus && !root.hints && S.peek-title != "": Rectangle {
+    if editing && ed.has-focus && !root.hints && S.peek-title != "": Pop {
+        up: true;
         x: root.ind; y: -self.height - 6px; width: min(360px, root.width - root.ind);
         height: min(220px, pv.preferred-height + 16px);
         border-radius: 10px; background: G.node; border-width: 1px; border-color: G.accent-line;
@@ -170,7 +171,8 @@ component LiveLine inherits Rectangle {
         }
     }
     // подсказка названий над строкой (ниже её закрыли бы следующие строки)
-    if root.hints: Rectangle {
+    if root.hints: Pop {
+        up: true;
         x: root.ind; y: -self.height - 4px; width: min(320px, root.width - root.ind);
         height: 8px + min(6, S.link-found.length) * 30px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;

@@ -3,7 +3,7 @@
 // правки пишутся в слой сразу (серия не сбрасывается), высота окна — по содержимому.
 // Окно «Создать» (dialogs.slint) не тронуто — оно в другой ветке.
 import { G } from "theme.slint";
-import { Brackets, Field, Icon, Chev, Overlay, ScrollInput, Catch } from "kit.slint";
+import { Brackets, Field, Icon, Chev, Overlay, ScrollInput, Catch, Pop } from "kit.slint";
 import { S } from "store.slint";
 
 component Cap inherits Text {
@@ -66,7 +66,7 @@ component HTime inherits Rectangle {
     // клик мимо: набранное в поле время ставится (если понятно), потом список закрывается
     property <string> typed;
     if root.open: Catch { z: 19; clicked => { root.put(root.typed); S.drop = 0; } }
-    if root.open: Rectangle {
+    if root.open: Pop {
         x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;
@@ -263,7 +263,7 @@ export component HabitEditDialog inherits Overlay {
                         open: root.popen == "goal";
                         clicked => { root.popen = root.popen == "goal" ? "" : "goal"; }
                     }
-                    if root.popen == "goal": Rectangle {
+                    if root.popen == "goal": Pop {
                         height: gg.preferred-height;
                         gg := VerticalLayout {
                             padding: 4px;
@@ -280,7 +280,7 @@ export component HabitEditDialog inherits Overlay {
                         open: root.popen == "tg";
                         clicked => { root.popen = root.popen == "tg" ? "" : "tg"; }
                     }
-                    if root.popen == "tg": Rectangle {
+                    if root.popen == "tg": Pop {
                         height: tgo.preferred-height;
                         tgo := VerticalLayout {
                             padding: 4px;
@@ -297,7 +297,7 @@ export component HabitEditDialog inherits Overlay {
                         open: root.popen == "wrem";
                         clicked => { root.popen = root.popen == "wrem" ? "" : "wrem"; }
                     }
-                    if root.popen == "wrem": Rectangle {
+                    if root.popen == "wrem": Pop {
                         height: wro.preferred-height;
                         wro := VerticalLayout {
                             padding: 4px;

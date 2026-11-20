@@ -52,3 +52,19 @@ fn calendar() {
         })
     });
 }
+
+#[test]
+fn period_pos_steps_by_one() {
+    // неделя: любой день недели — один номер, соседние недели отличаются на 1, в том числе через Новый год
+    assert_eq!(c::period_pos("2026-11-16", "week"), c::period_pos("2026-11-22", "week"));
+    assert_eq!(c::period_pos("2026-11-23", "week") - c::period_pos("2026-11-22", "week"), 1);
+    assert_eq!(c::period_pos("2027-01-01", "week") - c::period_pos("2026-12-25", "week"), 1);
+    for d in ["2026-11-20", "2026-12-31", "2027-02-28"] {
+        let nx = c::shift_period(d, "week", 1);
+        assert_eq!(c::period_pos(&nx, "week") - c::period_pos(d, "week"), 1, "{d}");
+    }
+    // месяц: декабрь → январь на 1 больше, назад — на 1 меньше
+    assert_eq!(c::period_pos("2027-01-31", "month") - c::period_pos("2026-12-01", "month"), 1);
+    let back = c::shift_period("2026-03-31", "month", -1);
+    assert_eq!(c::period_pos(&back, "month") - c::period_pos("2026-03-31", "month"), -1);
+}

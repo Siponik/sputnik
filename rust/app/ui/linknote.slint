@@ -107,7 +107,7 @@ export component MdLine inherits Rectangle {
     }
 }
 import { G } from "theme.slint";
-import { ScrollInput, Icon, Tip } from "kit.slint";
+import { ScrollInput, Icon, Tip, Pop } from "kit.slint";
 import { S, Opt, MdRow } from "store.slint";
 import { ScrollView } from "kit.slint";
 
@@ -160,7 +160,7 @@ export component LinkNote inherits Rectangle {
             lka := TouchArea { clicked => { if (lk.id != "") { root.opened(); S.note-open(lk.id); } } mouse-cursor: pointer; }
         }
     }
-    if S.link-found.length > 0 && nb.focused: Rectangle {
+    if S.link-found.length > 0 && nb.focused: Pop {
         x: 0; y: 22px; width: min(300px, parent.width); height: 26px + min(5, S.link-found.length) * 30px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 28px; drop-shadow-offset-y: 12px; drop-shadow-color: #00000080;

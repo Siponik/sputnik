@@ -161,6 +161,16 @@ pub fn shift_period(sel: &str, mode: &str, dir: i64) -> String {
     ymd(js_date(y, m0 + dir as i32, sel.day().min(last) as i32))
 }
 
+/// Номер показанного периода: соседние недели (месяцы) отличаются на 1.
+/// Окно сравнивает старый и новый номер и листает в нужную сторону.
+pub fn period_pos(sel: &str, mode: &str) -> i64 {
+    let sel = pd(sel);
+    if mode == "week" {
+        return start_of_week(sel).num_days_from_ce() as i64 / 7;
+    }
+    sel.year() as i64 * 12 + sel.month0() as i64
+}
+
 pub fn type_of_template(tpl: &str) -> &'static str {
     match tpl {
         "asset3d" => "creative",

@@ -292,6 +292,25 @@ export component Overlay inherits Rectangle {
     @children
 }
 
+// Выпадающий список, меню, выбор месяца: раскрывается от кнопки (каталог G_Motion — «Меню, выпадающие
+// списки»): проявление + рост 0.96 → 1 от края у кнопки, 160 мс. up — список над кнопкой (растёт вверх),
+// from-right — привязан к правому краю. «Минимум» — только проявление 120 мс, «выкл» — сразу.
+// Ставится вместо Rectangle у `if открыто: Pop { … }` — всё остальное как у Rectangle.
+export component Pop inherits Rectangle {
+    in property <bool> up;
+    in property <bool> from-right;
+    property <bool> shown;
+    property <bool> moves: G.motion == 0;
+    opacity: root.shown || G.motion == 2 ? 1 : 0;
+    transform-origin: { x: root.from-right ? self.width : 0px, y: root.up ? self.height : 0px };
+    transform-scale-x: root.shown || !root.moves ? 1 : 0.96;
+    transform-scale-y: root.shown || !root.moves ? 1 : 0.9;
+    animate opacity { duration: G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 160ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    animate transform-scale-x, transform-scale-y { duration: root.moves ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    // первый кадр — свёрнутое, потом раскрывается
+    Timer { interval: 1ms; running: !root.shown; triggered => { root.shown = true; } }
+}
+
 // Ловушка «клик мимо» для выпадашек и форм без затемнения: прозрачная, на весь экран вокруг родителя.
 // Ставится перед самой выпадашкой; clicked — сохранить набранное (если можно) и закрыть.
 export component Catch inherits TouchArea {
@@ -357,14 +376,29 @@ export component CSeg inherits Rectangle {
     border-radius: 6px;
     border-width: 1px;
     border-color: G.line;
+    // выбранное — одна светлая плашка, она переезжает к новому пункту (при «минимум» и «выкл» — сразу)
+    Rectangle {
+        x: 3px + root.current * (root.width - 6px) / max(1, root.items.length);
+        y: 3px;
+        width: (root.width - 6px) / max(1, root.items.length);
+        height: root.height - 6px;
+        border-radius: 4px;
+        background: G.ink;
+        visible: root.current >= 0 && root.current < root.items.length;
+        animate x { duration: G.motion == 0 ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
     for it[i] in items: Rectangle {
         x: 3px + i * (root.width - 6px) / items.length;
         y: 3px;
         width: (root.width - 6px) / items.length;
         height: root.height - 6px;
         border-radius: 4px;
-        background: i == current ? G.ink : (sa.has-hover ? G.node-hover : transparent);
-        Text { text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center; }
+        background: i != current && sa.has-hover ? G.node-hover : transparent;
+        Text {
+            text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
+            color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center;
+            animate color { duration: G.motion == 2 ? 0ms : 120ms; }
+        }
         sa := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
     }
 }
@@ -377,7 +411,11 @@ export component Chev inherits Path {
     width: 10px; height: 10px;
     viewbox-width: 10; viewbox-height: 10;
     fill: transparent; stroke: root.c; stroke-width: 1.5px; stroke-line-cap: round; stroke-line-join: round;
-    commands: root.up ? "M2 6.5 L5 3.5 L8 6.5" : "M2 3.5 L5 6.5 L8 3.5";
+    // открыто — стрелка плавно поворачивается вверх
+    commands: "M2 3.5 L5 6.5 L8 3.5";
+    transform-origin: { x: self.width / 2, y: self.height / 2 };
+    transform-rotation: root.up ? 180deg : 0deg;
+    animate transform-rotation { duration: G.motion == 0 ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
 }
 
 // Многострочный ввод, который не растёт за рамку: текст прокручивается внутри (колесо и за курсором).

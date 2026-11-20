@@ -1,6 +1,6 @@
 // Окна поверх: задача, «Создать», поиск, подтверждение.
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Overlay, Link, Brackets, Icon, Chev, ScrollInput, ScrollView, Pop } from "kit.slint";
 import { Sat, Catch } from "kit.slint";
 import { LinkNote } from "linknote.slint";
 import { S, Opt, Sub, Found, DpCell } from "store.slint";
@@ -154,7 +154,7 @@ component DateBox inherits Box {
     TouchArea { clicked => { root.toggle(); } mouse-cursor: pointer; }
     // клик мимо закрывает выпадающий список
     if root.open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: 19; clicked => { S.drop = 0; } }
-    if root.open: Rectangle {
+    if root.open: Pop {
         x: 0; y: parent.height + 4px; width: 7 * 36px + 20px; height: 44px + 26px + ceil(S.c-cal.length / 7) * 32px + 10px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;
@@ -213,7 +213,7 @@ export component TimeBox inherits Box {
     // клик мимо: набранное в поле время ставится (если понятно), потом список закрывается
     property <string> typed;
     if root.open: Catch { z: 19; clicked => { root.put(root.typed); S.drop = 0; } }
-    if root.open: Rectangle {
+    if root.open: Pop {
         x: 0; y: parent.height + 4px; width: 344px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;
@@ -369,7 +369,8 @@ component TaskBody inherits Rectangle {
                 Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; visible: can && p.on; }
                 pa := TouchArea { clicked => { S.drop = 0; S.c-prop(p.id); } mouse-cursor: can ? pointer : default; }
                 if p.id == S.c-popen: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: -1; clicked => { S.c-prop(S.c-popen); } }
-                if p.id == S.c-popen: Rectangle {
+                if p.id == S.c-popen: Pop {
+                    from-right: true;
                     x: parent.width - 212px; y: parent.height; width: 208px;
                     height: min(240px, S.c-popts.length * 28px + 10px);
                     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
@@ -419,7 +420,8 @@ component PropsPanel inherits Rectangle {
             Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; visible: can && p.on; }
             pa := TouchArea { clicked => { S.drop = 0; S.c-prop(p.id); } mouse-cursor: can ? pointer : default; }
             if p.id == S.c-popen: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; z: -1; clicked => { S.c-prop(S.c-popen); } }
-            if p.id == S.c-popen: Rectangle {
+            if p.id == S.c-popen: Pop {
+                from-right: true;
                 x: parent.width - 212px; y: parent.height; width: 208px;
                 height: min(240px, S.c-popts.length * 28px + 10px);
                 border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;

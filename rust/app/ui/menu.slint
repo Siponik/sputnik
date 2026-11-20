@@ -1,13 +1,13 @@
 // Меню по правому клику: у курсора, не выходит за окно. Пункты и подменю строит Rust.
 import { G } from "theme.slint";
-import { Icon, ScrollView } from "kit.slint";
+import { Icon, ScrollView, Pop } from "kit.slint";
 import { S } from "store.slint";
 
 export component CtxMenu inherits Rectangle {
     TouchArea {
         pointer-event(e) => { if (e.kind == PointerEventKind.down) { S.menu-close(); } }
     }
-    pad := Rectangle {
+    pad := Pop {
         x: max(8px, min(S.menu-x, root.width - self.width - 8px));
         y: max(8px, min(S.menu-y, root.height - self.height - 8px));
         width: 260px;

@@ -1,6 +1,6 @@
 // Настройки списка (G_ListSettings): окно по центру поверх доски.
 import { G } from "theme.slint";
-import { Mono, Button, Node, Field, Brackets, Overlay, Icon, ScrollView, Chev } from "kit.slint";
+import { Mono, Button, Node, Field, Brackets, Overlay, Icon, ScrollView, Chev, Pop } from "kit.slint";
 import { S, Opt } from "store.slint";
 
 component Seg3 inherits Rectangle {
@@ -222,7 +222,7 @@ export component ListSettings inherits Overlay {
     Brackets { x: dlg.x; y: dlg.y; width: dlg.width; height: dlg.height; }
     // клик мимо закрывает список сфер
     if root.sph-open: TouchArea { x: -4000px; y: -4000px; width: 8000px; height: 8000px; clicked => { root.sph-open = false; } }
-    if root.sph-open: Rectangle {
+    if root.sph-open: Pop {
         x: dlg.x + root.sph-x; y: dlg.y + root.sph-y; width: 220px; height: min(300px, S.ls-spheres.length * 30px + 10px);
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
         drop-shadow-blur: 16px; drop-shadow-color: #0009;

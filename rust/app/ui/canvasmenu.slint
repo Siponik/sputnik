@@ -1,6 +1,6 @@
 // Холст: кнопка панели и меню у выделенного (как в Obsidian: удалить, цвет, приблизить, стрелка, править, открыть…).
 import { G } from "theme.slint";
-import { Icon, IconBtn, Mono, Field } from "kit.slint";
+import { Icon, IconBtn, Mono, Field, Pop } from "kit.slint";
 import { S } from "store.slint";
 
 export component ToolBtn inherits Rectangle {
@@ -42,7 +42,8 @@ export component SelMenu inherits Rectangle {
         if S.cv-sel-kind != "edge": IconBtn { icon: "copy"; tip: "Дублировать"; clicked => { S.cv-key("dup", 0, 0); } }
     }
     // цвета — полоской рядом с меню
-    if root.palette: Rectangle {
+    if root.palette: Pop {
+        up: !root.below;
         // в сторону от объекта: меню над ним — цвета ещё выше
         x: 0; y: root.below ? parent.height + 6px : -self.height - 6px; width: prow.preferred-width + 16px; height: 34px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;

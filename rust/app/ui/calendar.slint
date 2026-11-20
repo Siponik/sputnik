@@ -2,7 +2,7 @@
 // справа — нода выбранного дня, связанная проводом; под ними — обзор и штамп листа.
 // Неделя — calweek.slint.
 import { G } from "theme.slint";
-import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Chev, Tip, Hatch, CSeg, Icon, ScrollView, Catch } from "kit.slint";
+import { Sat, Mono, Brackets, Button, Field, Link, DashBox, Chev, Tip, Hatch, CSeg, Icon, ScrollView, Catch, Pop } from "kit.slint";
 import { S, Day, Chip, Opt } from "store.slint";
 import { Week } from "calweek.slint";
 
@@ -143,6 +143,70 @@ export component CalendarPage inherits Rectangle {
     // «Показывать»: список типов с галочками
     property <bool> sh-open;
 
+    // ---------- листание (каталог G_Motion, «Календарь») ----------
+    // ← → и T: сетка въезжает на 24 px со стороны направления и проявляется, 200 мс;
+    // неделя ↔ месяц — проявление с лёгким ростом. «Минимум» — только проявление 120 мс, «выкл» — сразу.
+    // Направление — по номеру периода S.cal-pos (соседние недели/месяцы отличаются на 1).
+    property <int> pos: S.cal-pos;
+    property <string> mode: S.cal-mode;
+    property <int> seen-pos;
+    property <string> seen-mode;
+    property <bool> snap;
+    property <length> off;
+    property <float> op: 1;
+    property <float> zoom: 1;
+    property <duration> t-move: G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 200ms;
+    animate off, op, zoom { duration: root.snap ? 0ms : root.t-move; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    init => { root.seen-pos = S.cal-pos; root.seen-mode = S.cal-mode; }
+    function turn() {
+        if (root.mode == root.seen-mode && root.pos == root.seen-pos) { return; }
+        if (G.motion != 2) {
+            root.snap = true;
+            root.op = 0;
+            if (root.mode != root.seen-mode) {
+                root.off = 0;
+                root.zoom = G.motion == 0 ? (root.mode == "month" ? 1.025 : 0.975) : 1;
+            } else {
+                root.off = G.motion == 0 ? (root.pos > root.seen-pos ? 24px : -24px) : 0px;
+                root.zoom = 1;
+            }
+            tturn.running = true;
+        }
+        root.seen-pos = root.pos;
+        root.seen-mode = root.mode;
+    }
+    changed pos => { root.turn(); }
+    changed mode => { root.turn(); }
+    tturn := Timer { interval: 1ms; running: false; triggered => { self.running = false; root.snap = false; root.off = 0; root.op = 1; root.zoom = 1; } }
+    // выбор месяца: сменили год — месяцы гаснут и проявляются заново
+    property <bool> mp-snap;
+    property <float> mp-op: 1;
+    animate mp-op { duration: root.mp-snap ? 0ms : (G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 180ms); easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    function mp-step(d: int) {
+        root.mp-year += d;
+        if (G.motion != 2) {
+            root.mp-snap = true;
+            root.mp-op = 0;
+            tmp.running = true;
+        }
+    }
+    tmp := Timer { interval: 1ms; running: false; triggered => { self.running = false; root.mp-snap = false; root.mp-op = 1; } }
+    // панель дня: выбрали другой день — список проявляется и чуть поднимается
+    property <string> day: S.day-head;
+    property <bool> d-snap;
+    property <length> d-off;
+    property <float> d-op: 1;
+    animate d-off, d-op { duration: root.d-snap ? 0ms : (G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 180ms); easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    changed day => {
+        if (G.motion != 2) {
+            root.d-snap = true;
+            root.d-op = 0;
+            root.d-off = G.motion == 0 ? 8px : 0px;
+            tday.running = true;
+        }
+    }
+    tday := Timer { interval: 1ms; running: false; triggered => { self.running = false; root.d-snap = false; root.d-off = 0; root.d-op = 1; } }
+
     // ---------- панель ----------
     // слева «НЕДЕЛЯ | МЕСЯЦ», стрелки, месяц и год постоянной ширины (стрелки не прыгают), «к сейчас»;
     // справа — что показывать, выпадающим списком
@@ -189,7 +253,7 @@ export component CalendarPage inherits Rectangle {
                     Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
                     HorizontalLayout {
                         alignment: center; spacing: 8px;
-                        Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; }
+                        Text { text: S.cal-title; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; opacity: 0.35 + 0.65 * root.op; }
                         Chev { y: 8px; c: G.muted; up: root.mp-open; }
                     }
                     mba := TouchArea { mouse-cursor: pointer; clicked => { root.mp-year = S.cal-y; root.sh-open = false; root.mp-open = !root.mp-open; } }
@@ -246,8 +310,15 @@ export component CalendarPage inherits Rectangle {
         }
         Rectangle {
             y: 34px; height: parent.height - 34px;
-            if S.cal-mode == "week": Week { }
-            if S.cal-mode == "month": Month { }
+            Rectangle {
+                x: root.off; width: parent.width; height: parent.height;
+                opacity: root.op;
+                transform-origin: { x: self.width / 2, y: 0px };
+                transform-scale-x: root.zoom;
+                transform-scale-y: root.zoom;
+                if S.cal-mode == "week": Week { }
+                if S.cal-mode == "month": Month { }
+            }
         }
     }
     Brackets { x: main.x; y: main.y; width: main.width; height: main.height; }
@@ -273,7 +344,9 @@ export component CalendarPage inherits Rectangle {
         }
         ScrollView {
             y: 34px; height: parent.height - 34px;
+            opacity: root.d-op;
             VerticalLayout {
+                y: root.d-off;
                 padding: 12px;
                 padding-top: 10px;
                 spacing: 0;
@@ -455,7 +528,7 @@ export component CalendarPage inherits Rectangle {
 
     // ---------- выбор месяца и года (G_CalHead) ----------
     if root.mp-open || root.sh-open: TouchArea { clicked => { root.mp-open = false; root.sh-open = false; } }
-    if root.mp-open: Rectangle {
+    if root.mp-open: Pop {
         x: bar.x + nav.x + 28px - 45px;
         y: bar.y + bar.height + 4px;
         width: 240px;
@@ -475,13 +548,14 @@ export component CalendarPage inherits Rectangle {
         mpl := VerticalLayout {
             HorizontalLayout {
                 padding: 10px; padding-left: 12px; padding-right: 12px;
-                Sq { icon: "prev"; clicked => { root.mp-year -= 1; } }
-                Text { text: root.mp-year; font-family: G.mono; font-size: 13px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; horizontal-stretch: 1; }
-                Sq { icon: "next"; clicked => { root.mp-year += 1; } }
+                Sq { icon: "prev"; clicked => { root.mp-step(-1); } }
+                Text { text: root.mp-year; opacity: root.mp-op; font-family: G.mono; font-size: 13px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; horizontal-stretch: 1; }
+                Sq { icon: "next"; clicked => { root.mp-step(1); } }
             }
             VerticalLayout {
                 padding-left: 12px; padding-right: 12px; padding-bottom: 10px;
                 spacing: 6px;
+                opacity: root.mp-op;
                 for row in 4: HorizontalLayout {
                     spacing: 6px;
                     for col in 3: Rectangle {
@@ -522,7 +596,8 @@ export component CalendarPage inherits Rectangle {
     }
 
     // ---------- «Показывать»: галочки, окно не закрывается ----------
-    if root.sh-open: Rectangle {
+    if root.sh-open: Pop {
+        from-right: true;
         x: bar.x + bar.width - self.width - 9px;
         y: bar.y + bar.height + 4px;
         width: 220px;
