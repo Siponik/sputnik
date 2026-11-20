@@ -1,7 +1,7 @@
 // Главное окно Спутника: шапка с вкладками, разделы, плашка внизу и окна поверх.
 // Вся логика — в Rust (src/view, src/state); окно только показывает модели из глобала S.
 import { G } from "theme.slint";
-import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon, ScrollView, Tip } from "kit.slint";
+import { Mono, Button, Node, Brackets, Empty, IconBtn, Icon, ScrollView, Tip, Pop, UpdBar, UpdFail } from "kit.slint";
 import { S } from "store.slint";
 import { TodayPage } from "today.slint";
 import { BoardPage } from "board.slint";
@@ -221,7 +221,7 @@ export component AppWindow inherits Window {
                         border-color: G.accent-line;
                         background: ua.has-hover ? G.accent-wash : transparent;
                         ut := Text { text: (root.hd-compact ? "" : "ВЕРСИЯ ") + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
-                        ua := TouchArea { clicked => { upd.visible = !upd.visible; } mouse-cursor: pointer; }
+                        ua := TouchArea { clicked => { S.upd-toggle(); } mouse-cursor: pointer; }
                         Tip { text: "Есть обновление — открыть"; on: ua.has-hover; }
                     }
                     if !root.hd-compact || S.busy || S.offline: Rectangle {
@@ -483,9 +483,9 @@ export component AppWindow inherits Window {
             TouchArea { clicked => { S.dp-dismiss(); } }   // клик мимо — сохранить выбранное
             DatePicker { max-h: parent.height - 16px; x: max(8px, S.create-open ? (parent.width - self.width) / 2 : parent.width - 464px - 16px - self.width - 8px); y: max(8px, S.create-open ? (parent.height - self.height) / 2 : 60px); }
         }
-        // окно обновления (G_Status, слева)
-        upd := Rectangle {
-            visible: false;
+        // окно обновления (G_Status, слева): открывается само, когда вышла новая версия, и по чипу «Версия»;
+        // внутри — «Что нового», потом полоса скачивания, при ошибке — причина и «Повторить»
+        if S.upd-open: Pop {
             x: max(16px, parent.width - 1104px);
             y: 60px;
             width: 540px;
@@ -493,13 +493,15 @@ export component AppWindow inherits Window {
             background: G.node;
             border-radius: 12px;
             border-width: 1px;
-            border-color: G.accent-line;
+            border-color: S.upd-phase == 4 ? G.red : G.accent-line;
+            animate border-color { duration: G.mid; }
             drop-shadow-blur: 24px;
             drop-shadow-color: #000b;
             clip: true;
             TouchArea { }
-            Rectangle { y: 0; height: 34px; background: G.head-main;
-                Text { x: 13px; text: "ОБНОВЛЕНИЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+            Rectangle { y: 0; height: 34px; background: S.upd-phase == 4 ? #8A3A2E : G.head-main;
+                animate background { duration: G.mid; }
+                Text { x: 13px; text: S.upd-phase == 2 ? "СКАЧИВАЮ ОБНОВЛЕНИЕ" : S.upd-phase == 3 ? "СТАВЛЮ ОБНОВЛЕНИЕ" : S.upd-phase == 4 ? "ОБНОВЛЕНИЕ НЕ ВСТАЛО" : "ОБНОВЛЕНИЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - self.preferred-width - 13px; text: S.version + " → " + S.upd-version; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; } }
             ul := VerticalLayout {
                 y: 34px;
@@ -518,23 +520,31 @@ export component AppWindow inherits Window {
                 }
                 Text { text: "Что нового"; font-size: 13px; font-weight: 600; color: G.ink; }
                 // длинный список «Что нового» не выталкивает кнопки за низ окна
-                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; overflow: elide; height: min(self.preferred-height, max(60px, root.height - 360px)); }
+                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; overflow: elide; height: min(self.preferred-height, max(60px, root.height - 400px)); }
+                if S.upd-phase == 2 || S.upd-phase == 3: UpdBar { frac: S.upd-phase == 3 ? -1 : S.upd-frac; text: S.upd-progress; }
+                if S.upd-phase == 4: UpdFail { what: S.upd-err; hint: S.upd-hint; }
                 HorizontalLayout {
                     spacing: 10px;
                     alignment: start;
-                    Rectangle {
+                    if S.upd-phase != 2 && S.upd-phase != 3: Rectangle {
                         width: ui1.preferred-width + 24px; height: 32px; border-radius: 6px;
-                        background: G.accent;
-                        ui1 := Text { text: S.upd-busy ? "Скачиваю…" : "Обновить сейчас"; font-size: 13px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
-                        TouchArea { clicked => { S.upd-install(); } mouse-cursor: pointer; }
+                        background: ub1.has-hover ? G.accent-ink : G.accent;
+                        animate background { duration: G.fast; }
+                        ui1 := Text { text: S.upd-phase == 4 ? "Повторить" : "Обновить сейчас"; font-size: 13px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+                        ub1 := TouchArea { clicked => { S.upd-install(); } mouse-cursor: pointer; }
                     }
-                    Rectangle {
+                    if S.upd-phase == 2: Rectangle {
+                        width: ui3.preferred-width + 24px; height: 32px; border-radius: 6px; border-width: 1px; border-color: #8A8C96;
+                        ui3 := Text { text: "Остановить"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        TouchArea { clicked => { S.upd-cancel(); } mouse-cursor: pointer; }
+                    }
+                    if S.upd-phase != 3: Rectangle {
                         width: ui2.preferred-width + 24px; height: 32px; border-radius: 6px; border-width: 1px; border-color: #8A8C96;
-                        ui2 := Text { text: "Позже"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
-                        TouchArea { clicked => { upd.visible = false; S.upd-later(); } mouse-cursor: pointer; }
+                        ui2 := Text { text: S.upd-phase == 2 ? "Скрыть" : "Позже"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        TouchArea { clicked => { S.upd-later(); } mouse-cursor: pointer; }
                     }
                 }
-                Text { text: "Обновление займёт около минуты, задачи никуда не денутся."; font-size: 12px; color: #A3A5AE; }
+                Text { text: S.upd-phase == 2 ? "Можно скрыть окно и работать дальше — после скачивания Спутник перезапустится сам." : S.upd-phase == 3 ? "Ещё пара секунд — Спутник перезапустится сам." : "Обновление займёт пару минут, задачи никуда не денутся. Окно можно открыть снова чипом «Версия» в шапке."; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
             }
         }
         // «Состояние» (G_Status, справа)

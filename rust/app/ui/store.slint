@@ -789,7 +789,15 @@ export global S {
     in property <string> upd-notes;
     in property <[Opt]> upd-rows;            // «Что нового» по версиям: id "h" — заголовок «версия · дата», "i" — пункт
     in property <string> upd-info;
-    in property <bool> upd-busy;
+    in property <bool> upd-busy;             // идёт проверка
+    in property <int> upd-phase;             // 0 — ничего, 1 — проверка, 2 — скачивание, 3 — установка, 4 — ошибка
+    in property <bool> upd-open;             // окно обновления открыто (открывается само при новой версии)
+    in property <float> upd-frac;            // доля скачанного 0…1, -1 — размер неизвестен
+    in property <string> upd-progress;       // «12,3 из 17,0 МБ · 850 КБ/с · ещё ~6 с»
+    in property <string> upd-err;            // что случилось
+    in property <string> upd-hint;           // что сделать
+    callback upd-toggle();
+    callback upd-cancel();
     callback upd-check();
     callback upd-install();
     callback upd-later();

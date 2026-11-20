@@ -40,6 +40,7 @@ pub mod stickers;
 pub mod taskpanel;
 pub mod templates;
 pub mod today;
+pub mod updater;
 pub mod updnotes;
 pub mod when;
 pub mod wikilink;
