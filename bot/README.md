@@ -1,16 +1,16 @@
 # Общий бот Спутника
 
 Один Telegram-бот для всех, кто поставил Спутник. Живёт на Cloudflare Workers (бесплатный тариф),
-база — Cloudflare D1 `sputnik-bot`. Ключей Google здесь нет: трекер сам присылает напоминания и задачи
+база — Cloudflare D1 `sputnik-bot`. Ключей Google здесь нет: приложение само присылает напоминания и задачи
 на неделю (`PUT /state`) и забирает то, что человек написал боту (`GET /inbox`, `POST /ack`).
 
 Личный бот на Apps Script (`reminders/`) продолжает работать как раньше.
 
-- `src/logic.js` — команды, привязка по коду, напоминания (тесты — `tracker/tests/shared-bot.test.js`)
-- `src/draft.js` — догадка по сообщению (своему или пересланному) и карточка черновика с кнопками, без Telegram и базы (тесты — `tracker/tests/draft.test.js`)
+- `src/logic.js` — команды, привязка по коду, напоминания (тесты — `tests/shared-bot.test.js`)
+- `src/draft.js` — догадка по сообщению (своему или пересланному) и карточка черновика с кнопками, без Telegram и базы (тесты — `tests/draft.test.js`)
 - `src/drafts.js` — черновики в чате: пересланное → карточка → «✅ Создать», правка кнопками и текстом, «✅ В Спутнике» после `POST /ack`; таблица `drafts` создаётся сама
 - `src/store.js` — таблицы D1 (`schema.sql`)
-- `src/brief.js` — утренняя сводка: задачи дня + новости из `https://siponik.github.io/sputnik/news/data.json` (тесты — `tracker/tests/bot-brief.test.js`), команда `/brief`
+- `src/brief.js` — утренняя сводка: задачи дня + новости из `https://siponik.github.io/sputnik/news/data.json` (тесты — `tests/bot-brief.test.js`), команда `/brief`
 - `src/index.js` — адреса воркера и cron раз в минуту
 
 ## Привязка

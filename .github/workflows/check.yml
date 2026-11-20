@@ -1,14 +1,14 @@
-# Проверка PR, который трогает старый трекер, боты или инструменты: автотесты логики трекера и ботов, сборка интерфейса.
-# Ничего не публикует и не трогает main — только ставит зелёную или красную галочку у PR.
-name: Проверка PR
+# Проверка PR, который трогает боты или новости: автотесты из tests/ (без зависимостей, node:test).
+# Ничего не публикует — только ставит зелёную или красную галочку у PR.
+name: Проверка ботов
 
 on:
   pull_request:
     paths:
-      - 'tracker/**'
       - 'bot/**'
       - 'reminders/**'
-      - 'tools/**'
+      - 'tools/news/**'
+      - 'tests/**'
       - '.github/workflows/check.yml'
   workflow_dispatch:
 
@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tracker
+        working-directory: tests
     env:
       TZ: Europe/Moscow
     steps:
@@ -30,10 +30,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: tracker/package-lock.json
-      - run: npm ci
       - name: Тесты
         run: npm test
-      - name: Сборка интерфейса
-        run: npm run build

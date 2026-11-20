@@ -1,5 +1,5 @@
 // Чистая логика новостей: разбор RSS и Steam, отбор по дате, повторы, правило Dota 2, запасной отбор без ИИ.
-// Тест — tracker/tests/news.test.js.
+// Тест — tests/news.test.js.
 
 const ENT = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', laquo: '«', raquo: '»', mdash: '—', ndash: '–', hellip: '…' };
 
