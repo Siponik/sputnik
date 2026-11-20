@@ -1257,7 +1257,9 @@ pub fn wire(w: &AppWindow) {
     });
     g.on_upd_check(|| act(|app, _| app.update_check(true)));
     g.on_upd_install(|| act(|app, _| app.update_install()));
-    g.on_upd_later(|| act(|app, _| app.update.version.clear()));
+    g.on_upd_later(|| act(|app, _| app.update.open = false));
+    g.on_upd_toggle(|| act(|app, _| app.update.open = !app.update.open));
+    g.on_upd_cancel(|| act(|app, _| app.update_cancel()));
     g.on_note_graph_set(|v| act(|_, u| u.note_graph = v));
     // переключатель «Заметки · Граф»
     g.on_note_mode(|m| act(|app, u| match m {

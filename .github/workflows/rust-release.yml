@@ -45,6 +45,9 @@ jobs:
           mkdir out
           cp rust/target/release/sputnik.exe out/sputnik.exe
           npx --yes @tauri-apps/cli@2 signer sign out/sputnik.exe
+          # сжатая копия втрое меньше — её качает обновление из приложения (из России GitHub медленный)
+          gzip -9 -k out/sputnik.exe
+          npx --yes @tauri-apps/cli@2 signer sign out/sputnik.exe.gz
           ls out
       - name: Что нового
         shell: bash
@@ -58,7 +61,7 @@ jobs:
         run: |
           v=$SPUTNIK_VERSION
           cd out && 7z a ../sputnik-rust-$v.zip sputnik.exe >/dev/null && cd ..
-          gh release create "rust-$v" out/sputnik.exe out/sputnik.exe.sig "sputnik-rust-$v.zip" \
+          gh release create "rust-$v" out/sputnik.exe out/sputnik.exe.sig out/sputnik.exe.gz out/sputnik.exe.gz.sig "sputnik-rust-$v.zip" \
             --prerelease --latest=false --target "$GITHUB_SHA" --title "Спутник (Rust) $v" --notes-file notes.txt
           node -e '
             const fs = require("fs");
@@ -69,6 +72,8 @@ jobs:
               date: new Date().toISOString().slice(0, 10),
               url: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/rust-${v}/sputnik.exe`,
               signature: fs.readFileSync("out/sputnik.exe.sig", "utf8").trim(),
+              gz: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/rust-${v}/sputnik.exe.gz`,
+              gzSignature: fs.readFileSync("out/sputnik.exe.gz.sig", "utf8").trim(),
               branch: process.env.GITHUB_REF_NAME,
             }, null, 1));'
           gh release view rust-latest >/dev/null 2>&1 || gh release create rust-latest --prerelease --latest=false --title "Спутник (Rust): служебный" --notes "Файл latest.json для обновления из приложения."

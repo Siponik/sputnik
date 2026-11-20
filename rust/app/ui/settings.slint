@@ -1,7 +1,7 @@
 // Настройки: Вид, Что показывать, Напоминания, Синхронизация, Клавиши, Знания.
 // Открываются окном поверх раздела (SettingsWin): ⚙, Ctrl+, или «Настройки» в поиске; цифры 1–6 — разделы (клавиши — app.slint).
 import { G } from "theme.slint";
-import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon, ScrollView, Overlay } from "kit.slint";
+import { Node, Mono, Button, Pill, Check, Field, IconBtn, Link, Icon, ScrollView, Overlay, UpdBar, UpdFail } from "kit.slint";
 import { S, Opt } from "store.slint";
 
 component Sw inherits Rectangle {
@@ -433,10 +433,13 @@ export component SettingsPage inherits Rectangle {
                         wrap: word-wrap;
                     }
                 }
-                Note { text: (S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
+                Note { text: (S.upd-phase == 2 ? "СКАЧИВАЮ ВЕРСИЮ " + S.upd-version : S.upd-phase == 3 ? "СТАВЛЮ ВЕРСИЮ " + S.upd-version + " — СПУТНИК ПЕРЕЗАПУСТИТСЯ САМ" : S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
+                if S.upd-phase == 2 || S.upd-phase == 3: UpdBar { frac: S.upd-phase == 3 ? -1 : S.upd-frac; text: S.upd-progress; }
+                if S.upd-phase == 4: UpdFail { what: S.upd-err; hint: S.upd-hint; }
                 HorizontalLayout { alignment: start; spacing: 8px;
-                    Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
-                    if S.upd-version != "": Button { text: "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                    if S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
+                    if S.upd-version != "" && S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-phase == 4 ? "Повторить" : "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
+                    if S.upd-phase == 2: Button { text: "Остановить"; clicked => { S.upd-cancel(); } }
                 }
             }
         }

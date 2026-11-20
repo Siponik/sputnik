@@ -305,7 +305,18 @@ fn shell(app: &App, u: &Ui, g: &S) {
     g.set_version(crate::state::update::version().into());
     g.set_upd_version(ss(app.update.version.clone()));
     g.set_upd_notes(ss(app.update.notes.clone()));
-    g.set_upd_busy(app.update.busy);
+    let upd = &app.update;
+    g.set_upd_busy(upd.phase == crate::state::update::Phase::Checking);
+    g.set_upd_phase(upd.phase.code());
+    g.set_upd_open(upd.open);
+    g.set_upd_frac(sputnik_core::updater::frac(upd.done, upd.total));
+    g.set_upd_progress(ss(match upd.phase {
+        crate::state::update::Phase::Installing => "Проверяю подпись и ставлю…".to_string(),
+        _ if upd.attempt > 1 => format!("{} · попытка {} из {}", sputnik_core::updater::progress_text(upd.done, upd.total, upd.bps), upd.attempt, sputnik_core::updater::ATTEMPTS),
+        _ => sputnik_core::updater::progress_text(upd.done, upd.total, upd.bps),
+    }));
+    g.set_upd_err(ss(upd.err.0.clone()));
+    g.set_upd_hint(ss(upd.err.1.clone()));
     g.set_upd_info(ss(match &app.update.checked {
         Some(t) if app.update.version.is_empty() => format!("Проверено в {t} — стоит последняя."),
         Some(t) => format!("Проверено в {t}."),
