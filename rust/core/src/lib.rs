@@ -21,6 +21,7 @@ pub mod inbox;
 pub mod j;
 pub mod kanban;
 pub mod layer;
+pub mod mdedit;
 pub mod mdline;
 pub mod mdtable;
 pub mod reminders;

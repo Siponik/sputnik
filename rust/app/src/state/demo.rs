@@ -52,6 +52,7 @@ pub fn fill(app: &mut App) {
         "study": [task("s1", "Урок 12: скульптинг", Some(0), false), task("s2", "Урок 13: ретопология", Some(4), false)],
         "hab": [task("hb1", "Вода", None, false), task("hb2", "Зарядка", None, false), task("hb3", "Чтение", None, false), task("hb4", "Работа", None, false)],
     });
+    app.tasks["work"][2]["notes"] = json!("## Что собрать\n- **3 лучших** рендера\n- [ ] описание к каждому\n- [x] обложка\n\nСсылки: _Behance_ и `artstation`\n> не больше 10 работ");
     app.tasks["work"].as_array_mut().unwrap().push(json!({"id": "w1a", "title": "Список вопросов", "parent": "w1", "status": "needsAction", "position": "1"}));
     for (l, id, title, k) in [("work", "wa1", "Иконки v1", -4), ("home", "ha1", "Вынести коробки", -4), ("icons", "ia1", "Ретопология меча", -5), ("study", "sa1", "Урок 11: сетка", -6), ("work", "wa2", "Квитанция за газ", -21)] {
         let mut t = task(id, title, Some(k - 1), true);

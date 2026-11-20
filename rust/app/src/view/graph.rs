@@ -111,13 +111,15 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             dim: (cur.is_some() && !on) || !hit(i), label: named.contains(&i) || on || (!q.is_empty() && hit(i)) || u.graph_local, id: ss(p.id.clone()),
         });
     }
+    // цвет подсвеченных связей — цвет самой точки (её папки), как у точки на графе
+    let hl_hue = hl.map(|i| { let p = &ns[i]; if p.tag || p.file { hex(0x8A8C96) } else if p.missing { hex(0x62646E) } else { hue_of(&p.id) } }).unwrap_or(hex(0x8A8C96));
     let mut lines = vec![];
     for &(a, b) in es.iter() {
         if !vis[a] || !vis[b] {
             continue;
         }
         let ((xa, ya), (xb, yb)) = (px(&ns[a]), px(&ns[b]));
-        lines.push(GLine { x1: xa as f32, y1: ya as f32, x2: xb as f32, y2: yb as f32, near: hl.is_some_and(|c| a == c || b == c) });
+        lines.push(GLine { x1: xa as f32, y1: ya as f32, x2: xb as f32, y2: yb as f32, near: hl.is_some_and(|c| a == c || b == c), hue: hl_hue });
     }
     g.set_graph_info(ss(format!("{} · {}", super::spheres::plural(nd, "ЗАМЕТКА", "ЗАМЕТКИ", "ЗАМЕТОК"), super::spheres::plural(lines.len(), "СВЯЗЬ", "СВЯЗИ", "СВЯЗЕЙ"))));
     g.set_graph_dots(keep(&DOTS, dots));

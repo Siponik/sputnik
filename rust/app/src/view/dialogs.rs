@@ -9,6 +9,8 @@ pub struct Create {
     pub kind: i32,
     pub text: String,
     pub dest: Option<String>,
+    /// Список, на доске которого открыли окно: он «Куда» по умолчанию.
+    pub cur: Option<String>,
     pub cal: Option<String>,
     pub dur: i64,
     pub remind: Option<Vec<i64>>,
@@ -104,6 +106,7 @@ fn task(app: &App, u: &Ui, g: &S, list: &str, t0: &Value) {
     g.set_t_id(ss(id));
     g.set_t_title(ss(text(&t0["title"])));
     g.set_t_notes(ss(text(&t0["notes"])));
+    super::notes::sync_task_note(g, false, &format!("{list}|{id}"), &text(&t0["notes"]));
     // блок «Заметки»: заметки по ссылкам [[…]] и по названию задачи (G_NotesSearch, окно задачи)
     let titles: Vec<String> = app.notes.notes.iter().map(|n| n.title.clone()).collect();
     let gs = super::graph::groups(app);
@@ -168,10 +171,19 @@ pub fn dest_of(app: &App, c: &Create) -> (String, String) {
     if let Some(d) = &c.dest {
         return (d.clone(), "выбрано".into());
     }
-    let r = route::route(&c.text, &app.board_lists(), &app.layer, &app.tasks, None, crate::state::now_ms());
+    let lists = app.board_lists();
+    let cur = c.cur.as_deref().filter(|k| lists.iter().any(|l| l["id"] == *k));
+    // пустая строка — сразу текущий список (на других разделах — последняя открытая доска)
+    if c.text.trim().is_empty() {
+        let last = app.layer["settings"]["lastBoard"]["v"].as_str().filter(|k| lists.iter().any(|l| l["id"] == *k));
+        if let Some(k) = cur.or(last) {
+            return (k.to_string(), if cur.is_some() { "текущая доска" } else { "по умолчанию" }.into());
+        }
+    }
+    let r = route::route(&c.text, &lists, &app.layer, &app.tasks, cur, crate::state::now_ms());
     match r.first() {
         Some(x) => (text(&x["listId"]), text(&x["why"])),
-        None => (app.board_lists().first().map(|l| text(&l["id"])).unwrap_or_default(), String::new()),
+        None => (lists.first().map(|l| text(&l["id"])).unwrap_or_default(), String::new()),
     }
 }
 

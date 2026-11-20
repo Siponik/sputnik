@@ -180,6 +180,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 let l = app.lt(&tid);
                 g.set_pipe_subs(model(app.subtasks(&id, &tid).iter().map(|x| Sub { id: ss(text(&x["id"])), title: ss(text(&x["title"])), done: App::is_done(x) }).collect()));
                 g.set_pipe_note(ss(text(&t["notes"])));
+                super::notes::sync_task_note(g, true, &format!("{id}|{tid}"), &text(&t["notes"]));
                 g.set_pipe_client(ss(text(&l["client"])));
                 let d = day10(&t["due"]);
                 g.set_pipe_due(ss(if d.is_empty() { "Без срока".to_string() } else { sputnik_core::when::when_text(&d, None, sputnik_core::habits::now().date()).0 }));

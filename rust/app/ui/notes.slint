@@ -9,7 +9,7 @@ import { TableBlock } from "mdtable.slint";
 import { GraphPage, ModeSwitch } from "graph.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
-component LiveLine inherits Rectangle {
+export component LiveLine inherits Rectangle {
     in property <MdRow> line;
     in property <bool> editing;
     in property <int> caret: -1;
@@ -27,6 +27,9 @@ component LiveLine inherits Rectangle {
     callback pick-at(int);
     callback toggle();
     callback focus-mode();
+    // набор в строке (заметка задачи сохраняет сразу) и клик по ссылке в оформленном тексте
+    callback typed(string);
+    callback linked(string);
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
     property <bool> wrapped: ed.preferred-height > root.fs * 1.9;
     property <int> arrow;
@@ -45,13 +48,15 @@ component LiveLine inherits Rectangle {
     property <length> pad: line.kind == "h1" ? 14px : line.kind == "h2" ? 10px : line.kind == "h3" ? 6px : 3px;
     property <length> ind: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 18px : (line.kind == "code" ? 12px : 0));
     // строка таблицы: таблицу целиком рисует её первая строка, остальные — нулевой высоты
-    property <bool> tbl: line.top >= 0;
+    // таблицы правятся ячейками только в «Знаниях»; в заметке задачи строка таблицы правится как текст
+    in property <bool> table-edit;
+    property <bool> tbl: line.top >= 0 && (root.table-edit || !editing);
     property <bool> thead: line.block != "";
     height: root.tbl ? (root.thead ? tb.full-h : 0px) : (line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px)));
-    tb := TableBlock { visible: root.thead; x: -20px; y: 0; block: root.thead ? line.block : ""; line: line.top; fs: root.fs * 0.95; avail: root.width; editable: true; line-edit: root.line-edit;
+    tb := TableBlock { visible: root.thead; x: -20px; y: 0; block: root.thead ? line.block : ""; line: line.top; fs: root.fs * 0.95; avail: root.width; editable: root.table-edit; line-edit: root.line-edit;
         exit(d) => { root.move(line.raw, d < 0 ? -1 : line.tn, 0); }
     }
-    ta := TouchArea { enabled: !root.tbl; mouse-cursor: MouseCursor.text; clicked => {
+    ta := TouchArea { enabled: !root.tbl || (!root.table-edit && root.thead); mouse-cursor: MouseCursor.text; clicked => {
         if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
     }
         // правый клик — меню правки (G-стиль): строка становится редактируемой, выделение сохраняется
@@ -85,7 +90,7 @@ component LiveLine inherits Rectangle {
         default-font-family: line.kind == "code" ? G.mono : G.sans;
         default-color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
         link-color: G.accent;
-        link-clicked(l) => { S.note-link(l); }
+        link-clicked(l) => { root.linked(l); }
     }
     // раскладка: в прокрутке (невидимое поле во всю строку, растёт с ней)
     // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
@@ -150,7 +155,7 @@ component LiveLine inherits Rectangle {
             selection-background-color: G.accent.with-alpha(0.4);
             selection-foreground-color: #FFFFFF;
             changed has-focus => { if (!self.has-focus && root.editing) { root.leave(self.text); } }
-            edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); }
+            edited => { root.hint-i = 0; S.note-link-q(self.text, self.cursor-position-byte-offset); root.typed(self.text); }
             cursor-position-changed => { if (root.editing) { S.note-peek-at(self.text, self.cursor-position-byte-offset); } }
         }
     }
@@ -213,8 +218,8 @@ component LiveLine inherits Rectangle {
     }
     // таблица правится ячейками: строку таблицы как текст не открываем
     function to-table() { S.tk-line = line.top; S.tk-r = 0; S.tk-n += 1; root.leave(line.raw); }
-    changed editing => { if (editing && root.tbl) { root.to-table(); } else if (editing) { start(); } }
-    init => { if (editing && root.tbl) { root.to-table(); } else if (editing) { start(); } }
+    changed editing => { if (editing && root.tbl && root.table-edit) { root.to-table(); } else if (editing) { start(); } }
+    init => { if (editing && root.tbl && root.table-edit) { root.to-table(); } else if (editing) { start(); } }
 }
 
 // Строка дерева G_Notes: 28 px, отступ 8 + 14 на уровень, стрелка ▾/▸ у папок, у корневой папки — цветная точка,
@@ -479,6 +484,7 @@ export component NotesPage inherits Rectangle {
                     zoom: root.zen ? 1.12 : 1;
                     editing: i == root.edit-i;
                     line-edit: root.edit-i >= 0;
+                    table-edit: true;
                     caret: root.caret;
                     pick => { root.caret = -1; root.edit-i = i; }
                     leave(t) => { if (t != b.raw) { S.note-line-set(i, t); } if (root.edit-i == i) { root.edit-i = -1; } S.note-commit(); }
@@ -506,6 +512,7 @@ export component NotesPage inherits Rectangle {
                     pick-at(at) => { root.caret = S.note-hit(i, at, S.ctrl-held); if (root.caret >= 0) { root.edit-i = i; } else { root.edit-i = -1; } }
                     toggle => { S.note-todo(i); }
                     focus-mode => { root.zen = !root.zen; }
+                    linked(l) => { S.note-link(l); }
                 }
                 // клик под текстом — новая строка в конце
                 Rectangle {
