@@ -704,7 +704,7 @@ export component CreateDialog inherits Overlay {
             Rectangle {
                 x: 12px + S.c-kind * (root.W - 66px) / 4; y: 7px;
                 width: (root.W - 66px) / 4 - 4px; height: 32px; border-radius: 6px; background: G.ink;
-                animate x { duration: 220ms; easing: ease-out; }
+                animate x { duration: G.motion == 0 ? 200ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
             }
             for k[i] in ["Задача", "Событие", "Привычка", "День рождения"]: Rectangle {
                 x: 12px + i * (root.W - 66px) / 4;

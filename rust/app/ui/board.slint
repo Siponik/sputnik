@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire, Pop } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire, Pop, GSeg } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { Pipe } from "pipe.slint";
 import { SpheresPage, ArchSpheres } from "spheres.slint";
@@ -605,30 +605,6 @@ component ListView inherits Rectangle {
     Brackets { x: lv.x; y: lv.y; width: lv.width; height: lv.height; }
 }
 
-// Переключатель «Системы G»: активный — светлая заливка.
-component GSeg inherits Rectangle {
-    in property <[string]> items;
-    in property <int> current;
-    callback picked(int);
-    y: 7px; height: 34px;
-    width: gl.preferred-width + 8px;
-    border-radius: 8px;
-    border-width: 1px;
-    border-color: G.line;
-    gl := HorizontalLayout {
-        x: 4px;
-        padding-top: 3px; padding-bottom: 3px;
-        spacing: 2px;
-        for v[i] in root.items: Rectangle {
-            width: t.preferred-width + 20px;
-            border-radius: 5px;
-            background: i == root.current ? G.ink : (a.has-hover ? G.node-hover : transparent);
-            t := Text { text: v; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.2px; color: i == root.current ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
-            a := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
-        }
-    }
-}
-
 component Gallery inherits Rectangle {
     ScrollView {
         VerticalLayout {
@@ -718,7 +694,7 @@ component Archive inherits Rectangle {
         HorizontalLayout {
             x: 16px; y: 46px; height: 32px; width: parent.width - 32px;
             spacing: 8px;
-            GSeg { items: ["ЗАДАЧИ · " + S.arch-tn, "СФЕРЫ И СПИСКИ · " + S.arch-n]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
+            GSeg { y: 7px; items: ["ЗАДАЧИ · " + S.arch-tn, "СФЕРЫ И СПИСКИ · " + S.arch-n]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
             Field { width: 260px; font-size: 13px; placeholder: "Найти в архиве"; edited(t) => { S.arch-q-set(t); } }
             for o in S.arch-spheres: Rectangle {
                 width: ot.preferred-width + (o.id == "" ? 26px : 40px);
@@ -815,30 +791,16 @@ export component BoardPage inherits Rectangle {
                 if S.board-view != "pipe" && S.board-view != "stickers": Text { text: S.board-tpl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; }
                 if S.board-view == "pipe": Text { text: S.pipe-info; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 if S.board-view == "pipe": Rectangle { width: 1px; height: 20px; y: 14px; background: G.line; }
-                if S.board-view == "stickers": GSeg { items: ["ПО ТЕМАМ", "ПО СРОКАМ"]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
-                if S.board-view == "pipe": GSeg { items: ["СТРОКИ", "ГАЛЕРЕЯ"]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
-                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { items: ["ПО ПРОЕКТАМ", "ПО ЭТАПАМ"]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
+                if S.board-view == "stickers": GSeg { y: 7px; items: ["ПО ТЕМАМ", "ПО СРОКАМ"]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
+                if S.board-view == "pipe": GSeg { y: 7px; items: ["СТРОКИ", "ГАЛЕРЕЯ"]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
+                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { y: 7px; items: ["ПО ПРОЕКТАМ", "ПО ЭТАПАМ"]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
                 Rectangle { }
                 if S.archived > 0: Text { text: "В АРХИВЕ · " + S.archived; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; vertical-alignment: center; color: #62646E; }
-                Rectangle {
-                    y: 7px; height: 34px;
-                    width: vs.preferred-width + 8px;
-                    border-radius: 8px;
-                    border-width: 1px;
-                    border-color: G.line;
-                    vs := HorizontalLayout {
-                        x: 4px;
-                        padding-top: 3px; padding-bottom: 3px;
-                        spacing: 2px;
-                        for v[i] in ["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ", "СПИСОК"]: Rectangle {
-                            property <bool> on: (S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0) == i;
-                            width: vt.preferred-width + 20px;
-                            border-radius: 5px;
-                            background: on ? G.ink : (va.has-hover ? G.node-hover : transparent);
-                            vt := Text { text: v; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.2px; color: on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
-                            va := TouchArea { clicked => { S.set-view(i == 1 ? "pipe" : i == 2 ? "stickers" : i == 3 ? "list" : "kanban"); } mouse-cursor: pointer; }
-                        }
-                    }
+                GSeg {
+                    y: 7px;
+                    items: ["КАНБАН", "КОНВЕЙЕР", "СТИКЕРЫ", "СПИСОК"];
+                    current: S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0;
+                    picked(i) => { S.set-view(i == 1 ? "pipe" : i == 2 ? "stickers" : i == 3 ? "list" : "kanban"); }
                 }
             }
         }

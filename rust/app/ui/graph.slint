@@ -1,6 +1,6 @@
 // Граф знаний (G_NotesGraph): слева нода «Фильтры», в середине граф, справа панель «Читаю».
 import { G } from "theme.slint";
-import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView, Tip, LabelHint } from "kit.slint";
+import { Mono, Field, Brackets, Icon, DashBox, Sat, ScrollView, Tip, LabelHint, GSeg } from "kit.slint";
 import { MdLine } from "linknote.slint";
 import { S, GDot, GLine, Opt } from "store.slint";
 
@@ -87,17 +87,11 @@ export component GraphFilters inherits Rectangle {
         }
         Rectangle {
             height: 38px;
-            Rectangle {
-                x: 12px; y: 0; width: sg.preferred-width; height: 28px; border-radius: 6px; border-width: 1px; border-color: G.line;
-                sg := HorizontalLayout {
-                    padding: 2px; spacing: 2px;
-                    for t[i] in ["ВЕСЬ", "ЛОКАЛЬНЫЙ"]: Rectangle {
-                        min-width: st.preferred-width + 20px; border-radius: 4px;
-                        background: (i == 1) == S.graph-local ? G.ink : (sa.has-hover ? G.node-hover : transparent);
-                        st := Text { text: t; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: (i == 1) == S.graph-local ? #1C1D21 : G.muted; horizontal-alignment: center; vertical-alignment: center; }
-                        sa := TouchArea { mouse-cursor: pointer; clicked => { S.graph-local-set(i == 1); } }
-                    }
-                }
+            GSeg {
+                x: 12px; y: 0; height: 28px; border-radius: 6px; pad: 2px; ir: 4px; weight: 600;
+                items: ["ВЕСЬ", "ЛОКАЛЬНЫЙ"];
+                current: S.graph-local ? 1 : 0;
+                picked(i) => { S.graph-local-set(i == 1); }
             }
         }
         Rectangle { height: 1px; background: G.line; }
