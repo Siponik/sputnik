@@ -23,7 +23,7 @@ pub fn groups(app: &App) -> Vec<(String, Color, usize)> {
     fs.into_iter().map(|f| {
         let n = app.notes.notes.iter().filter(|x| group(&x.path) == f).count();
         let low = f.to_lowercase();
-        let c = if let Some(c) = super::notedir::color_of(&f) { c } else if low.contains("входящ") || f == "Без папки" { hex(0xA3A5AE) } else { k += 1; hex(HUES[(k - 1) % HUES.len()]) };
+        let c = if let Some(c) = super::notedir::color_of(&f) { c } else if low.contains("входящ") || f == "Без папки" { super::themed(0xA3A5AE) } else { k += 1; super::themed(HUES[(k - 1) % HUES.len()]) };
         (f, c, n)
     }).collect()
 }
@@ -41,7 +41,7 @@ fn when(ms: i64) -> String {
 pub fn render(app: &App, u: &Ui, g: &S) {
     let (ns, es) = &app.notes.graph;
     let gs = groups(app);
-    let hue_of = |path: &str| gs.iter().find(|x| x.0 == group(path)).map(|x| x.1).unwrap_or(hex(0x8A8C96));
+    let hue_of = |path: &str| gs.iter().find(|x| x.0 == group(path)).map(|x| x.1).unwrap_or(super::themed(0x8A8C96));
     let o = app.notes.graph_opts;
     g.set_graph_groups(model(gs.iter().map(|(f, c, n)| Opt { id: ss(f.clone()), label: ss(f.clone()), hint: ss(n.to_string()), hue: *c, on: !u.graph_hide.contains(f) }).collect()));
     g.set_graph_show(model(vec![o.tags, o.files, !u.graph_no_lonely, o.missing]));
@@ -103,7 +103,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         }
         let (x, y) = px(p);
         let on = Some(i) == hl || near.contains(&i);
-        let hue = if p.tag || p.file { hex(0x8A8C96) } else if p.missing { hex(0x62646E) } else { hue_of(&p.id) };
+        let hue = if p.tag || p.file { super::themed(0x8A8C96) } else if p.missing { super::themed(0x62646E) } else { hue_of(&p.id) };
         dots.push(GDot {
             x: x as f32, y: y as f32, r: (gr::radius(p.degree) * if u.graph_local { 1.3 } else { 1.0 }) as f32, title: ss(p.label.clone()),
             path: ss(if p.missing || p.tag || p.file { String::new() } else { p.id.clone() }), missing: p.missing,
@@ -112,7 +112,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         });
     }
     // цвет подсвеченных связей — цвет самой точки (её папки), как у точки на графе
-    let hl_hue = hl.map(|i| { let p = &ns[i]; if p.tag || p.file { hex(0x8A8C96) } else if p.missing { hex(0x62646E) } else { hue_of(&p.id) } }).unwrap_or(hex(0x8A8C96));
+    let hl_hue = hl.map(|i| { let p = &ns[i]; if p.tag || p.file { super::themed(0x8A8C96) } else if p.missing { super::themed(0x62646E) } else { hue_of(&p.id) } }).unwrap_or(super::themed(0x8A8C96));
     let mut lines = vec![];
     for &(a, b) in es.iter() {
         if !vis[a] || !vis[b] {
@@ -165,7 +165,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_graph_sel_lines(model(rows));
     let all: Vec<usize> = near.iter().copied().filter(|&j| !ns[j].tag && !ns[j].file).collect();
     g.set_graph_sel_n(gr::neighbors(es, c).len() as i32);
-    g.set_graph_sel_near(model(all.iter().take(5).map(|&j| Opt { id: ss(ns[j].id.clone()), label: ss(ns[j].label.clone()), hint: ss(""), hue: if ns[j].missing { hex(0x62646E) } else { hue_of(&ns[j].id) }, on: !ns[j].missing }).collect()));
+    g.set_graph_sel_near(model(all.iter().take(5).map(|&j| Opt { id: ss(ns[j].id.clone()), label: ss(ns[j].label.clone()), hint: ss(""), hue: if ns[j].missing { super::themed(0x62646E) } else { hue_of(&ns[j].id) }, on: !ns[j].missing }).collect()));
     g.set_graph_sel_rest(all.len().saturating_sub(5) as i32);
 }
 

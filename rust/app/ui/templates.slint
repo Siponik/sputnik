@@ -14,16 +14,16 @@ component Chip inherits Rectangle {
     border-radius: 6px; border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent.transparentize(0.88) : (ta.has-hover ? G.node-hover : transparent);
-    ct := Text { text: root.text; color: on ? G.ink : #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+    ct := Text { text: root.text; color: on ? G.ink : G.grey; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
 component Small inherits Text {
     in property <string> icon: "";
     callback clicked;
-    font-family: G.mono; font-size: 11px; color: sa.has-hover ? G.ink : #8A8C96;
+    font-family: G.mono; font-size: 11px; color: sa.has-hover ? G.ink : G.sub;
     horizontal-alignment: center; vertical-alignment: center;
-    Icon { visible: root.icon != ""; name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: sa.has-hover ? G.ink : #8A8C96; }
+    Icon { visible: root.icon != ""; name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: sa.has-hover ? G.ink : G.sub; }
     sa := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -48,12 +48,12 @@ export component Templates inherits Overlay {
                 background: t.on ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
                 Rectangle { x: 12px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: t.hue; }
                 Text { x: 24px; y: 8px; width: parent.width - 32px; text: t.label; color: G.ink; font-size: 13px; font-weight: 600; overflow: elide; }
-                Text { x: 12px; y: 30px; width: parent.width - 20px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; overflow: elide; }
+                Text { x: 12px; y: 30px; width: parent.width - 20px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.dim; overflow: elide; }
                 la := TouchArea { clicked => { S.tp-pick(t.id); } mouse-cursor: pointer; }
             }
             Rectangle {
                 height: 34px;
-                Text { x: 12px; text: "+ Новый шаблон"; color: na.has-hover ? G.ink : #A3A5AE; font-size: 13px; vertical-alignment: center; }
+                Text { x: 12px; text: "+ Новый шаблон"; color: na.has-hover ? G.ink : G.grey; font-size: 13px; vertical-alignment: center; }
                 na := TouchArea { clicked => { S.tp-new(); } mouse-cursor: pointer; }
             }
             }
@@ -71,11 +71,11 @@ export component Templates inherits Overlay {
             HorizontalLayout {
                 spacing: 20px;
                 VerticalLayout { spacing: 8px;
-                    Text { text: "Название шаблона"; color: #A3A5AE; font-size: 13px; }
+                    Text { text: "Название шаблона"; color: G.grey; font-size: 13px; }
                     Field { height: 38px; text: S.tp-name; edited(t) => { S.tp-set("name", t); } }
                 }
                 VerticalLayout { spacing: 8px; width: 300px;
-                    Text { text: "Вид доски"; color: #A3A5AE; font-size: 13px; }
+                    Text { text: "Вид доски"; color: G.grey; font-size: 13px; }
                     HorizontalLayout { spacing: 4px; alignment: start;
                         for v in [{ id: "kanban", label: "Канбан" }, { id: "pipe", label: "Конвейер" }, { id: "stickers", label: "Стикеры" }, { id: "list", label: "Список" }]: Chip {
                             text: v.label; on: S.tp-view == v.id; clicked => { S.tp-set("view", v.id); }
@@ -83,7 +83,7 @@ export component Templates inherits Overlay {
                     }
                 }
             }
-            Text { text: "Колонки · стрелки меняют порядок, клик по квадрату — цвет"; color: #A3A5AE; font-size: 13px; }
+            Text { text: "Колонки · стрелки меняют порядок, клик по квадрату — цвет"; color: G.grey; font-size: 13px; }
             Flickable {
                 height: 128px;
                 viewport-width: S.tp-cols.length * (cw + 14px) + 110px;
@@ -98,14 +98,14 @@ export component Templates inherits Overlay {
                                 accepted => { S.tp-col(i, "name", self.text); } edited => { S.tp-col(i, "name", self.text); } }
                             if !c.on: Small { x: parent.width - 22px; width: 18px; height: 30px; icon: "close"; text: ""; clicked => { S.tp-col(i, "del", ""); } }
                         }
-                        Text { x: 10px; y: 40px; text: "Лимит"; color: #A3A5AE; font-size: 12.5px; }
+                        Text { x: 10px; y: 40px; text: "Лимит"; color: G.grey; font-size: 12.5px; }
                         Small { x: parent.width - 66px; y: 38px; width: 18px; height: 20px; text: "−"; clicked => { S.tp-col(i, "limit", "-1"); } }
                         Text { x: parent.width - 46px; y: 38px; width: 24px; height: 20px; text: c.hint; color: G.ink; font-family: G.mono; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
                         Small { x: parent.width - 22px; y: 38px; width: 18px; height: 20px; text: "+"; clicked => { S.tp-col(i, "limit", "1"); } }
-                        Text { x: 10px; y: 66px; text: "Цвет"; color: #A3A5AE; font-size: 12.5px; }
+                        Text { x: 10px; y: 66px; text: "Цвет"; color: G.grey; font-size: 12.5px; }
                         Rectangle { x: parent.width - 22px; y: 69px; width: 12px; height: 12px; border-radius: 3px; background: c.hue;
                             TouchArea { clicked => { S.tp-col(i, "color", ""); } mouse-cursor: pointer; } }
-                        if c.on: Text { x: 10px; y: 92px; text: "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"; font-family: G.mono; font-size: 8.5px; color: #7A7C86; }
+                        if c.on: Text { x: 10px; y: 92px; text: "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"; font-family: G.mono; font-size: 8.5px; color: G.dim; }
                         if !c.on: Small { x: 6px; y: 92px; width: 24px; height: 20px; icon: "prev"; text: ""; clicked => { S.tp-col(i, "left", ""); } }
                         if !c.on: Small { x: 32px; y: 92px; width: 24px; height: 20px; icon: "next"; text: ""; clicked => { S.tp-col(i, "right", ""); } }
                     }
@@ -113,11 +113,11 @@ export component Templates inherits Overlay {
                 Rectangle {
                     x: S.tp-cols.length * (cw + 14px); width: 100px; height: 120px;
                     border-radius: 8px; border-width: 1px; border-color: aa.has-hover ? G.accent : G.line-strong;
-                    Text { text: "+\nКолонка"; color: #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
+                    Text { text: "+\nКолонка"; color: G.grey; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
                     aa := TouchArea { clicked => { S.tp-set("col-add", ""); } mouse-cursor: pointer; }
                 }
             }
-            Text { text: "Поля карточки"; color: #A3A5AE; font-size: 13px; }
+            Text { text: "Поля карточки"; color: G.grey; font-size: 13px; }
             for row in ceil(S.tp-fields.length / 5): HorizontalLayout { spacing: 6px; alignment: start;
                 for k in 5: Chip {
                     property <Opt> f: S.tp-fields[min(row * 5 + k, S.tp-fields.length - 1)];
@@ -125,7 +125,7 @@ export component Templates inherits Overlay {
                     text: f.label; on: f.on; clicked => { S.tp-set("field", f.id); }
                 }
             }
-            Text { text: "Используется"; color: #A3A5AE; font-size: 13px; }
+            Text { text: "Используется"; color: G.grey; font-size: 13px; }
             Text { text: S.tp-used; color: G.ink; font-size: 13px; overflow: elide; }
             Rectangle { height: 6px; }
             HorizontalLayout { spacing: 8px; alignment: start;
@@ -134,7 +134,7 @@ export component Templates inherits Overlay {
                 if S.tp-builtin: Button { text: "Вернуть как было"; clicked => { S.tp-reset(); } }
                 Button { text: "Закрыть"; clicked => { S.tp-close(); } }
             }
-            Text { text: "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."; color: #8A8C96; font-size: 12.5px; wrap: word-wrap; }
+            Text { text: "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."; color: G.sub; font-size: 12.5px; wrap: word-wrap; }
             }
         }
     }

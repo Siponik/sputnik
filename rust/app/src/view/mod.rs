@@ -20,6 +20,7 @@ pub mod listset;
 pub mod menu;
 pub mod tpl;
 mod settings;
+pub mod theme;
 pub mod spheres;
 mod today;
 mod wire;
@@ -242,6 +243,9 @@ pub fn start(app: App) -> AppWindow {
     wire::wire(&w);
     settings::apply_accent(&w, app.layer["settings"]["accent"]["v"].as_i64().unwrap_or(0));
     settings::apply_anim(&w, app.layer["settings"]["anim"]["v"].as_i64().unwrap_or(0));
+    // для снимков: SPUTNIK_THEME=light
+    let th = std::env::var("SPUTNIK_THEME").unwrap_or_else(|_| app.layer["settings"]["theme"]["v"].as_str().unwrap_or("dark").to_string());
+    theme::apply(&w, &th, false);
     crate::state::bg::install(app, render);
     crate::state::with(|a| a.start_timers());
     w
@@ -403,6 +407,28 @@ pub fn accent() -> Color { hex(accent_hex()) }
 
 /// Цвет из имён старого трекера (var(--clay) и т. п.), #RRGGBB или номера палитры. «accent» — текущий акцент.
 pub fn color(v: &str) -> Color {
+    let c = color_dark(v);
+    if theme::is_light() { lighten(c) } else { c }
+}
+
+/// Светлая пара для яркого цвета тёмной темы (та же таблица, что в ui/theme.slint).
+/// Незнакомый цвет темнеет на четверть, чтобы читаться на светлом фоне.
+pub fn lighten(c: Color) -> Color {
+    let x = ((c.red() as u32) << 16) | ((c.green() as u32) << 8) | c.blue() as u32;
+    let to = match x {
+        0xF0A04B => 0xC96F1C, 0x6FA2F2 => 0x3C74D2, 0xB48CF0 => 0x8457D0, 0x7FD18C => 0x3C9A4D,
+        0xE8C65A => 0xB08A17, 0xA3A5AE => 0x6E707A, 0xF0785F => 0xCF5139, 0x8A8C96 => 0x6A6C75,
+        0x62646E => 0x8A8C95, 0x6FB6CF => 0x2F7F9A, 0x5FB3C4 => 0x2F7F8E,
+        _ => return Color::from_argb_u8(c.alpha(), (c.red() as f32 * 0.75) as u8, (c.green() as f32 * 0.75) as u8, (c.blue() as f32 * 0.75) as u8),
+    };
+    let h = hex(to);
+    Color::from_argb_u8(c.alpha(), h.red(), h.green(), h.blue())
+}
+
+/// Цвет по номеру с учётом темы.
+pub fn themed(x: u32) -> Color { if theme::is_light() { lighten(hex(x)) } else { hex(x) } }
+
+fn color_dark(v: &str) -> Color {
     let v = v.trim();
     if let Some(h) = v.strip_prefix('#') {
         if let Ok(x) = u32::from_str_radix(&h[..h.len().min(6)], 16) {

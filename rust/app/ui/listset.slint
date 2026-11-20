@@ -15,7 +15,7 @@ component Seg3 inherits Rectangle {
             width: st.preferred-width + 20px;
             border-radius: 4px;
             background: it.on ? G.ink : (sa.has-hover ? G.node-hover : transparent);
-            st := Text { text: it.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: it.on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
+            st := Text { text: it.label.to-uppercase(); font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px; color: it.on ? G.bg : G.grey; horizontal-alignment: center; vertical-alignment: center; }
             sa := TouchArea { clicked => { root.picked(it.id); } mouse-cursor: pointer; }
         }
     }
@@ -39,7 +39,7 @@ component Row inherits Rectangle {
         VerticalLayout {
             alignment: center; spacing: 2px;
             Text { text: root.label; color: G.ink; font-size: 13.5px; }
-            if root.hint != "": Text { text: root.hint; color: #8A8C96; font-size: 12px; }
+            if root.hint != "": Text { text: root.hint; color: G.sub; font-size: 12px; }
         }
         Rectangle { }
         HorizontalLayout { alignment: end; spacing: 6px; VerticalLayout { alignment: center; @children } }
@@ -58,7 +58,7 @@ component ColEditor inherits VerticalLayout {
     Rectangle {
         height: 40px;
         Text { x: 0; text: "Колонки"; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; }
-        Text { x: parent.width - self.preferred-width; text: "ИЗ ШАБЛОНА…"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: tpa.has-hover ? G.accent : #8A8C96; vertical-alignment: center; height: parent.height;
+        Text { x: parent.width - self.preferred-width; text: "ИЗ ШАБЛОНА…"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: tpa.has-hover ? G.accent : G.sub; vertical-alignment: center; height: parent.height;
             tpa := TouchArea { clicked => { S.ls-close(); S.tp-show(); } mouse-cursor: pointer; }
         }
     }
@@ -75,13 +75,13 @@ component ColEditor inherits VerticalLayout {
         z: held ? 5 : 0;
         height: 44px;
         background: held ? G.node-hover : transparent;
-        drop-shadow-blur: held ? 14px : 0px; drop-shadow-color: #0008;
+        drop-shadow-blur: held ? 14px : 0px; drop-shadow-color: #0008.transparentize(1 - G.shade);
         border-radius: 6px;
         Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
         // ручка
         Rectangle {
             x: 0; width: 24px;
-            Icon { x: 4px; y: 14px; width: 16px; height: 16px; name: "drag"; c: c.on ? #45464D : (ha.has-hover || root.drag-from == i ? G.ink : #6E7079); }
+            Icon { x: 4px; y: 14px; width: 16px; height: 16px; name: "drag"; c: c.on ? G.line-mid : (ha.has-hover || root.drag-from == i ? G.ink : G.line-strong); }
             ha := TouchArea {
                 enabled: !c.on;
                 mouse-cursor: c.on ? default : move;
@@ -120,21 +120,21 @@ component ColEditor inherits VerticalLayout {
         // лимит: − N +
         HorizontalLayout {
             x: parent.width - 108px; width: 74px; height: parent.height; spacing: 0;
-            Rectangle { width: 22px; Text { text: "−"; color: ma.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } ma := TouchArea { clicked => { S.ls-set("col-limit", i + "|-1"); } mouse-cursor: pointer; } }
-            Text { width: 30px; text: c.id == "0" ? "НЕТ" : c.id; font-family: G.mono; font-size: 9.5px; color: c.id == "0" ? #62646E : G.ink; horizontal-alignment: center; vertical-alignment: center; }
-            Rectangle { width: 22px; Text { text: "+"; color: pa.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } pa := TouchArea { clicked => { S.ls-set("col-limit", i + "|1"); } mouse-cursor: pointer; } }
+            Rectangle { width: 22px; Text { text: "−"; color: ma.has-hover ? G.ink : G.sub; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } ma := TouchArea { clicked => { S.ls-set("col-limit", i + "|-1"); } mouse-cursor: pointer; } }
+            Text { width: 30px; text: c.id == "0" ? "НЕТ" : c.id; font-family: G.mono; font-size: 9.5px; color: c.id == "0" ? G.faint : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            Rectangle { width: 22px; Text { text: "+"; color: pa.has-hover ? G.ink : G.sub; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } pa := TouchArea { clicked => { S.ls-set("col-limit", i + "|1"); } mouse-cursor: pointer; } }
         }
         // корзина
         if !c.on && S.ls-cols.length > 2: Rectangle {
             x: parent.width - 26px; width: 22px;
-            Icon { x: 3px; y: 14px; width: 16px; height: 16px; name: "trash"; c: da.has-hover ? G.red : #6E7079; }
+            Icon { x: 3px; y: 14px; width: 16px; height: 16px; name: "trash"; c: da.has-hover ? G.red : G.line-strong; }
             da := TouchArea { clicked => { S.ls-set("col-del", i); } mouse-cursor: pointer; }
         }
       }
     }
     Rectangle {
         height: 40px;
-        Text { x: 4px; text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: aa.has-hover ? G.accent : #A3A5AE; vertical-alignment: center; height: parent.height; }
+        Text { x: 4px; text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: aa.has-hover ? G.accent : G.grey; vertical-alignment: center; height: parent.height; }
         aa := TouchArea { width: 120px; x: 0; clicked => { S.ls-set("col-add", ""); } mouse-cursor: pointer; }
     }
 }
@@ -157,12 +157,12 @@ export component ListSettings inherits Overlay {
         aside: S.ls-tpl;
         head: G.accent.darker(0.3);
         border-color: G.accent-line;
-        drop-shadow-blur: 30px; drop-shadow-color: #000c;
+        drop-shadow-blur: 30px; drop-shadow-color: #000c.transparentize(1 - G.shade);
         body := ScrollView {
             viewport-height: bl.preferred-height;
             bl := VerticalLayout {
             padding: 22px; padding-bottom: 14px; spacing: 0;
-            Text { text: "Название"; color: #A3A5AE; font-size: 13px; }
+            Text { text: "Название"; color: G.grey; font-size: 13px; }
             Rectangle { height: 8px; }
             name := Field { height: 38px; font-size: 14px; text: S.ls-name; edited(t) => { root.typed-name = t; } accepted(t) => { S.ls-set("name", t); } }
             Rectangle { height: 6px; }
@@ -225,7 +225,7 @@ export component ListSettings inherits Overlay {
     if root.sph-open: Pop {
         x: dlg.x + root.sph-x; y: dlg.y + root.sph-y; width: 220px; height: min(300px, S.ls-spheres.length * 30px + 10px);
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         ScrollView {
             content-height: sv.preferred-height;
             sv := VerticalLayout {

@@ -10,7 +10,7 @@ component Cap inherits Text {
     font-family: G.mono;
     font-size: 10px;
     letter-spacing: 1.4px;
-    color: #9A9CA6;
+    color: G.muted;
 }
 
 // Чип выбора в цвете привычки (выбранный — залит оттенком цвета).
@@ -25,7 +25,7 @@ component HChip inherits Rectangle {
     border-width: 1px;
     border-color: on ? S.he-hue : G.line;
     background: on ? S.he-hue.transparentize(0.84) : (ha.has-hover ? G.node-hover : transparent);
-    ht := Text { text: root.text; font-size: 12.5px; font-weight: on ? 600 : 400; color: on ? G.ink : #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+    ht := Text { text: root.text; font-size: 12.5px; font-weight: on ? 600 : 400; color: on ? G.ink : G.ink2; horizontal-alignment: center; vertical-alignment: center; }
     ha := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -43,15 +43,15 @@ component HTime inherits Rectangle {
     border-radius: 8px;
     border-width: 1px;
     border-color: open ? S.he-hue : G.line;
-    background: #2C2D33;
+    background: G.node-hover;
     function put(raw: string) {
         if (raw == "none") { root.picked(""); S.drop = 0; return; }
         if (raw == "") { return; }
         let t = S.c-tnorm(raw, root.val);
         if (t != "") { root.picked(t); }
     }
-    Icon { x: 10px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: #9A9CA6; }
-    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13px; color: root.val == "" ? #6E7079 : G.ink; vertical-alignment: center; height: parent.height; }
+    Icon { x: 10px; y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "clock"; c: G.muted; }
+    Text { x: 32px; text: root.val == "" ? "—:—" : root.val; font-family: G.mono; font-size: 13px; color: root.val == "" ? G.line-strong : G.ink; vertical-alignment: center; height: parent.height; }
     Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; }
     TouchArea {
         clicked => { root.toggle(); }
@@ -69,7 +69,7 @@ component HTime inherits Rectangle {
     if root.open: Pop {
         x: 0; y: parent.height + 4px; width: 300px; height: 12px + 34px + 8px + 30px + 10px + 4 * 30px + 12px; z: 20;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         TouchArea { }
         inp := Field {
             x: 12px; y: 12px; width: parent.width - 24px; height: 34px; mono: true;
@@ -120,10 +120,10 @@ component PropRow inherits Rectangle {
     height: 31px;
     Rectangle { y: 0; height: 1px; background: G.line-soft; }
     Rectangle { background: pa.has-hover && root.can ? G.node-hover : transparent; }
-    Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: root.icon; c: root.danger ? G.red : #8A8C96; }
-    Text { x: 30px; width: 84px; text: root.label; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; height: parent.height; overflow: elide; }
+    Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: root.icon; c: root.danger ? G.red : G.sub; }
+    Text { x: 30px; width: 84px; text: root.label; font-size: 12.5px; color: G.muted; vertical-alignment: center; height: parent.height; overflow: elide; }
     Text { x: 118px; width: parent.width - self.x - 22px; text: root.val; font-size: 12.5px; font-weight: root.val != "—" ? 600 : 400;
-        color: root.danger ? G.red : (root.val == "—" ? #55575F : G.ink); vertical-alignment: center; height: parent.height; overflow: elide; }
+        color: root.danger ? G.red : (root.val == "—" ? G.ghost : G.ink); vertical-alignment: center; height: parent.height; overflow: elide; }
     Chev { x: parent.width - 18px; y: (parent.height - 10px) / 2; visible: root.can; }
     pa := TouchArea { clicked => { if (root.can) { root.clicked(); } } mouse-cursor: root.can ? pointer : default; }
 }
@@ -153,22 +153,22 @@ export component HabitEditDialog inherits Overlay {
         border-radius: 12px;
         background: G.node;
         border-width: 1px;
-        border-color: S.he-hue.mix(#1C1D21, 0.35);
+        border-color: S.he-hue.mix(G.bg, 0.35);
         drop-shadow-blur: 32px;
-        drop-shadow-color: #000c;
+        drop-shadow-color: #000c.transparentize(1 - G.shade);
         TouchArea { clicked => { if (!root.close-pop()) { keys.focus(); } } }
         // шапка в цвете привычки
         Rectangle {
             height: 46px; y: 0;
             border-top-left-radius: 12px; border-top-right-radius: 12px;
-            background: S.he-hue.mix(#1C1D21, 0.45);
+            background: S.he-hue.mix(G.bg, 0.45);
             Text { x: 18px; text: "Привычка · " + S.he-name; font-size: 14px; font-weight: 600; color: #fff; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 70px; }
             Icon { x: parent.width - 38px; y: 15px; width: 16px; height: 16px; name: "close"; c: #fff; TouchArea { clicked => { S.he-close(); } mouse-cursor: pointer; } }
         }
         Text {
             x: 22px; y: 46px; height: 30px;
             text: S.he-streak > 0 ? "Серия " + S.he-streak + " дн. не сбросится · правки сохраняются сразу" : "Правки сохраняются сразу";
-            font-size: 12.5px; color: #9A9CA6; vertical-alignment: center;
+            font-size: 12.5px; color: G.muted; vertical-alignment: center;
         }
         // название
         Rectangle {
@@ -219,14 +219,14 @@ export component HabitEditDialog inherits Overlay {
                 if S.he-freq.length > 3 && S.he-freq[3].on: HorizontalLayout {
                     spacing: 6px; alignment: start;
                     for p in S.he-per: HChip { text: p.label; on: p.on; clicked => { S.he-per-set(p.id); keys.focus(); } }
-                    Text { height: 28px; text: "в неделю"; font-size: 11.5px; color: #8A8C96; vertical-alignment: center; }
+                    Text { height: 28px; text: "в неделю"; font-size: 11.5px; color: G.sub; vertical-alignment: center; }
                 }
                 Cap { text: "КОГДА"; }
                 HorizontalLayout {
                     height: 34px; spacing: 8px; alignment: start;
                     z: ws.open || we.open ? 20 : 0;
                     ws := HTime { val: S.he-win-s; clearable: true; picked(t) => { S.he-win-s-set(t); keys.focus(); } }
-                    Text { text: "до"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; }
+                    Text { text: "до"; font-size: 12.5px; color: G.muted; vertical-alignment: center; }
                     we := HTime { val: S.he-win-e; picked(t) => { S.he-win-e-set(t); keys.focus(); } }
                 }
                 HorizontalLayout {
@@ -241,7 +241,7 @@ export component HabitEditDialog inherits Overlay {
                     Cap { x: 10px; y: 0; height: 30px; text: "ЗАМЕТКА"; vertical-alignment: center; }
                     Rectangle { y: 30px; height: 1px; background: G.line; }
                     TouchArea { clicked => { nt.grab(); } mouse-cursor: text; }
-                    Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Зачем и как…"; font-size: 12.5px; color: #55575F; wrap: word-wrap; }
+                    Text { x: 10px; y: 38px; width: parent.width - 20px; visible: nt.text == ""; text: "Зачем и как…"; font-size: 12.5px; color: G.ghost; wrap: word-wrap; }
                     nt := ScrollInput {
                         x: 10px; y: 38px; width: parent.width - 20px; height: parent.height - 46px;
                         text: S.he-notes;
@@ -270,7 +270,7 @@ export component HabitEditDialog inherits Overlay {
                             for o[i] in [{ id: "0", l: "Сделать" }, { id: "2", l: "2 раза в день" }, { id: "3", l: "3 раза в день" }, { id: "4", l: "4 раза в день" }, { id: "5", l: "5 раз в день" }, { id: "8", l: "8 раз в день" }]: Rectangle {
                                 height: 26px; border-radius: 5px; background: goa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: S.he-goal-n == o.id.to-float() ? S.he-hue : transparent; }
-                                Text { x: 24px; text: o.l; font-size: 12.5px; color: S.he-goal-n == o.id.to-float() ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: S.he-goal-n == o.id.to-float() ? G.ink : G.ink2; vertical-alignment: center; height: parent.height; }
                                 goa := TouchArea { clicked => { S.he-goal-set(o.id); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
@@ -287,7 +287,7 @@ export component HabitEditDialog inherits Overlay {
                             for o[i] in [{ id: "on", l: "в начале окна" }, { id: "off", l: "выкл" }]: Rectangle {
                                 height: 26px; border-radius: 5px; background: toa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-tg ? S.he-hue : transparent; }
-                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-tg ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-tg ? G.ink : G.ink2; vertical-alignment: center; height: parent.height; }
                                 toa := TouchArea { clicked => { S.he-remind("tg", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
@@ -304,7 +304,7 @@ export component HabitEditDialog inherits Overlay {
                             for o[i] in [{ id: "on", l: "в окне приложения" }, { id: "off", l: "выкл" }]: Rectangle {
                                 height: 26px; border-radius: 5px; background: woa.has-hover ? G.node-hover : transparent;
                                 Rectangle { x: 10px; y: 10px; width: 6px; height: 6px; border-radius: 3px; background: (o.id == "on") == S.he-wrem ? S.he-hue : transparent; }
-                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-wrem ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; }
+                                Text { x: 24px; text: o.l; font-size: 12.5px; color: (o.id == "on") == S.he-wrem ? G.ink : G.ink2; vertical-alignment: center; height: parent.height; }
                                 woa := TouchArea { clicked => { S.he-remind("win", o.id == "on"); root.popen = ""; keys.focus(); } mouse-cursor: pointer; }
                             }
                         }
@@ -313,8 +313,8 @@ export component HabitEditDialog inherits Overlay {
                     Rectangle {
                         height: 31px;
                         Rectangle { y: 0; height: 1px; background: G.line-soft; }
-                        Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: "accent"; c: #8A8C96; }
-                        Text { x: 30px; width: 84px; text: "Цвет"; font-size: 12.5px; color: #9A9CA6; vertical-alignment: center; height: parent.height; }
+                        Icon { x: 10px; y: (parent.height - 13px) / 2; width: 13px; height: 13px; name: "accent"; c: G.sub; }
+                        Text { x: 30px; width: 84px; text: "Цвет"; font-size: 12.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
                         Rectangle { x: 118px; y: 12px; width: 8px; height: 8px; border-radius: 4px; background: S.he-hue; }
                     }
                     PropRow {
@@ -335,7 +335,7 @@ export component HabitEditDialog inherits Overlay {
     if root.side: Rectangle {
         x: win.x + win.width + 34px; y: win.y + 66px; width: 230px; height: 148px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 18px; drop-shadow-color: #0009;
+        drop-shadow-blur: 18px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         Cap { x: 10px; y: 8px; text: "КАРТОЧКА ПРИВЫЧКИ"; }
         Rectangle {
             x: 8px; y: 30px; width: parent.width - 16px; height: 106px;
@@ -343,16 +343,16 @@ export component HabitEditDialog inherits Overlay {
             Rectangle {
                 height: 34px; y: 0;
                 Rectangle { x: 12px; y: 8px; width: 18px; height: 18px; border-radius: 4px; background: S.he-hue;
-                    Icon { x: 2px; y: 2px; width: 14px; height: 14px; name: S.he-icon == "" ? "habits" : S.he-icon; c: #1C1D21; }
+                    Icon { x: 2px; y: 2px; width: 14px; height: 14px; name: S.he-icon == "" ? "habits" : S.he-icon; c: G.bg; }
                 }
                 Text { x: 38px; text: S.he-name; font-size: 13.5px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 100px; }
                 Text { x: parent.width - self.preferred-width - 12px;
                     text: S.he-part.length > 0 && S.he-part[0].on ? "УТРО" : S.he-part.length > 1 && S.he-part[1].on ? "ДЕНЬ" : S.he-part.length > 2 && S.he-part[2].on ? "ВЕЧЕР" : "";
-                    font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; height: parent.height; }
+                    font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.sub; vertical-alignment: center; height: parent.height; }
                 Rectangle { y: parent.height - 1px; height: 1px; background: G.line; }
             }
-            Text { x: 14px; y: 42px; text: S.he-streak; font-size: 50px; font-weight: 200; color: S.he-streak == 0 ? #6E7079 : G.ink; }
-            Text { x: 16px; y: 92px; text: "ДН ПОДРЯД"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; }
+            Text { x: 14px; y: 42px; text: S.he-streak; font-size: 50px; font-weight: 200; color: S.he-streak == 0 ? G.line-strong : G.ink; }
+            Text { x: 16px; y: 92px; text: "ДН ПОДРЯД"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: G.grey; }
         }
     }
     }

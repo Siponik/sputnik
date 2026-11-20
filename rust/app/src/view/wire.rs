@@ -1094,6 +1094,10 @@ pub fn wire(w: &AppWindow) {
         let id = str_(&id);
         match sec.as_str() {
             "start" => app.set_setting("start", json!(id)),
+            "theme" => {
+                app.set_setting("theme", json!(id));
+                if let Some(w) = super::WIN.with(|x| x.borrow().as_ref().and_then(|w| w.upgrade())) { super::theme::apply(&w, &id, true); }
+            }
             // «Куда слать»: notify — Windows, tgRemind — Telegram
             "flag" if id == "notify" || id == "tgRemind" => {
                 let on = app.layer["settings"][id.as_str()]["v"] != false;

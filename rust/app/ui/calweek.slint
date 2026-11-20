@@ -14,7 +14,7 @@ component Mark inherits Rectangle {
     width: 10px;
     height: 10px;
     if root.done: Rectangle {
-        border-radius: 3px; background: #45464D;
+        border-radius: 3px; background: G.line-mid;
         Text { text: "✓"; color: G.ink; font-size: 8px; horizontal-alignment: center; vertical-alignment: center; }
     }
     if !root.done && root.kind != 0: Rectangle {
@@ -33,7 +33,7 @@ component AllDay inherits Rectangle {
     property <color> pink: #F08CC0;
     height: 20px;
     border-radius: 4px;
-    background: c.kind == 3 ? root.pink.transparentize(0.84) : (c.done ? #25262B : c.hue.transparentize(0.9));
+    background: c.kind == 3 ? root.pink.transparentize(0.84) : (c.done ? G.node : c.hue.transparentize(0.9));
     border-width: c.kind == 3 ? 0 : 1px;
     border-color: c.done ? G.line : c.hue.transparentize(0.45);
     HorizontalLayout {
@@ -78,7 +78,7 @@ component TipCard inherits Rectangle {
     border-color: G.line;
     drop-shadow-blur: 28px;
     drop-shadow-offset-y: 10px;
-    drop-shadow-color: #0000008C;
+    drop-shadow-color: #0000008C.transparentize(1 - G.shade);
     clip: true;
     tl := VerticalLayout {
         Rectangle { height: 3px; background: t.hue; }
@@ -92,7 +92,7 @@ component TipCard inherits Rectangle {
             if t.note != "": VerticalLayout {
                 spacing: 6px;
                 Rectangle { height: 1px; background: G.line-soft; }
-                Text { text: t.note; font-size: 12px; color: #C9CAD0; wrap: word-wrap; }
+                Text { text: t.note; font-size: 12px; color: G.ink2; wrap: word-wrap; }
             }
         }
     }
@@ -170,7 +170,7 @@ export component Week inherits Rectangle {
         width: root.colw;
         height: root.head-h;
         background: ha.has-hover ? G.node-hover : transparent;
-        Text { text: d.label; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: d.today ? G.accent : (d.sel ? G.ink : #B5B7C0); horizontal-alignment: center; vertical-alignment: center; }
+        Text { text: d.label; font-family: G.mono; font-size: 11px; font-weight: 600; letter-spacing: 1.6px; color: d.today ? G.accent : (d.sel ? G.ink : G.ink3); horizontal-alignment: center; vertical-alignment: center; }
         if d.sel && !d.today: Rectangle { y: parent.height - 2px; height: 2px; x: 12px; width: parent.width - 24px; background: G.accent-line; }
         ha := TouchArea { clicked => { S.cal-pick(d.ymd); } }
     }
@@ -289,7 +289,7 @@ export component Week inherits Rectangle {
                     width: parent.width - 8px;
                     height: b.h * 1px;
                     border-radius: 5px;
-                    background: b.kind == 4 ? G.accent.transparentize(0.92) : (b.done ? #25262B : (b.kind == 2 ? G.gold.transparentize(0.92) : b.hue.transparentize(0.9)));
+                    background: b.kind == 4 ? G.accent.transparentize(0.92) : (b.done ? G.node : (b.kind == 2 ? G.gold.transparentize(0.92) : b.hue.transparentize(0.9)));
                     border-width: b.kind == 2 && !b.done ? 0 : 1px;
                     border-color: b.kind == 4 ? G.accent.transparentize(0.5) : (b.done ? G.line : b.hue.transparentize(0.45));
                     opacity: root.dragging && root.d-id == b.id ? 0.35 : 1;
@@ -420,7 +420,7 @@ export component Week inherits Rectangle {
     // ---------- черновик и окно «Добавить» ----------
     // всё, кроме черновика и окна, затемняется до 35 %; клик по затемнению — отмена
     Rectangle {
-        background: #15161AA6;
+        background: G.scrim;
         opacity: S.draft-col >= 0 ? 1 : 0;
         visible: self.opacity > 0;
         animate opacity { duration: 120ms; }
@@ -453,7 +453,7 @@ export component Week inherits Rectangle {
         border-color: G.accent;
         drop-shadow-blur: 28px;
         drop-shadow-offset-y: 10px;
-        drop-shadow-color: #0000008C;
+        drop-shadow-color: #0000008C.transparentize(1 - G.shade);
         clip: true;
         Rectangle {
             y: 0; height: 34px; background: G.head-main;

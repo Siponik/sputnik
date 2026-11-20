@@ -28,7 +28,7 @@ export component TableRow inherits Rectangle {
             if i == root.edit-c: Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-width: 1px; border-color: G.accent; border-radius: 2px; }
             VerticalLayout {
                 padding-left: 9px; padding-right: 9px; padding-top: 5px; padding-bottom: 5px;
-                if i != root.edit-c: StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent; }
+                if i != root.edit-c: StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : G.ink1; link-color: G.accent; }
                 // правка ячейки прямо в таблице: Enter — готово (Shift+Enter — перенос), Tab — следующая ячейка,
                 // Ctrl+Enter — новая строка таблицы ниже, Esc — выйти
                 if i == root.edit-c: fs := FocusScope {
@@ -62,7 +62,7 @@ export component TableRow inherits Rectangle {
         visible: root.show-plus;
         x: root.width - 9px; y: (root.height - 18px) / 2; width: 18px; height: 18px; border-radius: 9px;
         background: pc.has-hover ? G.accent : G.node; border-width: 1px; border-color: pc.has-hover ? G.accent : G.line;
-        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pc.has-hover ? #1C1D21 : G.muted; }
+        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pc.has-hover ? G.bg : G.muted; }
         pc := TouchArea { mouse-cursor: pointer; clicked => { root.add-col(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
         Tip { text: "Добавить колонку"; on: pc.has-hover; }
     }
@@ -70,7 +70,7 @@ export component TableRow inherits Rectangle {
         visible: root.show-plus;
         x: -9px; y: root.height - 9px; width: 18px; height: 18px; border-radius: 9px;
         background: pr.has-hover ? G.accent : G.node; border-width: 1px; border-color: pr.has-hover ? G.accent : G.line;
-        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pr.has-hover ? #1C1D21 : G.muted; }
+        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pr.has-hover ? G.bg : G.muted; }
         pr := TouchArea { mouse-cursor: pointer; clicked => { root.add-row(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
         Tip { text: "Добавить строку ниже"; on: pr.has-hover; }
     }
@@ -102,7 +102,7 @@ export component MdLine inherits Rectangle {
         text: line.md;
         default-font-size: root.size;
         default-font-family: line.kind == "code" ? G.mono : G.sans;
-        default-color: line.kind == "done" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : G.ink));
+        default-color: line.kind == "done" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? G.ink3 : G.ink));
         link-color: G.accent;
     }
 }
@@ -163,7 +163,7 @@ export component LinkNote inherits Rectangle {
     if S.link-found.length > 0 && nb.focused: Pop {
         x: 0; y: 22px; width: min(300px, parent.width); height: 26px + min(5, S.link-found.length) * 30px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 28px; drop-shadow-offset-y: 12px; drop-shadow-color: #00000080;
+        drop-shadow-blur: 28px; drop-shadow-offset-y: 12px; drop-shadow-color: #00000080.transparentize(1 - G.shade);
         clip: true;
         Text { x: 10px; y: 0; height: 26px; text: "ЗНАНИЯ · ENTER — ВСТАВИТЬ"; font-family: G.mono; font-size: 9.5px; font-weight: 500; letter-spacing: 1.3px; color: G.muted; vertical-alignment: center; }
         for f[i] in S.link-found: Rectangle {
@@ -171,7 +171,7 @@ export component LinkNote inherits Rectangle {
             y: 26px + i * 30px; height: 30px;
             background: i == 0 || fa.has-hover ? G.accent-wash : transparent;
             Icon { x: 10px; y: 8.5px; width: 13px; height: 13px; name: "read"; c: i == 0 ? G.accent : G.muted; }
-            Text { x: 31px; width: parent.width - 42px; text: f.label; font-size: 12.5px; font-weight: i == 0 ? 600 : 400; color: i == 0 ? G.ink : #C9CAD0; vertical-alignment: center; height: parent.height; overflow: elide; }
+            Text { x: 31px; width: parent.width - 42px; text: f.label; font-size: 12.5px; font-weight: i == 0 ? 600 : 400; color: i == 0 ? G.ink : G.ink2; vertical-alignment: center; height: parent.height; overflow: elide; }
             fa := TouchArea { clicked => { root.pick(f.label); } mouse-cursor: pointer; }
         }
     }

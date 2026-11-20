@@ -26,7 +26,7 @@ export component MdNote inherits Rectangle {
     function put(t: string) { if (t != root.text) { root.edited(t); } }
     function mark() { S.md-mark(root.key, root.text); }
     if root.text == "" && root.edit-i < 0: Text {
-        x: 0; y: 2px; width: parent.width; text: root.hint; font-size: 14.5px * root.zoom; color: #6E7079; wrap: word-wrap;
+        x: 0; y: 2px; width: parent.width; text: root.hint; font-size: 14.5px * root.zoom; color: G.line-strong; wrap: word-wrap;
     }
     sv := ScrollView {
         x: 0; y: 0; width: parent.width; height: parent.height;

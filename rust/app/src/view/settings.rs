@@ -24,7 +24,7 @@ pub const TABS: [&str; 6] = ["Вид", "Что показывать", "Напо�
 /// Что ищет «Найти настройку»: раздел (номер в TABS), название, пояснение, слова для поиска.
 fn index() -> serde_json::Value {
     let rows: [(i64, &str, &str, &str); 19] = [
-        (0, "Тема", "тёмная, светлая", "оформление цвет"),
+        (0, "Тема", "тёмная, светлая, как в системе", "оформление цвет светлая тёмная ночь день windows"),
         (0, "Акцент", "цвет кнопок и выделения", "акцентный цвет оформление палитра"),
         (0, "Анимации", "полные, минимум, выкл", "движение провода"),
         (0, "При запуске", "какой раздел открыть первым", "старт открывать"),
@@ -52,12 +52,31 @@ pub fn apply_accent(w: &crate::AppWindow, i: i64) {
     let a = &ACCENTS[(i.clamp(0, 5)) as usize];
     let g = w.global::<crate::G>();
     super::set_accent_hex(a.1);
-    g.set_accent(hex(a.1));
-    g.set_accent_ink(hex(a.2));
-    g.set_accent_wash(hex(a.3));
-    g.set_accent_line(hex(a.4));
-    g.set_on_accent(hex(a.5));
+    g.set_accent_d(hex(a.1));
+    g.set_accent_ink_d(hex(a.2));
+    g.set_accent_wash_d(hex(a.3));
+    g.set_accent_line_d(hex(a.4));
+    g.set_on_accent_d(hex(a.5));
     g.set_head_main(hex(a.6));
+    let l = light_accent(a.1);
+    g.set_accent_l(hex(l[0]));
+    g.set_accent_ink_l(hex(l[1]));
+    g.set_accent_wash_l(hex(l[2]));
+    g.set_accent_line_l(hex(l[3]));
+    g.set_on_accent_l(hex(l[4]));
+}
+
+/// Акцент для светлой темы: темнее, чтобы читался на светлом фоне, подложка и линия — светлые оттенки.
+pub fn light_accent(a: u32) -> [u32; 5] {
+    use sputnik_core::accent as ac;
+    const BG: &str = "#F6F4F0";
+    let h = format!("#{a:06X}");
+    let acc = ac::fit(&ac::mix(&h, "#000000", 0.84), BG, 3.0);
+    let ink = ac::mix(&h, "#000000", 0.55);
+    let wash = ac::mix(&h, BG, 0.12);
+    let line = ac::mix(&h, BG, 0.4);
+    let on = if ac::contrast(&acc, "#FFFFFF") >= 2.6 { "#FFFFFF".to_string() } else { "#1F2024".to_string() };
+    [acc, ink, wash, line, on].map(|x| u32::from_str_radix(&x[1..], 16).unwrap_or(0))
 }
 
 /// Анимации: 0 полные, 1 минимум, 2 выкл.
@@ -83,6 +102,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let st = &app.layer["settings"];
     let start = st["start"]["v"].as_str().unwrap_or("today");
     g.set_set_start(model(STARTS.iter().map(|(id, l)| opt(*id, *l, *id == start)).collect()));
+    let th = st["theme"]["v"].as_str().unwrap_or("dark");
+    g.set_set_theme(model(super::theme::THEMES.iter().map(|(id, l)| opt(*id, *l, *id == th)).collect()));
     let acc = st["accent"]["v"].as_i64().unwrap_or(0);
     g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(a.0), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
     let anim = st["anim"]["v"].as_i64().unwrap_or(0);

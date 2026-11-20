@@ -9,30 +9,61 @@ import "../../assets/fonts/JetBrainsMono-500.ttf";
 import "../../assets/fonts/JetBrainsMono-600.ttf";
 
 export global G {
-    out property <color> ground: #191A1E;
-    out property <color> bg: #1C1D21;
-    out property <color> node: #25262B;
-    out property <color> node-hover: #2C2D33;
-    out property <color> line: #3A3B42;
-    out property <color> line-soft: #303137;
-    out property <color> line-strong: #6E7079;
-    out property <color> ink: #E2E3E8;
-    out property <color> muted: #9A9CA6;
-    out property <color> dim: #7A7C86;
-    // Акцент меняется из Настройки → Вид (ставит Rust через global G).
-    in-out property <color> accent: #F0A04B;
-    in-out property <color> accent-ink: #FFD29C;
-    in-out property <color> accent-wash: #2E2722;
-    in-out property <color> accent-line: #6A5238;
-    in-out property <color> on-accent: #2A1A0A;
-    out property <color> blue: #6FA2F2;
-    out property <color> violet: #B48CF0;
-    out property <color> green: #7FD18C;
-    out property <color> gold: #E8C65A;
-    out property <color> grey: #A3A5AE;
-    out property <color> red: #F0785F;
+    // Тема: 0 — тёмная, 1 — светлая. Rust плавно ведёт значение при смене (Настройки → Вид → Тема),
+    // каждый цвет — смесь светлого и тёмного значения. Светлые значения — таблица LIGHT из design/system-g/gen/s_b5.py.
+    in-out property <float> lt: 0;
+    out property <bool> light: lt > 0.5;
+    out property <color> ground: #EEECE7.mix(#191A1E, lt);
+    out property <color> bg: #F6F4F0.mix(#1C1D21, lt);
+    out property <color> node: #FFFFFF.mix(#25262B, lt);
+    out property <color> node-hover: #F1EFEA.mix(#2C2D33, lt);
+    out property <color> line: #DCD9D2.mix(#3A3B42, lt);
+    out property <color> line-soft: #E8E5DF.mix(#303137, lt);
+    out property <color> line-mid: #CBC8C1.mix(#45464D, lt);
+    out property <color> line-hi: #BDBAB3.mix(#4A4B52, lt);
+    out property <color> line-x: #E2DFD8.mix(#36373D, lt);
+    out property <color> line-strong: #A7A49D.mix(#6E7079, lt);
+    out property <color> ink: #1F2024.mix(#E2E3E8, lt);
+    out property <color> ink1: #33353C.mix(#D8DAE2, lt);
+    out property <color> ink2: #3E4048.mix(#C9CAD0, lt);
+    out property <color> ink3: #4A4C54.mix(#B5B7C0, lt);
+    out property <color> muted: #5F616A.mix(#9A9CA6, lt);
+    out property <color> sub: #6A6C75.mix(#8A8C96, lt);
+    out property <color> dim: #7E8089.mix(#7A7C86, lt);
+    out property <color> faint: #8A8C95.mix(#62646E, lt);
+    out property <color> other: #A9A69F.mix(#5A5C66, lt);
+    // самый яркий текст: белый в тёмной, почти чёрный в светлой
+    out property <color> hi: #111215.mix(#FFFFFF, lt);
+    out property <color> ghost: #B6B3AC.mix(#55575F, lt);
+    // Акцент меняется из Настройки → Вид (ставит Rust через global G): по паре для тёмной и светлой.
+    in-out property <color> accent-d: #F0A04B;
+    in-out property <color> accent-l: #C96F1C;
+    in-out property <color> accent-ink-d: #FFD29C;
+    in-out property <color> accent-ink-l: #8A4A10;
+    in-out property <color> accent-wash-d: #2E2722;
+    in-out property <color> accent-wash-l: #FBEBDC;
+    in-out property <color> accent-line-d: #6A5238;
+    in-out property <color> accent-line-l: #E6C7A3;
+    in-out property <color> on-accent-d: #2A1A0A;
+    in-out property <color> on-accent-l: #FFFFFF;
+    out property <color> accent: accent-l.mix(accent-d, lt);
+    out property <color> accent-ink: accent-ink-l.mix(accent-ink-d, lt);
+    out property <color> accent-wash: accent-wash-l.mix(accent-wash-d, lt);
+    out property <color> accent-line: accent-line-l.mix(accent-line-d, lt);
+    out property <color> on-accent: on-accent-l.mix(on-accent-d, lt);
+    out property <color> blue: #3C74D2.mix(#6FA2F2, lt);
+    out property <color> violet: #8457D0.mix(#B48CF0, lt);
+    out property <color> green: #3C9A4D.mix(#7FD18C, lt);
+    out property <color> gold: #B08A17.mix(#E8C65A, lt);
+    out property <color> gold-dim: #C9AE5A.mix(#8A7424, lt);
+    out property <color> grey: #6E707A.mix(#A3A5AE, lt);
+    out property <color> red: #CF5139.mix(#F0785F, lt);
+    // шапки нод остаются тёмными и в светлой теме: на них белый текст
     in-out property <color> head-main: #9A5A22;
-    out property <color> dot: #ffffff12;
+    out property <color> dot: #00000017.mix(#ffffff12, lt);
+    // затемнение под окнами и тени: в светлой теме слабее
+    out property <color> scrim: #3C322859.mix(#15161AA6, lt);
+    out property <float> shade: 1 - lt * 0.6;
     out property <string> sans: "Onest";
     out property <string> mono: "JetBrains Mono";
     // Скругления: нода 8, главная нода 12, кнопки 6, сокеты 3.
@@ -48,6 +79,6 @@ export global G {
 
 // Цвета сфер по порядку и их тёмные шапки.
 export global Hues {
-    out property <[color]> hue: [#A3A5AE, #F0A04B, #B48CF0, #6FA2F2, #7FD18C, #E8C65A, #F0785F];
+    out property <[color]> hue: [G.grey, #C96F1C.mix(#F0A04B, G.lt), G.violet, G.blue, G.green, G.gold, G.red];
     out property <[color]> head: [#3D3E45, #8A5320, #5E3F92, #2F4F86, #2E6B3E, #7A6620, #8A3A2E];
 }

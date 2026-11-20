@@ -13,9 +13,9 @@ component StageChip inherits Rectangle {
     callback clicked;
     height: 30px;
     border-radius: 6px;
-    background: state == 1 ? G.accent : state == 0 ? #2C3A2F : (ca.has-hover ? G.node-hover : transparent);
+    background: state == 1 ? G.accent : state == 0 ? #E3F1E5.mix(#2C3A2F, G.lt) : (ca.has-hover ? G.node-hover : transparent);
     border-width: state == 1 ? 0 : 1px;
-    border-color: state == 0 ? #3F6B47 : #4A4B52;
+    border-color: state == 0 ? #9CCBA5.mix(#3F6B47, G.lt) : G.line-hi;
     HorizontalLayout {
         alignment: center;
         spacing: 4px;
@@ -26,7 +26,7 @@ component StageChip inherits Rectangle {
             text: root.text;
             font-size: 12.5px;
             font-weight: state == 1 ? 600 : 400;
-            color: state == 1 ? #1C1D21 : state == 0 ? G.green : #62646E;
+            color: state == 1 ? G.bg : state == 0 ? G.green : G.faint;
             vertical-alignment: center;
             overflow: elide;
         }
@@ -34,7 +34,7 @@ component StageChip inherits Rectangle {
     ca := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
     if ca.has-hover && root.tip != "": Rectangle {
         x: 0; y: parent.height + 4px; width: tt.preferred-width + 16px; height: 22px; z: 10;
-        border-radius: 4px; background: #111214; border-width: 1px; border-color: G.line;
+        border-radius: 4px; background: G.node; border-width: 1px; border-color: G.line;
         tt := Text { text: root.tip; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
     }
 }
@@ -57,12 +57,12 @@ component PipeLine inherits Rectangle {
     animate height { duration: G.mid; easing: ease-out; }
     clip: true;
     ra := TouchArea { clicked => { S.pipe-toggle(r.id); } mouse-cursor: pointer; }
-    Chev { x: 12px; y: 26px; up: !open; c: #8A8C96; }
+    Chev { x: 12px; y: 26px; up: !open; c: G.sub; }
     // клик по названию открывает задачу целиком (как на канбане и в стикерах), по остальному месту — раскрывает строку
-    rt := Text { x: 36px; y: 14px; width: min(224px, self.preferred-width); text: r.title; font-size: 14.5px; font-weight: 600; color: r.done ? #62646E : (rta.has-hover ? #ffffff : G.ink); overflow: elide;
+    rt := Text { x: 36px; y: 14px; width: min(224px, self.preferred-width); text: r.title; font-size: 14.5px; font-weight: 600; color: r.done ? G.faint : (rta.has-hover ? G.hi : G.ink); overflow: elide;
         rta := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; } }
-    if rta.has-hover: Rectangle { x: 36px; y: 14px + rt.preferred-height; width: rt.width; height: 1px; background: #ffffff; }
-    Text { x: 36px; y: 35px; width: 224px; text: r.meta; font-size: 12px; color: #8A8C96; overflow: elide; }
+    if rta.has-hover: Rectangle { x: 36px; y: 14px + rt.preferred-height; width: rt.width; height: 1px; background: G.hi; }
+    Text { x: 36px; y: 35px; width: 224px; text: r.meta; font-size: 12px; color: G.sub; overflow: elide; }
     HorizontalLayout {
         x: 276px; y: 16px; height: 30px;
         width: parent.width - 276px - 200px;
@@ -80,11 +80,11 @@ component PipeLine inherits Rectangle {
         border-radius: 8px;
         background: open ? (na.has-hover ? G.accent-ink : G.accent) : (na.has-hover ? G.node-hover : transparent);
         border-width: open ? 0 : 1px;
-        border-color: #55575F;
+        border-color: G.ghost;
         HorizontalLayout {
             alignment: center; spacing: 4px; width: parent.width - 10px; x: 5px;
-            Text { text: r.next-name; font-size: 13px; font-weight: 600; color: open ? #1C1D21 : G.ink; vertical-alignment: center; overflow: elide; }
-            Icon { name: "next"; width: 11px; y: (parent.height - 11px) / 2; c: open ? #1C1D21 : G.ink; }
+            Text { text: r.next-name; font-size: 13px; font-weight: 600; color: open ? G.bg : G.ink; vertical-alignment: center; overflow: elide; }
+            Icon { name: "next"; width: 11px; y: (parent.height - 11px) / 2; c: open ? G.bg : G.ink; }
         }
         na := TouchArea { clicked => { S.next-stage(r.list-id, r.id); } mouse-cursor: pointer; }
     }
@@ -103,14 +103,14 @@ component PipeLine inherits Rectangle {
                     border-radius: 8px;
                     background: b.state == 1 ? G.accent-wash : transparent;
                     border-width: 1px;
-                    border-color: b.state == 1 ? G.accent-line : b.state == 0 ? #3F6B47 : G.line;
+                    border-color: b.state == 1 ? G.accent-line : b.state == 0 ? #9CCBA5.mix(#3F6B47, G.lt) : G.line;
                     hd := Rectangle {
                         y: 0; height: b.state == 1 ? 44px : 34px;
                         if b.state == 0: Icon { x: 10px; y: (parent.height - 12px) / 2; width: 12px; height: 12px; name: "check"; c: G.green; }
-                        Text { x: b.state == 0 ? 28px : 12px; width: parent.width * 0.45; text: b.name; font-size: 13px; font-weight: 600; color: b.state == 0 ? G.green : b.state == 1 ? G.ink : #8A8C96; vertical-alignment: center; height: b.state == 1 ? 30px : parent.height; overflow: elide; }
-                        Text { x: parent.width - self.preferred-width - 12px; text: b.info; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: b.state == 1 ? G.accent-ink : #8A8C96; vertical-alignment: center; height: b.state == 1 ? 30px : parent.height; }
+                        Text { x: b.state == 0 ? 28px : 12px; width: parent.width * 0.45; text: b.name; font-size: 13px; font-weight: 600; color: b.state == 0 ? G.green : b.state == 1 ? G.ink : G.sub; vertical-alignment: center; height: b.state == 1 ? 30px : parent.height; overflow: elide; }
+                        Text { x: parent.width - self.preferred-width - 12px; text: b.info; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: b.state == 1 ? G.accent-ink : G.sub; vertical-alignment: center; height: b.state == 1 ? 30px : parent.height; }
                         if b.state == 1: Rectangle {
-                            x: 12px; y: 32px; width: parent.width - 24px; height: 3px; border-radius: 1.5px; background: #45464D;
+                            x: 12px; y: 32px; width: parent.width - 24px; height: 3px; border-radius: 1.5px; background: G.line-mid;
                             Rectangle { x: 0; width: parent.width * (b.total > 0 ? b.done-n / b.total : 0); border-radius: 1.5px; background: G.accent; }
                         }
                         if b.state != 1: TouchArea { clicked => { root.past-open = root.past-open == bi ? -1 : bi; } mouse-cursor: pointer; }
@@ -123,7 +123,7 @@ component PipeLine inherits Rectangle {
                             background: root.drag-b == bi && root.drag-to == si && root.drag-to != root.drag-i ? G.accent-wash : transparent;
                             Rectangle {
                                 x: 0; width: 18px;
-                                Icon { x: 0; y: 7px; width: 14px; height: 14px; name: "drag"; c: hda.has-hover || (root.drag-b == bi && root.drag-i == si) ? G.ink : #55575F; }
+                                Icon { x: 0; y: 7px; width: 14px; height: 14px; name: "drag"; c: hda.has-hover || (root.drag-b == bi && root.drag-i == si) ? G.ink : G.ghost; }
                                 hda := TouchArea {
                                     mouse-cursor: move;
                                     pointer-event(e) => {
@@ -142,12 +142,12 @@ component PipeLine inherits Rectangle {
                             }
                             Rectangle {
                                 x: 20px; y: 7px; width: 14px; height: 14px; border-radius: 3px;
-                                background: sb.done ? #45464D : transparent;
-                                border-width: sb.done ? 0 : 1px; border-color: #8A8C96;
+                                background: sb.done ? G.line-mid : transparent;
+                                border-width: sb.done ? 0 : 1px; border-color: G.sub;
                                 Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; visible: sb.done; c: G.ink; stroke-width: 2.2px; }
                             }
-                            st := Text { x: 42px; text: sb.title; font-size: 13px; color: sb.done ? #62646E : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 48px; }
-                            if sb.done: Rectangle { x: 42px; y: 14px; height: 1px; width: min(st.preferred-width, parent.width - 48px); background: #62646E; }
+                            st := Text { x: 42px; text: sb.title; font-size: 13px; color: sb.done ? G.faint : G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 48px; }
+                            if sb.done: Rectangle { x: 42px; y: 14px; height: 1px; width: min(st.preferred-width, parent.width - 48px); background: G.faint; }
                             TouchArea { x: 20px; width: parent.width - 20px; clicked => { S.toggle(r.list-id, sb.id); } mouse-cursor: pointer; }
                         }
                         Field { height: 30px; bare: true; font-size: 12.5px; placeholder: "+ подзадача · Enter"; accepted(t) => { if (t != "") { S.pipe-sub-add(r.list-id, r.id, b.stage-id, t); self.clear(); } } }
@@ -193,14 +193,14 @@ component PipeLine inherits Rectangle {
             Rectangle {
                 width: rpt.preferred-width + 20px; border-radius: 7px; border-width: 1px; border-color: root.rpop ? G.accent : G.line;
                 background: rpa.has-hover ? G.node-hover : transparent;
-                rpt := Text { text: S.pipe-remind-n > 2 ? "+" + (S.pipe-remind-n - 2) : "＋"; font-size: 12px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+                rpt := Text { text: S.pipe-remind-n > 2 ? "+" + (S.pipe-remind-n - 2) : "＋"; font-size: 12px; color: G.ink2; horizontal-alignment: center; vertical-alignment: center; }
                 rpa := TouchArea { clicked => { root.rpop = !root.rpop; } mouse-cursor: pointer; }
             }
         }
         Rectangle {
             x: rx; y: 90px; width: parent.width - rx - 20px; height: 184px;
-            border-radius: 8px; background: #2C2D33; border-width: 1px; border-color: G.line;
-            Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
+            border-radius: 8px; background: G.node-hover; border-width: 1px; border-color: G.line;
+            Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: G.sub; }
             IconBtn { x: parent.width - 30px; y: 4px; icon: "expand"; clicked => { S.open-task(r.list-id, r.id); } }
             pn := MdNote {
                 x: 10px; y: 30px; width: parent.width - 20px; height: parent.height - 38px;
@@ -215,12 +215,12 @@ component PipeLine inherits Rectangle {
             x: 36px; y: 287px; width: parent.width - 56px; height: 52px;
             spacing: 14px;
             if S.pipe-prev != "": Text {
-                text: "← " + S.pipe-prev; font-size: 12.5px; color: ba.has-hover ? G.ink : #A3A5AE; vertical-alignment: center;
+                text: "← " + S.pipe-prev; font-size: 12.5px; color: ba.has-hover ? G.ink : G.grey; vertical-alignment: center;
                 ba := TouchArea { clicked => { S.pipe-back(r.list-id, r.id); } mouse-cursor: pointer; }
             }
             if S.pipe-total != "": HorizontalLayout {
                 spacing: 8px;
-                Icon { y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "timer"; c: #A3A5AE; }
+                Icon { y: (parent.height - 14px) / 2; width: 14px; height: 14px; name: "timer"; c: G.grey; }
                 Text { text: S.pipe-total; font-size: 12.5px; color: G.ink; vertical-alignment: center; }
             }
             if S.pipe-segs.length > 0: VerticalLayout {
@@ -232,11 +232,11 @@ component PipeLine inherits Rectangle {
                         for sg in S.pipe-segs: Rectangle {
                             horizontal-stretch: max(0.02, sg.w);
                             border-radius: 2px;
-                            background: sg.kind == 0 ? G.green : sg.kind == 1 ? G.accent : #45464D;
+                            background: sg.kind == 0 ? G.green : sg.kind == 1 ? G.accent : G.line-mid;
                         }
                     }
                 }
-                Text { text: S.pipe-caption; font-family: G.mono; font-size: 9px; letter-spacing: 1.1px; color: #8A8C96; overflow: elide; }
+                Text { text: S.pipe-caption; font-family: G.mono; font-size: 9px; letter-spacing: 1.1px; color: G.sub; overflow: elide; }
             }
             if S.pipe-segs.length == 0: Rectangle { }
             Rectangle { width: oft.preferred-width; }   // место под «Открыть полностью»
@@ -252,7 +252,7 @@ component PipeLine inherits Rectangle {
     if open && root.rpop: Pop {
         x: 36px + min(440px, parent.width * 0.5) + 24px; y: 82px + 4px; width: 200px; height: S.pipe-reminds.length * 30px + 10px; z: 30;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         VerticalLayout {
             padding: 5px;
             for o in S.pipe-reminds: Rectangle {
@@ -279,7 +279,7 @@ export component Pipe inherits Rectangle {
                     spacing: 8px;
                     Rectangle { width: 6px; height: 6px; y: 8px; border-radius: 2px; background: G.accent; }
                     Text { text: r.group; font-size: 13px; font-weight: 600; color: G.ink; vertical-alignment: center; }
-                    Text { text: r.group-info; font-size: 12px; color: #8A8C96; vertical-alignment: center; }
+                    Text { text: r.group-info; font-size: 12px; color: G.sub; vertical-alignment: center; }
                     Rectangle { }
                 }
                 PipeLine { r: r; }
@@ -289,7 +289,7 @@ export component Pipe inherits Rectangle {
                 height: 40px;
                 border-radius: 8px;
                 border-width: 1px;
-                border-color: #55575F;
+                border-color: G.ghost;
                 Field { x: 6px; y: 3px; width: parent.width - 12px; bare: true; font-size: 13px; placeholder: "+ Новый ассет · Enter"; accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } } }
             }
         }

@@ -206,7 +206,7 @@ export component CanvasView inherits Rectangle {
             border-width: far ? 0 : 1px;
             border-color: n.sel ? nd.hue : (n.kind == "text" ? (n.colored ? n.head : G.gold.with-alpha(0.55)) : G.line);
             drop-shadow-blur: n.sel ? 18px : 0;
-            drop-shadow-color: #0008;
+            drop-shadow-color: #0008.transparentize(1 - G.shade);
             clip: true;
             // шапка (у карточки-текста — без заливки, подпись цветом)
             // мелкий масштаб: одна плашка цвета ноды с крупным названием в несколько строк
@@ -496,7 +496,7 @@ export component CanvasView inherits Rectangle {
         if e.label != "" && S.cv-edit != e.id && root.k >= 0.2: Rectangle {
             x: root.sx(mx) - self.width / 2; y: root.sy(my) - self.height / 2;
             width: lt.preferred-width + 12px; height: 18px;
-            background: #191A1E; border-radius: 4px;
+            background: G.ground; border-radius: 4px;
             lt := Text { text: e.label.to-uppercase(); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: e.sel ? G.ink : G.muted; horizontal-alignment: center; vertical-alignment: center; }
             TouchArea { double-clicked => { S.cv-edit-start(e.id); } clicked => { S.cv-edge-pick(mx, my, 1); } }
         }
@@ -543,7 +543,7 @@ export component CanvasView inherits Rectangle {
         HorizontalLayout {
             padding-left: 12px; padding-right: 12px; spacing: 6px; alignment: start;
             Text { text: "ХОЛСТ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: G.ink; vertical-alignment: center; }
-            Mono { text: S.cv-crumb; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; overflow: elide; max-width: 260px; }
+            Mono { text: S.cv-crumb; font-size: 9.5px; letter-spacing: 1.3px; color: G.sub; vertical-alignment: center; overflow: elide; max-width: 260px; }
             Rectangle { width: 1px; height: 22px; y: 13px; background: G.line; }
             Rectangle { width: 2px; }
             VerticalLayout { alignment: center; ToolBtn { text: "Заметка"; icon: "plus"; outlined: true; clicked => { root.picking = !root.picking; } } }
@@ -554,7 +554,7 @@ export component CanvasView inherits Rectangle {
         HorizontalLayout {
             x: parent.width - self.preferred-width - 12px; width: self.preferred-width;
             spacing: 14px; alignment: end;
-            if parent.width > 900px: Mono { text: "ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"; font-size: 9.5px; letter-spacing: 1.3px; color: #62646E; vertical-alignment: center; }
+            if parent.width > 900px: Mono { text: "ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"; font-size: 9.5px; letter-spacing: 1.3px; color: G.faint; vertical-alignment: center; }
             VerticalLayout { alignment: center; ToolBtn { text: "Авто-раскладка"; accent: true; clicked => { S.cv-key("layout", 0, 0); } } }
         }
     }
@@ -597,7 +597,7 @@ export component CanvasView inherits Rectangle {
         Text {
             x: 72px; width: parent.width - 86px; height: parent.height;
             text: "Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка.";
-            font-size: 12.5px; color: #C9CBD3; wrap: word-wrap; vertical-alignment: center;
+            font-size: 12.5px; color: G.ink2; wrap: word-wrap; vertical-alignment: center;
         }
     }
     if S.cv-err != "": Rectangle {

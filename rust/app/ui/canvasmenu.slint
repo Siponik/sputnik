@@ -16,7 +16,7 @@ export component ToolBtn inherits Rectangle {
     border-width: outlined ? 1px : 0;
     border-color: G.line-strong;
     if icon != "": Icon { name: root.icon; x: 10px; width: 13px; y: (parent.height - 13px) / 2; c: root.outlined ? G.ink : G.muted; }
-    lb := Text { x: icon != "" ? 28px : 12px; text: root.text; font-size: 13px; color: root.accent ? G.accent : (root.outlined ? G.ink : #C9CBD3); vertical-alignment: center; height: parent.height; }
+    lb := Text { x: icon != "" ? 28px : 12px; text: root.text; font-size: 13px; color: root.accent ? G.accent : (root.outlined ? G.ink : G.ink2); vertical-alignment: center; height: parent.height; }
     ta := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 
@@ -26,7 +26,7 @@ export component SelMenu inherits Rectangle {
     callback zoom();
     width: row.preferred-width + 12px; height: 38px;
     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-    drop-shadow-blur: 20px; drop-shadow-offset-y: 6px; drop-shadow-color: #00000070;
+    drop-shadow-blur: 20px; drop-shadow-offset-y: 6px; drop-shadow-color: #00000070.transparentize(1 - G.shade);
     TouchArea { }
     row := HorizontalLayout {
         x: 6px; spacing: 2px; alignment: start; padding-top: 5px; padding-bottom: 5px;
@@ -47,7 +47,7 @@ export component SelMenu inherits Rectangle {
         // в сторону от объекта: меню над ним — цвета ещё выше
         x: 0; y: root.below ? parent.height + 6px : -self.height - 6px; width: prow.preferred-width + 16px; height: 34px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #00000070;
+        drop-shadow-blur: 16px; drop-shadow-color: #00000070.transparentize(1 - G.shade);
         TouchArea { }
         prow := HorizontalLayout {
             x: 8px; spacing: 8px; alignment: start;
@@ -71,7 +71,7 @@ export component NotePick inherits Rectangle {
     property <string> q;
     width: 320px; height: 44px + min(8, S.cv-note-find(root.q).length) * 32px;
     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-    drop-shadow-blur: 24px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000080;
+    drop-shadow-blur: 24px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000080.transparentize(1 - G.shade);
     TouchArea { }
     Field {
         x: 6px; y: 6px; width: parent.width - 12px; height: 32px; placeholder: "Найти заметку";

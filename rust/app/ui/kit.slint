@@ -20,9 +20,9 @@ export component Socket inherits Rectangle {
     width: 10px;
     height: 10px;
     border-radius: 3px;
-    background: ring ? #191A1E : hue;
+    background: ring ? G.ground : hue;
     border-width: 1.5px;
-    border-color: ring ? hue : #191A1E;
+    border-color: ring ? hue : G.ground;
 }
 
 // Провод: безье M x1 y1 C x1+k y1, x2-k y2, x2 y2, толщина 1.5, цвет источника.
@@ -287,7 +287,7 @@ export component Overlay inherits Rectangle {
     callback close;
     callback dismiss;
     dismiss => { root.close(); }
-    background: #0009;
+    background: #0009.transparentize(1 - G.shade);
     TouchArea { clicked => { root.dismiss(); } }
     @children
 }
@@ -322,11 +322,11 @@ export component Sat inherits Rectangle {
     in property <color> c: G.accent;
     width: 46px; height: 46px;
     border-radius: self.width / 2;
-    background: #1C1D21;
-    border-width: 1px; border-color: #3A3B42;
+    background: G.bg;
+    border-width: 1px; border-color: G.line;
     property <float> k: self.width / 46px;
     property <angle> a: animation-tick() / 8s * 360deg;
-    Rectangle { x: (parent.width - 28px * k) / 2; y: self.x; width: 28px * k; height: self.width; border-radius: self.width / 2; border-width: 1px; border-color: #55575F; }
+    Rectangle { x: (parent.width - 28px * k) / 2; y: self.x; width: 28px * k; height: self.width; border-radius: self.width / 2; border-width: 1px; border-color: G.ghost; }
     Rectangle { x: (parent.width - 8px * k) / 2; y: self.x; width: 8px * k; height: self.width; border-radius: self.width / 2; background: G.ink; }
     Rectangle {
         width: 7px * k; height: self.width; border-radius: self.width / 2; background: root.c;
@@ -396,7 +396,7 @@ export component CSeg inherits Rectangle {
         background: i != current && sa.has-hover ? G.node-hover : transparent;
         Text {
             text: it; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.2px;
-            color: i == current ? #1C1D21 : G.dim; horizontal-alignment: center; vertical-alignment: center;
+            color: i == current ? G.bg : G.dim; horizontal-alignment: center; vertical-alignment: center;
             animate color { duration: G.motion == 2 ? 0ms : 120ms; }
         }
         sa := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
@@ -406,7 +406,7 @@ export component CSeg inherits Rectangle {
 
 // Стрелка выпадающего списка (символ ▾ есть не во всех шрифтах Windows).
 export component Chev inherits Path {
-    in property <color> c: #A3A5AE;
+    in property <color> c: G.grey;
     in property <bool> up;
     width: 10px; height: 10px;
     viewbox-width: 10; viewbox-height: 10;
@@ -469,7 +469,7 @@ component Bar inherits Rectangle {
         x: root.vertical ? 0 : root.at; y: root.vertical ? root.at : 0;
         width: root.vertical ? parent.width : root.thumb; height: root.vertical ? root.thumb : parent.height;
         border-radius: 3px;
-        background: ta.has-hover || ta.pressed ? #8A8C96 : #6E7079;
+        background: ta.has-hover || ta.pressed ? G.sub : G.line-strong;
         ta := TouchArea {
             property <length> start;
             pointer-event(e) => { if (e.kind == PointerEventKind.down) { self.start = root.pos; } }
@@ -518,7 +518,7 @@ export component LabelHint inherits Rectangle {
     in property <string> label;
     in property <string> hint;
     in property <color> label-color: G.ink;
-    in property <color> hint-color: #7A7C86;
+    in property <color> hint-color: G.dim;
     in property <length> label-size: 12.5px;
     in property <length> hint-size: 11px;
     in property <int> label-weight: 400;
@@ -560,7 +560,7 @@ export component UpdBar inherits Rectangle {
             x: (parent.width * 1.3) * root.t - self.width;
         }
     }
-    Text { y: 12px; text: root.text; font-family: G.mono; font-size: 10.5px; letter-spacing: 0.6px; color: #A3A5AE; overflow: elide; width: parent.width; }
+    Text { y: 12px; text: root.text; font-family: G.mono; font-size: 10.5px; letter-spacing: 0.6px; color: G.grey; overflow: elide; width: parent.width; }
 }
 
 // Ошибка обновления: что случилось и что сделать, с красной чертой слева; появляется проявлением.
@@ -577,6 +577,6 @@ export component UpdFail inherits Rectangle {
         x: 12px; width: parent.width - 12px;
         spacing: 3px;
         Text { text: root.what; color: G.ink; font-size: 13px; font-weight: 500; wrap: word-wrap; }
-        Text { text: root.hint; color: #A3A5AE; font-size: 12px; wrap: word-wrap; }
+        Text { text: root.hint; color: G.grey; font-size: 12px; wrap: word-wrap; }
     }
 }

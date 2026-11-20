@@ -19,8 +19,8 @@ export component ModeSwitch inherits Rectangle {
                 background: i == root.current ? G.accent : (ma.has-hover ? G.node-hover : transparent);
                 HorizontalLayout {
                     alignment: center; spacing: 6px;
-                    Icon { name: it.ic; width: 13px; y: (parent.height - 13px) / 2; c: i == root.current ? G.on-accent : #C9CAD0; }
-                    Text { text: it.t; font-size: 13px; font-weight: i == root.current ? 600 : 400; color: i == root.current ? #1C1D21 : #C9CAD0; vertical-alignment: center; }
+                    Icon { name: it.ic; width: 13px; y: (parent.height - 13px) / 2; c: i == root.current ? G.on-accent : G.ink2; }
+                    Text { text: it.t; font-size: 13px; font-weight: i == root.current ? 600 : 400; color: i == root.current ? G.bg : G.ink2; vertical-alignment: center; }
                 }
                 ma := TouchArea { mouse-cursor: pointer; clicked => { root.picked(i); } }
             }
@@ -94,7 +94,7 @@ export component GraphFilters inherits Rectangle {
                     for t[i] in ["ВЕСЬ", "ЛОКАЛЬНЫЙ"]: Rectangle {
                         min-width: st.preferred-width + 20px; border-radius: 4px;
                         background: (i == 1) == S.graph-local ? G.ink : (sa.has-hover ? G.node-hover : transparent);
-                        st := Text { text: t; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: (i == 1) == S.graph-local ? #1C1D21 : G.muted; horizontal-alignment: center; vertical-alignment: center; }
+                        st := Text { text: t; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; color: (i == 1) == S.graph-local ? G.bg : G.muted; horizontal-alignment: center; vertical-alignment: center; }
                         sa := TouchArea { mouse-cursor: pointer; clicked => { S.graph-local-set(i == 1); } }
                     }
                 }
@@ -226,7 +226,7 @@ export component GraphView inherits Rectangle {
     }
     if root.hov-t != "": Rectangle {
         x: root.hov-x - self.width / 2; y: root.hov-y + 4px;
-        width: hl.preferred-width + 12px; height: 20px; border-radius: 5px; background: #1C1D21E0;
+        width: hl.preferred-width + 12px; height: 20px; border-radius: 5px; background: G.bg.with-alpha(0.88);
         hl := Text { text: root.hov-t; font-size: 12px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
     }
     }
@@ -264,7 +264,7 @@ component Btn inherits Rectangle {
     height: 30px; border-radius: 6px;
     border-width: acc ? 0 : 1px; border-color: G.line-strong;
     background: acc ? (ba.has-hover ? G.accent.brighter(0.1) : G.accent) : (ba.has-hover ? G.node-hover : transparent);
-    Text { text: root.t; font-size: 13px; font-weight: root.acc ? 600 : 500; color: root.acc ? #1C1D21 : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+    Text { text: root.t; font-size: 13px; font-weight: root.acc ? 600 : 500; color: root.acc ? G.bg : G.ink; horizontal-alignment: center; vertical-alignment: center; }
     ba := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
 }
 

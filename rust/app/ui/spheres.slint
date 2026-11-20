@@ -17,7 +17,7 @@ export component GBtn inherits Rectangle {
     border-width: kind == "sec" ? 1px : 0;
     border-color: G.line-strong;
     bt := Text { text: root.text; font-size: sm ? 12.5px : 13px; font-weight: kind == "acc" ? 600 : 500;
-        color: kind == "acc" ? #1C1D21 : kind == "ghost" && root.ink == G.ink ? G.muted : root.ink; horizontal-alignment: center; vertical-alignment: center; }
+        color: kind == "acc" ? G.bg : kind == "ghost" && root.ink == G.ink ? G.muted : root.ink; horizontal-alignment: center; vertical-alignment: center; }
     ba := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -123,7 +123,7 @@ component SphEditor inherits Rectangle {
                     if row.last && !root.adding: Rectangle {
                         width: at.preferred-width + 24px; border-radius: 8px; border-width: 1px; border-color: G.line;
                         background: aa.has-hover ? G.node-hover : transparent;
-                        at := Text { text: "＋ Добавить"; font-size: 13px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+                        at := Text { text: "＋ Добавить"; font-size: 13px; color: G.ink2; horizontal-alignment: center; vertical-alignment: center; }
                         aa := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
                     }
                 }
@@ -191,7 +191,7 @@ export component SpheresPage inherits Rectangle {
                 VerticalLayout { y: 36px; padding-left: 12px; padding-right: 12px; alignment: start;
                     for a[i] in S.sph-arch3: Rectangle { height: 36px;
                         Rectangle { y: 14px; width: 8px; height: 8px; x: 0; border-radius: 2px; background: a.head.brighter(0.6); }
-                        Text { x: 18px; text: a.name; font-size: 13px; color: #C9CAD0; vertical-alignment: center; height: parent.height; width: parent.width - 330px; overflow: elide; }
+                        Text { x: 18px; text: a.name; font-size: 13px; color: G.ink2; vertical-alignment: center; height: parent.height; width: parent.width - 330px; overflow: elide; }
                         Text { x: parent.width - 312px; width: 110px; horizontal-alignment: right; text: (a.kind == "sphere" ? "СФЕРА" : "СПИСОК") + " · " + a.date.to-uppercase(); font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
                         GBtn { x: parent.width - 192px; y: 4px; sm: true; text: "Вернуть"; clicked => { S.sph-archive(a.kind, a.id, false); } }
                         if i == 0: GBtn { x: parent.width - self.width; y: 4px; sm: true; kind: "ghost"; text: "Весь архив"; clicked => { S.sph-close(); S.open-archive(); S.arch-tab-set(1); } }
@@ -228,10 +228,10 @@ export component ArchSpheres inherits Rectangle {
                 height: 90px;
                 Rectangle {
                     x: 16px; y: 16px; width: parent.width - 32px; height: 62px;
-                    border-radius: 8px; border-width: 1px; border-color: #55575F;
+                    border-radius: 8px; border-width: 1px; border-color: G.ghost;
                     Sat { x: 12px; y: 12px; width: 38px; height: 38px; c: G.gold; }
                     Text { x: 60px; width: parent.width - 72px; text: S.sph-arch.length == 0 ? "Сфер и списков в архиве нет. Убрать их сюда — правой кнопкой по сфере или списку → «В архив»." : "Сфера в архиве не видна нигде, кроме этой вкладки. Задачи из неё не удаляются из Google. «Удалить навсегда» — в меню ···.";
-                        font-size: 12.5px; color: #C9CAD0; vertical-alignment: center; height: parent.height; wrap: word-wrap; }
+                        font-size: 12.5px; color: G.ink2; vertical-alignment: center; height: parent.height; wrap: word-wrap; }
                 }
             }
         }

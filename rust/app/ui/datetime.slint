@@ -15,9 +15,9 @@ component Chip inherits Rectangle {
     border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent.transparentize(0.85) : (ta.has-hover ? G.node-hover : transparent);
-    if busy && !on: Rectangle { x: 3px; y: parent.height - 5px; width: parent.width - 6px; height: 2px; background: #55575F; }
-    ct := Text { visible: root.icon == ""; text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
-    if root.icon != "": Icon { name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: on ? G.accent-ink : #A3A5AE; }
+    if busy && !on: Rectangle { x: 3px; y: parent.height - 5px; width: parent.width - 6px; height: 2px; background: G.ghost; }
+    ct := Text { visible: root.icon == ""; text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : G.grey; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
+    if root.icon != "": Icon { name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: on ? G.accent-ink : G.grey; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
 
@@ -44,7 +44,7 @@ export component DatePicker inherits Node {
     width: max(860px, dpb.preferred-width);
     height: min(34px + dpb.preferred-height, root.max-h);   // у ScrollView нет своей высоты — меряем содержимое
     drop-shadow-blur: 24px;
-    drop-shadow-color: #000b;
+    drop-shadow-color: #000b.transparentize(1 - G.shade);
     body := ScrollView {
         viewport-height: dpb.preferred-height;
         dpb := VerticalLayout {
@@ -139,7 +139,7 @@ export component DueDrop inherits Rectangle {
     Catch { clicked => { S.dp-dismiss(); } }
     Pop {
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 16px; drop-shadow-color: #0009;
+        drop-shadow-blur: 16px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         TouchArea { }
         Text { x: 12px; y: 0; height: 40px; text: S.dp-month; font-size: 13.5px; font-weight: 600; color: G.ink; vertical-alignment: center; }
         for st[k] in [-1, 1]: Rectangle {
@@ -149,13 +149,13 @@ export component DueDrop inherits Rectangle {
             sa := TouchArea { clicked => { S.dp-month-step(st); } mouse-cursor: pointer; }
         }
         for d[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
-            x: 10px + i * 35px; y: 44px; width: 35px; text: d; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center;
+            x: 10px + i * 35px; y: 44px; width: 35px; text: d; font-family: G.mono; font-size: 9.5px; color: G.sub; horizontal-alignment: center;
         }
         for c[i] in S.dp-cells: Rectangle {
             x: 10px + mod(i, 7) * 35px; y: 64px + floor(i / 7) * 32px; width: 33px; height: 30px; border-radius: 5px;
             background: c.sel ? G.accent : (ca.has-hover ? G.node-hover : transparent);
             border-width: c.today && !c.sel ? 1px : 0; border-color: G.accent;
-            Text { text: c.n; font-size: 13px; color: c.sel ? G.on-accent : (c.other ? #5A5C66 : G.ink); horizontal-alignment: center; vertical-alignment: center; }
+            Text { text: c.n; font-size: 13px; color: c.sel ? G.on-accent : (c.other ? G.other : G.ink); horizontal-alignment: center; vertical-alignment: center; }
             ca := TouchArea { clicked => { S.dp-day(c.day); S.dp-done(); } mouse-cursor: pointer; }
         }
         HorizontalLayout {
@@ -171,7 +171,7 @@ export component DueDrop inherits Rectangle {
         if root.clearable: Rectangle {
             x: 10px; y: parent.height - 42px; width: parent.width - 20px; height: 30px; border-radius: 5px;
             background: na.has-hover ? G.node-hover : transparent;
-            Text { x: 10px; text: "Без срока"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+            Text { x: 10px; text: "Без срока"; font-size: 12px; color: G.grey; vertical-alignment: center; height: parent.height; }
             na := TouchArea { clicked => { S.dp-quick-set("none"); S.dp-done(); } mouse-cursor: pointer; }
         }
     }

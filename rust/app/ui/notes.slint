@@ -73,7 +73,7 @@ export component LiveLine inherits Rectangle {
     if (line.kind == "todo" || line.kind == "done") && !editing: Rectangle {
         x: 0; y: pad + fs * 0.62 - 6.5px; width: 13px; height: 13px; border-radius: 3px;
         border-width: 1.2px; border-color: line.kind == "done" ? G.accent : G.muted; background: line.kind == "done" ? G.accent : transparent;
-        if line.kind == "done": Icon { name: "check"; width: 9px; x: 2px; y: 2px; c: #1C1D21; stroke-width: 2.4px; }
+        if line.kind == "done": Icon { name: "check"; width: 9px; x: 2px; y: 2px; c: G.bg; stroke-width: 2.4px; }
     }
     if line.kind == "img" && !editing: Rectangle {
         y: pad; height: parent.height - pad - 5px; border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
@@ -84,7 +84,7 @@ export component LiveLine inherits Rectangle {
         text: line.md;
         default-font-size: fs;
         default-font-family: line.kind == "code" ? G.mono : G.sans;
-        default-color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? #B9BBC4 : (h ? G.ink : #D8DAE2)));
+        default-color: line.kind == "done" || line.kind == "img" ? G.muted : (line.kind == "code" ? G.gold : (line.kind == "quote" ? G.ink3 : (h ? G.ink : G.ink1)));
         link-color: G.accent;
         link-clicked(l) => { root.linked(l); }
     }
@@ -161,7 +161,7 @@ export component LiveLine inherits Rectangle {
         x: root.ind; y: -self.height - 6px; width: min(360px, root.width - root.ind);
         height: min(220px, pv.preferred-height + 16px);
         border-radius: 10px; background: G.node; border-width: 1px; border-color: G.accent-line;
-        drop-shadow-blur: 18px; drop-shadow-color: #000a; clip: true;
+        drop-shadow-blur: 18px; drop-shadow-color: #000a.transparentize(1 - G.shade); clip: true;
         TouchArea { mouse-cursor: pointer; clicked => { S.note-link(S.peek-title); } }
         pv := VerticalLayout {
             x: 12px; y: 8px; width: parent.width - 24px; spacing: 4px; alignment: LayoutAlignment.start;
@@ -169,7 +169,7 @@ export component LiveLine inherits Rectangle {
                 Text { text: S.peek-title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; horizontal-stretch: 1; }
                 Text { text: "CTRL + КЛИК"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: G.muted; vertical-alignment: center; }
             }
-            if S.peek-sub != "": Text { text: S.peek-sub; font-family: G.mono; font-size: 10px; color: #8A8C96; overflow: elide; }
+            if S.peek-sub != "": Text { text: S.peek-sub; font-family: G.mono; font-size: 10px; color: G.sub; overflow: elide; }
             for l in S.peek-rows: MdLine { line: l; fs: 12px; }
         }
     }
@@ -179,7 +179,7 @@ export component LiveLine inherits Rectangle {
         x: root.ind; y: -self.height - 4px; width: min(320px, root.width - root.ind);
         height: 8px + min(6, S.link-found.length) * 30px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        drop-shadow-blur: 14px; drop-shadow-color: #0009;
+        drop-shadow-blur: 14px; drop-shadow-color: #0009.transparentize(1 - G.shade);
         for f[k] in S.link-found: Rectangle {
             x: 4px; y: 4px + k * 30px; width: parent.width - 8px; height: 30px; visible: k < 6;
             border-radius: 6px; background: k == root.hint-i || fa.has-hover ? G.node-hover : transparent;
@@ -235,7 +235,7 @@ component TreeLine inherits Rectangle {
             if r.kind == "dir": Icon { name: "folder"; width: 14px; y: 7px; c: r.depth == 0 || r.own ? r.hue : G.dim; }
             if r.kind == "note": Icon { name: "note"; width: 14px; y: 7px; c: G.dim; }
             if r.kind == "canvas": Icon { name: "canvas"; width: 14px; y: 7px; c: G.dim; }
-            Text { horizontal-stretch: 1; text: r.title; font-size: 13px; color: root.on || (r.kind == "dir" && r.depth == 0) ? G.ink : #C9CAD0; vertical-alignment: center; overflow: elide; }
+            Text { horizontal-stretch: 1; text: r.title; font-size: 13px; color: root.on || (r.kind == "dir" && r.depth == 0) ? G.ink : G.ink2; vertical-alignment: center; overflow: elide; }
             if r.kind != "dir" && r.open: Icon { name: "pin"; width: 12px; y: 8px; c: G.accent; }
             if r.n != "": Text { text: r.n; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; }
         }
@@ -260,10 +260,10 @@ component NoteList inherits VerticalLayout {
         background: r.path != "" && r.path == cur ? G.accent-wash : (r.path != "" && na.has-hover ? G.node-hover : transparent);
         if r.path != "" && r.path == cur: Rectangle { x: 0; width: 2px; background: G.accent; }
         if r.path == "": Rectangle { x: 14px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: #7C7E88; }
-        if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
-        if r.path == "": Text { x: parent.width - self.preferred-width - 12px; y: 6px; height: 22px; text: r.sub; font-family: G.mono; font-size: 10px; color: #62646E; vertical-alignment: center; }
+        if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.sub; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
+        if r.path == "": Text { x: parent.width - self.preferred-width - 12px; y: 6px; height: 22px; text: r.sub; font-family: G.mono; font-size: 10px; color: G.faint; vertical-alignment: center; }
         if r.sub == "canvas": Icon { name: "canvas"; x: 10px; width: 13px; y: 8.5px; c: r.path == cur ? G.accent : G.muted; }
-        if r.path != "": Text { x: 28px; width: parent.width - 40px; text: r.title; color: r.path == cur ? G.ink : #C9CBD3; font-size: 13px; vertical-alignment: center; overflow: elide; }
+        if r.path != "": Text { x: 28px; width: parent.width - 40px; text: r.title; color: r.path == cur ? G.ink : G.ink2; font-size: 13px; vertical-alignment: center; overflow: elide; }
         na := TouchArea { enabled: r.path != ""; clicked => { if (!root.dragging) { S.note-open(r.path); } } mouse-cursor: pointer;
             pointer-event(e) => {
                 if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", r.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); }
@@ -416,12 +416,12 @@ export component NotesPage inherits Rectangle {
         if S.note-path == "" && S.notes-count != 0: Empty { y: 44px; height: parent.height - 44px; text: "Выбери заметку слева"; pose: "sleep"; }
         if S.note-path != "" && !S.note-canvas: Rectangle {
             y: 44px; height: 40px;
-            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 200px; }
+            Text { x: 16px; text: S.note-crumb; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: G.sub; vertical-alignment: center; overflow: elide; width: parent.width - 200px; }
             Rectangle {
                 x: parent.width - self.width - 12px; y: 6px; width: ft.preferred-width + 40px; height: 28px; border-radius: 6px;
                 border-width: 1px; border-color: root.zen ? G.accent : G.line; background: fa.has-hover ? G.node-hover : transparent;
                 Icon { name: "focus"; x: 9px; width: 14px; y: 7px; c: root.zen ? G.accent : G.muted; }
-                ft := Text { x: 29px; text: "ФОКУС · CTRL E"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: root.zen ? G.accent-ink : #A3A5AE; vertical-alignment: center; }
+                ft := Text { x: 29px; text: "ФОКУС · CTRL E"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: root.zen ? G.accent-ink : G.grey; vertical-alignment: center; }
                 fa := TouchArea { mouse-cursor: pointer; clicked => { root.zen = !root.zen; } }
                 Tip { text: "Фокус — только заметка на весь экран"; on: fa.has-hover; }
             }
@@ -430,7 +430,7 @@ export component NotesPage inherits Rectangle {
                 x: parent.width - self.width - 20px - ft.preferred-width - 40px; y: 6px; width: tbt.preferred-width + 40px; height: 28px; border-radius: 6px;
                 border-width: 1px; border-color: G.line; background: tba.has-hover ? G.node-hover : transparent;
                 Icon { name: "board"; x: 9px; width: 14px; y: 7px; c: G.muted; }
-                tbt := Text { x: 29px; text: "ТАБЛИЦА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: #A3A5AE; vertical-alignment: center; }
+                tbt := Text { x: 29px; text: "ТАБЛИЦА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.grey; vertical-alignment: center; }
                 tba := TouchArea { mouse-cursor: pointer; clicked => { S.note-table(root.edit-i); root.edit-i = -1; } }
                 Tip { text: "Вставить таблицу"; on: tba.has-hover; }
             }
@@ -520,7 +520,7 @@ export component NotesPage inherits Rectangle {
                             border-radius: 8px; background: has ? (bb.has-hover ? G.node-hover : G.bg) : transparent;
                             border-width: has ? 1px : 0; border-color: G.line;
                             if has: Text { x: 12px; y: 10px; width: parent.width - 24px; text: n.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
-                            if has: Text { x: 12px; y: 30px; width: parent.width - 24px; height: 36px; text: n.sub; font-size: 12px; color: #A3A5AE; wrap: word-wrap; overflow: elide; }
+                            if has: Text { x: 12px; y: 30px; width: parent.width - 24px; height: 36px; text: n.sub; font-size: 12px; color: G.grey; wrap: word-wrap; overflow: elide; }
                             bb := TouchArea { enabled: has; mouse-cursor: pointer; clicked => { S.note-open(n.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", n.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                         }
                     }
@@ -531,8 +531,8 @@ export component NotesPage inherits Rectangle {
             y: parent.height - 34px; height: 34px;
             Rectangle { y: 0; height: 1px; background: G.line-soft; }
             Rectangle { x: 16px; y: 14px; width: 6px; height: 6px; border-radius: 3px; background: S.note-dirty ? G.accent : G.green; }
-            Text { x: 30px; width: parent.width - 140px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #8A8C96; vertical-alignment: center; overflow: elide; }
-            Text { x: parent.width - self.preferred-width - 16px; text: S.note-words + " СЛОВ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #62646E; vertical-alignment: center; }
+            Text { x: 30px; width: parent.width - 140px; text: (S.note-dirty ? "НЕ СОХРАНЕНО · " : "СОХРАНЕНО · ") + S.note-file; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: G.sub; vertical-alignment: center; overflow: elide; }
+            Text { x: parent.width - self.preferred-width - 16px; text: S.note-words + " СЛОВ"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: G.faint; vertical-alignment: center; }
         }
     }
     if !S.note-graph && S.note-path != "" && !S.note-canvas: Brackets { x: root.mx0; y: 8px; width: root.mw; height: parent.height - 16px; }
@@ -552,34 +552,34 @@ export component NotesPage inherits Rectangle {
             VerticalLayout {
                 x: 0; y: 0; width: root.rw;
                 padding: 12px; spacing: 8px; alignment: start;
-                Text { text: "ССЫЛАЕТСЯ НА · " + S.note-links.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
-                if S.note-links.length == 0: Text { text: "Ссылок нет — напиши [[название]]"; font-size: 12.5px; color: #62646E; }
+                Text { text: "ССЫЛАЕТСЯ НА · " + S.note-links.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.sub; }
+                if S.note-links.length == 0: Text { text: "Ссылок нет — напиши [[название]]"; font-size: 12.5px; color: G.faint; }
                 for l in S.note-links: Rectangle {
                     height: 30px;
                     border-radius: 6px; background: la.has-hover ? G.node-hover : transparent;
-                    Icon { name: "link"; x: 6px; y: 8px; width: 14px; c: l.path == "" ? #62646E : G.accent; }
-                    Text { x: 26px; width: parent.width - 34px; text: l.title + (l.path == "" ? "  · создать" : ""); font-size: 13px; color: l.path == "" ? #8A8C96 : G.ink; vertical-alignment: center; overflow: elide; }
+                    Icon { name: "link"; x: 6px; y: 8px; width: 14px; c: l.path == "" ? G.faint : G.accent; }
+                    Text { x: 26px; width: parent.width - 34px; text: l.title + (l.path == "" ? "  · создать" : ""); font-size: 13px; color: l.path == "" ? G.sub : G.ink; vertical-alignment: center; overflow: elide; }
                     la := TouchArea { mouse-cursor: pointer; clicked => { S.note-link(l.title); } }
                 }
                 Rectangle { height: 8px; }
                 Text { text: "ССЫЛАЮТСЯ СЮДА · " + S.note-back.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.accent-ink; }
-                if S.note-back.length == 0: Text { text: "Пока никто"; font-size: 12.5px; color: #62646E; }
+                if S.note-back.length == 0: Text { text: "Пока никто"; font-size: 12.5px; color: G.faint; }
                 for l in S.note-back: Rectangle {
                     height: bt.preferred-height + 38px;
                     border-radius: 8px; background: ba.has-hover ? G.node-hover : G.bg; border-width: 1px; border-color: G.line;
                     Rectangle { x: 0; y: 8px; width: 2px; height: parent.height - 16px; background: G.accent; }
                     Text { x: 12px; y: 8px; width: parent.width - 22px; text: l.title; font-size: 13px; font-weight: 600; color: G.ink; overflow: elide; }
-                    bt := Text { x: 12px; y: 28px; width: parent.width - 22px; text: "«" + l.sub + "»"; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
+                    bt := Text { x: 12px; y: 28px; width: parent.width - 22px; text: "«" + l.sub + "»"; font-size: 12px; color: G.grey; wrap: word-wrap; }
                     ba := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", l.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                 }
                 Rectangle { height: 8px; }
-                Text { text: "УПОМЯНУТО БЕЗ ССЫЛКИ · " + S.note-mentions.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; }
-                if S.note-mentions.length == 0: Text { text: "Нет"; font-size: 12.5px; color: #62646E; }
+                Text { text: "УПОМЯНУТО БЕЗ ССЫЛКИ · " + S.note-mentions.length; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: G.sub; }
+                if S.note-mentions.length == 0: Text { text: "Нет"; font-size: 12.5px; color: G.faint; }
                 for l in S.note-mentions: Rectangle {
                     height: mt.preferred-height + 38px;
                     border-radius: 8px; background: ma.has-hover ? G.node-hover : transparent; border-width: 1px; border-color: G.line-soft;
                     Text { x: 10px; y: 8px; width: parent.width - 90px; text: l.title; font-size: 13px; color: G.ink; overflow: elide; }
-                    mt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: #8A8C96; wrap: word-wrap; }
+                    mt := Text { x: 10px; y: 28px; width: parent.width - 20px; text: l.sub; font-size: 12px; color: G.sub; wrap: word-wrap; }
                     ma := TouchArea { mouse-cursor: pointer; clicked => { S.note-open(l.path); } pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("note", l.path, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
                     // «Связать»: упоминание в той заметке становится [[ссылкой]]
                     Rectangle {
@@ -595,7 +595,7 @@ export component NotesPage inherits Rectangle {
     if root.drag-path != "": Rectangle {
         x: root.drag-x + 12px; y: root.drag-y + 8px; width: gt.preferred-width + 34px; height: 28px;
         border-radius: 6px; background: G.node; border-width: 1px; border-color: G.accent-line;
-        drop-shadow-blur: 16px; drop-shadow-color: #00000080;
+        drop-shadow-blur: 16px; drop-shadow-color: #00000080.transparentize(1 - G.shade);
         Icon { name: "note"; x: 9px; width: 13px; y: 7.5px; c: G.accent; }
         gt := Text { x: 28px; text: S.note-canvas ? "на канвас" : "открой канвас, чтобы положить"; font-size: 12px; color: G.ink; vertical-alignment: center; height: parent.height; }
     }
