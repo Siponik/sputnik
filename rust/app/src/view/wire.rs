@@ -185,7 +185,7 @@ pub fn wire(w: &AppWindow) {
     }));
     g.on_quick_full(|t| act(|_, u| {
         u.quick.clear();
-        u.create = Some(Create { text: str_(&t), ..Default::default() });
+        u.create = Some(Create { text: str_(&t), cur: cur_list(u), ..Default::default() });
     }));
     g.on_toggle(|l, id| act(|app, _| {
         if let Some(t) = task_of(app, &l, &id) {
@@ -884,7 +884,7 @@ pub fn wire(w: &AppWindow) {
     // ---------- Создать ----------
     g.on_create(|t| act(|_, u| {
         let kind = if u.tab == 3 { 2 } else { 0 };
-        u.create = Some(Create { text: str_(&t), kind, ..Default::default() });
+        u.create = Some(Create { text: str_(&t), kind, cur: cur_list(u), ..Default::default() });
     }));
     g.on_c_close(|| act(|_, u| u.create = None));
     g.on_c_changed(|t| act(|_, u| if let Some(c) = u.create.as_mut() { c.text = str_(&t) }));
@@ -1820,4 +1820,9 @@ pub fn add_on_day(app: &mut App, day: &str, slot: Option<(String, String)>, titl
         app.add_task(&dest, title, Some(day), patch, None, "");
         app.say(format!("Задача на {} → {}", sputnik_core::calendar::when_label(day), app.list_name(&dest)));
     }
+}
+
+/// Список, в котором сейчас находится человек: открытая доска (на других разделах — нет).
+fn cur_list(u: &Ui) -> Option<String> {
+    (u.tab == 2 && !u.board.is_empty()).then(|| u.board.clone())
 }
