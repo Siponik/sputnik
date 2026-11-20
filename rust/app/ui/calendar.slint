@@ -139,6 +139,8 @@ export component CalendarPage inherits Rectangle {
     changed form => { root.f-name = ""; root.f-time-set = false; }
     // выбор месяца и года по клику на «МАРТ 2027»
     property <bool> mp-open;
+    // ширина кнопки «30 НОЯ–6 ДЕК 2026 ▾»: под самый длинный текст недели с запасом, чтобы стрелка не наезжала
+    property <length> tw: 196px;
     property <int> mp-year;
     // «Показывать»: список типов с галочками
     property <bool> sh-open;
@@ -236,7 +238,7 @@ export component CalendarPage inherits Rectangle {
             }
             // ‹ МАРТ 2027 ▾ › — одна группа, месяц постоянной ширины
             nav := Rectangle {
-                y: 10px; width: 28px + 150px + 28px; height: 28px;
+                y: 10px; width: 28px + root.tw + 28px; height: 28px;
                 border-radius: 7px;
                 border-width: 1px;
                 border-color: root.mp-open ? G.accent : G.line;
@@ -247,7 +249,7 @@ export component CalendarPage inherits Rectangle {
                     pa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-shift(-1); } }
                 }
                 mbtn := Rectangle {
-                    x: 28px; y: 1px; width: 150px; height: 26px;
+                    x: 28px; y: 1px; width: root.tw; height: 26px;
                     background: mba.has-hover && !root.mp-open ? G.node-hover : transparent;
                     Rectangle { x: 0; width: 1px; background: G.line; }
                     Rectangle { x: parent.width - 1px; width: 1px; background: G.line; }
@@ -259,7 +261,7 @@ export component CalendarPage inherits Rectangle {
                     mba := TouchArea { mouse-cursor: pointer; clicked => { root.mp-year = S.cal-y; root.sh-open = false; root.mp-open = !root.mp-open; } }
                 }
                 Rectangle {
-                    x: 178px; y: 1px; width: 27px; height: 26px;
+                    x: 28px + root.tw; y: 1px; width: 27px; height: 26px;
                     background: nxa.has-hover ? G.node-hover : transparent;
                     Icon { x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; name: "next"; width: 12px; c: G.ink; }
                     nxa := TouchArea { mouse-cursor: pointer; clicked => { root.mp-open = false; S.cal-shift(1); } }
@@ -529,7 +531,7 @@ export component CalendarPage inherits Rectangle {
     // ---------- выбор месяца и года (G_CalHead) ----------
     if root.mp-open || root.sh-open: TouchArea { clicked => { root.mp-open = false; root.sh-open = false; } }
     if root.mp-open: Pop {
-        x: bar.x + nav.x + 28px - 45px;
+        x: bar.x + nav.x + 28px + root.tw / 2 - 120px;
         y: bar.y + bar.height + 4px;
         width: 240px;
         height: mpl.preferred-height;
