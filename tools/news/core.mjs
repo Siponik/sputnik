@@ -69,14 +69,14 @@ export function dotaSignificant(item) {
 }
 
 /**
- * Затухание: 'big' — вышло после прошлой сборки (огромный блок), 'star' — дни 2–3 (строка со звездой в «Обновлениях игр»),
- * null — старше 3 дней или нет значимого.
+ * Затухание по возрасту объявления (а не по прошлой сборке: сборок теперь несколько за день и запуск GitHub опаздывает):
+ * 'big' — первые двое суток (огромный блок и плашка в утренней сводке), 'star' — до 4 суток (строка со звездой), иначе null.
  */
-export function dotaStage(item, prevBuiltAt, now) {
+export function dotaStage(item, now) {
   if (!item) return null;
-  if (prevBuiltAt && item.at > prevBuiltAt) return 'big';
-  if (!prevBuiltAt && now - item.at < 864e5) return 'big';
-  return now - item.at <= 3 * 864e5 ? 'star' : null;
+  const age = now - item.at;
+  if (age < 2 * 864e5) return 'big';
+  return age < 4 * 864e5 ? 'star' : null;
 }
 
 /** Окно по разделам: хайп — двое суток, остальное — трое. */
@@ -99,13 +99,13 @@ export function unseen(items, seen) {
   return out;
 }
 
-const SKIP = /(esports|киберспорт|турнир|tournament|\bmajor\b|деньги|скидк|распродаж|deal of the day|sale\b|промокод|гороскоп)/i;
+const SKIP = /(\d+ ?% off|\bdeals?\b|record low price|esports|киберспорт|турнир|tournament|\bmajor\b|деньги|скидк|распродаж|deal of the day|sale\b|промокод|гороскоп)/i;
 
 /** Запасной отбор без ИИ: по разделам самые свежие, не больше max, не больше двух подряд из одного источника. */
 export function fallbackPick(items, sections) {
   const res = {};
   for (const s of sections) {
-    const pool = items.filter((i) => i.sec === s.id && !SKIP.test(i.title)).sort((a, b) => b.at - a.at);
+    const pool = items.filter((i) => i.sec === s.id && !SKIP.test(i.title) && !/\/deals?\//.test(i.url)).sort((a, b) => b.at - a.at);
     const bySrc = {};
     const cap = Math.max(2, Math.ceil(s.max / 2));
     res[s.id] = [];
@@ -149,4 +149,21 @@ export function shortDate(ms) {
 /** «2026-10-23» по Москве. */
 export function ymd(ms) {
   return new Date(ms + MSK).toISOString().slice(0, 10);
+}
+
+/**
+ * Нужна ли сборка сейчас (news.yml запускается каждый час, расписание GitHub опаздывает на часы).
+ * Две сборки в день по Москве: первая — как только наступил новый день, вторая — свежая утренняя после 05:00,
+ * чтобы к сводке в 08:00 были новости этой ночи. prev — прошлый data.json.
+ */
+export function buildDue(prev, now) {
+  if (!prev || prev.date !== ymd(now)) return true;
+  const dawn = Date.parse(ymd(now) + 'T05:00:00+03:00');
+  return now >= dawn && !(prev.builtAt >= dawn);
+}
+
+/** Что уже показано до сегодняшнего дня: повторная сборка в тот же день не прячет ночные новости, которых никто не видел. */
+export function seenBase(prev, now) {
+  if (!prev) return [];
+  return prev.date === ymd(now) ? prev.seenBefore || [] : prev.seen || [];
 }

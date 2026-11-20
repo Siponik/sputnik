@@ -1,7 +1,7 @@
 // Новости без Claude (tools/news): разбор лент, окно по датам, повторы, правило Dota 2, проверка ответа ИИ, страница.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { parseFeed, parseSteam, fresh, unseen, fallbackPick, applyLlm, dotaSignificant, dotaStage, shortDate, ymd } from '../tools/news/core.mjs';
+import { parseFeed, parseSteam, fresh, unseen, fallbackPick, applyLlm, dotaSignificant, dotaStage, buildDue, seenBase, shortDate, ymd } from '../tools/news/core.mjs';
 import { page } from '../tools/news/render.mjs';
 import { SECTIONS } from '../tools/news/feeds.mjs';
 
@@ -56,12 +56,13 @@ test('Dota 2: номерной патч, сундук и персона — да
   assert.ok(!s('Dota 2 Client Update'));
 });
 
-test('Dota 2: затухание — после прошлой сборки большой блок, до 3 дней звезда, потом ничего', () => {
-  const now = Date.parse('2026-10-23T02:30:00Z'), prev = now - 864e5;
-  assert.equal(dotaStage({ at: now - 3600e3 }, prev, now), 'big');
-  assert.equal(dotaStage({ at: now - 2 * 864e5 }, prev, now), 'star');
-  assert.equal(dotaStage({ at: now - 4 * 864e5 }, prev, now), null);
-  assert.equal(dotaStage(undefined, prev, now), null);
+test('Dota 2: затухание по возрасту — двое суток большой блок, до 4 дней звезда, потом ничего', () => {
+  const now = Date.parse('2026-10-23T02:30:00Z');
+  assert.equal(dotaStage({ at: now - 3600e3 }, now), 'big');
+  assert.equal(dotaStage({ at: now - 36 * 3600e3 }, now), 'big'); // патч вечером — плашка и в сводке следующего утра
+  assert.equal(dotaStage({ at: now - 3 * 864e5 }, now), 'star');
+  assert.equal(dotaStage({ at: now - 4 * 864e5 }, now), null);
+  assert.equal(dotaStage(undefined, now), null);
 });
 
 test('без ИИ: свежие сверху, не больше max и не всё из одного источника', () => {
@@ -106,4 +107,41 @@ test('страница: экранирование, звезда Dota перво
   const big = page({ now, headline: 'x', sections: SECTIONS.map((s) => ({ ...s, items: [] })), dota: { stage: 'big', item: { title: 'Patch 7.42', url: 'https://d/1', at: now, src: 'Steam' }, extra: { points: ['a', 'b'] } } });
   assert.ok(big.includes('БОЛЬШОЕ ОБНОВЛЕНИЕ'));
   assert.ok(big.includes('class="tw"'));
+});
+
+test('когда собирать: в новый день по Москве и ещё раз утром после 05:00', () => {
+  const at = (iso) => Date.parse(iso + '+03:00');
+  assert.equal(buildDue(null, at('2026-11-20T00:30:00')), true);
+  assert.equal(buildDue({ date: '2026-11-19', builtAt: at('2026-11-19T13:00:00') }, at('2026-11-20T00:30:00')), true);
+  assert.equal(buildDue({ date: '2026-11-20', builtAt: at('2026-11-20T00:30:00') }, at('2026-11-20T03:00:00')), false);
+  assert.equal(buildDue({ date: '2026-11-20', builtAt: at('2026-11-20T00:30:00') }, at('2026-11-20T05:20:00')), true);
+  assert.equal(buildDue({ date: '2026-11-20', builtAt: at('2026-11-20T05:20:00') }, at('2026-11-20T13:00:00')), false);
+});
+
+test('повторная сборка в тот же день не прячет ночные новости', () => {
+  const now = Date.parse('2026-11-20T05:20:00+03:00');
+  assert.deepEqual(seenBase({ date: '2026-11-20', seen: ['n', 'o'], seenBefore: ['o'] }, now), ['o']);
+  assert.deepEqual(seenBase({ date: '2026-11-19', seen: ['n', 'o'], seenBefore: [] }, now), ['n', 'o']);
+  assert.deepEqual(seenBase(null, now), []);
+});
+
+test('без ИИ рекламу скидок не берём', () => {
+  const r = fallbackPick([
+    { sec: 'cg', src: 'A', at: 2, title: 'Host the perfect craft night with 15% off pottery kits', url: 'https://a.com/deals/x' },
+    { sec: 'cg', src: 'A', at: 1, title: 'Blender 5.1 is out', url: 'https://a.com/news/y' },
+  ], SECTIONS);
+  assert.deepEqual(r.cg.map((i) => i.title), ['Blender 5.1 is out']);
+});
+
+test('ИИ: ответ «OK» вместо JSON — понятная ошибка; заголовки GitHub; запасной адрес без «openai/»', async () => {
+  const { askOpenAi } = await import('../tools/news/llm.mjs');
+  const env = { LLM_KEY: 'k', LLM_MODEL: 'openai/gpt-4.1-mini' };
+  const fake = (body) => { const calls = []; return { calls, f: async (url, o) => (calls.push({ url, ...o, body: JSON.parse(o.body) }), { ok: true, status: 200, text: async () => body }) }; };
+  const bad = fake('OK\n');
+  await assert.rejects(askOpenAi('https://models.github.ai/inference/chat/completions', 'x', env, bad.f), /не JSON: OK/);
+  assert.equal(bad.calls[0].headers['x-github-api-version'], '2022-11-28');
+  assert.equal(bad.calls[0].body.model, 'openai/gpt-4.1-mini');
+  const good = fake(JSON.stringify({ choices: [{ message: { content: '```json\n{"headline":"Привет","items":[]}\n```' } }] }));
+  assert.deepEqual(await askOpenAi('https://models.inference.ai.azure.com/chat/completions', 'x', env, good.f), { headline: 'Привет', items: [] });
+  assert.equal(good.calls[0].body.model, 'gpt-4.1-mini');
 });

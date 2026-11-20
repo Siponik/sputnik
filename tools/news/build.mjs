@@ -2,7 +2,7 @@
 // Пишет <папка>/index.html и <папка>/data.json (дата, число пунктов, тройка главных — для бота; seen — от повторов).
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { FEEDS, STEAM_GAMES, SECTIONS, steamUrl } from './feeds.mjs';
-import { parseFeed, parseSteam, fresh, unseen, fallbackPick, applyLlm, dotaSignificant, dotaStage, shortDate, ymd, plain } from './core.mjs';
+import { parseFeed, parseSteam, fresh, unseen, fallbackPick, applyLlm, dotaSignificant, dotaStage, buildDue, seenBase, shortDate, ymd, plain } from './core.mjs';
 import { prompt, retell } from './llm.mjs';
 import { page } from './render.mjs';
 
@@ -19,6 +19,10 @@ async function get(url, kind) {
 
 let prev = {};
 if (prevPath) try { prev = JSON.parse(await readFile(prevPath, 'utf8')); } catch { /* первой сборки ещё не было */ }
+if (process.env.NEWS_CHECK) { // news.yml: только проверить, пора ли собирать (запуск по расписанию каждый час)
+  console.log(buildDue(prev, now) ? 'build' : 'skip');
+  process.exit(0);
+}
 
 const failed = [];
 const lists = await Promise.all([
@@ -29,10 +33,10 @@ const all = lists.flat();
 
 // Dota 2: самое свежее значимое за 3 дня.
 const dotaItem = all.filter((i) => i.dota && dotaSignificant(i)).sort((a, b) => b.at - a.at)[0];
-const stage = dotaStage(dotaItem, prev.builtAt, now);
+const stage = dotaStage(dotaItem, now);
 const dota = stage ? { stage, item: dotaItem, extra: {} } : null;
 
-const seen = prev.seen || [];
+const seen = seenBase(prev, now);
 let pool = unseen(fresh(all.filter((i) => !(i.dota && i === dotaItem)), now), seen);
 // Обычные объявления Dota без большого обновления — в «Обновления игр» как остальные; хотфиксы ИИ отсеет.
 pool.sort((a, b) => b.at - a.at);
@@ -78,9 +82,10 @@ const data = {
   count,
   headline,
   viaAi,
-  dota: dota ? { stage: dota.stage, title: dota.extra.title || dota.item.title, url: dota.item.url } : null,
-  top: ['cg', 'industry', 'updates'].map((id) => (picked[id] || [])[0]).filter(Boolean).map((i) => ({ title: i.title, url: i.url })),
+  dota: dota ? { stage: dota.stage, title: dota.extra.title || dota.item.title, url: dota.item.url, at: dota.item.at, points: (dota.extra.points || []).slice(0, 3) } : null,
+  top: ['cg', 'industry', 'updates'].map((id) => (picked[id] || [])[0] && { ...(picked[id] || [])[0], sec: id }).filter(Boolean).map((i) => ({ title: i.title, url: i.url, sec: i.sec })),
   failed,
+  seenBefore: seen.slice(0, 400),
   seen: [...flat.map((i) => i.url), ...(dota ? [dota.item.url] : []), ...seen].slice(0, 400),
 };
 await writeFile(out + '/data.json', JSON.stringify(data, null, 1));

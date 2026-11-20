@@ -8,12 +8,10 @@ name: Новости
 
 on:
   schedule:
-    # Каждый день в 02:20 UTC = 05:20 МСК. Расписание GitHub ранним утром опаздывает на часы (23–27.10 — до 10:50 МСК)
-    # или пропускается, поэтому ещё три попытки; если новости за сегодня уже собраны — запуск сразу заканчивается.
-    - cron: "20 2 * * *"
-    - cron: "47 2 * * *"
-    - cron: "13 3 * * *"
-    - cron: "41 3 * * *"
+    # Каждый час. Расписание GitHub опаздывает на часы (в ноябре запуск на 02:20 UTC шёл в 10:00 UTC = 13:00 МСК,
+    # и утренняя сводка в 08:00 получала вчерашние новости). Поэтому запускаемся часто, а собираем только когда пора:
+    # в новый день по Москве и ещё раз после 05:00 МСК, чтобы к 08:00 были новости этой ночи (buildDue в core.mjs).
+    - cron: "17 * * * *"
   workflow_dispatch: {}
 
 permissions:
@@ -27,7 +25,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Лёгкая проверка без окружения Pages: каждый час, но сборка — только когда пора.
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      due: ${{ steps.due.outputs.due }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: tools/news
+      - id: due
+        run: |
+          owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          curl -fsSL "https://$owner.github.io/${{ github.event.repository.name }}/news/data.json" -o prev.json || echo '{}' > prev.json
+          if [ "${{ github.event_name }}" != "schedule" ] || [ "$(NEWS_CHECK=1 node tools/news/build.mjs site/news prev.json)" = "build" ]; then
+            echo "due=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Свежая сборка уже есть — пропускаю."
+          fi
+
   build:
+    needs: check
+    if: needs.check.outputs.due == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment:
@@ -44,17 +64,7 @@ jobs:
           owner=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
           curl -fsSL "https://$owner.github.io/${{ github.event.repository.name }}/news/data.json" -o prev.json || echo '{}' > prev.json
 
-      - name: Уже собрано сегодня?
-        id: done
-        if: github.event_name == 'schedule'
-        run: |
-          today=$(TZ=Europe/Moscow date +%F)
-          if node -e "process.exit(JSON.parse(require('fs').readFileSync('prev.json','utf8')).date === '$today' ? 0 : 1)"; then
-            echo "Новости за $today уже собраны — пропускаю."; echo "skip=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Собрать новости
-        if: steps.done.outputs.skip != 'true'
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
@@ -66,10 +76,8 @@ jobs:
           printf '<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=news/"><a href="news/">Спутник · Новости</a>\n' > site/index.html
 
       - uses: actions/upload-pages-artifact@v3
-        if: steps.done.outputs.skip != 'true'
         with:
           path: site
 
       - id: deploy
-        if: steps.done.outputs.skip != 'true'
         uses: actions/deploy-pages@v4

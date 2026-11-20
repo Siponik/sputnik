@@ -45,15 +45,46 @@ export async function retell(text, env = process.env) {
     return jsonOf(j.candidates?.[0]?.content?.parts?.map((p) => p.text).join('') || '');
   }
   if (env.LLM_KEY && env.LLM_URL) {
-    const r = await fetch(env.LLM_URL, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', authorization: 'Bearer ' + env.LLM_KEY },
-      body: JSON.stringify({ model: env.LLM_MODEL || 'openai/gpt-4.1-mini', temperature: 0.4, max_tokens: 4000, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: text }] }),
-      signal: AbortSignal.timeout(180e3),
-    });
-    if (!r.ok) throw new Error(`LLM ${r.status}: ${(await r.text()).slice(0, 300)}`);
-    const j = await r.json();
-    return jsonOf(j.choices?.[0]?.message?.content || '');
+    // 20.11: GitHub Models на запрос без заголовков GitHub отвечал 200 и телом «OK» — новости шли без пересказа.
+    // Шлём заголовки API GitHub, читаем ответ как текст; не вышло — пробуем запасной адрес GitHub Models.
+    const urls = [env.LLM_URL];
+    if (/models\.github\.ai/.test(env.LLM_URL)) urls.push(AZURE_URL);
+    let err;
+    for (const url of urls) {
+      try {
+        return await askOpenAi(url, text, env);
+      } catch (e) {
+        err = e;
+        console.warn('Модель не ответила:', e.message);
+      }
+    }
+    throw err;
   }
   return null;
+}
+
+const AZURE_URL = 'https://models.inference.ai.azure.com/chat/completions';
+
+/** Запрос к API как у OpenAI. Тело читается текстом, чтобы в логе было видно, что пришло вместо JSON. */
+export async function askOpenAi(url, text, env, doFetch = fetch) {
+  const github = /github\.ai|azure\.com/.test(url);
+  // Старый адрес GitHub Models принимает имя модели без «openai/».
+  const model = (env.LLM_MODEL || 'openai/gpt-4.1-mini').replace(url === AZURE_URL ? /^openai\// : /^$/, '');
+  const r = await doFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: 'Bearer ' + env.LLM_KEY,
+      ...(github ? { accept: 'application/vnd.github+json', 'x-github-api-version': '2022-11-28' } : { accept: 'application/json' }),
+    },
+    body: JSON.stringify({ model, temperature: 0.4, max_tokens: 4000, response_format: { type: 'json_object' }, messages: [{ role: 'user', content: text }] }),
+    signal: AbortSignal.timeout(180e3),
+  });
+  const body = await r.text();
+  if (!r.ok) throw new Error(`${url} ${r.status}: ${body.slice(0, 300)}`);
+  let j;
+  try { j = JSON.parse(body); } catch { throw new Error(`${url}: ответ не JSON: ${body.slice(0, 120)}`); }
+  const content = j.choices?.[0]?.message?.content;
+  if (!content) throw new Error(`${url}: пустой ответ: ${body.slice(0, 200)}`);
+  return jsonOf(content);
 }
