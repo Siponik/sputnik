@@ -1,0 +1,7 @@
+{
+  "name": "sputnik-bot-tests",
+  "private": true,
+  "type": "module",
+  "description": "Тесты ботов (bot/, reminders/) и новостей (tools/news/). Без зависимостей: cd tests; npm test",
+  "scripts": { "test": "node --test" }
+}

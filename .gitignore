@@ -5,15 +5,8 @@ client_secret*.json
 .sphere-state.json
 node_modules/
 
-# Трекер
-tracker/node_modules/
-tracker/dist/
-tracker/src-tauri/target/
-tracker/src-tauri/gen/
-
 # Архив навыка для загрузки в claude.ai
 skills/*.zip
-tracker/shots/
 
 # Общий бот (bot/): токен Telegram — только в секретах Cloudflare
 bot-token.txt
@@ -21,5 +14,4 @@ bot/.wrangler/
 bot/node_modules/
 reminders/Private.gs
 __pycache__/
-app/test/shots/out/
 design/system-g/png/

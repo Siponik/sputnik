@@ -5,7 +5,6 @@ on:
   pull_request:
     paths:
       - 'rust/**'
-      - 'tools/golden/**'
       - '.github/workflows/rust-check.yml'
   workflow_dispatch:
 
