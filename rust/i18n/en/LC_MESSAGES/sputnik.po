@@ -1,0 +1,34 @@
+# Спутник — английский перевод. Исходный текст — русский (msgid), перевод — msgstr.
+# Один файл на Slint (@tr) и Rust (t!). Без msgctxt. Правила — docs/i18n.md.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+# ---- Настройки ----
+msgid "ЯЗЫК"
+msgstr "LANGUAGE"
+
+msgid "Как в системе"
+msgstr "System"
+
+# ---- множественное число: «одна|две|пять» → «one|many» ----
+msgid "задача|задачи|задач"
+msgstr "task|tasks"
+
+# ---- даты ----
+msgid "сегодня, {}"
+msgstr "today, {}"
+
+msgid "завтра, {}"
+msgstr "tomorrow, {}"
+
+msgid "с {}"
+msgstr "from {}"
+
+msgid "{}, {} · и просроченное"
+msgstr "{}, {} · and overdue"
+
+msgid "ВИД"
+msgstr "APPEARANCE"
+

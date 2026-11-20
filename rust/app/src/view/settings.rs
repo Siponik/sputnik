@@ -73,6 +73,17 @@ pub fn apply_anim(w: &crate::AppWindow, i: i64) {
     g.set_motion(i.clamp(0, 2) as i32);
 }
 
+/// Язык: «ru» | «en» | «sys» (по умолчанию — как в системе). Ставит язык и для Rust-строк, и для Slint.
+pub fn apply_lang(app: &App) {
+    // SPUTNIK_LANG=en|ru — для снимков и проверки
+    let set = std::env::var("SPUTNIK_LANG").ok().unwrap_or_else(|| app.setting("lang").as_str().unwrap_or("sys").to_string());
+    let l = sputnik_core::i18n::pick(&set, sys_locale::get_locale().as_deref());
+    sputnik_core::i18n::set_lang(l);
+    let _ = slint::select_bundled_translation(sputnik_core::i18n::slint_code(l));
+}
+
+pub const LANGS: [(&str, &str); 3] = [("ru", "Русский"), ("en", "English"), ("sys", "Как в системе")];
+
 /// Порядок разделов в шапке (0 Сегодня … 4 Знания); по умолчанию подряд.
 pub fn tab_order(app: &App) -> Vec<i32> {
     let v: Vec<i32> = a(&app.layer["settings"]["tabOrder"]["v"]).iter().filter_map(|x| x.as_i64().map(|n| n as i32)).collect();
@@ -87,6 +98,8 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_set_accent(model(ACCENTS.iter().enumerate().map(|(i, a)| Opt { id: ss(i.to_string()), label: ss(a.0), hint: ss(""), hue: hex(a.1), on: i as i64 == acc }).collect()));
     let anim = st["anim"]["v"].as_i64().unwrap_or(0);
     g.set_set_anim(model(ANIMS.iter().enumerate().map(|(i, l)| opt(i.to_string(), *l, i as i64 == anim)).collect()));
+    let lang = st["lang"]["v"].as_str().unwrap_or("sys");
+    g.set_set_lang(model(LANGS.iter().map(|(id, l)| opt(*id, if *id == "sys" { sputnik_core::t!("Как в системе") } else { l }, *id == lang)).collect()));
     // «Куда слать» в «Напоминаниях»
     let linked = t(&st["tgbot"]["key"]);
     g.set_set_flags(model(vec![

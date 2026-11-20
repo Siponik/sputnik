@@ -282,7 +282,6 @@ fn archive(app: &App, u: &Ui, g: &S) {
     let d0 = sputnik_core::dates::parse_ymd(&tdy).unwrap();
     let ymd = |k| sputnik_core::dates::ymd(sputnik_core::dates::add_days(d0, k));
     let (yday, week) = (ymd(-1), ymd(-(chrono::Datelike::weekday(&d0).num_days_from_monday() as i64)));
-    let months = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     let q = u.arch_q.to_lowercase().replace('ё', "е");
     let mut all: Vec<(String, Value)> = vec![];
     for l in app.board_lists() {
@@ -298,7 +297,7 @@ fn archive(app: &App, u: &Ui, g: &S) {
     for (lid, t) in &all {
         let d = day10(&t["completed"]);
         let grp = if d >= yday { "Вчера".to_string() } else if d >= week { "На этой неделе".to_string() } else {
-            d.get(5..7).and_then(|m| m.parse::<usize>().ok()).map(|m| months[(m + 11) % 12].to_string()).unwrap_or_default()
+            d.get(5..7).and_then(|m| m.parse::<usize>().ok()).map(|m| sputnik_core::i18n::month((m + 11) % 12).to_string()).unwrap_or_default()
         };
         let first = rows.last().map(|r| r.group.as_str() != grp).unwrap_or(true);
         rows.push(ArchRow { list_id: ss(lid.clone()), id: ss(text(&t["id"])), title: ss(text(&t["title"])), list: ss(app.list_name(lid)), hue: list_hue(app, lid),

@@ -271,7 +271,7 @@ fn create(app: &App, c: &Create, g: &S) {
     let fr = cr::habit_freq_of(&h0, &c.hfreq);
     g.set_c_hfreq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, *l, s(&fr["kind"]) == *k)).collect()));
     let dsel: Vec<i64> = a(&fr["days"]).iter().filter_map(|x| x.as_i64()).collect();
-    g.set_c_hdays(model(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].iter().enumerate().map(|(i, l)| opt(i.to_string(), *l, dsel.contains(&(i as i64)))).collect()));
+    g.set_c_hdays(model((0..7usize).map(|i| opt(i.to_string(), sputnik_core::i18n::wd(i), dsel.contains(&(i as i64)))).collect()));
     let per = n(&fr["perWeek"]).unwrap_or(0.0) as i64;
     g.set_c_hper(model((2..=6).map(|nn| opt(nn.to_string(), cr::plural(nn, "раз", "раза", "раз"), per == nn)).collect()));
     g.set_c_hicons(model(cr::HABIT_ICONS.iter().map(|i| opt(*i, *i, c.hicon == *i)).collect()));
@@ -332,8 +332,7 @@ fn props(app: &App, c: &Create, g: &S, x: &Value, dest: &str, mins: &[i64], ever
         let base = sel.unwrap_or(tdy);
         let m0 = base.year() * 12 + base.month0() as i32 + c.cal_step;
         let first = chrono::NaiveDate::from_ymd_opt(m0.div_euclid(12), m0.rem_euclid(12) as u32 + 1, 1).unwrap_or(tdy);
-        const MN: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-        g.set_c_cal_month(ss(format!("{} {}", MN[first.month0() as usize], first.year())));
+        g.set_c_cal_month(ss(sputnik_core::i18n::month_year(first.month0() as usize, first.year())));
         let start = first - chrono::Duration::days(first.weekday().num_days_from_monday() as i64);
         let next = chrono::NaiveDate::from_ymd_opt((m0 + 1).div_euclid(12), (m0 + 1).rem_euclid(12) as u32 + 1, 1).unwrap_or(tdy);
         let weeks = ((next - start).num_days() + 6) / 7;

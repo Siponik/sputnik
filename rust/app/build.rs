@@ -1,9 +1,14 @@
 fn main() {
-    slint_build::compile_with_config("ui/app.slint", slint_build::CompilerConfiguration::new().with_style("fluent-dark".into())).expect("Slint");
+    slint_build::compile_with_config("ui/app.slint", slint_build::CompilerConfiguration::new()
+        .with_style("fluent-dark".into())
+        // перевод: rust/i18n/<язык>/LC_MESSAGES/sputnik.po, без контекста (тот же файл читает core::i18n)
+        .with_bundled_translations("../i18n")
+        .with_default_translation_context(slint_build::DefaultTranslationContext::None)).expect("Slint");
 
     // Значок и подпись внутри sputnik.exe (Windows). Из exe значок берут ярлык в «Пуске», закреплённый
     // на панели задач и «Проводник»; обновление меняет exe целиком, поэтому значок не слетает.
     // Картинка — rust/assets/icon (рисует design/system-g/icon/gen.py).
+    println!("cargo:rerun-if-changed=../i18n");
     println!("cargo:rerun-if-changed=../assets/icon/sputnik.ico");
     if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("windows") {
         let mut res = winresource::WindowsResource::new();

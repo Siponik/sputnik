@@ -74,8 +74,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let passed = [7, 21, 50, 100].iter().any(|m| k == *m) || (k > 7 && [7i64, 21, 50, 100].contains(&k));
         g.set_hp_label(ss(format!("{}{}", if weekly { "НЕД ПОДРЯД" } else { if k % 10 == 1 && k % 100 != 11 { "ДЕНЬ ПОДРЯД" } else { "ДН ПОДРЯД" } }, if passed || k >= 7 { " · ВЕХА ПРОЙДЕНА" } else { "" })));
         g.set_hp_ms((hb::milestone_pos(k as f64) / 100.0) as f32);
-        const MN: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
-        g.set_hp_month(ss(MN[nd.month0() as usize]));
+        g.set_hp_month(ss(sputnik_core::i18n::month(nd.month0() as usize).to_uppercase()));
         let mg = hb::month_grid(h, log, nd.year(), nd.month0() as i32);
         let mut cells: Vec<Opt> = a(&mg["cells"]).iter().map(|c| {
             let stt = s(&c["state"]);
@@ -105,12 +104,10 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let dim = rows.first().map(|_| a(&hb::month_row(&hs[0], log, y, m0)["cells"]).len()).unwrap_or(30);
         g.set_month_days(strings((1..=dim).map(|d| d.to_string()).collect()));
         g.set_habit_month(model(rows));
-        const WD: [&str; 7] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
-        g.set_hm_wd(strings((1..=dim as u32).map(|d| WD[chrono::NaiveDate::from_ymd_opt(y, nd.month(), d).map(|x| x.weekday().num_days_from_monday() as usize).unwrap_or(0)].to_string()).collect()));
+        g.set_hm_wd(strings((1..=dim as u32).map(|d| sputnik_core::i18n::wd(chrono::NaiveDate::from_ymd_opt(y, nd.month(), d).map(|x| x.weekday().num_days_from_monday() as usize).unwrap_or(0)).to_uppercase()).collect()));
         g.set_hm_pct(strings(hs.iter().map(|h| hb::month_row(h, log, y, m0)["pct"].as_i64().map(|x| x.to_string()).unwrap_or("—".into())).collect()));
         g.set_hm_today(nd.day() as i32);
-        const MN: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
-        g.set_hm_title(ss(format!("{} {} · {} {}", MN[nd.month0() as usize], y, all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]))));
+        g.set_hm_title(ss(format!("{} {} · {} {}", sputnik_core::i18n::month(nd.month0() as usize).to_uppercase(), y, all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]))));
         let sm = hb::month_summary(&hs, log, y, m0);
         let clean: Vec<String> = a(&sm["clean"]).iter().map(|x| text(x)).collect();
         let pct = sm["pct"].as_i64();

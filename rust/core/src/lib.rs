@@ -17,6 +17,7 @@ pub mod dropdown;
 pub mod edcmd;
 pub mod graph;
 pub mod habits;
+pub mod i18n;
 pub mod inbox;
 pub mod j;
 pub mod kanban;

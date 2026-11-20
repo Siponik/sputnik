@@ -1143,6 +1143,10 @@ pub fn wire(w: &AppWindow) {
         act(|app, _| app.set_setting("anim", json!(i)));
         if let Some(w) = ww.upgrade() { settings::apply_anim(&w, i); }
     });
+    g.on_lang_set(|id| act(|app, _| {
+        app.set_setting("lang", json!(str_(&id)));
+        settings::apply_lang(app);
+    }));
     g.on_tab_move(|from, to| act(|app, _| {
         let mut v = settings::tab_order(app);
         if from >= 0 && to >= 0 && (from as usize) < v.len() && (to as usize) < v.len() {

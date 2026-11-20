@@ -29,9 +29,21 @@ pub fn add_min(hhmm: &str, n: i64) -> String {
 }
 
 const WD: [&str; 7] = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
-const WDF: [&str; 7] = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-use crate::habits::MONTH_GEN as MONG;
 use crate::reminders::MON_SHORT as MON;
+
+/// «пн» / «mo».
+fn wd(d: NaiveDate) -> String {
+    crate::i18n::wd(d.weekday().num_days_from_monday() as usize).to_lowercase()
+}
+/// «Пн» / «Mon».
+fn wdf(d: NaiveDate) -> &'static str {
+    crate::i18n::wd3(d.weekday().num_days_from_monday() as usize)
+}
+
+/// «12 нояб.» / «Nov 12».
+fn dm_short(d: NaiveDate) -> String {
+    if crate::i18n::is_en() { crate::i18n::day_month(d.day(), d.month0() as usize) } else { format!("{} {}", d.day(), MON[d.month0() as usize]) }
+}
 
 fn dday(d: NaiveDate) -> usize {
     d.weekday().num_days_from_sunday() as usize
@@ -39,21 +51,21 @@ fn dday(d: NaiveDate) -> usize {
 
 pub fn short_day(s: &str) -> String {
     let d = pd(s);
-    format!("{}, {} {}", WD[dday(d)], d.day(), MON[d.month0() as usize])
+    format!("{}, {}", wd(d), dm_short(d))
 }
 
 pub fn long_day(s: &str) -> String {
     let d = pd(s);
-    format!("{}, {} {}", WDF[dday(d)], d.day(), MONG[d.month0() as usize])
+    format!("{}, {}", wdf(d), crate::i18n::day_month(d.day(), d.month0() as usize))
 }
 
 pub fn event_day(s: &str, today: &str) -> String {
     let d = pd(s);
-    let base = format!("{} {} {}", WD[dday(d)], d.day(), MONG[d.month0() as usize]);
+    let base = format!("{} {}", wd(d), crate::i18n::day_month(d.day(), d.month0() as usize));
     if s == today {
-        format!("сегодня, {base}")
+        crate::t!("сегодня, {}", base)
     } else if s == plus(today, 1) {
-        format!("завтра, {base}")
+        crate::t!("завтра, {}", base)
     } else {
         base
     }
@@ -61,11 +73,11 @@ pub fn event_day(s: &str, today: &str) -> String {
 
 pub fn day_month(s: &str) -> String {
     let d = pd(s);
-    format!("{} {}", d.day(), MONG[d.month0() as usize])
+    crate::i18n::day_month(d.day(), d.month0() as usize)
 }
 
 pub fn weekday(s: &str) -> &'static str {
-    WD[dday(pd(s))]
+    if crate::i18n::is_en() { crate::i18n::wd_sun(dday(pd(s))) } else { WD[dday(pd(s))] }
 }
 
 pub fn due_short(due: &str, today: &str, slot: &Value) -> String {
@@ -86,7 +98,7 @@ pub fn due_short(due: &str, today: &str, slot: &Value) -> String {
         return format!("{}{tt}", weekday(due));
     }
     let d = pd(due);
-    format!("{} {}{tt}", d.day(), MON[d.month0() as usize])
+    format!("{}{tt}", dm_short(d))
 }
 
 pub fn when_chip(due: &str, today: &str) -> &'static str {

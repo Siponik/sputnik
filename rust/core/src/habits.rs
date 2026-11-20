@@ -74,15 +74,9 @@ pub fn milestone_pos(k: f64) -> f64 {
     100.0
 }
 
+/// Множественное число (с переводом: ключ — три формы через «|», см. i18n).
 pub fn plural<'a>(k: i64, forms: [&'a str; 3]) -> &'a str {
-    let (a, b) = (k % 10, k % 100);
-    if a == 1 && b != 11 {
-        forms[0]
-    } else if (2..=4).contains(&a) && !(12..=14).contains(&b) {
-        forms[1]
-    } else {
-        forms[2]
-    }
+    crate::i18n::plural(k, forms)
 }
 
 fn days_of(h: &Value) -> Vec<i64> {
@@ -165,7 +159,7 @@ pub fn stats(h: &Value, log: &Value) -> Value {
             } else {
                 "miss"
             };
-            cells.push(json!({"date": st, "state": state, "today": diff == 0, "title": format!("{} {}", d.day(), MONTH_GEN[d.month0() as usize])}));
+            cells.push(json!({"date": st, "state": state, "today": diff == 0, "title": crate::i18n::day_month(d.day(), d.month0() as usize)}));
             if k == 0 && (w == 0 || d.day() <= 7) {
                 months.push(json!({"col": w, "name": MONTH_SHORT[d.month0() as usize]}));
             }
@@ -219,7 +213,7 @@ pub fn month_grid(h: &Value, log: &Value, year: i32, month: i32) -> Value {
             sched += 1;
             ("miss", "пропуск")
         };
-        cells.push(json!({"key": st, "n": k, "state": state, "title": format!("{k} {} · {what}", MONTH_GEN[month as usize])}));
+        cells.push(json!({"key": st, "n": k, "state": state, "title": format!("{} · {what}", crate::i18n::day_month(k as u32, month as usize))}));
     }
     json!({"cells": cells, "done": done, "sched": sched})
 }
@@ -235,7 +229,7 @@ pub fn schedule_label(days: &Value) -> String {
     }
     let mut v: Vec<&Value> = d.iter().collect();
     v.sort_by(|x, y| cmp16(&text(x), &text(y)));
-    v.iter().map(|x| WEEKDAYS[int(x).unwrap_or(0).clamp(0, 6) as usize]).collect::<Vec<_>>().join(" · ")
+    v.iter().map(|x| crate::i18n::wd(int(x).unwrap_or(0).clamp(0, 6) as usize).to_lowercase()).collect::<Vec<_>>().join(" · ")
 }
 
 // ---------- карточки ----------
@@ -543,7 +537,7 @@ pub fn week_row(h: &Value, log: &Value) -> Vec<Value> {
         .map(|i| {
             let st = ymd(add_days(mon, i));
             let fut = st > today;
-            json!({"day": st, "wd": WEEKDAYS[i as usize], "st": if fut { "f" } else { day_state(h, log, &st, Some(&today)) }, "today": st == today, "future": fut})
+            json!({"day": st, "wd": crate::i18n::wd(i as usize).to_lowercase(), "st": if fut { "f" } else { day_state(h, log, &st, Some(&today)) }, "today": st == today, "future": fut})
         })
         .collect()
 }
@@ -556,7 +550,7 @@ pub fn last7(h: &Value, log: &Value) -> Vec<Value> {
         .map(|i| {
             let d = add_days(nd, -i);
             let st = ymd(d);
-            json!({"day": st, "wd": WEEKDAYS[dow(d) as usize], "st": day_state(h, log, &st, Some(&today)), "today": i == 0})
+            json!({"day": st, "wd": crate::i18n::wd(dow(d) as usize).to_lowercase(), "st": day_state(h, log, &st, Some(&today)), "today": i == 0})
         })
         .collect()
 }
@@ -624,7 +618,7 @@ pub fn month_summary(habits: &[Value], log: &Value, year: i32, month: i32) -> Va
             weak = Some(i);
         }
     }
-    json!({"pct": pct, "prev": prev, "clean": clean, "weak": weak.map(|w| WEEKDAY_FULL[w])})
+    json!({"pct": pct, "prev": prev, "clean": clean, "weak": weak.map(|w| crate::i18n::wd_full(w))})
 }
 
 pub fn milestone_date(h: &Value, log: &Value, streak: i64) -> Option<String> {
@@ -643,7 +637,7 @@ pub fn milestone_date(h: &Value, log: &Value, streak: i64) -> Option<String> {
         if days_of(h).contains(&dow(d)) {
             left -= 1;
             if left == 0 {
-                return Some(format!("{} {}", d.day(), MONTH_GEN[d.month0() as usize]));
+                return Some(crate::i18n::day_month(d.day(), d.month0() as usize));
             }
         }
         d = add_days(d, 1);
@@ -782,7 +776,7 @@ pub fn schedule_line(h: &Value) -> String {
     }
     if t(&h["createdAt"]) {
         let d = pd(&day10(&h["createdAt"]));
-        bits.push(format!("с {} {}", d.day(), MONTH_GEN[d.month0() as usize]));
+        bits.push(crate::t!("с {}", crate::i18n::day_month(d.day(), d.month0() as usize)));
     }
     bits.join(" · ")
 }

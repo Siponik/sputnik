@@ -630,6 +630,8 @@ export global S {
     in property <[int]> tab-order: [0, 1, 2, 3, 4]; // порядок разделов в шапке: 0 Сегодня … 4 Знания
     callback accent-set(string);
     callback anim-set(string);
+    in property <[Opt]> set-lang;            // русский / english / как в системе
+    callback lang-set(string);
     callback tab-move(int, int);             // позиция, куда
     in property <[Opt]> set-remind-event;
     in property <[Opt]> set-remind-bday;

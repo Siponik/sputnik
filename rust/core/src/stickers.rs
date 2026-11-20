@@ -83,13 +83,11 @@ pub fn new_due(target: &str, today: &str) -> Option<String> {
     }
 }
 
-const WD: [&str; 7] = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
 const MON: [&str; 12] = ["янв.", "февр.", "мар.", "апр.", "мая", "июн.", "июл.", "авг.", "сент.", "окт.", "нояб.", "дек."];
-const MON_GEN: [&str; 12] = ["января", "февраля", "марта", "апреля", "мая", "июня", "июля", "августа", "сентября", "октября", "ноября", "декабря"];
 
 fn short(x: &str) -> String {
     let dd = d(x);
-    format!("{} {}", dd.day(), MON[dd.month0() as usize])
+    if crate::i18n::is_en() { crate::i18n::day_month(dd.day(), dd.month0() as usize) } else { format!("{} {}", dd.day(), MON[dd.month0() as usize]) }
 }
 
 /// Подпись срока: { text, cls: late | soon | '' }.
@@ -109,14 +107,14 @@ pub fn due_label(due: &str, today: &str, slot: &Value, hide_today: bool) -> Valu
         return json!({"text": format!("завтра{at}"), "cls": ""});
     }
     if due <= week_end(today).as_str() {
-        return json!({"text": format!("{}{at}", WD[dow(due) as usize]), "cls": ""});
+        return json!({"text": format!("{}{at}", crate::i18n::wd_sun(dow(due) as usize).to_lowercase()), "cls": ""});
     }
     json!({"text": format!("{}{at}", short(due)), "cls": ""})
 }
 
 pub fn today_sub(today: &str) -> String {
     let dd = d(today);
-    format!("{}, {} {} · и просроченное", WD[dow(today) as usize], dd.day(), MON_GEN[dd.month0() as usize])
+    crate::t!("{}, {} · и просроченное", crate::i18n::wd_sun(dow(today) as usize).to_lowercase(), crate::i18n::day_month(dd.day(), dd.month0() as usize))
 }
 
 /// Порядок в колонке: закреплённые; при sort = due — просроченные и ближайшие; потом ord, потом position.

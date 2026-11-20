@@ -25,8 +25,6 @@ pub struct Dp {
     pub start: sputnik_core::compose::Picked,
 }
 
-const MONTHS: [&str; 12] = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-const WD: [&str; 7] = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
 fn first(d: NaiveDate) -> NaiveDate {
     d.with_day(1).unwrap_or(d)
@@ -99,7 +97,7 @@ pub fn words(d: &mut Dp, t: &str) {
 
 pub fn summary(d: &Dp) -> String {
     let Some(day) = d.day else { return "Без срока".into() };
-    let mut s0 = format!("{}, {}", WD[day.weekday().num_days_from_monday() as usize], cr::day_month(&day.format("%Y-%m-%d").to_string()));
+    let mut s0 = format!("{}, {}", sputnik_core::i18n::wd3(day.weekday().num_days_from_monday() as usize), cr::day_month(&day.format("%Y-%m-%d").to_string()));
     if let Some(h) = d.hour {
         let st = h as i64 * 60 + d.min as i64;
         s0 += &format!(" · {}", hhmm(st));
@@ -148,7 +146,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_dp_open(true);
     g.set_dp_drop(ss(d.drop));
     g.set_dp_title(ss(d.title.to_uppercase()));
-    g.set_dp_month(ss(format!("{} {}", MONTHS[d.month.month0() as usize], d.month.year())));
+    g.set_dp_month(ss(format!("{} {}", sputnik_core::i18n::month(d.month.month0() as usize), d.month.year())));
     let today = hb::now().date();
     let start = d.month - Duration::days(d.month.weekday().num_days_from_monday() as i64);
     let cells: Vec<DpCell> = (0..42).map(|i| start + Duration::days(i)).take_while(|x| *x < d.month + Duration::days(31) || x.weekday().num_days_from_monday() != 0)

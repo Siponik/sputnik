@@ -246,7 +246,7 @@ export component SettingsPage inherits Rectangle {
             spacing: 24px;
             alignment: start;
             if S.set-tab == 0: Sec {
-                main: true; num: "01"; title: "ВИД";
+                main: true; num: "01"; title: @tr("ВИД");
                 SRow { label: "ТЕМА";
                     OSeg { items: [{ id: "dark", label: "Тёмная", on: true }, { id: "light", label: "Светлая" }, { id: "sys", label: "Как в системе" }]; }
                     Text { text: "светлая появится позже"; font-size: 12.5px; color: #7A7C86; vertical-alignment: center; }
@@ -263,6 +263,7 @@ export component SettingsPage inherits Rectangle {
                 SRow { label: "АНИМАЦИИ"; OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } }
                     Text { text: "Провода рисуются при открытии экрана"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 }
+                SRow { label: @tr("ЯЗЫК"); OSeg { items: S.set-lang; picked(id) => { S.lang-set(id); } } }
                 SRow { label: "ПРИ ЗАПУСКЕ"; OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
                 // порядок разделов в шапке: перетаскиваются, номер — клавиша.
                 // Пока тащишь, карточка идёт за мышью, а соседи плавно раздвигаются под место, куда она встанет.

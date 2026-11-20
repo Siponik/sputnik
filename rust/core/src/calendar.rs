@@ -1,7 +1,7 @@
 //! Календарь: раскладка событий, задач и привычек по дням. Порт app/lib/core/calendar.dart.
 //! «Сейчас» — общий [habits::now].
 use crate::dates::{add_days, js_date, parse_ymd, ymd};
-use crate::habits::{dow, habit_span, is_done, now, scheduled_on, MONTH_GEN, MONTH_NAMES};
+use crate::habits::{dow, habit_span, is_done, now, scheduled_on};
 use crate::j::*;
 use chrono::{Datelike, NaiveDate, NaiveDateTime, Timelike};
 
@@ -12,6 +12,13 @@ pub const HOUR_EMPTY: f64 = 12.0;
 pub const BAND_MAX: f64 = 36.0;
 pub const WD_SHORT: [&str; 7] = ["пн", "вт", "ср", "чт", "пт", "сб", "вс"];
 pub const WD_FULL: [&str; 7] = ["Понедельник", "Вторник", "Среда", "Четверг", "Пятница", "Суббота", "Воскресенье"];
+
+/// «Понедельник» / «Monday».
+fn wd_full_cap(i: usize) -> String {
+    let s = crate::i18n::wd_full(i);
+    let mut c = s.chars();
+    c.next().map(|f| f.to_uppercase().chain(c).collect()).unwrap_or_default()
+}
 
 fn round2(x: f64) -> f64 {
     ((x * 100.0 + 0.5).floor()) / 100.0
@@ -140,15 +147,11 @@ pub fn period_days(sel: &str, mode: &str) -> Vec<String> {
 pub fn period_title(sel: &str, mode: &str) -> String {
     let sel = pd(sel);
     if mode == "month" {
-        return format!("{} {}", MONTH_NAMES[sel.month0() as usize], sel.year());
+        return crate::i18n::month_year(sel.month0() as usize, sel.year());
     }
     let a = start_of_week(sel);
     let b = add_days(a, 6);
-    if a.month() == b.month() {
-        format!("{} – {} {}", a.day(), b.day(), MONTH_GEN[b.month0() as usize])
-    } else {
-        format!("{} {} – {} {}", a.day(), MONTH_GEN[a.month0() as usize], b.day(), MONTH_GEN[b.month0() as usize])
-    }
+    crate::i18n::day_range(a.day(), a.month0() as usize, b.day(), b.month0() as usize)
 }
 
 pub fn shift_period(sel: &str, mode: &str, dir: i64) -> String {
@@ -434,8 +437,8 @@ pub fn habit_blocks(habits: &[Value], log: &Value, day: &str, today: &str) -> Ve
 
 pub fn day_label(day: &str) -> Value {
     let d = pd(day);
-    json!({"weekday": WD_FULL[dow(d) as usize], "short": WD_SHORT[dow(d) as usize],
-           "title": format!("{} {}", d.day(), MONTH_GEN[d.month0() as usize]), "n": d.day(), "month": d.month0()})
+    json!({"weekday": wd_full_cap(dow(d) as usize), "short": crate::i18n::wd(dow(d) as usize).to_lowercase(),
+           "title": crate::i18n::day_month(d.day(), d.month0() as usize), "n": d.day(), "month": d.month0()})
 }
 
 pub fn when_label(day: &str) -> String {
@@ -447,7 +450,7 @@ pub fn when_label(day: &str) -> String {
     } else if day == ymd(add_days(nd, -1)) {
         "вчера".into()
     } else {
-        WD_SHORT[dow(pd(day)) as usize].into()
+        crate::i18n::wd(dow(pd(day)) as usize).to_lowercase()
     }
 }
 

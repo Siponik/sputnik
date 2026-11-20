@@ -36,7 +36,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     let kind = s(&fr["kind"]);
     g.set_he_freq(model([("daily", "Каждый день"), ("weekdays", "По будням"), ("days", "Свои дни"), ("week", "N раз в неделю")].iter().map(|(k, l)| opt(*k, (*l).to_string(), kind == *k)).collect()));
     let dsel: Vec<i64> = a(&fr["days"]).iter().filter_map(|x| x.as_i64()).collect();
-    g.set_he_days(model(["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].iter().enumerate().map(|(i, l)| opt("", l.to_string(), dsel.contains(&(i as i64)))).collect()));
+    g.set_he_days(model((0..7usize).map(|i| opt("", sputnik_core::i18n::wd(i).to_string(), dsel.contains(&(i as i64)))).collect()));
     let per = n(&fr["perWeek"]).unwrap_or(0.0) as i64;
     g.set_he_per(model((2..=6).map(|nn| opt(&nn.to_string(), nn.to_string(), per == nn)).collect()));
     // своё окно (не совпадает с окном части дня) выключает чипы части дня
