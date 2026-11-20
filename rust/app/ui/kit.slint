@@ -404,6 +404,60 @@ export component CSeg inherits Rectangle {
 }
 
 
+// Переключатель «Системы G» с пунктами разной ширины (КАНБАН | КОНВЕЙЕР | СТИКЕРЫ | СПИСОК и т.п.):
+// выбранное — одна светлая плашка, она переезжает к новому пункту и меняет ширину, 200 мс.
+// «Минимум» и «выкл» — сразу. Пункт сам сообщает плашке своё место (put), когда он выбран или сдвинулся.
+export component GSeg inherits Rectangle {
+    in property <[string]> items;
+    in property <int> current;
+    in property <length> fs: 10.5px;
+    in property <int> weight: 500;
+    in property <length> pad: 3px;       // поля вокруг пунктов
+    in property <length> ir: 5px;        // скругление плашки
+    in property <length> min-item: 0px;
+    callback picked(int);
+    property <length> px;
+    property <length> pw;
+    property <bool> ready;
+    height: 34px;
+    width: gl.preferred-width;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: G.line;
+    // первое место плашки — без анимации
+    Timer { interval: 60ms; running: !root.ready; triggered => { root.ready = true; } }
+    Rectangle {
+        x: root.px; y: root.pad; width: root.pw; height: root.height - 2 * root.pad;
+        border-radius: root.ir;
+        background: G.ink;
+        visible: root.pw > 0 && root.current >= 0 && root.current < root.items.length;
+        animate x, width { duration: root.ready && G.motion == 0 ? 200ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
+    gl := HorizontalLayout {
+        padding: root.pad;
+        padding-left: root.pad + 1px; padding-right: root.pad + 1px;
+        spacing: 2px;
+        for v[i] in root.items: Rectangle {
+            property <bool> on: i == root.current;
+            function put() { if (self.on) { root.px = self.x; root.pw = self.width; } }
+            init => { self.put(); }
+            changed on => { self.put(); }
+            changed x => { self.put(); }
+            changed width => { self.put(); }
+            width: max(root.min-item, t.preferred-width + 20px);
+            border-radius: root.ir;
+            // пока плашка не нашла место — подсвечен сам пункт
+            background: self.on ? (root.pw > 0 ? transparent : G.ink) : (a.has-hover ? G.node-hover : transparent);
+            t := Text {
+                text: v; font-family: G.mono; font-size: root.fs; font-weight: root.weight; letter-spacing: 1.2px;
+                color: parent.on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center;
+                animate color { duration: G.motion == 2 ? 0ms : 120ms; }
+            }
+            a := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
+        }
+    }
+}
+
 // Стрелка выпадающего списка (символ ▾ есть не во всех шрифтах Windows).
 export component Chev inherits Path {
     in property <color> c: #A3A5AE;
