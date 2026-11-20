@@ -51,7 +51,7 @@ export struct CvEdge { id: string, ax: float, ay: float, c1x: float, c1y: float,
 export struct GDot { x: float, y: float, r: float, title: string, path: string, missing: bool, near: bool, cur: bool, hue: color, dim: bool, label: bool, id: string }
 // строка дерева «Знаний» (G_Notes): kind — dir / note / canvas; у папки path — путь папки
 export struct TreeRow { path: string, title: string, kind: string, depth: int, open: bool, n: string, hue: color, own: bool }
-export struct GLine { x1: float, y1: float, x2: float, y2: float, near: bool }
+export struct GLine { x1: float, y1: float, x2: float, y2: float, near: bool, hue: color }
 
 export global S {
     // ---------- оболочка ----------
