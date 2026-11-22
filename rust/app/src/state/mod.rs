@@ -1,5 +1,6 @@
 //! Состояние приложения «сначала локально»: экран читает память; действие меняет память, пишет файл и кладёт
 //! операцию в очередь исходящих; Google обновляется в фоне (sync.rs). Порт app/lib/state/app_state.dart.
+use sputnik_core::t;
 pub mod bg;
 pub mod demo;
 pub mod update;
@@ -447,7 +448,7 @@ impl App {
         self.touch("log", &hb::log_key(&h["id"], &day), mark);
         let streak = hb::stats(h, self.habit_log())["streak"].as_i64().unwrap_or(0);
         if hb::is_done(self.habit_log(), &h["id"], &day) && hb::MILESTONES.contains(&streak) {
-            self.say(format!("Серия {streak}! {}", text(&h["name"])));
+            self.say(t!("Серия {}! {}", streak, text(&h["name"])));
         }
     }
 
@@ -474,7 +475,7 @@ impl App {
                 app.lists.push(l);
                 app.add_habit(name, fields, &notes);
             }
-            Err(e) => app.say(format!("Не получилось создать список «Привычки»: {e}")),
+            Err(e) => app.say(t!("Не получилось создать список «Привычки»: {}", e)),
         });
     }
 
@@ -531,7 +532,7 @@ impl App {
             self.outbox.add(json!({"op": "delete", "list": from, "id": id}));
         }
         self.after_outbox();
-        self.say(format!("Перенесено в «{}»", self.list_name(to)));
+        self.say(t!("Перенесено в «{}»", self.list_name(to)));
         Some(text(&x["id"]))
     }
 
@@ -638,9 +639,9 @@ impl App {
             Ok(mut e) => {
                 e["calId"] = json!(cal);
                 app.events.push(e);
-                app.say("Событие добавлено");
+                app.say(t!("Событие добавлено"));
             }
-            Err(e) => app.say(format!("Событие не создалось: {e}")),
+            Err(e) => app.say(t!("Событие не создалось: {}", e)),
         });
     }
 
@@ -666,10 +667,10 @@ impl App {
             Ok(mut e) => {
                 e["calId"] = json!(cal);
                 app.events.push(e);
-                app.say("День рождения сохранён");
+                app.say(t!("День рождения сохранён"));
                 app.gift_tasks();
             }
-            Err(e) => app.say(format!("День рождения не сохранился: {e}")),
+            Err(e) => app.say(t!("День рождения не сохранился: {}", e)),
         });
     }
 
@@ -719,7 +720,7 @@ impl App {
             let x = self.add_task(&list, s(&t["title"]), Some(&day), Value::Object(carry), None, s(&t["notes"]));
             self.touch("tasks", s(&t["id"]), json!({"repeatNext": x["id"], "repeatAt": now_ms()}));
             if !quiet {
-                self.say(format!("Повтор: «{}» — снова {}", s(&t["title"]), if day == td { "сегодня".into() } else { day }));
+                self.say(t!("Повтор: «{}» — снова {}", s(&t["title"]), if day == td { t!("сегодня").to_string() } else { day }));
             }
         }
     }
@@ -774,9 +775,9 @@ impl App {
             }
         }
         if items.len() > 1 {
-            self.say(format!("Принято задач: {}", items.len()));
+            self.say(t!("Принято задач: {}", items.len()));
         } else if let Some(x) = items.first() {
-            self.say(format!("«{}» — принято", s(&x["task"]["title"])));
+            self.say(t!("«{}» — принято", s(&x["task"]["title"])));
         }
     }
 
@@ -784,7 +785,7 @@ impl App {
         let t = x["task"].clone();
         self.touch("tasks", s(&t["id"]), json!({"inbox": "rejected"}));
         self.remove_quiet(s(&x["listId"]), &t);
-        self.say(format!("«{}» — отклонено и удалено", s(&t["title"])));
+        self.say(t!("«{}» — отклонено и удалено", s(&t["title"])));
     }
 
     // ---------- списки и сферы ----------
@@ -823,7 +824,7 @@ impl App {
                     f(app, id);
                 }
             }
-            Err(e) => app.say(format!("Список не создался: {e}")),
+            Err(e) => app.say(t!("Список не создался: {}", e)),
         });
     }
 
@@ -844,7 +845,7 @@ impl App {
                 if let Some(l) = app.lists.iter_mut().find(|x| x["id"] == was["id"].clone().as_str().unwrap_or("")) {
                     l["title"] = was;
                 }
-                app.say(format!("Не переименовался: {e}"));
+                app.say(t!("Не переименовался: {}", e));
             }
         });
     }
@@ -861,9 +862,9 @@ impl App {
                     m.shift_remove(&id);
                 }
                 app.save_layer();
-                app.say("Список удалён");
+                app.say(t!("Список удалён"));
             }
-            Err(e) => app.say(format!("Не удалось удалить список: {e}")),
+            Err(e) => app.say(t!("Не удалось удалить список: {}", e)),
         };
         if i2.starts_with("sh:") {
             self.shared_job(Box::new(move |sh| {
@@ -968,7 +969,7 @@ impl App {
         self.toggle_done(list, t);
         if !was {
             let (l, id) = (list.to_string(), text(&t["id"]));
-            self.say_act(format!("Готово · «{}»", s(&t["title"])), "Отменить", Some(Box::new(move |a: &mut App| {
+            self.say_act(t!("Готово · «{}»", s(&t["title"])), t!("Отменить"), Some(Box::new(move |a: &mut App| {
                 if let Some(x) = a.task(&l, &id).cloned() {
                     a.toggle_done(&l, &x);
                 }
@@ -1064,7 +1065,7 @@ impl App {
         }
         self.remove_quiet(list, t);
         let (l, x) = (list.to_string(), t.clone());
-        self.say_act("Задача удалена", "Отменить", Some(Box::new(move |a: &mut App| {
+        self.say_act(t!("Задача удалена"), t!("Отменить"), Some(Box::new(move |a: &mut App| {
             a.add_task(&l, s(&x["title"]), Some(&day10(&x["due"])), keep, None, s(&x["notes"]));
         })));
     }
@@ -1161,7 +1162,7 @@ impl App {
         let due: Vec<Value> = rem::habit_win_due(&hs, self.habit_log(), &sent, None).into_iter().cloned().collect();
         for h in due {
             self.shown.push(format!("{}|{td}", text(&h["id"])));
-            crate::notify::show(&format!("Привычка · {}", text(&h["name"])), "Ещё не отмечено сегодня");
+            crate::notify::show(&t!("Привычка · {}", text(&h["name"])), t!("Ещё не отмечено сегодня"));
         }
         // задачи напоминает бот; если он не привязан или в нём выключены напоминания — Windows
         if !self.bot_key().is_empty() && self.layer["settings"]["tgRemind"]["v"] != false {
@@ -1175,7 +1176,7 @@ impl App {
                 continue;
             }
             self.shown.push(key);
-            crate::notify::show("Спутник · напоминание", &format!("{}{}", s(&it["title"]), it["list"].as_str().map(|l| format!(" · {l}")).unwrap_or_default()));
+            crate::notify::show(t!("Спутник · напоминание"), &format!("{}{}", s(&it["title"]), it["list"].as_str().map(|l| format!(" · {l}")).unwrap_or_default()));
         }
     }
 

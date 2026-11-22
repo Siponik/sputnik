@@ -1,4 +1,5 @@
 //! Модели «Знаний».
+use sputnik_core::t;
 use super::*;
 use crate::{MdRow, NoteRow, TreeRow};
 use slint::{Model, VecModel};
@@ -36,7 +37,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     for (f, _, p, kind) in &items {
         if last.as_deref() != Some(f.as_str()) {
             let cnt = items.iter().filter(|y| &y.0 == f).count();
-            list.push(NoteRow { path: ss(""), title: ss(if f.is_empty() { "КОРЕНЬ".to_string() } else { f.to_uppercase() }), sub: ss(cnt.to_string()), cur: false });
+            list.push(NoteRow { path: ss(""), title: ss(if f.is_empty() { t!("КОРЕНЬ").to_string() } else { f.to_uppercase() }), sub: ss(cnt.to_string()), cur: false });
             last = Some(f.clone());
         }
         list.push(NoteRow { path: ss(p.clone()), title: ss(title_of(p)), sub: ss(*kind), cur: false });

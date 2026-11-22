@@ -1,6 +1,7 @@
 //! Обмен с Google в фоне: очередь исходящих правок, полная синхронизация раз в 2 минуты, слой на Drive, бот.
 //! Порт app/lib/data/outbox.dart и refresh/_syncLayer/botSync из app_state.dart.
 //! Операции очереди: create { list, tmp, body, parent? } · patch { list, id, body } · delete { list, id }; у каждой uid «u».
+use sputnik_core::t;
 use super::{now_ms, run, today_ymd, with, App};
 use crate::data::{api, bot, google::Fail};
 use serde_json::{json, Value};
@@ -69,7 +70,7 @@ fn send(op: &Value, sh: Option<&mut super::shared::Shared>) -> Result<Value, Fai
         "create" => {
             let parent = op["parent"].as_str();
             if parent.is_some_and(|p| p.starts_with("tmp-")) {
-                return Err(Fail::Net("родитель ещё не создан".into()));
+                return Err(Fail::Net(t!("родитель ещё не создан").into()));
             }
             match sh {
                 Some(sh) => sh.create_task(list, &op["body"], parent, &Json::new()),
@@ -169,7 +170,7 @@ impl App {
             Err(e) => {
                 self.outbox.ops.retain(|x| x["u"] != u);
                 self.save_outbox();
-                self.say(format!("Не сохранилось в Google: {e}"));
+                self.say(t!("Не сохранилось в Google: {}", e));
                 self.refresh();
             }
         }
@@ -270,13 +271,13 @@ impl App {
                     self.flags.need_login = true;
                 }
                 self.flags.offline = matches!(e, Fail::Net(_));
-                self.flags.error = Some(if self.flags.offline { "Нет связи с Google".into() } else { e.to_string() });
+                self.flags.error = Some(if self.flags.offline { t!("Нет связи с Google").into() } else { e.to_string() });
                 crate::data::store::log("refresh", &e.to_string());
                 return;
             }
         };
         match shared {
-            Ok(gone) if !gone.is_empty() => self.say("Пропал доступ к общей сфере"),
+            Ok(gone) if !gone.is_empty() => self.say(t!("Пропал доступ к общей сфере")),
             Err(e) => crate::data::store::log("общие сферы", &e),
             _ => {}
         }
@@ -527,7 +528,7 @@ impl App {
             ok.push(x["id"].clone());
         }
         if added > 0 {
-            self.say(if added == 1 { "Из Telegram — новая задача".to_string() } else { format!("Из Telegram — новых задач: {added}") });
+            self.say(if added == 1 { t!("Из Telegram — новая задача").to_string() } else { t!("Из Telegram — новых задач: {}", added) });
         }
         if !ok.is_empty() {
             let key = self.bot_key();
@@ -547,24 +548,24 @@ impl App {
             Ok((r, key)) => {
                 app.bot_last.clear();
                 app.touch("settings", "tgbot", json!({"key": key, "name": r["name"].as_str().unwrap_or(""), "at": now_ms()}));
-                app.say("Telegram подключён ✓ — напоминания придут туда");
+                app.say(t!("Telegram подключён ✓ — напоминания придут туда"));
                 app.bot_sync();
             }
-            Err(e) => app.say(format!("Не привязался: {e}")),
+            Err(e) => app.say(t!("Не привязался: {}", e)),
         });
     }
     pub fn bot_test(&mut self) {
         let key = self.bot_key();
         run(move || bot::test(&key), |app, r| match r {
-            Ok(()) => app.say("Отправил проверку — загляни в Telegram"),
-            Err(e) => app.say(format!("Бот не ответил: {e}")),
+            Ok(()) => app.say(t!("Отправил проверку — загляни в Telegram")),
+            Err(e) => app.say(t!("Бот не ответил: {}", e)),
         });
     }
     pub fn bot_unlink(&mut self) {
         let key = self.bot_key();
         run(move || bot::unlink(&key), |app, _| {
             app.touch("settings", "tgbot", json!({"key": null, "name": "", "at": null}));
-            app.say("Telegram отключён");
+            app.say(t!("Telegram отключён"));
         });
     }
 
@@ -681,9 +682,9 @@ fn fetch_all(cals_layer: &Value, layer_id: Option<String>) -> Result<Fetched, Fa
         }).collect();
         let mut tasks = vec![];
         for h in hs {
-            tasks.push(h.join().map_err(|_| Fail::Net("поток упал".into()))??);
+            tasks.push(h.join().map_err(|_| Fail::Net(t!("поток упал").into()))??);
         }
-        let (calendars, events, from, to, inbox) = cal_h.join().map_err(|_| Fail::Net("поток упал".into()))??;
+        let (calendars, events, from, to, inbox) = cal_h.join().map_err(|_| Fail::Net(t!("поток упал").into()))??;
         let layer = match layer_h.join() {
             Ok(Ok(x)) => Some(x),
             Ok(Err(e)) => {

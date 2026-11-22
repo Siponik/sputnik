@@ -14,7 +14,7 @@ pub const REPEATS: [(&str, &str, &str); 5] = [
 
 pub fn repeat_label(rule: &Value) -> String {
     let e = s(&rule["every"]);
-    REPEATS.iter().find(|r| r.0 == e).map(|r| r.2.to_string()).unwrap_or_default()
+    REPEATS.iter().find(|r| r.0 == e).map(|r| crate::i18n::tr(r.2).to_string()).unwrap_or_default()
 }
 
 fn step(every: &str, day: &str, n: i32, anchor: &str) -> String {

@@ -1,7 +1,7 @@
 //! Модели «Доски»: колонка списков по сферам, доска в одном из четырёх видов.
 use super::*;
 use crate::{ArchRow, Card, Column, StkItem, Opt, PipeBlock, PipeRow, PipeSeg, SideRow, Sub};
-use sputnik_core::{stickers as stk, templates as tpl};
+use sputnik_core::{stickers as stk, templates as tpl, t};
 
 pub fn view_of(app: &App, list: &str) -> String {
     let b = app.board(list);
@@ -16,14 +16,14 @@ fn card(app: &App, list: &str, t: &Value, sel: &str) -> Card {
     let subs = app.subtasks(list, id);
     let who = if list.starts_with("sh:") && t_(&l["who"]) {
         let w = s(&l["who"]);
-        if w == app.shared.me { "я".to_string() } else { sputnik_core::sharedcore::name_of(&l["who"]) }
+        if w == app.shared.me { t!("я").to_string() } else { sputnik_core::sharedcore::name_of(&l["who"]) }
     } else { String::new() };
     Card {
         list_id: ss(list),
         id: ss(id),
         title: ss(text(&t["title"])),
         hue: list_hue(app, list),
-        due: ss(if due.is_empty() { "БЕЗ СРОКА".to_string() } else { due.replace("просрочено · ", "").replace("сегодня, ", "").to_uppercase() }),
+        due: ss(if due.is_empty() { t!("БЕЗ СРОКА").to_string() } else { due.replace(&t!("просрочено · {}", ""), "").replace(&t!("сегодня, {}", ""), "").to_uppercase() }),
         overdue: late && !App::is_done(t),
         prio: n(&l["priority"]).unwrap_or(0.0) as i32,
         subs: ss(if subs.is_empty() { String::new() } else { format!("{}/{}", subs.iter().filter(|x| App::is_done(x)).count(), subs.len()) }),
@@ -93,14 +93,14 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
     g.set_board_title(ss(app.list_name(&id)));
     g.set_board_hue(list_hue(app, &id));
     let b = app.board(&id);
-    g.set_board_tpl(ss(if t_(&b["own"]) { "СВОЯ ДОСКА".to_string() } else { format!("ПО ШАБЛОНУ «{}»", text(&b["name"]).to_uppercase()) }));
+    g.set_board_tpl(ss(if t_(&b["own"]) { t!("СВОЯ ДОСКА").to_string() } else { t!("ПО ШАБЛОНУ «{}»", text(&b["name"]).to_uppercase()) }));
     g.set_side_spheres(side(app, &id).iter().filter(|r| r.header).count() as i32);
     let view = view_of(app, &id);
     g.set_board_view(ss(view.clone()));
     g.set_board_colw(n(&app.ll(&id)["colw"]).unwrap_or(232.0).clamp(200.0, 360.0) as f32);
     g.set_archived(app.archived(&id).len() as i32);
     let cols = app.columns(&id);
-    g.set_board_tip(ss("Стрелка на строке переводит задачу на следующий этап.".to_string()));
+    g.set_board_tip(ss(t!("Стрелка на строке переводит задачу на следующий этап.")));
     match view.as_str() {
         "list" => {
             let mut cs = stickers_by_due(app, &id, "");
@@ -111,7 +111,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             }
             cs.retain(|c| c.count > 0);
             g.set_board_open(cs.iter().map(|c| c.count).sum());
-            g.set_board_tip(ss("Вид «Список» удобен для учёбы: видно, сколько уроков пройдено.".to_string()));
+            g.set_board_tip(ss(t!("Вид «Список» удобен для учёбы: видно, сколько уроков пройдено.")));
             g.set_columns(model(cs));
         }
         "stickers" => {
@@ -123,9 +123,9 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             let mut done: Vec<Value> = app.tasks_of(&id).iter().filter(|t| App::top(t) && App::is_done(t) && day10(&t["completed"]) >= week).cloned().collect();
             done.sort_by(|a0, b0| s(&b0["completed"]).cmp(s(&a0["completed"])));
             g.set_stk_jar(done.len() as i32);
-            g.set_stk_last(ss(done.first().map(|t| format!("Последнее: «{}» · {}. Сделанный стикер падает сюда.", text(&t["title"]),
-                sputnik_core::when::when_text(&day10(&t["completed"]), None, sputnik_core::dates::parse_ymd(&today_s()).unwrap()).0.to_lowercase())).unwrap_or_else(|| "Сделанный стикер падает сюда.".into())));
-            g.set_board_tip(ss("Сделанное уходит в баночку сразу.".to_string()));
+            g.set_stk_last(ss(done.first().map(|t| t!("Последнее: «{}» · {}. Сделанный стикер падает сюда.", text(&t["title"]),
+                sputnik_core::when::when_text(&day10(&t["completed"]), None, sputnik_core::dates::parse_ymd(&today_s()).unwrap()).0.to_lowercase())).unwrap_or_else(|| t!("Сделанный стикер падает сюда.").into())));
+            g.set_board_tip(ss(t!("Сделанное уходит в баночку сразу.")));
         }
         "pipe" => {
             let names: Vec<String> = cols.iter().map(|c| text(&c.0["name"])).collect();
@@ -141,11 +141,11 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                     let prio = n(&l["priority"]).unwrap_or(2.0) as i32;
                     let mut meta = vec![];
                     if !p.is_empty() { meta.push(p.clone()) }
-                    meta.push(if days >= 0 { format!("{} {} дн", text(&c["name"]).to_lowercase(), days) } else { text(&c["name"]).to_lowercase() });
+                    meta.push(if days >= 0 { t!("{} {} дн", text(&c["name"]).to_lowercase(), days) } else { text(&c["name"]).to_lowercase() });
                     if prio == 1 { meta.push("!!!".into()) }
                     rows.push(PipeRow {
                         list_id: ss(id.clone()), id: ss(s(&t["id"])), title: ss(text(&t["title"])), stage: ci as i32,
-                        stage_name: ss(text(&c["name"])), project: ss(p), due: ss(if due.starts_with("просрочено") { due.replace("просрочено · ", "") } else { due }), overdue: late && !App::is_done(t),
+                        stage_name: ss(text(&c["name"])), project: ss(p), due: ss(if late { due.replace(&t!("просрочено · {}", ""), "") } else { due }), overdue: late && !App::is_done(t),
                         prio, done: App::is_done(t), meta: ss(meta.join(" · ")),
                         next_name: ss(names.get(ci + 1).cloned().unwrap_or_default()), group: ss(""), group_info: ss(""), first: false,
                         thumb: thumb(&l["preview"]).unwrap_or_default(), has_thumb: thumb(&l["preview"]).is_some(),
@@ -155,7 +155,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
             }
             let by_stage = u.pipe_by == "stage";
             rows.sort_by(|a0, b0| a0.done.cmp(&b0.done).then(if by_stage { a0.stage.cmp(&b0.stage) } else { a0.project.cmp(&b0.project) }));
-            let key = |r: &PipeRow| if r.done { "Готово".to_string() } else if by_stage { r.stage_name.to_string() } else if r.project.is_empty() { "Без проекта".to_string() } else { r.project.to_string() };
+            let key = |r: &PipeRow| if r.done { t!("Готово").to_string() } else if by_stage { r.stage_name.to_string() } else if r.project.is_empty() { t!("Без проекта").to_string() } else { r.project.to_string() };
             let projects = { let mut v: Vec<String> = rows.iter().map(|r| r.project.to_string()).filter(|x| !x.is_empty()).collect(); v.sort(); v.dedup(); v.len() };
             for i in 0..rows.len() {
                 let k = key(&rows[i]);
@@ -164,16 +164,16 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 rows[i].first = first;
                 if first {
                     let cnt = rows.iter().filter(|r| key(r) == k).count();
-                    rows[i].group_info = ss(format!("{cnt} {}", if cnt == 1 { "ассет" } else if cnt < 5 { "ассета" } else { "ассетов" }));
+                    rows[i].group_info = ss(format!("{cnt} {}", sputnik_core::habits::plural(cnt as i64, ["ассет", "ассета", "ассетов"])));
                 }
             }
-            g.set_pipe_info(ss(format!("{} {} · {} {}", rows.len(), if rows.len() == 1 { "ассет" } else if rows.len() < 5 { "ассета" } else { "ассетов" }, projects, if projects == 1 { "проект" } else if projects < 5 { "проекта" } else { "проектов" })));
+            g.set_pipe_info(ss(format!("{} {} · {} {}", rows.len(), sputnik_core::habits::plural(rows.len() as i64, ["ассет", "ассета", "ассетов"]), projects, sputnik_core::habits::plural(projects as i64, ["проект", "проекта", "проектов"]))));
             g.set_pipe_by(ss(if by_stage { "stage" } else { "project" }));
             g.set_pipe_open(ss(u.pipe_open.clone()));
             g.set_pipe_gallery(u.pipe_gallery);
             g.set_pipe_stage(u.pipe_stage - 1);
             if u.pipe_gallery {
-                g.set_board_tip(ss("Перетащи картинку на ассет, чтобы поставить превью.".to_string()));
+                g.set_board_tip(ss(t!("Перетащи картинку на ассет, чтобы поставить превью.")));
             }
             if let Some(t) = app.task(&id, &u.pipe_open).cloned() {
                 let tid = s(&t["id"]).to_string();
@@ -183,7 +183,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 super::notes::sync_task_note(g, true, &format!("{id}|{tid}"), &text(&t["notes"]));
                 g.set_pipe_client(ss(text(&l["client"])));
                 let d = day10(&t["due"]);
-                g.set_pipe_due(ss(if d.is_empty() { "Без срока".to_string() } else { sputnik_core::when::when_text(&d, None, sputnik_core::habits::now().date()).0 }));
+                g.set_pipe_due(ss(if d.is_empty() { t!("Без срока").to_string() } else { sputnik_core::when::when_text(&d, None, sputnik_core::habits::now().date()).0 }));
                 // п.42: время и напоминания — как в окне задачи
                 let (st, lab) = super::dialogs::time_of(&l["slot"]);
                 g.set_pipe_time(ss(st));
@@ -194,7 +194,7 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                 g.set_pipe_prio(n(&l["priority"]).unwrap_or(2.0) as i32);
                 let ci = rows.iter().find(|r| r.id.as_str() == tid).map(|r| r.stage as usize).unwrap_or(0);
                 pipe_detail(app, &id, &t, &cols, ci, g);
-                g.set_pipe_prev(ss(if ci > 0 { format!("{} назад к {}", names[ci], names[ci - 1]) } else { String::new() }));
+                g.set_pipe_prev(ss(if ci > 0 { t!("{} назад к {}", names[ci], names[ci - 1]) } else { String::new() }));
             }
             if u.pipe_gallery && u.pipe_stage > 0 {
                 rows.retain(|r| r.stage == u.pipe_stage - 1);
@@ -215,11 +215,11 @@ pub fn render(app: &App, u: &mut Ui, g: &S) {
                     over: limit > 0 && ts.len() as i32 > limit, done: done_col, hue: color(&tpl::col_color(c)), cards: model(cards),
                 }
             }).collect();
-            g.set_board_flow(ss(out.iter().map(|c| c.name.to_uppercase()).collect::<Vec<_>>().join(" → ") + " · СТРЕЛКА НА КАРТОЧКЕ — СЛЕДУЮЩИЙ ЭТАП"));
+            g.set_board_flow(ss(out.iter().map(|c| c.name.to_uppercase()).collect::<Vec<_>>().join(" → ") + &t!(" · СТРЕЛКА НА КАРТОЧКЕ — СЛЕДУЮЩИЙ ЭТАП")));
             g.set_board_tip(ss(match out.iter().find(|c| c.limit > 0) {
-                Some(c) if c.count >= c.limit => format!("В «{}» уже {} из {}. Закончи одну до новой.", c.name, c.count, c.limit),
-                Some(c) => format!("В «{}» {} из {}. Можно взять ещё {}.", c.name, c.count, c.limit, c.limit - c.count),
-                None => "Стрелка на карточке переводит её на следующий этап.".into(),
+                Some(c) if c.count >= c.limit => t!("В «{}» уже {} из {}. Закончи одну до новой.", c.name, c.count, c.limit),
+                Some(c) => t!("В «{}» {} из {}. Можно взять ещё {}.", c.name, c.count, c.limit, c.limit - c.count),
+                None => t!("Стрелка на карточке переводит её на следующий этап.").into(),
             }));
             g.set_columns(model(out));
         }
@@ -243,15 +243,15 @@ fn stickers(app: &App, id: &str, sel: &str) -> Vec<Column> {
         }
     }
     let mut out: Vec<Column> = lanes.into_iter().filter(|x| !x.1.is_empty()).map(|(tp, ts)| Column {
-        id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: ts.len() as i32, limit: 0, over: false, done: false,
+        id: ss(text(&tp["id"])), name: ss(sputnik_core::i18n::tr(&text(&tp["name"])).to_string()), count: ts.len() as i32, limit: 0, over: false, done: false,
         hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()),
     }).collect();
-    out.push(Column { id: ss(""), name: ss("Разное"), count: misc.len() as i32, limit: 0, over: false, done: false, hue: color(""),
+    out.push(Column { id: ss(""), name: ss(t!("Разное")), count: misc.len() as i32, limit: 0, over: false, done: false, hue: color(""),
         cards: model(misc.iter().map(|t| card(app, id, t, sel)).collect()) });
     // пустые темы — тоже колонкой, чтобы было куда добавить
     for tp in &topics {
         if !out.iter().any(|c| c.id.as_str() == s(&tp["id"])) {
-            out.push(Column { id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: 0, limit: 0, over: false, done: false,
+            out.push(Column { id: ss(text(&tp["id"])), name: ss(sputnik_core::i18n::tr(&text(&tp["name"])).to_string()), count: 0, limit: 0, over: false, done: false,
                 hue: color(&stk::topic_color(tp)), cards: model(vec![]) });
         }
     }
@@ -272,7 +272,7 @@ fn stickers_by_due(app: &App, id: &str, sel: &str) -> Vec<Column> {
             let b = if d.is_empty() { "none" } else if d < tdy && !App::is_done(t) { "late" } else if d <= tdy { "today" } else if d == tmr { "tmr" } else if d <= wk { "week" } else { "later" };
             b == *k
         }).collect();
-        Column { id: ss(*k), name: ss(*name), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()) }
+        Column { id: ss(*k), name: ss(sputnik_core::i18n::tr(name)), count: ts.len() as i32, limit: 0, over: false, done: false, hue: color(c), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()) }
     }).filter(|c| c.count > 0 || c.id.as_str() == "today").collect()
 }
 
@@ -282,7 +282,6 @@ fn archive(app: &App, u: &Ui, g: &S) {
     let d0 = sputnik_core::dates::parse_ymd(&tdy).unwrap();
     let ymd = |k| sputnik_core::dates::ymd(sputnik_core::dates::add_days(d0, k));
     let (yday, week) = (ymd(-1), ymd(-(chrono::Datelike::weekday(&d0).num_days_from_monday() as i64)));
-    let months = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
     let q = u.arch_q.to_lowercase().replace('ё', "е");
     let mut all: Vec<(String, Value)> = vec![];
     for l in app.board_lists() {
@@ -297,8 +296,8 @@ fn archive(app: &App, u: &Ui, g: &S) {
     let mut rows: Vec<ArchRow> = vec![];
     for (lid, t) in &all {
         let d = day10(&t["completed"]);
-        let grp = if d >= yday { "Вчера".to_string() } else if d >= week { "На этой неделе".to_string() } else {
-            d.get(5..7).and_then(|m| m.parse::<usize>().ok()).map(|m| months[(m + 11) % 12].to_string()).unwrap_or_default()
+        let grp = if d >= yday { t!("Вчера").to_string() } else if d >= week { t!("На этой неделе").to_string() } else {
+            d.get(5..7).and_then(|m| m.parse::<usize>().ok()).map(|m| sputnik_core::i18n::month((m + 11) % 12).to_string()).unwrap_or_default()
         };
         let first = rows.last().map(|r| r.group.as_str() != grp).unwrap_or(true);
         rows.push(ArchRow { list_id: ss(lid.clone()), id: ss(text(&t["id"])), title: ss(text(&t["title"])), list: ss(app.list_name(lid)), hue: list_hue(app, lid),
@@ -309,7 +308,7 @@ fn archive(app: &App, u: &Ui, g: &S) {
         if asp > 0 { format!(" · {}", super::spheres::plural(asp, "СФЕРА", "СФЕРЫ", "СФЕР")) } else { String::new() },
         if alst > 0 { format!(" · {}", super::spheres::plural(alst, "СПИСОК", "СПИСКА", "СПИСКОВ")) } else { String::new() })));
     g.set_arch_tn(rows.len() as i32);
-    let mut sp = vec![Opt { id: ss(""), label: ss("Все списки"), hint: ss(""), hue: color(""), on: u.arch_sphere.is_empty() }];
+    let mut sp = vec![Opt { id: ss(""), label: ss(t!("Все списки")), hint: ss(""), hue: color(""), on: u.arch_sphere.is_empty() }];
     sp.extend(app.spheres().iter().map(|x| Opt { id: ss(text(&x["id"])), label: ss(text(&x["name"])), hint: ss(""), hue: color(&sputnik_core::spheres::sphere_color(x)), on: u.arch_sphere == s(&x["id"]) }));
     g.set_arch_spheres(model(if u.arch_tab == 0 { sp } else { vec![] }));
     g.set_arch_rows(model(rows));
@@ -340,13 +339,13 @@ fn pipe_detail(app: &App, list: &str, t: &Value, cols: &[(Value, Vec<Value>)], c
         let days: i64 = sp.iter().map(|x| x["days"].as_i64().unwrap_or(0)).sum();
         let info = match state {
             0 => {
-                let mut v = vec![format!("{done_n} из {total}")];
-                if days > 0 { v.push(format!("{days} дн")); }
+                let mut v = vec![t!("{} из {}", done_n, total)];
+                if days > 0 { v.push(t!("{} дн", days)); }
                 if let (Some(a0), Some(b0)) = (sp.first(), sp.last()) { v.push(format!("{}–{}", dm(s(&a0["from"])), dm(s(&b0["to"])))); }
                 v.join(" · ")
             }
-            1 => format!("СЕЙЧАС · {done_n} ИЗ {total}"),
-            _ => if total > 0 { format!("заготовлено {total}") } else { "можно накидать заранее".into() },
+            1 => t!("СЕЙЧАС · {} ИЗ {}", done_n, total),
+            _ => if total > 0 { t!("заготовлено {}", total) } else { t!("можно накидать заранее").into() },
         };
         blocks.push(PipeBlock { stage_id: ss(sid.clone()), name: ss(name_of(sid)), state, info: ss(info), done_n, total, subs: model(mine) });
     }
@@ -361,22 +360,22 @@ fn pipe_detail(app: &App, list: &str, t: &Value, cols: &[(Value, Vec<Value>)], c
         let cur = x["cur"] == true;
         let d = x["days"].as_i64().unwrap_or(0);
         let nm = name_of(s(&x["stage"]));
-        segs.push(PipeSeg { w: d as f32 / full, kind: if cur { 1 } else { 0 }, tip: ss(format!("{} · {} ДН · {} → {}", nm.to_uppercase(), d, dm(s(&x["from"])), dm(s(&x["to"])))) });
-        cap.push(format!("{} {}{}", nm.to_uppercase(), d, if cur { " ИДЁТ" } else { "" }));
+        segs.push(PipeSeg { w: d as f32 / full, kind: if cur { 1 } else { 0 }, tip: ss(t!("{} · {} ДН · {} → {}", nm.to_uppercase(), d, dm(s(&x["from"])), dm(s(&x["to"])))) });
+        cap.push(format!("{} {}{}", nm.to_uppercase(), d, if cur { t!(" ИДЁТ") } else { "" }));
     }
     if left > 0 {
-        segs.push(PipeSeg { w: left as f32 / full, kind: 2, tip: ss(format!("ДО СРОКА {left} ДН")) });
-        cap.push(format!("ДО СРОКА {left}"));
+        segs.push(PipeSeg { w: left as f32 / full, kind: 2, tip: ss(t!("ДО СРОКА {} ДН", left)) });
+        cap.push(t!("ДО СРОКА {}", left));
     }
     g.set_pipe_segs(model(segs));
-    g.set_pipe_total(ss(if total > 0 { format!("{total} дн всего") } else { String::new() }));
+    g.set_pipe_total(ss(if total > 0 { t!("{} дн всего", total) } else { String::new() }));
     g.set_pipe_caption(ss(cap.join(" · ")));
     // подсказки на чипах этапов: пройденный — «СКЕТЧ · 2 ДН · 10.11 → 12.11»
     g.set_pipe_tips(strings(ids.iter().map(|sid| {
         let sp: Vec<&Value> = spans.iter().filter(|x| s(&x["stage"]) == sid.as_str()).collect();
         let days: i64 = sp.iter().map(|x| x["days"].as_i64().unwrap_or(0)).sum();
         match (sp.first(), sp.last()) {
-            (Some(a0), Some(b0)) => format!("{} · {} ДН · {} → {}", name_of(sid).to_uppercase(), days, dm(s(&a0["from"])), dm(s(&b0["to"]))),
+            (Some(a0), Some(b0)) => t!("{} · {} ДН · {} → {}", name_of(sid).to_uppercase(), days, dm(s(&a0["from"])), dm(s(&b0["to"]))),
             _ => String::new(),
         }
     }).collect()));

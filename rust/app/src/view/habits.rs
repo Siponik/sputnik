@@ -1,4 +1,5 @@
 //! Модели «Привычек»: карточки на сегодня и таблица месяца.
+use sputnik_core::t;
 use super::*;
 use super::today::{habit_color, habit_icon};
 use crate::{HabitCard, MonthRow, Opt};
@@ -22,14 +23,14 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let tdy = today_s();
     let hs: Vec<Value> = app.habits().into_iter().filter(|h| u.habit_part == "all" || hb::part_of(h) == u.habit_part).collect();
     g.set_habit_mode(ss(u.habit_mode.clone()));
-    let mut parts = vec![Opt { id: ss("all"), label: ss("Все"), hint: ss(""), hue: color("accent"), on: u.habit_part == "all" }];
+    let mut parts = vec![Opt { id: ss("all"), label: ss(t!("Все")), hint: ss(""), hue: color("accent"), on: u.habit_part == "all" }];
     for p in a(&hb::parts()) {
         parts.push(Opt { id: ss(text(&p["id"])), label: ss(text(&p["name"])), hint: ss(""), hue: color("accent"), on: u.habit_part == s(&p["id"]) });
     }
     g.set_parts(model(parts));
     let all = app.habits();
     let sch: Vec<&Value> = all.iter().filter(|h| hb::scheduled_on(h, log, &tdy)).collect();
-    g.set_habit_meta(ss(format!("{} {} · СЕГОДНЯ {} / {}", all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]), sch.iter().filter(|h| hb::is_done(log, &h["id"], &tdy)).count(), sch.len())));
+    g.set_habit_meta(ss(t!("{} {} · СЕГОДНЯ {} / {}", all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]), sch.iter().filter(|h| hb::is_done(log, &h["id"], &tdy)).count(), sch.len())));
     let cards: Vec<HabitCard> = hs.iter().map(|h| {
         let st = hb::stats(h, log);
         let k = st["streak"].as_i64().unwrap_or(0);
@@ -49,7 +50,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             week: model(hb::week_row(h, log).iter().map(|x| if s(&x["st"]) == "f" { 6 } else { st_num(s(&x["st"]), t(&x["today"])) }).collect()),
             off: !hb::scheduled_on(h, log, &tdy),
             sched_up: ss(sched_up(h)),
-            unit_up: ss(if k == 0 && hb::broken(h, log).is_object() { "СЕРИЯ НА ПАУЗЕ".to_string() } else if weekly { "НЕД ПОДРЯД".into() } else { "ДН ПОДРЯД".into() }),
+            unit_up: ss(if k == 0 && hb::broken(h, log).is_object() { t!("СЕРИЯ НА ПАУЗЕ").to_string() } else if weekly { t!("НЕД ПОДРЯД").into() } else { t!("ДН ПОДРЯД").into() }),
             foot: ss(foot(h, log, k, &tdy).0),
             foot_hi: foot(h, log, k, &tdy).1,
             now_i: hb::dow(hb::now().date()) as i32,
@@ -57,7 +58,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         }
     }).collect();
     g.set_habits(model(cards));
-    let tip = hb::habit_tip(&hs, log).map(|t0| format!("«{}» срывается {} раз — попробуй сразу после «{}», в {}", text(&t0.habit["name"]), t0.misses, text(&t0.anchor["name"]), t0.time));
+    let tip = hb::habit_tip(&hs, log).map(|t0| t!("«{}» срывается {} раз — попробуй сразу после «{}», в {}", text(&t0.habit["name"]), t0.misses, text(&t0.anchor["name"]), t0.time));
     g.set_habit_tip(ss(tip.unwrap_or_default()));
     // панель выбранной привычки
     let sel = hs.iter().find(|h| text(&h["id"]) == u.habit_sel).or(hs.first());
@@ -72,10 +73,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         g.set_hp_sched(ss(hb::schedule_label(&h["days"]).to_uppercase()));
         g.set_hp_streak(k as i32);
         let passed = [7, 21, 50, 100].iter().any(|m| k == *m) || (k > 7 && [7i64, 21, 50, 100].contains(&k));
-        g.set_hp_label(ss(format!("{}{}", if weekly { "НЕД ПОДРЯД" } else { if k % 10 == 1 && k % 100 != 11 { "ДЕНЬ ПОДРЯД" } else { "ДН ПОДРЯД" } }, if passed || k >= 7 { " · ВЕХА ПРОЙДЕНА" } else { "" })));
+        g.set_hp_label(ss(format!("{}{}", if weekly { t!("НЕД ПОДРЯД") } else { if k % 10 == 1 && k % 100 != 11 { t!("ДЕНЬ ПОДРЯД") } else { t!("ДН ПОДРЯД") } }, if passed || k >= 7 { t!(" · ВЕХА ПРОЙДЕНА") } else { "" })));
         g.set_hp_ms((hb::milestone_pos(k as f64) / 100.0) as f32);
-        const MN: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
-        g.set_hp_month(ss(MN[nd.month0() as usize]));
+        g.set_hp_month(ss(sputnik_core::i18n::month(nd.month0() as usize).to_uppercase()));
         let mg = hb::month_grid(h, log, nd.year(), nd.month0() as i32);
         let mut cells: Vec<Opt> = a(&mg["cells"]).iter().map(|c| {
             let stt = s(&c["state"]);
@@ -87,7 +87,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let mr = hb::month_row(h, log, nd.year(), nd.month0() as i32);
         g.set_hp_stats(strings(vec![st["best"].as_i64().unwrap_or(0).to_string(), hb::total_done(h, log).to_string(), mr["pct"].as_i64().map(|x| format!("{x}%")).unwrap_or("—".into())]));
         let w = hb::habit_win(h);
-        g.set_hp_win(ss(if w.is_object() { format!("{} — {}", text(&w["s"]), text(&w["e"])) } else { "в любое время".into() }));
+        g.set_hp_win(ss(if w.is_object() { format!("{} — {}", text(&w["s"]), text(&w["e"])) } else { t!("в любое время").into() }));
         g.set_hp_part(ss(hb::part_name(h).to_uppercase()));
         g.set_hp_tg(h["remind"]["tg"] != false);
         g.set_hp_winrem(h["remind"]["win"] != false);
@@ -105,29 +105,27 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let dim = rows.first().map(|_| a(&hb::month_row(&hs[0], log, y, m0)["cells"]).len()).unwrap_or(30);
         g.set_month_days(strings((1..=dim).map(|d| d.to_string()).collect()));
         g.set_habit_month(model(rows));
-        const WD: [&str; 7] = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
-        g.set_hm_wd(strings((1..=dim as u32).map(|d| WD[chrono::NaiveDate::from_ymd_opt(y, nd.month(), d).map(|x| x.weekday().num_days_from_monday() as usize).unwrap_or(0)].to_string()).collect()));
+        g.set_hm_wd(strings((1..=dim as u32).map(|d| sputnik_core::i18n::wd(chrono::NaiveDate::from_ymd_opt(y, nd.month(), d).map(|x| x.weekday().num_days_from_monday() as usize).unwrap_or(0)).to_uppercase()).collect()));
         g.set_hm_pct(strings(hs.iter().map(|h| hb::month_row(h, log, y, m0)["pct"].as_i64().map(|x| x.to_string()).unwrap_or("—".into())).collect()));
         g.set_hm_today(nd.day() as i32);
-        const MN: [&str; 12] = ["ЯНВАРЬ", "ФЕВРАЛЬ", "МАРТ", "АПРЕЛЬ", "МАЙ", "ИЮНЬ", "ИЮЛЬ", "АВГУСТ", "СЕНТЯБРЬ", "ОКТЯБРЬ", "НОЯБРЬ", "ДЕКАБРЬ"];
-        g.set_hm_title(ss(format!("{} {} · {} {}", MN[nd.month0() as usize], y, all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]))));
+        g.set_hm_title(ss(t!("{} {} · {} {}", sputnik_core::i18n::month(nd.month0() as usize).to_uppercase(), y, all.len(), hb::plural(all.len() as i64, ["ПРИВЫЧКА", "ПРИВЫЧКИ", "ПРИВЫЧЕК"]))));
         let sm = hb::month_summary(&hs, log, y, m0);
         let clean: Vec<String> = a(&sm["clean"]).iter().map(|x| text(x)).collect();
         let pct = sm["pct"].as_i64();
         let prev = sm["prev"].as_i64();
         let mut sums = vec![
-            format!("Лучший месяц|{}", if clean.is_empty() { "Пока без чистых серий".into() } else { format!("{} — без пропусков", clean.join(" и ")) }),
-            format!("Средний процент|{}", match (pct, prev) { (Some(p), Some(q)) => format!("{p}% · на {}% {} прошлого месяца", (p - q).abs(), if p >= q { "лучше" } else { "хуже" }), (Some(p), None) => format!("{p}%"), _ => "—".into() }),
+            format!("{}|{}", t!("Лучший месяц"), if clean.is_empty() { t!("Пока без чистых серий").into() } else { t!("{} — без пропусков", clean.join(t!(" и "))) }),
+            format!("{}|{}", t!("Средний процент"), match (pct, prev) { (Some(p), Some(q)) => t!("{}% · на {}% {} прошлого месяца", p, (p - q).abs(), if p >= q { t!("лучше") } else { t!("хуже") }), (Some(p), None) => format!("{p}%"), _ => "—".into() }),
         ];
         let br: Vec<String> = hs.iter().filter_map(|h| { let b = hb::broken(h, log); if b.is_object() { Some(text(&h["name"])) } else { None } }).collect();
-        sums.push(format!("Сорвалось|{}", if br.is_empty() { "Ничего — так держать".into() } else { br.join(", ") }));
+        sums.push(format!("{}|{}", t!("Сорвалось"), if br.is_empty() { t!("Ничего — так держать").into() } else { br.join(", ") }));
         g.set_hm_sum(strings(sums.iter().flat_map(|x| { let (a0, b0) = x.split_once('|').unwrap_or((x, "")); [a0.to_string(), b0.to_string()] }).collect()));
     }
 }
 
 fn sched_up(h: &Value) -> String {
     let pw = n(&h["perWeek"]).unwrap_or(0.0);
-    let first = if pw > 0.0 { format!("{} В НЕД", pw as i64) } else if hb::goal_n(h) > 1 {
+    let first = if pw > 0.0 { t!("{} В НЕД", pw as i64) } else if hb::goal_n(h) > 1 {
         format!("{} {}", hb::goal_n(h), text(&h["goal"]["unit"]).to_uppercase())
     } else { hb::schedule_label(&h["days"]).to_uppercase() };
     let p = hb::part_of(h);
@@ -139,18 +137,18 @@ fn foot(h: &Value, log: &Value, k: i64, tdy: &str) -> (String, bool) {
     let pw = n(&h["perWeek"]).unwrap_or(0.0);
     if pw > 0.0 {
         let c = hb::week_row(h, log).iter().filter(|x| s(&x["st"]) == "d").count();
-        return (format!("{} / {} НА НЕДЕЛЕ", c, pw as i64), false);
+        return (t!("{} / {} НА НЕДЕЛЕ", c, pw as i64), false);
     }
     if hb::goal_n(h) > 1 {
-        return (format!("{} / {} СЕГОДНЯ", hb::count_on(log, h, tdy), hb::goal_n(h)), false);
+        return (t!("{} / {} СЕГОДНЯ", hb::count_on(log, h, tdy), hb::goal_n(h)), false);
     }
     if hb::broken(h, log).is_object() {
-        return ("ВЧЕРА ПРОПУСК".into(), false);
+        return (t!("ВЧЕРА ПРОПУСК").into(), false);
     }
     if k > 0 {
         let m = hb::next_milestone(k as f64);
-        return (format!("→ {} · ЧЕРЕЗ {} ДН", m, m - k), true);
+        return (t!("→ {} · ЧЕРЕЗ {} ДН", m, m - k), true);
     }
     let w = hb::habit_win(h);
-    if w.is_object() { (format!("ОКНО {}–{}", text(&w["s"]), text(&w["e"])), false) } else { (String::new(), false) }
+    if w.is_object() { (t!("ОКНО {}–{}", text(&w["s"]), text(&w["e"])), false) } else { (String::new(), false) }
 }

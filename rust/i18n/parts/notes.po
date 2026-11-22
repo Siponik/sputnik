@@ -1,0 +1,939 @@
+msgid "ПН"
+msgstr "MO"
+
+msgid "ВТ"
+msgstr "TU"
+
+msgid "СР"
+msgstr "WE"
+
+msgid "ЧТ"
+msgstr "TH"
+
+msgid "ПТ"
+msgstr "FR"
+
+msgid "СБ"
+msgstr "SA"
+
+msgid "ВС"
+msgstr "SU"
+
+msgid "✓ Сделано"
+msgstr "✓ Done"
+
+msgid "Отметить"
+msgstr "Mark"
+
+msgid "{} · ПАНЕЛЬ"
+msgstr "{} · PANEL"
+
+msgid "ВЕХИ"
+msgstr "MILESTONES"
+
+msgid "ЛУЧШАЯ"
+msgstr "BEST"
+
+msgid "ВСЕГО"
+msgstr "TOTAL"
+
+msgid "ЗА МЕСЯЦ"
+msgstr "THIS MONTH"
+
+msgid "ОКНО"
+msgstr "WINDOW"
+
+msgid "НАПОМНИТЬ"
+msgstr "REMIND"
+
+msgid "ПРИВЫЧКИ"
+msgstr "HABITS"
+
+msgid "СЕГОДНЯ"
+msgstr "TODAY"
+
+msgid "МЕСЯЦ"
+msgstr "MONTH"
+
+msgid "＋ Привычка"
+msgstr "＋ Habit"
+
+msgid "ПРИВЫЧКА × ДЕНЬ"
+msgstr "HABIT × DAY"
+
+msgid "SPACE — ОТМЕТИТЬ · X — ПРОПУСК · O — НЕ СЧИТАТЬ"
+msgstr "SPACE — MARK · X — SKIP · O — IGNORE"
+
+msgid "ПРИВЫЧКА"
+msgstr "HABIT"
+
+msgid "сделано"
+msgstr "done"
+
+msgid "не всё"
+msgstr "partial"
+
+msgid "пропуск"
+msgstr "missed"
+
+msgid "не по расписанию"
+msgstr "off schedule"
+
+msgid "сегодня"
+msgstr "today"
+
+msgid "{} · {} ЧИСЛО"
+msgstr "{} · DAY {}"
+
+msgid "Сделано"
+msgstr "Done"
+
+msgid "Пропуск"
+msgstr "Missed"
+
+msgid "Не считать этот день"
+msgstr "Ignore this day"
+
+msgid "Очистить"
+msgstr "Clear"
+
+msgid "Отметить все"
+msgstr "Mark all"
+
+msgid "Привычек пока нет — нажми «＋ Привычка» или напиши строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"
+msgstr "No habits yet — press “＋ Habit” or type a line below: “water 8 glasses”, “workout on weekdays in the morning”"
+
+msgid "＋ Новая привычка · «чтение 20 минут вечером» · Enter"
+msgstr "＋ New habit · “read 20 minutes in the evening” · Enter"
+
+msgid "Клик по клетке — меню дня. Задним числом можно отметить любой день месяца."
+msgstr "Click a cell for the day menu. You can mark any day of the month retroactively."
+
+msgid "Через час"
+msgstr "In an hour"
+
+msgid "Утром 9:00"
+msgstr "Morning 9:00"
+
+msgid "Вечером 19:00"
+msgstr "Evening 19:00"
+
+msgid "Без времени"
+msgstr "No time"
+
+msgid "Привычка · {}"
+msgstr "Habit · {}"
+
+msgid "Серия {} дн. не сбросится · правки сохраняются сразу"
+msgstr "{}-day streak is safe · changes save instantly"
+
+msgid "Правки сохраняются сразу"
+msgstr "Changes save instantly"
+
+msgid "Название привычки"
+msgstr "Habit name"
+
+msgid "ЗНАЧОК"
+msgstr "ICON"
+
+msgid "КАК ЧАСТО"
+msgstr "HOW OFTEN"
+
+msgid "в неделю"
+msgstr "per week"
+
+msgid "КОГДА"
+msgstr "WHEN"
+
+msgid "до"
+msgstr "to"
+
+msgid "ЗАМЕТКА"
+msgstr "NOTE"
+
+msgid "Зачем и как…"
+msgstr "Why and how…"
+
+msgid "   СВОЙСТВА"
+msgstr "   PROPERTIES"
+
+msgid "Цель"
+msgstr "Goal"
+
+msgid "Сделать"
+msgstr "Do it"
+
+msgid "2 раза в день"
+msgstr "2 times a day"
+
+msgid "3 раза в день"
+msgstr "3 times a day"
+
+msgid "4 раза в день"
+msgstr "4 times a day"
+
+msgid "5 раз в день"
+msgstr "5 times a day"
+
+msgid "8 раз в день"
+msgstr "8 times a day"
+
+msgid "в начале окна"
+msgstr "at window start"
+
+msgid "выкл"
+msgstr "off"
+
+msgid "в окне приложения"
+msgstr "in the app window"
+
+msgid "До какого дня"
+msgstr "Until"
+
+msgid "Цвет"
+msgstr "Color"
+
+msgid "Удалить"
+msgstr "Delete"
+
+msgid "привычку"
+msgstr "habit"
+
+msgid "КАРТОЧКА ПРИВЫЧКИ"
+msgstr "HABIT CARD"
+
+msgid "УТРО"
+msgstr "MORNING"
+
+msgid "ДЕНЬ"
+msgstr "DAY"
+
+msgid "ВЕЧЕР"
+msgstr "EVENING"
+
+msgid "ДН ПОДРЯД"
+msgstr "DAY STREAK"
+
+msgid "CTRL + КЛИК"
+msgstr "CTRL + CLICK"
+
+msgid "Найти заметку  Ctrl K"
+msgstr "Find a note  Ctrl K"
+
+msgid "Новая заметка, холст или папка"
+msgstr "New note, canvas or folder"
+
+msgid "НЕДАВНИЕ"
+msgstr "RECENT"
+
+msgid "ПАПКИ"
+msgstr "FOLDERS"
+
+msgid "НАЙДЕНО"
+msgstr "FOUND"
+
+msgid "ПАПКА · {}"
+msgstr "FOLDER · {}"
+
+msgid "ИЗМЕНЕНО"
+msgstr "MODIFIED"
+
+msgid "А–Я"
+msgstr "A–Z"
+
+msgid "СВЯЗИ"
+msgstr "LINKS"
+
+msgid "Порядок заметок — клик меняет"
+msgstr "Note order — click to change"
+
+msgid "02  ЗАМЕТКА"
+msgstr "02  NOTE"
+
+msgid "Заметок пока нет. Выбери папку с заметками (подойдёт и папка Obsidian) — или нажми «+» слева."
+msgstr "No notes yet. Choose a notes folder (an Obsidian folder works too) — or press “+” on the left."
+
+msgid "Выбрать папку…"
+msgstr "Choose folder…"
+
+msgid "Выбери заметку слева"
+msgstr "Pick a note on the left"
+
+msgid "ФОКУС · CTRL E"
+msgstr "FOCUS · CTRL E"
+
+msgid "Фокус — только заметка на весь экран"
+msgstr "Focus — just the note, full screen"
+
+msgid "ТАБЛИЦА"
+msgstr "TABLE"
+
+msgid "Вставить таблицу"
+msgstr "Insert table"
+
+msgid "ССЫЛАЮТСЯ СЮДА · {}"
+msgstr "LINKED FROM · {}"
+
+msgid "НЕ СОХРАНЕНО · {}"
+msgstr "UNSAVED · {}"
+
+msgid "СОХРАНЕНО · {}"
+msgstr "SAVED · {}"
+
+msgid "{} СЛОВ"
+msgstr "{} WORDS"
+
+msgid "03  СВЯЗИ"
+msgstr "03  LINKS"
+
+msgid "ССЫЛАЕТСЯ НА · {}"
+msgstr "LINKS TO · {}"
+
+msgid "Ссылок нет — напиши [[название]]"
+msgstr "No links — write [[title]]"
+
+msgid "{}  · создать"
+msgstr "{}  · create"
+
+msgid "Пока никто"
+msgstr "Nobody yet"
+
+msgid "УПОМЯНУТО БЕЗ ССЫЛКИ · {}"
+msgstr "UNLINKED MENTIONS · {}"
+
+msgid "Нет"
+msgstr "None"
+
+msgid "Связать"
+msgstr "Link"
+
+msgid "на канвас"
+msgstr "onto canvas"
+
+msgid "открой канвас, чтобы положить"
+msgstr "open a canvas to drop it"
+
+msgid "Заметки"
+msgstr "Notes"
+
+msgid "Граф"
+msgstr "Graph"
+
+msgid "Найти на графе"
+msgstr "Find on graph"
+
+msgid "ВЕСЬ"
+msgstr "ALL"
+
+msgid "ЛОКАЛЬНЫЙ"
+msgstr "LOCAL"
+
+msgid "ГРУППЫ · ЦВЕТ ПО ПАПКЕ"
+msgstr "GROUPS · COLOR BY FOLDER"
+
+msgid "ПОКАЗЫВАТЬ"
+msgstr "SHOW"
+
+msgid "Теги точками"
+msgstr "Tags as dots"
+
+msgid "Вложения"
+msgstr "Attachments"
+
+msgid "Без связей"
+msgstr "Orphans"
+
+msgid "Ещё не созданные"
+msgstr "Not yet created"
+
+msgid "СИЛЫ"
+msgstr "FORCES"
+
+msgid "Отталкивание"
+msgstr "Repulsion"
+
+msgid "Длина связей"
+msgstr "Link length"
+
+msgid "Притяжение к центру"
+msgstr "Pull to center"
+
+msgid "ЧИТАЮ · {}"
+msgstr "READING · {}"
+
+msgid "Клик по соседу — граф переезжает к той заметке, панель показывает её."
+msgstr "Click a neighbor — the graph moves to that note and the panel shows it."
+
+msgid "СОСЕДИ · {}"
+msgstr "NEIGHBORS · {}"
+
+msgid "ещё {}"
+msgstr "{} more"
+
+msgid "Открыть в заметках"
+msgstr "Open in Notes"
+
+msgid "Открыть в фокусе"
+msgstr "Open in focus"
+
+msgid "Весь граф"
+msgstr "Full graph"
+
+msgid "Локальный граф"
+msgstr "Local graph"
+
+msgid "открыть"
+msgstr "open"
+
+msgid "локальный"
+msgstr "local"
+
+msgid "закрыть"
+msgstr "close"
+
+msgid "ГРАФ ЗНАНИЙ"
+msgstr "NOTES GRAPH"
+
+msgid " · ЛОКАЛЬНЫЙ"
+msgstr " · LOCAL"
+
+msgid " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"
+msgstr " · CLICK A DOT — READ ON THE RIGHT"
+
+msgid "Крупнее"
+msgstr "Zoom in"
+
+msgid "Мельче"
+msgstr "Zoom out"
+
+msgid "Пересобрать граф"
+msgstr "Rebuild graph"
+
+msgid "ССЫЛКА"
+msgstr "LINK"
+
+msgid "НЕТ ЗАМЕТКИ"
+msgstr "NO NOTE"
+
+msgid "загружаю предпросмотр…"
+msgstr "loading preview…"
+
+msgid "ХОЛСТ"
+msgstr "CANVAS"
+
+msgid "Заметка"
+msgstr "Note"
+
+msgid "Текст"
+msgstr "Text"
+
+msgid "Картинка"
+msgstr "Image"
+
+msgid "Группа"
+msgstr "Group"
+
+msgid "ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"
+msgstr "OPEN FORMAT JSON CANVAS"
+
+msgid "Авто-раскладка"
+msgstr "Auto-layout"
+
+msgid "Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка."
+msgstr "Drag a note from the list to add a node. Double-click — card; on a note — edit (Ctrl — open). Wire — socket to socket; double-click a label to edit it."
+
+msgid "Канвас не читается"
+msgstr "Canvas can't be read"
+
+msgid "{}. Файл не трогаем — поправь его в другой программе, и он откроется."
+msgstr "{}. We leave the file untouched — fix it in another app and it will open."
+
+msgid "Цвет"
+msgstr "Color"
+
+msgid "Приблизить к выделенному"
+msgstr "Zoom to selection"
+
+msgid "Стрелка"
+msgstr "Arrow"
+
+msgid "Править"
+msgstr "Edit"
+
+msgid "Открыть"
+msgstr "Open"
+
+msgid "В группу"
+msgstr "Group"
+
+msgid "Дублировать"
+msgstr "Duplicate"
+
+msgid "Найти заметку"
+msgstr "Find a note"
+
+msgid "Добавить колонку"
+msgstr "Add column"
+
+msgid "Добавить строку ниже"
+msgstr "Add row below"
+
+msgid "ЗНАНИЯ · ENTER — ВСТАВИТЬ"
+msgstr "NOTES · ENTER — INSERT"
+
+msgid "Заметка… **жирный**, - список, - [ ] дело, [[ — ссылка на «Знания»"
+msgstr "Note… **bold**, - list, - [ ] to-do, [[ — link to Notes"
+
+msgid "Все"
+msgstr "All"
+
+msgid "{} {} · СЕГОДНЯ {} / {}"
+msgstr "{} {} · TODAY {} / {}"
+
+msgid "ПРИВЫЧКА|ПРИВЫЧКИ|ПРИВЫЧЕК"
+msgstr "HABIT|HABITS"
+
+msgid "неделя|недели|недель"
+msgstr "week|weeks"
+
+msgid "СЕРИЯ НА ПАУЗЕ"
+msgstr "STREAK PAUSED"
+
+msgid "НЕД ПОДРЯД"
+msgstr "WEEK STREAK"
+
+msgid "ДН ПОДРЯД"
+msgstr "DAY STREAK"
+
+msgid "ДЕНЬ ПОДРЯД"
+msgstr "DAY STREAK"
+
+msgid " · ВЕХА ПРОЙДЕНА"
+msgstr " · MILESTONE REACHED"
+
+msgid "«{}» срывается {} раз — попробуй сразу после «{}», в {}"
+msgstr "“{}” slips {} times — try it right after “{}”, at {}"
+
+msgid "в любое время"
+msgstr "any time"
+
+msgid "{} {} · {} {}"
+msgstr "{} {} · {} {}"
+
+msgid "Лучший месяц"
+msgstr "Best month"
+
+msgid "Пока без чистых серий"
+msgstr "No clean streaks yet"
+
+msgid "{} — без пропусков"
+msgstr "{} — no misses"
+
+msgid " и "
+msgstr " and "
+
+msgid "Средний процент"
+msgstr "Average rate"
+
+msgid "{}% · на {}% {} прошлого месяца"
+msgstr "{}% · {}% {} than last month"
+
+msgid "лучше"
+msgstr "better"
+
+msgid "хуже"
+msgstr "worse"
+
+msgid "Сорвалось"
+msgstr "Slipped"
+
+msgid "Ничего — так держать"
+msgstr "None — keep it up"
+
+msgid "{} В НЕД"
+msgstr "{} / WEEK"
+
+msgid "{} / {} НА НЕДЕЛЕ"
+msgstr "{} / {} THIS WEEK"
+
+msgid "{} / {} СЕГОДНЯ"
+msgstr "{} / {} TODAY"
+
+msgid "ВЧЕРА ПРОПУСК"
+msgstr "MISSED YESTERDAY"
+
+msgid "→ {} · ЧЕРЕЗ {} ДН"
+msgstr "→ {} · IN {} D"
+
+msgid "ОКНО {}–{}"
+msgstr "WINDOW {}–{}"
+
+msgid "Каждый день"
+msgstr "Every day"
+
+msgid "По будням"
+msgstr "Weekdays"
+
+msgid "Свои дни"
+msgstr "Custom days"
+
+msgid "N раз в неделю"
+msgstr "N times a week"
+
+msgid "Утро"
+msgstr "Morning"
+
+msgid "День"
+msgstr "Day"
+
+msgid "Вечер"
+msgstr "Evening"
+
+msgid "Любое"
+msgstr "Any"
+
+msgid "КОРЕНЬ"
+msgstr "ROOT"
+
+msgid "По умолчанию"
+msgstr "Default"
+
+msgid "Оранжевый"
+msgstr "Orange"
+
+msgid "Сиреневый"
+msgstr "Lilac"
+
+msgid "Синий"
+msgstr "Blue"
+
+msgid "Зелёный"
+msgstr "Green"
+
+msgid "Жёлтый"
+msgstr "Yellow"
+
+msgid "Красный"
+msgstr "Red"
+
+msgid "Бирюзовый"
+msgstr "Teal"
+
+msgid "{} · цвет"
+msgstr "{} · color"
+
+msgid "Папка · {}"
+msgstr "Folder · {}"
+
+msgid "Цвет"
+msgstr "Color"
+
+msgid "Показать в папке Windows"
+msgstr "Show in Windows folder"
+
+msgid "Удалить только папку…"
+msgstr "Delete folder only…"
+
+msgid "Удалить со всем содержимым…"
+msgstr "Delete with all contents…"
+
+msgid "Удалить папку «{}»? Её файлы ({}) останутся — переедут на уровень выше."
+msgstr "Delete folder “{}”? Its files ({}) will stay — they move up one level."
+
+msgid "Удалить папку"
+msgstr "Delete folder"
+
+msgid "Удалить папку «{}» со всем содержимым ({})? Всё ляжет в папку .trash внутри папки заметок."
+msgstr "Delete folder “{}” with all its contents ({})? Everything goes to the .trash folder inside the notes folder."
+
+msgid "Удалить всё"
+msgstr "Delete all"
+
+msgid "Папка удалена, файлов поднято выше: {}"
+msgstr "Folder deleted, files moved up: {}"
+
+msgid "Не удалилось: {}"
+msgstr "Couldn't delete: {}"
+
+msgid "Папка «{}» — в корзине (.trash)"
+msgstr "Folder “{}” moved to trash (.trash)"
+
+msgid "Новое название холста"
+msgstr "New canvas name"
+
+msgid "Новое название заметки — ссылки на неё в других заметках и на холстах обновятся"
+msgstr "New note name — links to it in other notes and canvases will be updated"
+
+msgid "Переименовать"
+msgstr "Rename"
+
+msgid "«{}» уже есть в этой папке"
+msgstr "“{}” already exists in this folder"
+
+msgid "Не переименовалось: {}"
+msgstr "Couldn't rename: {}"
+
+msgid "Переименовано в «{}»"
+msgstr "Renamed to “{}”"
+
+msgid "Переименовано в «{}», ссылки обновлены в {} {}"
+msgstr "Renamed to “{}”, links updated in {} {}"
+
+msgid "файле|файлах|файлах"
+msgstr "file|files"
+
+msgid " Ссылок на неё: {} — они останутся, но станут «ещё не созданными»."
+msgstr " Links to it: {} — they will stay but become “not created yet”."
+
+msgid "Удалить «{}» в корзину?{} Файл ляжет в папку .trash внутри папки заметок."
+msgstr "Move “{}” to trash?{} The file goes to the .trash folder inside the notes folder."
+
+msgid "Удалить"
+msgstr "Delete"
+
+msgid "«{}» — в корзине (.trash)"
+msgstr "“{}” moved to trash (.trash)"
+
+msgid "Связано: в «{}» теперь ссылка"
+msgstr "Linked: “{}” now has a link"
+
+msgid "Не сохранилось: {}"
+msgstr "Couldn't save: {}"
+
+msgid "Упоминание не нашлось — может, уже ссылка"
+msgstr "Mention not found — maybe it's already a link"
+
+msgid "адрес в интернете · откроется в браузере"
+msgstr "web address · opens in the browser"
+
+msgid "заметки ещё нет · Ctrl+клик создаст"
+msgstr "no such note yet · Ctrl+click creates it"
+
+msgid "Название новой папки"
+msgstr "New folder name"
+
+msgid "Создать"
+msgstr "Create"
+
+msgid "Папка не создалась: {}"
+msgstr "Couldn't create folder: {}"
+
+msgid "Заметка не создалась: {}"
+msgstr "Couldn't create note: {}"
+
+msgid "Без папки"
+msgstr "No folder"
+
+msgid "изменено {}"
+msgstr "modified {}"
+
+msgid "ЗАМЕТКА|ЗАМЕТКИ|ЗАМЕТОК"
+msgstr "NOTE|NOTES"
+
+msgid "СВЯЗЬ|СВЯЗИ|СВЯЗЕЙ"
+msgstr "LINK|LINKS"
+
+msgid "Канвас не читается — сначала поправь файл"
+msgstr "Canvas can't be read — fix the file first"
+
+msgid "Канвас не сохранился: {}"
+msgstr "Couldn't save canvas: {}"
+
+msgid "Холст не создался: {}"
+msgstr "Couldn't create canvas: {}"
+
+msgid "КАРТИНКА"
+msgstr "IMAGE"
+
+msgid "_Сайт не отдал предпросмотр. Попробую снова при следующем запуске._"
+msgstr "_The site gave no preview. I'll try again on next launch._"
+
+msgid "сверяю…"
+msgstr "syncing…"
+
+msgid "всё отправлено · {} на Drive · {}"
+msgstr "all uploaded · {} on Drive · {}"
+
+msgid "{} — изменений ждут: {}, отправлю сам"
+msgstr "{} — changes waiting: {}, will send automatically"
+
+msgid "Заметку поменяли на двух компьютерах — сохранены обе версии: «{}»"
+msgstr "The note was changed on two computers — both versions kept: “{}”"
+
+msgid "заметка|заметки|заметок"
+msgstr "note|notes"
+
+msgid "Серия {}! {}"
+msgstr "{}-day streak! {}"
+
+msgid "Не получилось создать список «Привычки»: {}"
+msgstr "Couldn't create the “Привычки” (Habits) list: {}"
+
+msgid "Перенесено в «{}»"
+msgstr "Moved to “{}”"
+
+msgid "Событие добавлено"
+msgstr "Event added"
+
+msgid "Событие не создалось: {}"
+msgstr "Couldn't create event: {}"
+
+msgid "День рождения сохранён"
+msgstr "Birthday saved"
+
+msgid "День рождения не сохранился: {}"
+msgstr "Couldn't save birthday: {}"
+
+msgid "Повтор: «{}» — снова {}"
+msgstr "Repeat: “{}” — again {}"
+
+msgid "сегодня"
+msgstr "today"
+
+msgid "Принято задач: {}"
+msgstr "Tasks accepted: {}"
+
+msgid "«{}» — принято"
+msgstr "“{}” — accepted"
+
+msgid "«{}» — отклонено и удалено"
+msgstr "“{}” — rejected and deleted"
+
+msgid "Список не создался: {}"
+msgstr "Couldn't create list: {}"
+
+msgid "Не переименовался: {}"
+msgstr "Couldn't rename: {}"
+
+msgid "Список удалён"
+msgstr "List deleted"
+
+msgid "Не удалось удалить список: {}"
+msgstr "Couldn't delete list: {}"
+
+msgid "Готово · «{}»"
+msgstr "Done · “{}”"
+
+msgid "Отменить"
+msgstr "Undo"
+
+msgid "Задача удалена"
+msgstr "Task deleted"
+
+msgid "Привычка · {}"
+msgstr "Habit · {}"
+
+msgid "Ещё не отмечено сегодня"
+msgstr "Not marked yet today"
+
+msgid "Спутник · напоминание"
+msgstr "Sputnik · reminder"
+
+msgid "общий список не найден"
+msgstr "shared list not found"
+
+msgid "задача не найдена"
+msgstr "task not found"
+
+msgid "Это не общая сфера Спутника"
+msgstr "This is not a Sputnik shared sphere"
+
+msgid "Зову тебя в общую сферу «{}» в Спутнике.\n1) Открой ссылку и добавь календарь: {}\n2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: {}"
+msgstr "I'm inviting you to a shared sphere “{}” in Sputnik.\n1) Open the link and add the calendar: {}\n2) Or in Sputnik: Board → + sphere → “Join a shared sphere…” and enter the code: {}"
+
+msgid "{}: {}"
+msgstr "{}: {}"
+
+msgid "Не принялось"
+msgstr "Couldn't accept"
+
+msgid "Не получилось"
+msgstr "Failed"
+
+msgid "Не вошёл в сферу"
+msgstr "Couldn't join the sphere"
+
+msgid "Не убралось"
+msgstr "Couldn't remove"
+
+msgid "Не позвал"
+msgstr "Couldn't invite"
+
+msgid "Не убрал"
+msgstr "Couldn't remove"
+
+msgid "Не удалилась сфера"
+msgstr "Couldn't delete the sphere"
+
+msgid "Делаю сферу общей…"
+msgstr "Sharing the sphere…"
+
+msgid "Сфера стала общей — позови людей"
+msgstr "The sphere is shared — invite people"
+
+msgid "Не получилось сделать общей: {}"
+msgstr "Couldn't share: {}"
+
+msgid "родитель ещё не создан"
+msgstr "parent not created yet"
+
+msgid "Не сохранилось в Google: {}"
+msgstr "Couldn't save to Google: {}"
+
+msgid "Нет связи с Google"
+msgstr "No connection to Google"
+
+msgid "Пропал доступ к общей сфере"
+msgstr "Lost access to the shared sphere"
+
+msgid "Из Telegram — новая задача"
+msgstr "From Telegram — new task"
+
+msgid "Из Telegram — новых задач: {}"
+msgstr "From Telegram — new tasks: {}"
+
+msgid "Telegram подключён ✓ — напоминания придут туда"
+msgstr "Telegram connected ✓ — reminders will go there"
+
+msgid "Не привязался: {}"
+msgstr "Couldn't link: {}"
+
+msgid "Отправил проверку — загляни в Telegram"
+msgstr "Test sent — check Telegram"
+
+msgid "Бот не ответил: {}"
+msgstr "The bot didn't reply: {}"
+
+msgid "Telegram отключён"
+msgstr "Telegram disconnected"
+
+msgid "поток упал"
+msgstr "thread crashed"
+
+msgid "ключ"
+msgstr "key"
+
+msgid "подпись не base64"
+msgstr "signature is not base64"
+
+msgid "подпись не сошлась: {}"
+msgstr "signature mismatch: {}"
+
+msgid "распаковка: {}"
+msgstr "unpacking: {}"
+
+msgid "Не проверилось: {}"
+msgstr "Couldn't check: {}"
+
+msgid "Стоит последняя версия {}"
+msgstr "You have the latest version {}"
+
+msgid "Скачивание остановлено — в следующий раз продолжу с того же места"
+msgstr "Download stopped — I'll resume from where it left off next time"
+
+msgid "Бот ответил {}"
+msgstr "The bot replied {}"
+
+msgid "Бот не отвечает — проверь интернет"
+msgstr "The bot isn't responding — check your internet"
+

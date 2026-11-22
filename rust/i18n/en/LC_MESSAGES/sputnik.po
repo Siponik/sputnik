@@ -1,0 +1,4110 @@
+# Спутник — английский перевод. Исходный текст — русский (msgid), перевод — msgstr.
+# Один файл на Slint (@tr) и Rust (t!). Без msgctxt. Правила — docs/i18n.md.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+# ---- Настройки ----
+msgid "ЯЗЫК"
+msgstr "LANGUAGE"
+
+msgid "Как в системе"
+msgstr "System"
+
+# ---- множественное число: «одна|две|пять» → «one|many» ----
+msgid "задача|задачи|задач"
+msgstr "task|tasks"
+
+# ---- даты ----
+msgid "сегодня, {}"
+msgstr "today, {}"
+
+msgid "завтра, {}"
+msgstr "tomorrow, {}"
+
+msgid "с {}"
+msgstr "from {}"
+
+msgid "{}, {} · и просроченное"
+msgstr "{}, {} · and overdue"
+
+msgid "ВИД"
+msgstr "APPEARANCE"
+
+msgid "ПН"
+msgstr "MO"
+
+msgid "ВТ"
+msgstr "TU"
+
+msgid "СР"
+msgstr "WE"
+
+msgid "ЧТ"
+msgstr "TH"
+
+msgid "ПТ"
+msgstr "FR"
+
+msgid "СБ"
+msgstr "SA"
+
+msgid "ВС"
+msgstr "SU"
+
+msgid "✓ Сделано"
+msgstr "✓ Done"
+
+msgid "Отметить"
+msgstr "Mark"
+
+msgid "{} · ПАНЕЛЬ"
+msgstr "{} · PANEL"
+
+msgid "ВЕХИ"
+msgstr "MILESTONES"
+
+msgid "ЛУЧШАЯ"
+msgstr "BEST"
+
+msgid "ВСЕГО"
+msgstr "TOTAL"
+
+msgid "ЗА МЕСЯЦ"
+msgstr "THIS MONTH"
+
+msgid "ОКНО"
+msgstr "WINDOW"
+
+msgid "НАПОМНИТЬ"
+msgstr "REMIND"
+
+msgid "ПРИВЫЧКИ"
+msgstr "HABITS"
+
+msgid "СЕГОДНЯ"
+msgstr "TODAY"
+
+msgid "МЕСЯЦ"
+msgstr "MONTH"
+
+msgid "＋ Привычка"
+msgstr "＋ Habit"
+
+msgid "ПРИВЫЧКА × ДЕНЬ"
+msgstr "HABIT × DAY"
+
+msgid "SPACE — ОТМЕТИТЬ · X — ПРОПУСК · O — НЕ СЧИТАТЬ"
+msgstr "SPACE — MARK · X — SKIP · O — IGNORE"
+
+msgid "ПРИВЫЧКА"
+msgstr "HABIT"
+
+msgid "сделано"
+msgstr "done"
+
+msgid "не всё"
+msgstr "partial"
+
+msgid "пропуск"
+msgstr "missed"
+
+msgid "не по расписанию"
+msgstr "off schedule"
+
+msgid "сегодня"
+msgstr "today"
+
+msgid "{} · {} ЧИСЛО"
+msgstr "{} · DAY {}"
+
+msgid "Сделано"
+msgstr "Done"
+
+msgid "Пропуск"
+msgstr "Missed"
+
+msgid "Не считать этот день"
+msgstr "Ignore this day"
+
+msgid "Очистить"
+msgstr "Clear"
+
+msgid "Отметить все"
+msgstr "Mark all"
+
+msgid "Привычек пока нет — нажми «＋ Привычка» или напиши строкой ниже: «вода 8 стаканов», «зарядка по будням утром»"
+msgstr "No habits yet — press “＋ Habit” or type a line below: “water 8 glasses”, “workout on weekdays in the morning”"
+
+msgid "＋ Новая привычка · «чтение 20 минут вечером» · Enter"
+msgstr "＋ New habit · “read 20 minutes in the evening” · Enter"
+
+msgid "Клик по клетке — меню дня. Задним числом можно отметить любой день месяца."
+msgstr "Click a cell for the day menu. You can mark any day of the month retroactively."
+
+msgid "Через час"
+msgstr "In an hour"
+
+msgid "Утром 9:00"
+msgstr "Morning 9:00"
+
+msgid "Вечером 19:00"
+msgstr "Evening 19:00"
+
+msgid "Без времени"
+msgstr "No time"
+
+msgid "Привычка · {}"
+msgstr "Habit · {}"
+
+msgid "Серия {} дн. не сбросится · правки сохраняются сразу"
+msgstr "{}-day streak is safe · changes save instantly"
+
+msgid "Правки сохраняются сразу"
+msgstr "Changes save instantly"
+
+msgid "Название привычки"
+msgstr "Habit name"
+
+msgid "ЗНАЧОК"
+msgstr "ICON"
+
+msgid "КАК ЧАСТО"
+msgstr "HOW OFTEN"
+
+msgid "в неделю"
+msgstr "per week"
+
+msgid "КОГДА"
+msgstr "WHEN"
+
+msgid "до"
+msgstr "to"
+
+msgid "ЗАМЕТКА"
+msgstr "NOTE"
+
+msgid "Зачем и как…"
+msgstr "Why and how…"
+
+msgid "   СВОЙСТВА"
+msgstr "   PROPERTIES"
+
+msgid "Цель"
+msgstr "Goal"
+
+msgid "Сделать"
+msgstr "Do it"
+
+msgid "2 раза в день"
+msgstr "2 times a day"
+
+msgid "3 раза в день"
+msgstr "3 times a day"
+
+msgid "4 раза в день"
+msgstr "4 times a day"
+
+msgid "5 раз в день"
+msgstr "5 times a day"
+
+msgid "8 раз в день"
+msgstr "8 times a day"
+
+msgid "в начале окна"
+msgstr "at window start"
+
+msgid "выкл"
+msgstr "off"
+
+msgid "в окне приложения"
+msgstr "in the app window"
+
+msgid "До какого дня"
+msgstr "Until"
+
+msgid "Цвет"
+msgstr "Color"
+
+msgid "Удалить"
+msgstr "Delete"
+
+msgid "привычку"
+msgstr "habit"
+
+msgid "КАРТОЧКА ПРИВЫЧКИ"
+msgstr "HABIT CARD"
+
+msgid "УТРО"
+msgstr "MORNING"
+
+msgid "ДЕНЬ"
+msgstr "DAY"
+
+msgid "ВЕЧЕР"
+msgstr "EVENING"
+
+msgid "ДН ПОДРЯД"
+msgstr "DAY STREAK"
+
+msgid "CTRL + КЛИК"
+msgstr "CTRL + CLICK"
+
+msgid "Найти заметку  Ctrl K"
+msgstr "Find a note  Ctrl K"
+
+msgid "Новая заметка, холст или папка"
+msgstr "New note, canvas or folder"
+
+msgid "НЕДАВНИЕ"
+msgstr "RECENT"
+
+msgid "ПАПКИ"
+msgstr "FOLDERS"
+
+msgid "НАЙДЕНО"
+msgstr "FOUND"
+
+msgid "ПАПКА · {}"
+msgstr "FOLDER · {}"
+
+msgid "ИЗМЕНЕНО"
+msgstr "MODIFIED"
+
+msgid "А–Я"
+msgstr "A–Z"
+
+msgid "СВЯЗИ"
+msgstr "LINKS"
+
+msgid "Порядок заметок — клик меняет"
+msgstr "Note order — click to change"
+
+msgid "02  ЗАМЕТКА"
+msgstr "02  NOTE"
+
+msgid "Заметок пока нет. Выбери папку с заметками (подойдёт и папка Obsidian) — или нажми «+» слева."
+msgstr "No notes yet. Choose a notes folder (an Obsidian folder works too) — or press “+” on the left."
+
+msgid "Выбрать папку…"
+msgstr "Choose folder…"
+
+msgid "Выбери заметку слева"
+msgstr "Pick a note on the left"
+
+msgid "ФОКУС · CTRL E"
+msgstr "FOCUS · CTRL E"
+
+msgid "Фокус — только заметка на весь экран"
+msgstr "Focus — just the note, full screen"
+
+msgid "ТАБЛИЦА"
+msgstr "TABLE"
+
+msgid "Вставить таблицу"
+msgstr "Insert table"
+
+msgid "ССЫЛАЮТСЯ СЮДА · {}"
+msgstr "LINKED FROM · {}"
+
+msgid "НЕ СОХРАНЕНО · {}"
+msgstr "UNSAVED · {}"
+
+msgid "СОХРАНЕНО · {}"
+msgstr "SAVED · {}"
+
+msgid "{} СЛОВ"
+msgstr "{} WORDS"
+
+msgid "03  СВЯЗИ"
+msgstr "03  LINKS"
+
+msgid "ССЫЛАЕТСЯ НА · {}"
+msgstr "LINKS TO · {}"
+
+msgid "Ссылок нет — напиши [[название]]"
+msgstr "No links — write [[title]]"
+
+msgid "{}  · создать"
+msgstr "{}  · create"
+
+msgid "Пока никто"
+msgstr "Nobody yet"
+
+msgid "УПОМЯНУТО БЕЗ ССЫЛКИ · {}"
+msgstr "UNLINKED MENTIONS · {}"
+
+msgid "Нет"
+msgstr "None"
+
+msgid "Связать"
+msgstr "Link"
+
+msgid "на канвас"
+msgstr "onto canvas"
+
+msgid "открой канвас, чтобы положить"
+msgstr "open a canvas to drop it"
+
+msgid "Заметки"
+msgstr "Notes"
+
+msgid "Граф"
+msgstr "Graph"
+
+msgid "Найти на графе"
+msgstr "Find on graph"
+
+msgid "ВЕСЬ"
+msgstr "ALL"
+
+msgid "ЛОКАЛЬНЫЙ"
+msgstr "LOCAL"
+
+msgid "ГРУППЫ · ЦВЕТ ПО ПАПКЕ"
+msgstr "GROUPS · COLOR BY FOLDER"
+
+msgid "ПОКАЗЫВАТЬ"
+msgstr "SHOW"
+
+msgid "Теги точками"
+msgstr "Tags as dots"
+
+msgid "Вложения"
+msgstr "Attachments"
+
+msgid "Без связей"
+msgstr "Orphans"
+
+msgid "Ещё не созданные"
+msgstr "Not yet created"
+
+msgid "СИЛЫ"
+msgstr "FORCES"
+
+msgid "Отталкивание"
+msgstr "Repulsion"
+
+msgid "Длина связей"
+msgstr "Link length"
+
+msgid "Притяжение к центру"
+msgstr "Pull to center"
+
+msgid "ЧИТАЮ · {}"
+msgstr "READING · {}"
+
+msgid "Клик по соседу — граф переезжает к той заметке, панель показывает её."
+msgstr "Click a neighbor — the graph moves to that note and the panel shows it."
+
+msgid "СОСЕДИ · {}"
+msgstr "NEIGHBORS · {}"
+
+msgid "ещё {}"
+msgstr "{} more"
+
+msgid "Открыть в заметках"
+msgstr "Open in Notes"
+
+msgid "Открыть в фокусе"
+msgstr "Open in focus"
+
+msgid "Весь граф"
+msgstr "Full graph"
+
+msgid "Локальный граф"
+msgstr "Local graph"
+
+msgid "открыть"
+msgstr "open"
+
+msgid "локальный"
+msgstr "local"
+
+msgid "закрыть"
+msgstr "close"
+
+msgid "ГРАФ ЗНАНИЙ"
+msgstr "NOTES GRAPH"
+
+msgid " · ЛОКАЛЬНЫЙ"
+msgstr " · LOCAL"
+
+msgid " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"
+msgstr " · CLICK A DOT — READ ON THE RIGHT"
+
+msgid "Крупнее"
+msgstr "Zoom in"
+
+msgid "Мельче"
+msgstr "Zoom out"
+
+msgid "Пересобрать граф"
+msgstr "Rebuild graph"
+
+msgid "ССЫЛКА"
+msgstr "LINK"
+
+msgid "НЕТ ЗАМЕТКИ"
+msgstr "NO NOTE"
+
+msgid "загружаю предпросмотр…"
+msgstr "loading preview…"
+
+msgid "ХОЛСТ"
+msgstr "CANVAS"
+
+msgid "Заметка"
+msgstr "Note"
+
+msgid "Текст"
+msgstr "Text"
+
+msgid "Картинка"
+msgstr "Image"
+
+msgid "Группа"
+msgstr "Group"
+
+msgid "ОТКРЫТЫЙ ФОРМАТ JSON CANVAS"
+msgstr "OPEN FORMAT JSON CANVAS"
+
+msgid "Авто-раскладка"
+msgstr "Auto-layout"
+
+msgid "Перетащи заметку из списка — появится нода. Двойной клик — карточка, по заметке — правка (Ctrl — открыть). Провод — от гнезда к гнезду, двойной клик по подписи — правка."
+msgstr "Drag a note from the list to add a node. Double-click — card; on a note — edit (Ctrl — open). Wire — socket to socket; double-click a label to edit it."
+
+msgid "Канвас не читается"
+msgstr "Canvas can't be read"
+
+msgid "{}. Файл не трогаем — поправь его в другой программе, и он откроется."
+msgstr "{}. We leave the file untouched — fix it in another app and it will open."
+
+msgid "Приблизить к выделенному"
+msgstr "Zoom to selection"
+
+msgid "Стрелка"
+msgstr "Arrow"
+
+msgid "Править"
+msgstr "Edit"
+
+msgid "Открыть"
+msgstr "Open"
+
+msgid "В группу"
+msgstr "Group"
+
+msgid "Дублировать"
+msgstr "Duplicate"
+
+msgid "Найти заметку"
+msgstr "Find a note"
+
+msgid "Добавить колонку"
+msgstr "Add column"
+
+msgid "Добавить строку ниже"
+msgstr "Add row below"
+
+msgid "ЗНАНИЯ · ENTER — ВСТАВИТЬ"
+msgstr "NOTES · ENTER — INSERT"
+
+msgid "Заметка… **жирный**, - список, - [ ] дело, [[ — ссылка на «Знания»"
+msgstr "Note… **bold**, - list, - [ ] to-do, [[ — link to Notes"
+
+msgid "Все"
+msgstr "All"
+
+msgid "{} {} · СЕГОДНЯ {} / {}"
+msgstr "{} {} · TODAY {} / {}"
+
+msgid "ПРИВЫЧКА|ПРИВЫЧКИ|ПРИВЫЧЕК"
+msgstr "HABIT|HABITS"
+
+msgid "неделя|недели|недель"
+msgstr "week|weeks"
+
+msgid "СЕРИЯ НА ПАУЗЕ"
+msgstr "STREAK PAUSED"
+
+msgid "НЕД ПОДРЯД"
+msgstr "WEEK STREAK"
+
+msgid "ДЕНЬ ПОДРЯД"
+msgstr "DAY STREAK"
+
+msgid " · ВЕХА ПРОЙДЕНА"
+msgstr " · MILESTONE REACHED"
+
+msgid "«{}» срывается {} раз — попробуй сразу после «{}», в {}"
+msgstr "“{}” slips {} times — try it right after “{}”, at {}"
+
+msgid "в любое время"
+msgstr "any time"
+
+msgid "{} {} · {} {}"
+msgstr "{} {} · {} {}"
+
+msgid "Лучший месяц"
+msgstr "Best month"
+
+msgid "Пока без чистых серий"
+msgstr "No clean streaks yet"
+
+msgid "{} — без пропусков"
+msgstr "{} — no misses"
+
+msgid " и "
+msgstr " and "
+
+msgid "Средний процент"
+msgstr "Average rate"
+
+msgid "{}% · на {}% {} прошлого месяца"
+msgstr "{}% · {}% {} than last month"
+
+msgid "лучше"
+msgstr "better"
+
+msgid "хуже"
+msgstr "worse"
+
+msgid "Сорвалось"
+msgstr "Slipped"
+
+msgid "Ничего — так держать"
+msgstr "None — keep it up"
+
+msgid "{} В НЕД"
+msgstr "{} / WEEK"
+
+msgid "{} / {} НА НЕДЕЛЕ"
+msgstr "{} / {} THIS WEEK"
+
+msgid "{} / {} СЕГОДНЯ"
+msgstr "{} / {} TODAY"
+
+msgid "ВЧЕРА ПРОПУСК"
+msgstr "MISSED YESTERDAY"
+
+msgid "→ {} · ЧЕРЕЗ {} ДН"
+msgstr "→ {} · IN {} D"
+
+msgid "ОКНО {}–{}"
+msgstr "WINDOW {}–{}"
+
+msgid "Каждый день"
+msgstr "Every day"
+
+msgid "По будням"
+msgstr "Weekdays"
+
+msgid "Свои дни"
+msgstr "Custom days"
+
+msgid "N раз в неделю"
+msgstr "N times a week"
+
+msgid "Утро"
+msgstr "Morning"
+
+msgid "День"
+msgstr "Day"
+
+msgid "Вечер"
+msgstr "Evening"
+
+msgid "Любое"
+msgstr "Any"
+
+msgid "КОРЕНЬ"
+msgstr "ROOT"
+
+msgid "По умолчанию"
+msgstr "Default"
+
+msgid "Оранжевый"
+msgstr "Orange"
+
+msgid "Сиреневый"
+msgstr "Lilac"
+
+msgid "Синий"
+msgstr "Blue"
+
+msgid "Зелёный"
+msgstr "Green"
+
+msgid "Жёлтый"
+msgstr "Yellow"
+
+msgid "Красный"
+msgstr "Red"
+
+msgid "Бирюзовый"
+msgstr "Teal"
+
+msgid "{} · цвет"
+msgstr "{} · color"
+
+msgid "Папка · {}"
+msgstr "Folder · {}"
+
+msgid "Показать в папке Windows"
+msgstr "Show in Windows folder"
+
+msgid "Удалить только папку…"
+msgstr "Delete folder only…"
+
+msgid "Удалить со всем содержимым…"
+msgstr "Delete with all contents…"
+
+msgid "Удалить папку «{}»? Её файлы ({}) останутся — переедут на уровень выше."
+msgstr "Delete folder “{}”? Its files ({}) will stay — they move up one level."
+
+msgid "Удалить папку"
+msgstr "Delete folder"
+
+msgid "Удалить папку «{}» со всем содержимым ({})? Всё ляжет в папку .trash внутри папки заметок."
+msgstr "Delete folder “{}” with all its contents ({})? Everything goes to the .trash folder inside the notes folder."
+
+msgid "Удалить всё"
+msgstr "Delete all"
+
+msgid "Папка удалена, файлов поднято выше: {}"
+msgstr "Folder deleted, files moved up: {}"
+
+msgid "Не удалилось: {}"
+msgstr "Couldn't delete: {}"
+
+msgid "Папка «{}» — в корзине (.trash)"
+msgstr "Folder “{}” moved to trash (.trash)"
+
+msgid "Новое название холста"
+msgstr "New canvas name"
+
+msgid "Новое название заметки — ссылки на неё в других заметках и на холстах обновятся"
+msgstr "New note name — links to it in other notes and canvases will be updated"
+
+msgid "Переименовать"
+msgstr "Rename"
+
+msgid "«{}» уже есть в этой папке"
+msgstr "“{}” already exists in this folder"
+
+msgid "Не переименовалось: {}"
+msgstr "Couldn't rename: {}"
+
+msgid "Переименовано в «{}»"
+msgstr "Renamed to “{}”"
+
+msgid "Переименовано в «{}», ссылки обновлены в {} {}"
+msgstr "Renamed to “{}”, links updated in {} {}"
+
+msgid "файле|файлах|файлах"
+msgstr "file|files"
+
+msgid " Ссылок на неё: {} — они останутся, но станут «ещё не созданными»."
+msgstr " Links to it: {} — they will stay but become “not created yet”."
+
+msgid "Удалить «{}» в корзину?{} Файл ляжет в папку .trash внутри папки заметок."
+msgstr "Move “{}” to trash?{} The file goes to the .trash folder inside the notes folder."
+
+msgid "«{}» — в корзине (.trash)"
+msgstr "“{}” moved to trash (.trash)"
+
+msgid "Связано: в «{}» теперь ссылка"
+msgstr "Linked: “{}” now has a link"
+
+msgid "Не сохранилось: {}"
+msgstr "Couldn't save: {}"
+
+msgid "Упоминание не нашлось — может, уже ссылка"
+msgstr "Mention not found — maybe it's already a link"
+
+msgid "адрес в интернете · откроется в браузере"
+msgstr "web address · opens in the browser"
+
+msgid "заметки ещё нет · Ctrl+клик создаст"
+msgstr "no such note yet · Ctrl+click creates it"
+
+msgid "Название новой папки"
+msgstr "New folder name"
+
+msgid "Создать"
+msgstr "Create"
+
+msgid "Папка не создалась: {}"
+msgstr "Couldn't create folder: {}"
+
+msgid "Заметка не создалась: {}"
+msgstr "Couldn't create note: {}"
+
+msgid "Без папки"
+msgstr "No folder"
+
+msgid "изменено {}"
+msgstr "modified {}"
+
+msgid "ЗАМЕТКА|ЗАМЕТКИ|ЗАМЕТОК"
+msgstr "NOTE|NOTES"
+
+msgid "СВЯЗЬ|СВЯЗИ|СВЯЗЕЙ"
+msgstr "LINK|LINKS"
+
+msgid "Канвас не читается — сначала поправь файл"
+msgstr "Canvas can't be read — fix the file first"
+
+msgid "Канвас не сохранился: {}"
+msgstr "Couldn't save canvas: {}"
+
+msgid "Холст не создался: {}"
+msgstr "Couldn't create canvas: {}"
+
+msgid "КАРТИНКА"
+msgstr "IMAGE"
+
+msgid "_Сайт не отдал предпросмотр. Попробую снова при следующем запуске._"
+msgstr "_The site gave no preview. I'll try again on next launch._"
+
+msgid "сверяю…"
+msgstr "syncing…"
+
+msgid "всё отправлено · {} на Drive · {}"
+msgstr "all uploaded · {} on Drive · {}"
+
+msgid "{} — изменений ждут: {}, отправлю сам"
+msgstr "{} — changes waiting: {}, will send automatically"
+
+msgid "Заметку поменяли на двух компьютерах — сохранены обе версии: «{}»"
+msgstr "The note was changed on two computers — both versions kept: “{}”"
+
+msgid "заметка|заметки|заметок"
+msgstr "note|notes"
+
+msgid "Серия {}! {}"
+msgstr "{}-day streak! {}"
+
+msgid "Не получилось создать список «Привычки»: {}"
+msgstr "Couldn't create the “Привычки” (Habits) list: {}"
+
+msgid "Перенесено в «{}»"
+msgstr "Moved to “{}”"
+
+msgid "Событие добавлено"
+msgstr "Event added"
+
+msgid "Событие не создалось: {}"
+msgstr "Couldn't create event: {}"
+
+msgid "День рождения сохранён"
+msgstr "Birthday saved"
+
+msgid "День рождения не сохранился: {}"
+msgstr "Couldn't save birthday: {}"
+
+msgid "Повтор: «{}» — снова {}"
+msgstr "Repeat: “{}” — again {}"
+
+msgid "Принято задач: {}"
+msgstr "Tasks accepted: {}"
+
+msgid "«{}» — принято"
+msgstr "“{}” — accepted"
+
+msgid "«{}» — отклонено и удалено"
+msgstr "“{}” — rejected and deleted"
+
+msgid "Список не создался: {}"
+msgstr "Couldn't create list: {}"
+
+msgid "Не переименовался: {}"
+msgstr "Couldn't rename: {}"
+
+msgid "Список удалён"
+msgstr "List deleted"
+
+msgid "Не удалось удалить список: {}"
+msgstr "Couldn't delete list: {}"
+
+msgid "Готово · «{}»"
+msgstr "Done · “{}”"
+
+msgid "Отменить"
+msgstr "Undo"
+
+msgid "Задача удалена"
+msgstr "Task deleted"
+
+msgid "Ещё не отмечено сегодня"
+msgstr "Not marked yet today"
+
+msgid "Спутник · напоминание"
+msgstr "Sputnik · reminder"
+
+msgid "общий список не найден"
+msgstr "shared list not found"
+
+msgid "задача не найдена"
+msgstr "task not found"
+
+msgid "Это не общая сфера Спутника"
+msgstr "This is not a Sputnik shared sphere"
+
+msgid "Зову тебя в общую сферу «{}» в Спутнике.\\n1) Открой ссылку и добавь календарь: {}\\n2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: {}"
+msgstr "I'm inviting you to a shared sphere “{}” in Sputnik.\\n1) Open the link and add the calendar: {}\\n2) Or in Sputnik: Board → + sphere → “Join a shared sphere…” and enter the code: {}"
+
+msgid "{}: {}"
+msgstr "{}: {}"
+
+msgid "Не принялось"
+msgstr "Couldn't accept"
+
+msgid "Не получилось"
+msgstr "Failed"
+
+msgid "Не вошёл в сферу"
+msgstr "Couldn't join the sphere"
+
+msgid "Не убралось"
+msgstr "Couldn't remove"
+
+msgid "Не позвал"
+msgstr "Couldn't invite"
+
+msgid "Не убрал"
+msgstr "Couldn't remove"
+
+msgid "Не удалилась сфера"
+msgstr "Couldn't delete the sphere"
+
+msgid "Делаю сферу общей…"
+msgstr "Sharing the sphere…"
+
+msgid "Сфера стала общей — позови людей"
+msgstr "The sphere is shared — invite people"
+
+msgid "Не получилось сделать общей: {}"
+msgstr "Couldn't share: {}"
+
+msgid "родитель ещё не создан"
+msgstr "parent not created yet"
+
+msgid "Не сохранилось в Google: {}"
+msgstr "Couldn't save to Google: {}"
+
+msgid "Нет связи с Google"
+msgstr "No connection to Google"
+
+msgid "Пропал доступ к общей сфере"
+msgstr "Lost access to the shared sphere"
+
+msgid "Из Telegram — новая задача"
+msgstr "From Telegram — new task"
+
+msgid "Из Telegram — новых задач: {}"
+msgstr "From Telegram — new tasks: {}"
+
+msgid "Telegram подключён ✓ — напоминания придут туда"
+msgstr "Telegram connected ✓ — reminders will go there"
+
+msgid "Не привязался: {}"
+msgstr "Couldn't link: {}"
+
+msgid "Отправил проверку — загляни в Telegram"
+msgstr "Test sent — check Telegram"
+
+msgid "Бот не ответил: {}"
+msgstr "The bot didn't reply: {}"
+
+msgid "Telegram отключён"
+msgstr "Telegram disconnected"
+
+msgid "поток упал"
+msgstr "thread crashed"
+
+msgid "ключ"
+msgstr "key"
+
+msgid "подпись не base64"
+msgstr "signature is not base64"
+
+msgid "подпись не сошлась: {}"
+msgstr "signature mismatch: {}"
+
+msgid "распаковка: {}"
+msgstr "unpacking: {}"
+
+msgid "Не проверилось: {}"
+msgstr "Couldn't check: {}"
+
+msgid "Стоит последняя версия {}"
+msgstr "You have the latest version {}"
+
+msgid "Скачивание остановлено — в следующий раз продолжу с того же места"
+msgstr "Download stopped — I'll resume from where it left off next time"
+
+msgid "Бот ответил {}"
+msgstr "The bot replied {}"
+
+msgid "Бот не отвечает — проверь интернет"
+msgstr "The bot isn't responding — check your internet"
+
+msgid "Глина"
+msgstr "Clay"
+
+msgid "Коралл"
+msgstr "Coral"
+
+msgid "Роза"
+msgstr "Rose"
+
+msgid "Лаванда"
+msgstr "Lavender"
+
+msgid "Небо"
+msgstr "Sky"
+
+msgid "Мята"
+msgstr "Mint"
+
+msgid "Олива"
+msgstr "Olive"
+
+msgid "Свой"
+msgstr "Own"
+
+msgid "Файл слишком большой — это не client_secret.json. Нужен маленький файл ключа из Google Cloud."
+msgstr "The file is too big — it is not client_secret.json. You need the small key file from Google Cloud."
+
+msgid "Файл пустой. Скачай JSON клиента в Google Cloud ещё раз."
+msgstr "The file is empty. Download the client JSON from Google Cloud again."
+
+msgid "Это не похоже на client_secret.json: в файле не JSON."
+msgstr "This does not look like client_secret.json: the file is not JSON."
+
+msgid "Это не похоже на client_secret.json из Google Cloud."
+msgstr "This does not look like client_secret.json from Google Cloud."
+
+msgid "Это ключ типа «Веб-приложение», а нужен «Приложение для компьютера» (Desktop app). Создай в Google Cloud клиента Desktop app и скачай его JSON."
+msgstr "This is a “Web application” key, but you need “Desktop app”. Create a Desktop app client in Google Cloud and download its JSON."
+
+msgid "Это ключ сервисного аккаунта, а нужен ключ OAuth типа Desktop app (Google Cloud → Clients)."
+msgstr "This is a service account key, but you need an OAuth key of type Desktop app (Google Cloud → Clients)."
+
+msgid "В файле нет раздела «installed» — нужен ключ OAuth типа Desktop app из Google Cloud → Clients."
+msgstr "The file has no “installed” section — you need an OAuth key of type Desktop app from Google Cloud → Clients."
+
+msgid "В файле неправильный client_id — скачай JSON клиента заново."
+msgstr "The file has a wrong client_id — download the client JSON again."
+
+msgid "Google не дал Спутнику все доступы."
+msgstr "Google did not give Sputnik all the permissions."
+
+msgid "Вход отменён на странице Google. Если там было «доступ заблокирован» — приложение в Google Cloud ещё в режиме теста: добавь свою почту в тестовые пользователи или опубликуй его."
+msgstr "Sign-in was cancelled on the Google page. If it said “access blocked”, the app in Google Cloud is still in test mode: add your email to test users or publish it."
+
+msgid "Google не принял ключ приложения. Верни встроенный ключ или скачай client_secret.json заново."
+msgstr "Google did not accept the app key. Restore the built-in key or download client_secret.json again."
+
+msgid "Вход не завершился за 5 минут. Нажми «Открыть вход» ещё раз."
+msgstr "Sign-in did not finish in 5 minutes. Press “Open sign-in” again."
+
+msgid "Нажми «Открыть вход» ещё раз и на странице Google отметь все галочки (или «Выбрать всё»)."
+msgstr "Press “Open sign-in” again and tick all the boxes on the Google page (or “Select all”)."
+
+msgid "Google не дал доступ: {}."
+msgstr "Google did not give access: {}."
+
+msgid "Срок"
+msgstr "Due"
+
+msgid "Приоритет"
+msgstr "Priority"
+
+msgid "Тип"
+msgstr "Type"
+
+msgid "Подзадачи"
+msgstr "Subtasks"
+
+msgid "Учёт времени"
+msgstr "Time tracking"
+
+msgid "Дорожка этапов"
+msgstr "Stage track"
+
+msgid "Прогресс"
+msgstr "Progress"
+
+msgid "Клиент"
+msgstr "Client"
+
+msgid "Сумма"
+msgstr "Amount"
+
+msgid "чип «пт» / «сегодня»"
+msgstr "chip “Fri” / “today”"
+
+msgid "!!! слева от названия и полоска"
+msgstr "!!! left of the title and a stripe"
+
+msgid "цвет полоски и чип «#работа»"
+msgstr "stripe color and a “#work” chip"
+
+msgid "«☑ 2 из 4» на карточке"
+msgstr "“☑ 2 of 4” on the card"
+
+msgid "«⏱ 1 ч 15 мин», кнопка таймера"
+msgstr "“⏱ 1 h 15 min”, timer button"
+
+msgid "полоска этапов под названием"
+msgstr "stage strip under the title"
+
+msgid "«3 из 10 уроков» — для учёбы"
+msgstr "“3 of 10 lessons” — for study"
+
+msgid "поле в окне задачи + на карточке"
+msgstr "field in the task window + on the card"
+
+msgid "поле в окне задачи, итог колонки"
+msgstr "field in the task window, column total"
+
+msgid "список|списка|списков"
+msgstr "list|lists"
+
+msgid "колонка «{}»"
+msgstr "column “{}”"
+
+msgid "убрана «{}»"
+msgstr "removed “{}”"
+
+msgid "«{}»"
+msgstr "“{}”"
+
+msgid "порядок колонок"
+msgstr "column order"
+
+msgid "цвет или лимит"
+msgstr "color or limit"
+
+msgid "поля"
+msgstr "fields"
+
+msgid "вид"
+msgstr "view"
+
+msgid "Без названия"
+msgstr "Untitled"
+
+msgid "завтра"
+msgstr "tomorrow"
+
+msgid "вчера"
+msgstr "yesterday"
+
+msgid "{} ч"
+msgstr "{} h"
+
+msgid "ДЕЛО|ДЕЛА|ДЕЛ"
+msgstr "ITEM|ITEMS"
+
+msgid "ЕЩЁ"
+msgstr "MORE"
+
+msgid "РАНЬШЕ"
+msgstr "EARLIER"
+
+msgid "ПОЗЖЕ"
+msgstr "LATER"
+
+msgid "{} МИН"
+msgstr "{} MIN"
+
+msgid "{} Ч"
+msgstr "{} H"
+
+msgid "{} Ч {} МИН"
+msgstr "{} H {} MIN"
+
+msgid "Холст не читается: {}"
+msgstr "Canvas cannot be read: {}"
+
+msgid "Холст — не объект JSON"
+msgstr "The canvas is not a JSON object"
+
+msgid "послезавтра"
+msgstr "day after tomorrow"
+
+msgid "Без срока"
+msgstr "No due date"
+
+msgid "Сегодня"
+msgstr "Today"
+
+msgid "Завтра"
+msgstr "Tomorrow"
+
+msgid "Пн"
+msgstr "Mon"
+
+msgid "След. неделя"
+msgstr "Next week"
+
+msgid "Доска · колонка «{}»"
+msgstr "Board · column “{}”"
+
+msgid "«Сегодня» сразу{}"
+msgstr "“Today” right away{}"
+
+msgid "«Сегодня» в {} {}{}"
+msgstr "“Today” on {} {}{}"
+
+msgid "Календарь · неделя {}–{} {}"
+msgstr "Calendar · week {}–{} {}"
+
+msgid "Календарь · неделя {} {}–{} {}"
+msgstr "Calendar · week {} {}–{} {}"
+
+msgid "просрочено"
+msgstr "overdue"
+
+msgid "день|дня|дней"
+msgstr "day|days"
+
+msgid "год|года|лет"
+msgstr "year|years"
+
+msgid "событие"
+msgstr "event"
+
+msgid "день рождения"
+msgstr "birthday"
+
+msgid "раз в год"
+msgstr "once a year"
+
+msgid "каждый день"
+msgstr "every day"
+
+msgid "по будням"
+msgstr "on weekdays"
+
+msgid "повторяется {}"
+msgstr "repeats {}"
+
+msgid "у неё есть время и с кем-то"
+msgstr "it has a time and is with someone"
+
+msgid "у неё есть время"
+msgstr "it has a time"
+
+msgid "она с кем-то"
+msgstr "it is with someone"
+
+msgid "её не отмечают сделанной"
+msgstr "it is not ticked off"
+
+msgid "встречу"
+msgstr "an event"
+
+msgid "{} {} в неделю"
+msgstr "{} {} a week"
+
+msgid "раз|раза|раз"
+msgstr "time|times"
+
+msgid "по выходным"
+msgstr "on weekends"
+
+msgid "утро"
+msgstr "morning"
+
+msgid "день"
+msgstr "day"
+
+msgid "вечер"
+msgstr "evening"
+
+msgid "цель {} {}"
+msgstr "goal {} {}"
+
+msgid "стаканов"
+msgstr "glasses"
+
+msgid "страниц"
+msgstr "pages"
+
+msgid "минут"
+msgstr "minutes"
+
+msgid "км"
+msgstr "km"
+
+msgid "шагов"
+msgstr "steps"
+
+msgid "раз"
+msgstr "times"
+
+msgid "за 3 дня"
+msgstr "3 days before"
+
+msgid "за неделю"
+msgstr "a week before"
+
+msgid "за 2 недели"
+msgstr "2 weeks before"
+
+msgid "за месяц"
+msgstr "a month before"
+
+msgid "занятие|занятия|занятий"
+msgstr "session|sessions"
+
+msgid "по плану"
+msgstr "planned"
+
+msgid "привычки ещё не было"
+msgstr "no habit yet"
+
+msgid "выходной, серия сохранена"
+msgstr "day off, streak kept"
+
+msgid "Когда угодно"
+msgstr "Anytime"
+
+msgid "{} из {} на неделе"
+msgstr "{} of {} this week"
+
+msgid "{} из {} {}"
+msgstr "{} of {} {}"
+
+msgid "В день срока"
+msgstr "On the due day"
+
+msgid "За 1 день"
+msgstr "1 day before"
+
+msgid "За 2 дня"
+msgstr "2 days before"
+
+msgid "За 3 дня"
+msgstr "3 days before"
+
+msgid "За неделю"
+msgstr "A week before"
+
+msgid "За месяц"
+msgstr "A month before"
+
+msgid "В момент начала"
+msgstr "At start"
+
+msgid "За 5 минут"
+msgstr "5 minutes before"
+
+msgid "За 15 минут"
+msgstr "15 minutes before"
+
+msgid "За час"
+msgstr "An hour before"
+
+msgid "За день"
+msgstr "A day before"
+
+msgid "В день рождения"
+msgstr "On the birthday"
+
+msgid "За {} мин"
+msgstr "{} min before"
+
+msgid "За {} дн."
+msgstr "{} d before"
+
+msgid "Каждую неделю"
+msgstr "Every week"
+
+msgid "Каждый месяц"
+msgstr "Every month"
+
+msgid "Каждый год"
+msgstr "Every year"
+
+msgid "каждую неделю"
+msgstr "every week"
+
+msgid "каждый месяц"
+msgstr "every month"
+
+msgid "каждый год"
+msgstr "every year"
+
+msgid "Участник"
+msgstr "Member"
+
+msgid "ещё не принял"
+msgstr "not accepted yet"
+
+msgid "Я"
+msgstr "Me"
+
+msgid "Без исполнителя"
+msgstr "Unassigned"
+
+msgid "Общая сфера"
+msgstr "Shared sphere"
+
+msgid "сегодня в {}"
+msgstr "today at {}"
+
+msgid "вчера в {}"
+msgstr "yesterday at {}"
+
+msgid "отметка «сделано»"
+msgstr "marked done"
+
+msgid "перенос"
+msgstr "moved"
+
+msgid " в «{}»"
+msgstr " to “{}”"
+
+msgid "отдано: {}"
+msgstr "given to: {}"
+
+msgid "тебе"
+msgstr "you"
+
+msgid "снят исполнитель"
+msgstr "assignee removed"
+
+msgid "новое название"
+msgstr "new title"
+
+msgid "новый срок"
+msgstr "new due date"
+
+msgid "заметка"
+msgstr "note"
+
+msgid "правка"
+msgstr "edit"
+
+msgid "ты"
+msgstr "you"
+
+msgid "никто"
+msgstr "nobody"
+
+msgid "{} · «{}» готово"
+msgstr "{} · “{}” done"
+
+msgid "{} · «{}» готов"
+msgstr "{} · “{}” done"
+
+msgid "на этапе никого"
+msgstr "nobody on this stage"
+
+msgid "остаётся у тебя"
+msgstr "stays with you"
+
+msgid "снова у: {}"
+msgstr "back with: {}"
+
+msgid "этап без исполнителя"
+msgstr "stage has no assignee"
+
+msgid "этап твой — останется у тебя"
+msgstr "your stage — stays with you"
+
+msgid "останется: {}"
+msgstr "stays with: {}"
+
+msgid "уйдёт к тебе"
+msgstr "goes to you"
+
+msgid "уйдёт: {}"
+msgstr "goes to: {}"
+
+msgid "Нет связи"
+msgstr "No connection"
+
+msgid "Нужен вход"
+msgstr "Sign-in needed"
+
+msgid "Ошибка"
+msgstr "Error"
+
+msgid "обновляю…"
+msgstr "refreshing…"
+
+msgid "нет связи — повторю через минуту"
+msgstr "no connection — will retry in a minute"
+
+msgid "ещё не обновлялось"
+msgstr "not refreshed yet"
+
+msgid "обновлено в {} · раз в 2 минуты"
+msgstr "updated at {} · every 2 minutes"
+
+msgid "нужно разрешить скрытую папку на Drive"
+msgstr "allow the hidden Drive folder"
+
+msgid "не удалось синхронизировать"
+msgstr "could not sync"
+
+msgid "синхронизирую…"
+msgstr "syncing…"
+
+msgid "синхронизировано в {}"
+msgstr "synced at {}"
+
+msgid "ещё не синхронизировано"
+msgstr "not synced yet"
+
+msgid "ставлю {} · {}%"
+msgstr "installing {} · {}%"
+
+msgid "вышла {} · меньше минуты"
+msgstr "{} is out · less than a minute"
+
+msgid "последняя версия · проверено в {}"
+msgstr "latest version · checked at {}"
+
+msgid "обновления проверяются сами"
+msgstr "updates are checked automatically"
+
+msgid "через общий бот"
+msgstr "via the shared bot"
+
+msgid "бот не подключён — Настройки → Напоминания"
+msgstr "bot not connected — Settings → Reminders"
+
+msgid "файл ещё не обновлялся"
+msgstr "file not updated yet"
+
+msgid "файл обновлён {} · {} впереди"
+msgstr "file updated {} · {} ahead"
+
+msgid "Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке или «Создать»."
+msgstr "All clear. Add new tasks with “+ Add task” in a column or “Create”."
+
+msgid "Новая задача"
+msgstr "New task"
+
+msgid "Начни с «{}»{}"
+msgstr "Start with “{}”{}"
+
+msgid "Остальное подождёт."
+msgstr "The rest can wait."
+
+msgid "В «{}» {} из {} — больше лимита. Закончи что-нибудь, прежде чем брать новое."
+msgstr "“{}” has {} of {} — over the limit. Finish something before taking more."
+
+msgid "«{}» уже {} из {} — закончи одну, прежде чем брать новую."
+msgstr "“{}” is already {} of {} — finish one before taking another."
+
+msgid "К «{}»"
+msgstr "To “{}”"
+
+msgid "Во «{}» {} — разбери: что в работу, что на потом."
+msgstr "“{}” has {} — sort them out: what to start, what for later."
+
+msgid "меньше минуты"
+msgstr "less than a minute"
+
+msgid "{} ч {} мин"
+msgstr "{} h {} min"
+
+msgid "{} мин"
+msgstr "{} min"
+
+msgid "Высокий"
+msgstr "High"
+
+msgid "Средний"
+msgstr "Medium"
+
+msgid "Низкий"
+msgstr "Low"
+
+msgid "просрочено с {}"
+msgstr "overdue since {}"
+
+msgid ", срок {}"
+msgstr ", due {}"
+
+msgid "{} приоритет{}"
+msgstr "{} priority{}"
+
+msgid "срок {}"
+msgstr "due {}"
+
+msgid "Золото"
+msgstr "Gold"
+
+msgid "Фиолетовый"
+msgstr "Purple"
+
+msgid "Куб"
+msgstr "Cube"
+
+msgid "Портфель"
+msgstr "Briefcase"
+
+msgid "Книга"
+msgstr "Book"
+
+msgid "Дом"
+msgstr "Home"
+
+msgid "Люди"
+msgstr "People"
+
+msgid "Сердце"
+msgstr "Heart"
+
+msgid "Кисть"
+msgstr "Brush"
+
+msgid "Звезда"
+msgstr "Star"
+
+msgid "Без сферы"
+msgstr "No sphere"
+
+msgid "Разное"
+msgstr "Misc"
+
+msgid "На неделе"
+msgstr "This week"
+
+msgid "Когда-нибудь"
+msgstr "Someday"
+
+msgid "до воскресенья"
+msgstr "until Sunday"
+
+msgid "без срока или позже"
+msgstr "no date or later"
+
+msgid "Ничьи"
+msgstr "Unassigned"
+
+msgid "просрочено · {}"
+msgstr "overdue · {}"
+
+msgid "за {} мин"
+msgstr "{} min before"
+
+msgid "точное время"
+msgstr "exact time"
+
+msgid " в {}"
+msgstr " at {}"
+
+msgid "{} в {}"
+msgstr "{} at {}"
+
+msgid "серый"
+msgstr "gray"
+
+msgid "синий"
+msgstr "blue"
+
+msgid "глина"
+msgstr "clay"
+
+msgid "золото"
+msgstr "gold"
+
+msgid "фиолетовый"
+msgstr "purple"
+
+msgid "зелёный"
+msgstr "green"
+
+msgid "бирюзовый"
+msgstr "teal"
+
+msgid "Канбан"
+msgstr "Kanban"
+
+msgid "Конвейер"
+msgstr "Pipeline"
+
+msgid "Стикеры"
+msgstr "Stickers"
+
+msgid "Список"
+msgstr "List"
+
+msgid "Колонки рядом, карточки перетаскиваются. Подходит, когда задач много и они быстро двигаются."
+msgstr "Columns side by side, cards can be dragged. Good when there are many tasks and they move fast."
+
+msgid "Строка = задача, колонки — этапы по порядку. Для долгих задач с этапами: ассеты, большие заказы."
+msgstr "A row is a task, columns are stages in order. For long tasks with stages: assets, big orders."
+
+msgid "Дела-стикеры по темам или по срокам, кружок — сделано. Для простых дел без этапов: покупки, звонки, дом."
+msgstr "Sticky notes by topic or by date, a circle means done. For simple things without stages: shopping, calls, home."
+
+msgid "Простой список с этапом в виде метки. Для курсов и дел, где этапов мало."
+msgstr "A simple list with the stage as a label. For courses and tasks with few stages."
+
+msgid "Прогресс (3 из 10)"
+msgstr "Progress (3 of 10)"
+
+msgid "Вид"
+msgstr "Look"
+
+msgid "Что показывать"
+msgstr "What to show"
+
+msgid "Напоминания"
+msgstr "Reminders"
+
+msgid "Синхронизация"
+msgstr "Sync"
+
+msgid "Обновления"
+msgstr "Updates"
+
+msgid "Клавиши"
+msgstr "Keys"
+
+msgid "Тема"
+msgstr "Theme"
+
+msgid "Тёмная — основная. «Как в Windows» переключается вместе с системой."
+msgstr "Dark is the main one. “Like Windows” follows the system."
+
+msgid "светлая цвет оформление"
+msgstr "light color appearance"
+
+msgid "Акцент"
+msgstr "Accent"
+
+msgid "Цвет кнопок, выделения и подсветки"
+msgstr "Color of buttons, selection and highlights"
+
+msgid "акцентный цвет оформление глина палитра"
+msgstr "accent color appearance clay palette"
+
+msgid "Анимации"
+msgstr "Animations"
+
+msgid "«Минимум» — только мягкое появление. «Выкл» — всё сразу."
+msgstr "“Minimal” is a soft fade-in only. “Off” shows everything at once."
+
+msgid "движение"
+msgstr "motion"
+
+msgid "Порядок вкладок"
+msgstr "Tab order"
+
+msgid "Сегодня, Календарь, Доска, Привычки — в каком порядке стоят в шапке. Клавиши 1–4 идут так же."
+msgstr "The order of Today, Calendar, Board, Habits in the header. Keys 1–4 follow it."
+
+msgid "меню шапка разделы переставить порядок верхнее"
+msgstr "menu header sections reorder order top"
+
+msgid "Открывать при запуске"
+msgstr "Open on start"
+
+msgid "Какой раздел показывать первым"
+msgstr "Which section to show first"
+
+msgid "старт"
+msgstr "start"
+
+msgid "Енот-советчик"
+msgstr "Advice helper"
+
+msgid "Советы внизу колонки доски"
+msgstr "Tips at the bottom of the board column"
+
+msgid "совет подсказки"
+msgstr "tip hints"
+
+msgid "Списки задач"
+msgstr "Task lists"
+
+msgid "Какие списки видны на доске, в «Сегодня» и в календаре"
+msgstr "Which lists show on the board, in Today and in the calendar"
+
+msgid "скрыть показывать"
+msgstr "hide show"
+
+msgid "Календари"
+msgstr "Calendars"
+
+msgid "Какие календари Google показывать"
+msgstr "Which Google calendars to show"
+
+msgid "скрыть показывать дни рождения праздники"
+msgstr "hide show birthdays holidays"
+
+msgid "Общий бот: напоминания и задачи текстом"
+msgstr "Shared bot: reminders and tasks by text"
+
+msgid "телеграм бот подключить код"
+msgstr "telegram bot connect code"
+
+msgid "Свой бот (Apps Script)"
+msgstr "Own bot (Apps Script)"
+
+msgid "Только у владельца: файл напоминаний, проверка связи, выключить"
+msgstr "Owner only: reminders file, connection check, turn off"
+
+msgid "телеграм бот проверить apps script выключить"
+msgstr "telegram bot check apps script turn off"
+
+msgid "Задачи — по умолчанию"
+msgstr "Tasks — default"
+
+msgid "Напоминание, которое ставится новой задаче со сроком"
+msgstr "Reminder set on a new task with a due date"
+
+msgid "События"
+msgstr "Events"
+
+msgid "Напоминание о событии по умолчанию"
+msgstr "Default reminder for an event"
+
+msgid "Дни рождения"
+msgstr "Birthdays"
+
+msgid "Напоминание о дне рождения по умолчанию"
+msgstr "Default reminder for a birthday"
+
+msgid "Задачи без времени"
+msgstr "Tasks without time"
+
+msgid "Во сколько напоминать, если у задачи только дата, или не напоминать"
+msgstr "What time to remind when a task has only a date, or not remind"
+
+msgid "выключить отключить уведомление"
+msgstr "turn off disable notification"
+
+msgid "Уведомления Windows"
+msgstr "Windows notifications"
+
+msgid "Вехи привычек; основное — в боте"
+msgstr "Habit milestones; the main ones are in the bot"
+
+msgid "Google-аккаунт"
+msgstr "Google account"
+
+msgid "Задачи, календарь, скрытая папка"
+msgstr "Tasks, calendar, hidden folder"
+
+msgid "выйти войти почта"
+msgstr "sign out sign in mail"
+
+msgid "Google Задачи и Календарь"
+msgstr "Google Tasks and Calendar"
+
+msgid "Обновляется само раз в 2 минуты"
+msgstr "Updates itself every 2 minutes"
+
+msgid "обновить синхронизация"
+msgstr "refresh sync"
+
+msgid "Между компьютерами"
+msgstr "Between computers"
+
+msgid "Слой Спутника в скрытой папке на Drive"
+msgstr "Sputnik layer in a hidden Drive folder"
+
+msgid "синхронизация второй компьютер"
+msgstr "sync second computer"
+
+msgid "Дубли задач"
+msgstr "Duplicate tasks"
+
+msgid "Одинаковые задачи в одном списке"
+msgstr "Identical tasks in one list"
+
+msgid "дубли копии повторы двойные"
+msgstr "duplicates copies repeats double"
+
+msgid "Резервные копии"
+msgstr "Backups"
+
+msgid "Каждый день, хранятся 14"
+msgstr "Every day, 14 are kept"
+
+msgid "бэкап копия папка"
+msgstr "backup copy folder"
+
+msgid "Версия Спутника"
+msgstr "Sputnik version"
+
+msgid "Обновить или проверить обновления"
+msgstr "Update or check for updates"
+
+msgid "обновление"
+msgstr "update"
+
+msgid "Проверять самому"
+msgstr "Check automatically"
+
+msgid "Через 30 секунд после запуска и раз в 6 часов"
+msgstr "30 seconds after start and every 6 hours"
+
+msgid "обновления автоматически"
+msgstr "updates automatically"
+
+msgid "Ставить ночью"
+msgstr "Install at night"
+
+msgid "Если компьютер включён — обновится в 3:00 без вопросов"
+msgstr "If the computer is on, it updates at 3:00 without asking"
+
+msgid "обновления"
+msgstr "updates"
+
+msgid "Все версии"
+msgstr "All versions"
+
+msgid "Список изменений на GitHub"
+msgstr "Change list on GitHub"
+
+msgid "релизы"
+msgstr "releases"
+
+msgid "Горячие клавиши — работают и в русской раскладке"
+msgstr "Hotkeys — work in the Russian layout too"
+
+msgid "сочетания хоткеи"
+msgstr "shortcuts hotkeys"
+
+msgid "Календарь"
+msgstr "Calendar"
+
+msgid "Доска"
+msgstr "Board"
+
+msgid "Привычки"
+msgstr "Habits"
+
+msgid "МБ"
+msgstr "MB"
+
+msgid "КБ/с"
+msgstr "KB/s"
+
+msgid "МБ/с"
+msgstr "MB/s"
+
+msgid "ещё ~{} с"
+msgstr "~{} s left"
+
+msgid "ещё ~{} мин"
+msgstr "~{} min left"
+
+msgid "{} из {}"
+msgstr "{} of {}"
+
+msgid "Файл скачался, но подпись не сошлась — ставить его нельзя."
+msgstr "The file downloaded but its signature does not match — it cannot be installed."
+
+msgid "Нажми «Повторить»: файл скачается заново."
+msgstr "Press “Retry”: the file will download again."
+
+msgid "Windows не дала заменить файл Спутника."
+msgstr "Windows did not allow replacing the Sputnik file."
+
+msgid "Закрой другие окна Спутника или перенеси sputnik.exe в свою папку (например, Документы) и повтори."
+msgstr "Close other Sputnik windows or move sputnik.exe to your own folder (for example, Documents) and retry."
+
+msgid "На диске не хватило места для новой версии."
+msgstr "Not enough disk space for the new version."
+
+msgid "Освободи около 100 МБ и повтори."
+msgstr "Free up about 100 MB and retry."
+
+msgid "Нет связи с GitHub — адрес не находится."
+msgstr "No connection to GitHub — the address cannot be found."
+
+msgid "Проверь интернет и повтори."
+msgstr "Check your internet and retry."
+
+msgid "GitHub отвечает слишком медленно — скачивание остановилось."
+msgstr "GitHub is responding too slowly — the download stopped."
+
+msgid "Нажми «Повторить»: продолжу с того же места. Не помогает несколько раз — включи VPN на время обновления."
+msgstr "Press “Retry”: it will continue from the same place. If it keeps failing, turn on a VPN during the update."
+
+msgid "Связь с GitHub оборвалась посреди скачивания."
+msgstr "The connection to GitHub dropped mid-download."
+
+msgid "Файл новой версии не нашёлся на GitHub."
+msgstr "The new version file was not found on GitHub."
+
+msgid "Подожди несколько минут — сборка, возможно, ещё выкладывается."
+msgstr "Wait a few minutes — the build may still be uploading."
+
+msgid "GitHub временно не отдаёт файл."
+msgstr "GitHub is temporarily not serving the file."
+
+msgid "Повтори через несколько минут."
+msgstr "Retry in a few minutes."
+
+msgid "У GitHub сбой."
+msgstr "GitHub has an outage."
+
+msgid "Обновление не скачалось."
+msgstr "The update did not download."
+
+msgid "Нажми «Повторить»."
+msgstr "Press “Retry”."
+
+msgid "СФЕРЫ"
+msgstr "SPHERES"
+
+msgid "Список…"
+msgstr "List…"
+
+msgid "К"
+msgstr "K"
+
+msgid "С"
+msgstr "S"
+
+msgid "Л"
+msgstr "L"
+
+msgid "＋ Новый список"
+msgstr "＋ New list"
+
+msgid "ШАБЛОНЫ"
+msgstr "TEMPLATES"
+
+msgid "АРХИВ"
+msgstr "ARCHIVE"
+
+msgid "+ КОЛОНКА"
+msgstr "+ COLUMN"
+
+msgid "+ ЕЩЁ {} · СВЕРНУТО"
+msgstr "+ {} MORE · COLLAPSED"
+
+msgid "Лимит {}. Сначала закончи одну."
+msgstr "Limit {}. Finish one first."
+
+msgid "Лимит {}. Можно взять ещё {}."
+msgstr "Limit {}. You can take {} more."
+
+msgid "Больше лимита — сначала доделай начатое"
+msgstr "Over the limit — finish what you started first"
+
+msgid "ТУТ ПОКА ПУСТОВАТО"
+msgstr "NOTHING HERE YET"
+
+msgid "Название · Enter — добавить, Esc — отмена"
+msgstr "Title · Enter to add, Esc to cancel"
+
+msgid "＋ Добавить задачу"
+msgstr "＋ Add task"
+
+msgid "+ Стикер"
+msgstr "+ Sticker"
+
+msgid "Баночка · {} за неделю"
+msgstr "Jar · {} this week"
+
+msgid "Открыть баночку"
+msgstr "Open the jar"
+
+msgid "{} · ВСЕ ЗАДАЧИ"
+msgstr "{} · ALL TASKS"
+
+msgid "{} ОТКРЫТО"
+msgstr "{} OPEN"
+
+msgid "УРОК {}/{}"
+msgstr "LESSON {}/{}"
+
+msgid "БЕЗ СРОКА"
+msgstr "NO DUE DATE"
+
+msgid "Открытых задач нет"
+msgstr "No open tasks"
+
+msgid "+ Добавить задачу"
+msgstr "+ Add task"
+
+msgid "Все этапы"
+msgstr "All stages"
+
+msgid "Перетащи или вставь картинку · Ctrl V"
+msgstr "Drag or paste an image · Ctrl V"
+
+msgid "ЗАДАЧИ · {}"
+msgstr "TASKS · {}"
+
+msgid "СФЕРЫ И СПИСКИ · {}"
+msgstr "SPHERES AND LISTS · {}"
+
+msgid "Найти в архиве"
+msgstr "Search the archive"
+
+msgid "Вернуть"
+msgstr "Restore"
+
+msgid "Архив пуст: сделанное больше 3 дней назад уходит сюда само"
+msgstr "Archive is empty: tasks done over 3 days ago move here on their own"
+
+msgid "ПО ТЕМАМ"
+msgstr "BY TOPIC"
+
+msgid "ПО СРОКАМ"
+msgstr "BY DUE DATE"
+
+msgid "СТРОКИ"
+msgstr "ROWS"
+
+msgid "ГАЛЕРЕЯ"
+msgstr "GALLERY"
+
+msgid "ПО ПРОЕКТАМ"
+msgstr "BY PROJECT"
+
+msgid "ПО ЭТАПАМ"
+msgstr "BY STAGE"
+
+msgid "В АРХИВЕ · {}"
+msgstr "IN ARCHIVE · {}"
+
+msgid "КАНБАН"
+msgstr "KANBAN"
+
+msgid "КОНВЕЙЕР"
+msgstr "PIPELINE"
+
+msgid "СТИКЕРЫ"
+msgstr "STICKERS"
+
+msgid "СПИСОК"
+msgstr "LIST"
+
+msgid "Выбери список слева или создай новый"
+msgstr "Pick a list on the left or create a new one"
+
+msgid "Настройки списка"
+msgstr "List settings"
+
+msgid "Удалить список…"
+msgstr "Delete list…"
+
+msgid "+ подзадача · Enter"
+msgstr "+ subtask · Enter"
+
+msgid "Весь день"
+msgstr "All day"
+
+msgid "Открыть полностью"
+msgstr "Open in full"
+
+msgid "Ассетов пока нет — добавь первый строкой ниже"
+msgstr "No assets yet — add the first one below"
+
+msgid "+ Новый ассет · Enter"
+msgstr "+ New asset · Enter"
+
+msgid "Колонки"
+msgstr "Columns"
+
+msgid "ИЗ ШАБЛОНА…"
+msgstr "FROM TEMPLATE…"
+
+msgid "НЕТ"
+msgstr "NONE"
+
+msgid "НАСТРОЙКИ СПИСКА"
+msgstr "LIST SETTINGS"
+
+msgid "Название"
+msgstr "Name"
+
+msgid "Сфера"
+msgstr "Sphere"
+
+msgid "Ширина колонок"
+msgstr "Column width"
+
+msgid "Для вида «Канбан»"
+msgstr "For the Kanban view"
+
+msgid "Узкие"
+msgstr "Narrow"
+
+msgid "Обычные"
+msgstr "Normal"
+
+msgid "Широкие"
+msgstr "Wide"
+
+msgid "Порядок задач"
+msgstr "Task order"
+
+msgid "Как сортировать карточки в колонках"
+msgstr "How to sort cards in columns"
+
+msgid "По сроку"
+msgstr "By due date"
+
+msgid "По приоритету"
+msgstr "By priority"
+
+msgid "Показывать в «Сегодня»"
+msgstr "Show in Today"
+
+msgid "Задачи с датой попадают на главный экран"
+msgstr "Tasks with a date appear on the main screen"
+
+msgid "В сводке и боте"
+msgstr "In digest and bot"
+
+msgid "Выключи, если список тихий: доска и напоминания останутся"
+msgstr "Turn off for a quiet list: the board and reminders stay"
+
+msgid "Готово"
+msgstr "Done"
+
+msgid "ДОСОК"
+msgstr "BOARDS"
+
+msgid "+ Новый шаблон"
+msgstr "+ New template"
+
+msgid "ШАБЛОН"
+msgstr "TEMPLATE"
+
+msgid "ВСТРОЕННЫЙ"
+msgstr "BUILT-IN"
+
+msgid "СВОЙ"
+msgstr "CUSTOM"
+
+msgid "Название шаблона"
+msgstr "Template name"
+
+msgid "Вид доски"
+msgstr "Board view"
+
+msgid "Колонки · стрелки меняют порядок, клик по квадрату — цвет"
+msgstr "Columns · arrows reorder, click the square to change color"
+
+msgid "Лимит"
+msgstr "Limit"
+
+msgid "ПОСЛЕДНЯЯ, НЕ УДАЛЯЕТСЯ"
+msgstr "LAST, CANNOT BE DELETED"
+
+msgid "+\nКолонка"
+msgstr "+\nColumn"
+
+msgid "Поля карточки"
+msgstr "Card fields"
+
+msgid "Используется"
+msgstr "Used by"
+
+msgid "Сохранить шаблон"
+msgstr "Save template"
+
+msgid "Вернуть как было"
+msgstr "Reset to default"
+
+msgid "Закрыть"
+msgstr "Close"
+
+msgid "Правка шаблона меняет все списки, которые идут за ним. Если колонку убрать, её задачи окажутся в первой колонке."
+msgstr "Editing a template changes every list that follows it. If you remove a column, its tasks move to the first column."
+
+msgid "＋ Список"
+msgstr "＋ List"
+
+msgid "Название списка · Enter"
+msgstr "List name · Enter"
+
+msgid "СФЕРА · ПРАВКА"
+msgstr "SPHERE · EDIT"
+
+msgid "Цвет шапки"
+msgstr "Header color"
+
+msgid "Списки в сфере"
+msgstr "Lists in the sphere"
+
+msgid "＋ Добавить"
+msgstr "＋ Add"
+
+msgid "Вместе с другими"
+msgstr "Together with others"
+
+msgid "Сохранить"
+msgstr "Save"
+
+msgid "В архив"
+msgstr "Archive"
+
+msgid "В архиве сфера со всеми списками пропадает из колонки, «Сегодня», доски и календаря. Задачи остаются в Google, вернуть можно в любой момент."
+msgstr "An archived sphere with all its lists disappears from the sidebar, Today, the board and the calendar. Tasks stay in Google; you can restore it any time."
+
+msgid "Сферы"
+msgstr "Spheres"
+
+msgid "＋ Сфера"
+msgstr "＋ Sphere"
+
+msgid "В АРХИВЕ"
+msgstr "IN ARCHIVE"
+
+msgid "СФЕРА"
+msgstr "SPHERE"
+
+msgid "Весь архив"
+msgstr "Whole archive"
+
+msgid "Сфер и списков в архиве нет. Убрать их сюда — правой кнопкой по сфере или списку → «В архив»."
+msgstr "No spheres or lists in the archive. To move them here, right-click a sphere or list → \"Archive\"."
+
+msgid "Сфера в архиве не видна нигде, кроме этой вкладки. Задачи из неё не удаляются из Google. «Удалить навсегда» — в меню ···."
+msgstr "An archived sphere is hidden everywhere except this tab. Its tasks are not deleted from Google. \"Delete forever\" is in the ··· menu."
+
+msgid "!!! Высокий"
+msgstr "!!! High"
+
+msgid "!! Средний"
+msgstr "!! Medium"
+
+msgid "! Низкий"
+msgstr "! Low"
+
+msgid "ПОДЗАДАЧИ"
+msgstr "SUBTASKS"
+
+msgid "＋ подзадача · Enter"
+msgstr "＋ subtask · Enter"
+
+msgid "сделано {}"
+msgstr "done {}"
+
+msgid "СВОЙСТВА"
+msgstr "PROPERTIES"
+
+msgid "Повтор"
+msgstr "Repeat"
+
+msgid "Исполнитель"
+msgstr "Assignee"
+
+msgid "ЗАМЕТКИ"
+msgstr "NOTES"
+
+msgid "＋ Связать"
+msgstr "＋ Link"
+
+msgid "Нет — напиши [[название]] в заметке"
+msgstr "None — write [[title]] in the note"
+
+msgid "ИСТОРИЯ"
+msgstr "HISTORY"
+
+msgid "Пока пусто"
+msgstr "Nothing yet"
+
+msgid "СПИСКИ"
+msgstr "LISTS"
+
+msgid "ДАЛЬШЕ"
+msgstr "NEXT"
+
+msgid "На завтра"
+msgstr "Tomorrow"
+
+msgid "01 · ИСТОЧНИКИ"
+msgstr "01 · SOURCES"
+
+msgid "02 · СБОРКА ДНЯ"
+msgstr "02 · THE DAY"
+
+msgid "03 · ВЫВОД"
+msgstr "03 · OUTPUT"
+
+msgid "{} ЗАДАЧИ · {} ПРИВЫЧКИ"
+msgstr "{} TASKS · {} HABITS"
+
+msgid "Добавить: «завтра 17:00 рендер щита»"
+msgstr "Add: \"tomorrow 17:00 render the shield\""
+
+msgid "ПОНЯЛ:"
+msgstr "GOT IT:"
+
+msgid "Загружаю задачи…"
+msgstr "Loading tasks…"
+
+msgid "Всё на сегодня сделано"
+msgstr "All done for today"
+
+msgid "На сегодня ничего — добавь первое дело сверху"
+msgstr "Nothing for today — add the first task above"
+
+msgid "Ещё {} задача на день"
+msgstr "{} more task today"
+
+msgid "Ещё {} задачи на день"
+msgstr "{} more tasks today"
+
+msgid "Ещё {} задач на день"
+msgstr "{} more tasks today"
+
+msgid "Свернуть"
+msgstr "Collapse"
+
+msgid "Сделано · {}"
+msgstr "Done · {}"
+
+msgid "От Claude ждут {} задача: взять в день?"
+msgstr "{} task from Claude is waiting: add to the day?"
+
+msgid "От Claude ждут {} задачи: взять в день?"
+msgstr "{} tasks from Claude are waiting: add to the day?"
+
+msgid "От Claude ждут {} задач: взять в день?"
+msgstr "{} tasks from Claude are waiting: add to the day?"
+
+msgid "Принять"
+msgstr "Accept"
+
+msgid "|  —  {} · ЗАДАЧ {} · СДЕЛАНО {}  —  |"
+msgstr "|  —  {} · TASKS {} · DONE {}  —  |"
+
+msgid "B1  ДАЛЬШЕ"
+msgstr "B1  NEXT"
+
+msgid "Пусто — можно отдохнуть"
+msgstr "Empty — time to rest"
+
+msgid "B2  ИТОГ ДНЯ"
+msgstr "B2  DAY SUMMARY"
+
+msgid "Задачи"
+msgstr "Tasks"
+
+msgid "12 Ч"
+msgstr "12 H"
+
+msgid "B3  ВСТРЕЧИ · {}"
+msgstr "B3  MEETINGS · {}"
+
+msgid "ЛИСТ · СЕГОДНЯ"
+msgstr "SHEET · TODAY"
+
+msgid "ЗАДАЧ {}"
+msgstr "TASKS {}"
+
+msgid "ВЕРСИЯ {}"
+msgstr "VERSION {}"
+
+msgid "+{} ещё"
+msgstr "+{} more"
+
+msgid "К сегодня · T"
+msgstr "To today · T"
+
+msgid "НЕДЕЛЯ"
+msgstr "WEEK"
+
+msgid "Свободный день — енот дремлет"
+msgstr "A free day"
+
+msgid "＋ Добавить на этот день"
+msgstr "＋ Add to this day"
+
+msgid "{}. Поставить туда задачу?"
+msgstr "{}. Put a task there?"
+
+msgid "Поставить"
+msgstr "Place"
+
+msgid "{} · ДОБАВИТЬ НА ЭТОТ ДЕНЬ"
+msgstr "{} · ADD TO THIS DAY"
+
+msgid "Что добавить"
+msgstr "What to add"
+
+msgid "Это"
+msgstr "It is"
+
+msgid "Задача"
+msgstr "Task"
+
+msgid "Событие"
+msgstr "Event"
+
+msgid "Когда"
+msgstr "When"
+
+msgid "весь день"
+msgstr "all day"
+
+msgid "Отмена"
+msgstr "Cancel"
+
+msgid "Добавить"
+msgstr "Add"
+
+msgid "ДУМАЕТ"
+msgstr "THINKING"
+
+msgid "Клик по пустому часу открывает эту форму. Esc — убрать черновик."
+msgstr "Click an empty hour to open this form. Esc removes the draft."
+
+msgid "ОБЗОР НЕДЕЛИ"
+msgstr "WEEK OVERVIEW"
+
+msgid "ПУНКТИР — ЕЩЁ ВПЕРЕДИ"
+msgstr "DASHED — STILL AHEAD"
+
+msgid "ЯНВ"
+msgstr "JAN"
+
+msgid "ФЕВ"
+msgstr "FEB"
+
+msgid "МАР"
+msgstr "MAR"
+
+msgid "АПР"
+msgstr "APR"
+
+msgid "МАЙ"
+msgstr "MAY"
+
+msgid "ИЮН"
+msgstr "JUN"
+
+msgid "ИЮЛ"
+msgstr "JUL"
+
+msgid "АВГ"
+msgstr "AUG"
+
+msgid "СЕН"
+msgstr "SEP"
+
+msgid "ОКТ"
+msgstr "OCT"
+
+msgid "НОЯ"
+msgstr "NOV"
+
+msgid "ДЕК"
+msgstr "DEC"
+
+msgid "СЕЙЧАС · {} {}"
+msgstr "NOW · {} {}"
+
+msgid "СЕЙЧАС"
+msgstr "NOW"
+
+msgid "ДР · "
+msgstr "BD · "
+
+msgid "ВЕСЬ\nДЕНЬ"
+msgstr "ALL\nDAY"
+
+msgid "↓ СВЕРНУТЬ РАННИЕ ЧАСЫ"
+msgstr "↓ COLLAPSE EARLY HOURS"
+
+msgid "СВОБОДНО"
+msgstr "FREE"
+
+msgid "↑ СВЕРНУТЬ ПОЗДНИЕ ЧАСЫ"
+msgstr "↑ COLLAPSE LATE HOURS"
+
+msgid "Новое"
+msgstr "New"
+
+msgid "Что"
+msgstr "What"
+
+msgid "СРОК"
+msgstr "DUE"
+
+msgid "ВЫБОР ДАТЫ И ВРЕМЕНИ"
+msgstr "PICK DATE AND TIME"
+
+msgid "ПРО «{}»"
+msgstr "FOR \"{}\""
+
+msgid "СЛОВАМИ"
+msgstr "IN WORDS"
+
+msgid "завтра в 15, в пятницу…"
+msgstr "tomorrow at 3pm, on Friday…"
+
+msgid "Понял: {}"
+msgstr "Got it: {}"
+
+msgid "ВРЕМЯ · СЕРАЯ ПОЛОСКА — ЧАС УЖЕ ЗАНЯТ"
+msgstr "TIME · GRAY BAR — HOUR ALREADY BUSY"
+
+msgid "НОЧЬ"
+msgstr "NIGHT"
+
+msgid "МИНУТЫ"
+msgstr "MINUTES"
+
+msgid "  ИЛИ ТОЧНО"
+msgstr "  OR EXACT"
+
+msgid "чч:мм"
+msgstr "hh:mm"
+
+msgid "ДО"
+msgstr "UNTIL"
+
+msgid "БЕЗ КОНЦА"
+msgstr "NO END"
+
+msgid "30 МИН"
+msgstr "30 MIN"
+
+msgid "1 ЧАС"
+msgstr "1 HOUR"
+
+msgid "+1 нед"
+msgstr "+1 wk"
+
+msgid "я"
+msgstr "me"
+
+msgid "СВОЯ ДОСКА"
+msgstr "OWN BOARD"
+
+msgid "ПО ШАБЛОНУ «{}»"
+msgstr "FROM TEMPLATE \"{}\""
+
+msgid "Стрелка на строке переводит задачу на следующий этап."
+msgstr "The arrow on a row moves the task to the next stage."
+
+msgid "Вид «Список» удобен для учёбы: видно, сколько уроков пройдено."
+msgstr "The List view suits studying: you see how many lessons are done."
+
+msgid "Последнее: «{}» · {}. Сделанный стикер падает сюда."
+msgstr "Latest: \"{}\" · {}. A finished sticker drops in here."
+
+msgid "Сделанный стикер падает сюда."
+msgstr "A finished sticker drops in here."
+
+msgid "Сделанное уходит в баночку сразу."
+msgstr "Finished items go straight to the jar."
+
+msgid "{} {} дн"
+msgstr "{} {} d"
+
+msgid "Без проекта"
+msgstr "No project"
+
+msgid "Перетащи картинку на ассет, чтобы поставить превью."
+msgstr "Drag an image onto an asset to set its preview."
+
+msgid "{} назад к {}"
+msgstr "{} back to {}"
+
+msgid " · СТРЕЛКА НА КАРТОЧКЕ — СЛЕДУЮЩИЙ ЭТАП"
+msgstr " · ARROW ON THE CARD — NEXT STAGE"
+
+msgid "В «{}» уже {} из {}. Закончи одну до новой."
+msgstr "\"{}\" already has {} of {}. Finish one before a new one."
+
+msgid "В «{}» {} из {}. Можно взять ещё {}."
+msgstr "\"{}\" has {} of {}. You can take {} more."
+
+msgid "Стрелка на карточке переводит её на следующий этап."
+msgstr "The arrow on a card moves it to the next stage."
+
+msgid "Вчера"
+msgstr "Yesterday"
+
+msgid "На этой неделе"
+msgstr "This week"
+
+msgid "Все списки"
+msgstr "All lists"
+
+msgid "{} дн"
+msgstr "{} d"
+
+msgid "СЕЙЧАС · {} ИЗ {}"
+msgstr "NOW · {} OF {}"
+
+msgid "заготовлено {}"
+msgstr "{} prepared"
+
+msgid "можно накидать заранее"
+msgstr "you can sketch ahead"
+
+msgid "{} · {} ДН · {} → {}"
+msgstr "{} · {} D · {} → {}"
+
+msgid " ИДЁТ"
+msgstr " ONGOING"
+
+msgid "ДО СРОКА {} ДН"
+msgstr "{} D TO DUE"
+
+msgid "ДО СРОКА {}"
+msgstr "{} TO DUE"
+
+msgid "{} дн всего"
+msgstr "{} d total"
+
+msgid "свой"
+msgstr "custom"
+
+msgid "встроенный"
+msgstr "built-in"
+
+msgid "новый · не сохранён"
+msgstr "new · not saved"
+
+msgid "Ни один список пока не идёт за этим шаблоном"
+msgstr "No list follows this template yet"
+
+msgid "{} и ещё {}"
+msgstr "{} and {} more"
+
+msgid "Шаблон сохранён — списки по нему обновились"
+msgstr "Template saved — lists using it were updated"
+
+msgid "С {}"
+msgstr "Since {}"
+
+msgid " · все внутри вернутся вместе со сферой"
+msgstr " · everything inside returns with the sphere"
+
+msgid "СФ"
+msgstr "SP"
+
+msgid "был в сфере «{}» · {}"
+msgstr "was in sphere \"{}\" · {}"
+
+msgid "Списки"
+msgstr "Lists"
+
+msgid "ВМЕСТЕ · {}"
+msgstr "TOGETHER · {}"
+
+msgid "{} СП."
+msgstr "{} LISTS"
+
+msgid " · {} В АРХИВЕ"
+msgstr " · {} IN ARCHIVE"
+
+msgid "Общая сфера."
+msgstr "A shared sphere."
+
+msgid "С тобой работают {}."
+msgstr "{} work with you."
+
+msgid "Пока только ты."
+msgstr "Only you for now."
+
+msgid "Править сферу"
+msgstr "Edit sphere"
+
+msgid "Новый список в сфере"
+msgstr "New list in sphere"
+
+msgid "Участники"
+msgstr "Members"
+
+msgid "Поделиться"
+msgstr "Share"
+
+msgid "Удалить сферу"
+msgstr "Delete sphere"
+
+msgid "Удалить сферу «{}»? Её списки и задачи останутся — просто без сферы."
+msgstr "Delete the sphere \"{}\"? Its lists and tasks will stay, just without a sphere."
+
+msgid "Убрано в архив — вернуть можно в «Архив → Сферы и списки»"
+msgstr "Archived — you can restore it in \"Archive → Spheres and lists\""
+
+msgid "Возвращено из архива"
+msgstr "Restored from the archive"
+
+msgid "сегодня, "
+msgstr "today, "
+
+msgid "Ещё {} · сегодня пусто"
+msgstr "{} more · empty today"
+
+msgid "ОСТАЛОСЬ / ВСЕГО"
+msgstr "LEFT / TOTAL"
+
+msgid "{} без дня"
+msgstr "{} without a day"
+
+msgid "ОТ CLAUDE"
+msgstr "FROM CLAUDE"
+
+msgid "ЖДУТ {}"
+msgstr "{} WAITING"
+
+msgid "ЖДУТ"
+msgstr "WAITING"
+
+msgid "НЕДЕЛЯ {}"
+msgstr "WEEK {}"
+
+msgid "{} ИЗ {}"
+msgstr "{} OF {}"
+
+msgid "НЕДЕЛЯ · {}–{} {}"
+msgstr "WEEK · {}–{} {}"
+
+msgid "НЕДЕЛЯ · {} {} – {} {}"
+msgstr "WEEK · {} {} – {} {}"
+
+msgid "ЗАНЯТО {} Ч"
+msgstr "{} H BUSY"
+
+msgid "ЗАГРУЗКА {} Ч · СРОКИ {}"
+msgstr "LOAD {} H · DUE {}"
+
+msgid "Свободно {}–{}"
+msgstr "Free {}–{}"
+
+msgid "СВОБОДНЕЕ ВСЕГО · {} {}–{}"
+msgstr "FREEST · {} {}–{}"
+
+msgid "ПН — ВС · 7 ДНЕЙ · ВИДНЫ ЧАСЫ С ДЕЛАМИ, ОСТАЛЬНОЕ — ЧИПАМИ"
+msgstr "MO — SU · 7 DAYS · BUSY HOURS SHOWN, THE REST AS CHIPS"
+
+msgid "ЛИСТ · КАЛЕНДАРЬ · НЕДЕЛЯ"
+msgstr "SHEET · CALENDAR · WEEK"
+
+msgid "СОБЫТИЙ {}"
+msgstr "EVENTS {}"
+
+msgid "{} ДНЕЙ · {} ДЕЛ"
+msgstr "{} DAYS · {} ITEMS"
+
+msgid "ПОЛОСКА ВНИЗУ КЛЕТКИ"
+msgstr "BAR AT THE BOTTOM OF THE CELL"
+
+msgid "ЗОЛОТО — ПРИВЫЧКИ СДЕЛАНЫ"
+msgstr "GOLD — HABITS DONE"
+
+msgid "{} — {} · {} НЕДЕЛЬ"
+msgstr "{} — {} · {} WEEKS"
+
+msgid "ЛИСТ · КАЛЕНДАРЬ · МЕСЯЦ"
+msgstr "SHEET · CALENDAR · MONTH"
+
+msgid "ДЕЛ {}"
+msgstr "ITEMS {}"
+
+msgid "ДР {}"
+msgstr "BD {}"
+
+msgid " · СЕГОДНЯ"
+msgstr " · TODAY"
+
+msgid " · ЗАВТРА"
+msgstr " · TOMORROW"
+
+msgid "НЕД"
+msgstr "WK"
+
+msgid "ДН"
+msgstr "D"
+
+msgid "ПРИВЫЧКИ · {} / {}"
+msgstr "HABITS · {} / {}"
+
+msgid "ДОБАВИТЬ · {} {}"
+msgstr "ADD · {} {}"
+
+msgid "новое"
+msgstr "new"
+
+msgid "Не понял — попробуй «пт 17:00» или «25.11»"
+msgstr "Didn't get that — try \"fri 17:00\" or \"11/25\""
+
+msgid "2 часа"
+msgstr "2 hours"
+
+msgid "2 часа · до {}"
+msgstr "2 hours · until {}"
+
+msgid "В выходные"
+msgstr "Weekend"
+
+msgid "Через неделю"
+msgstr "In a week"
+
+msgid "Просрочено"
+msgstr "Overdue"
+
+msgid "Позже"
+msgstr "Later"
+
+msgid "ассет|ассета|ассетов"
+msgstr "asset|assets"
+
+msgid "проект|проекта|проектов"
+msgstr "project|projects"
+
+msgid "СФЕРА|СФЕРЫ|СФЕР"
+msgstr "SPHERE|SPHERES"
+
+msgid "СПИСОК|СПИСКА|СПИСКОВ"
+msgstr "LIST|LISTS"
+
+msgid "ЗАДАЧА|ЗАДАЧИ|ЗАДАЧ"
+msgstr "TASK|TASKS"
+
+msgid "Спутник"
+msgstr "Sputnik"
+
+msgid "КАЛЕНДАРЬ"
+msgstr "CALENDAR"
+
+msgid "ДОСКА"
+msgstr "BOARD"
+
+msgid "ЗНАНИЯ"
+msgstr "NOTES"
+
+msgid "ВЕРСИЯ "
+msgstr "VERSION "
+
+msgid "Есть обновление — открыть"
+msgstr "Update available — open"
+
+msgid "СИНХРОНИЗАЦИЯ…"
+msgstr "SYNCING…"
+
+msgid "Обновить сейчас"
+msgstr "Update now"
+
+msgid "НАЙТИ"
+msgstr "FIND"
+
+msgid "Поиск · Ctrl K"
+msgstr "Search · Ctrl K"
+
+msgid "Состояние: связь, синхронизация, очередь"
+msgstr "Status: connection, sync, queue"
+
+msgid "Настройки"
+msgstr "Settings"
+
+msgid "Создать задачу, список или заметку"
+msgstr "Create a task, list or note"
+
+msgid "Восстановить"
+msgstr "Restore"
+
+msgid "Развернуть"
+msgstr "Maximize"
+
+msgid "Нет связи с Google — правки сохранены здесь и уйдут сами, когда связь вернётся"
+msgstr "No connection to Google — edits are saved here and will go out when it's back"
+
+msgid "Первый запуск"
+msgstr "First launch"
+
+msgid "ТРИ ШАГА · ОКОЛО МИНУТЫ · ВСЁ МОЖНО ПОМЕНЯТЬ В НАСТРОЙКАХ"
+msgstr "THREE STEPS · ABOUT A MINUTE · EVERYTHING CAN BE CHANGED IN SETTINGS"
+
+msgid "01  ВХОД И ДОСТУПЫ"
+msgstr "01  SIGN-IN AND ACCESS"
+
+msgid "ПРИВЕТ"
+msgstr "HELLO"
+
+msgid "Привет! Я Спутник. Работаю поверх твоих Google Задач и Календаря. Своего сервера нет: всё остаётся в твоём аккаунте."
+msgstr "Hi! I'm Sputnik. I work on top of your Google Tasks and Calendar. There's no server of mine: everything stays in your account."
+
+msgid "читать и менять списки и задачи"
+msgstr "read and edit lists and tasks"
+
+msgid "показывать события и создавать новые"
+msgstr "show events and create new ones"
+
+msgid "Контакты"
+msgstr "Contacts"
+
+msgid "дни рождения, только чтение"
+msgstr "birthdays, read only"
+
+msgid "Скрытая папка Drive"
+msgstr "Hidden Drive folder"
+
+msgid "слой Спутника для второго компьютера"
+msgstr "Sputnik layer for a second computer"
+
+msgid "Жду ответа в браузере…"
+msgstr "Waiting for the browser…"
+
+msgid "Продолжить в Google"
+msgstr "Continue with Google"
+
+msgid "GOOGLE ДАЁТ СНЯТЬ ГАЛОЧКИ · БЕЗ ВСЕХ ЧЕТЫРЁХ ВХОД НЕ ЗАСЧИТАЕТСЯ"
+msgstr "GOOGLE LETS YOU UNTICK BOXES · WITHOUT ALL FOUR SIGN-IN WON'T COUNT"
+
+msgid "02  ЧТО ПОКАЗЫВАТЬ"
+msgstr "02  WHAT TO SHOW"
+
+msgid "Мои задачи"
+msgstr "My tasks"
+
+msgid "Основной календарь"
+msgstr "Main calendar"
+
+msgid "Праздники России"
+msgstr "Holidays in Russia"
+
+msgid "Рабочий календарь"
+msgstr "Work calendar"
+
+msgid "03  ГОТОВО"
+msgstr "03  DONE"
+
+msgid "Ctrl N — создать из любого места"
+msgstr "Ctrl N — create from anywhere"
+
+msgid "«Запиши в Спутник» в чате с Claude"
+msgstr "\"Add to Sputnik\" in a chat with Claude"
+
+msgid "Сводка дня в Telegram в 8:00"
+msgstr "Daily digest in Telegram at 8:00"
+
+msgid "А"
+msgstr "A"
+
+msgid "Б"
+msgstr "B"
+
+msgid "В"
+msgstr "C"
+
+msgid "ВХОД И ДОСТУПЫ → ЧТО ПОКАЗЫВАТЬ → ГОТОВО"
+msgstr "SIGN-IN AND ACCESS → WHAT TO SHOW → DONE"
+
+msgid "НЕТ СВЯЗИ С GOOGLE · ПОВТОРЮ ЧЕРЕЗ МИНУТУ"
+msgstr "NO CONNECTION TO GOOGLE · RETRYING IN A MINUTE"
+
+msgid "СКАЧИВАЮ ОБНОВЛЕНИЕ"
+msgstr "DOWNLOADING UPDATE"
+
+msgid "СТАВЛЮ ОБНОВЛЕНИЕ"
+msgstr "INSTALLING UPDATE"
+
+msgid "ОБНОВЛЕНИЕ НЕ ВСТАЛО"
+msgstr "UPDATE FAILED"
+
+msgid "ОБНОВЛЕНИЕ"
+msgstr "UPDATE"
+
+msgid "УРА"
+msgstr "YAY"
+
+msgid "Вышла версия {}"
+msgstr "Version {} is out"
+
+msgid "Сейчас стоит {}"
+msgstr "Now on {}"
+
+msgid "Что нового"
+msgstr "What's new"
+
+msgid "Исправления и улучшения."
+msgstr "Fixes and improvements."
+
+msgid "Повторить"
+msgstr "Retry"
+
+msgid "Остановить"
+msgstr "Stop"
+
+msgid "Скрыть"
+msgstr "Hide"
+
+msgid "Можно скрыть окно и работать дальше — после скачивания Спутник перезапустится сам."
+msgstr "You can hide this window and keep working — Sputnik will restart by itself after the download."
+
+msgid "Ещё пара секунд — Спутник перезапустится сам."
+msgstr "A few more seconds — Sputnik will restart by itself."
+
+msgid "Обновление займёт пару минут, задачи никуда не денутся. Окно можно открыть снова чипом «Версия» в шапке."
+msgstr "The update takes a couple of minutes, your tasks are safe. You can reopen this window from the \"Version\" chip in the header."
+
+msgid "СОСТОЯНИЕ"
+msgstr "STATUS"
+
+msgid "ВСЁ В ПОРЯДКЕ"
+msgstr "ALL GOOD"
+
+msgid "ЕСТЬ ВОПРОСЫ"
+msgstr "SOME ISSUES"
+
+msgid "Нет связи — правки уйдут, когда вернётся"
+msgstr "No connection — edits will go out when it's back"
+
+msgid "Слой Спутника на Drive"
+msgstr "Sputnik layer on Drive"
+
+msgid "Знания на Drive"
+msgstr "Notes on Drive"
+
+msgid "Бот в Telegram"
+msgstr "Telegram bot"
+
+msgid "Не подключён — Настройки → Напоминания"
+msgstr "Not connected — Settings → Reminders"
+
+msgid "Работает"
+msgstr "Working"
+
+msgid "Входящие от Claude"
+msgstr "Inbox from Claude"
+
+msgid "Пусто"
+msgstr "Empty"
+
+msgid "Ждут ответа: {}"
+msgstr "Waiting for a reply: {}"
+
+msgid "Синхронизировать сейчас"
+msgstr "Sync now"
+
+msgid "НАСТРОЙКИ"
+msgstr "SETTINGS"
+
+msgid "ЧТО ПОКАЗЫВАТЬ"
+msgstr "SHOW"
+
+msgid "НАПОМИНАНИЯ"
+msgstr "REMINDERS"
+
+msgid "СИНХРОНИЗАЦИЯ"
+msgstr "SYNC"
+
+msgid "КЛАВИШИ"
+msgstr "KEYS"
+
+msgid "Найти настройку"
+msgstr "Find a setting"
+
+msgid "  Ничего не нашлось"
+msgstr "  Nothing found"
+
+msgid "СПУТНИК {}"
+msgstr "SPUTNIK {}"
+
+msgid "ТЕМА"
+msgstr "THEME"
+
+msgid "Тёмная"
+msgstr "Dark"
+
+msgid "Светлая"
+msgstr "Light"
+
+msgid "светлая появится позже"
+msgstr "light is coming later"
+
+msgid "АКЦЕНТ"
+msgstr "ACCENT"
+
+msgid "АНИМАЦИИ"
+msgstr "ANIMATIONS"
+
+msgid "Провода рисуются при открытии экрана"
+msgstr "Wires are drawn when a screen opens"
+
+msgid "ПРИ ЗАПУСКЕ"
+msgstr "ON LAUNCH"
+
+msgid "ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ"
+msgstr "TAB ORDER · DRAG"
+
+msgid "ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–{} И Q / E"
+msgstr "KEYS 1–{} AND Q / E FOLLOW THIS ORDER"
+
+msgid "{} СПИСКОВ · {} КАЛЕНДАРЕЙ"
+msgstr "{} LISTS · {} CALENDARS"
+
+msgid "СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ"
+msgstr "HIDDEN LISTS DON'T APPEAR IN TODAY, CALENDAR AND REMINDERS"
+
+msgid "МОЖНО НЕСКОЛЬКО"
+msgstr "SEVERAL ALLOWED"
+
+msgid "ЗАДАЧАМ"
+msgstr "TASKS"
+
+msgid "СОБЫТИЯМ"
+msgstr "EVENTS"
+
+msgid "ДНЯМ РОЖДЕНИЯ"
+msgstr "BIRTHDAYS"
+
+msgid "НИЧЕГО НЕ ОТМЕЧЕНО — НЕ НАПОМИНАТЬ. ЭТО УМОЛЧАНИЯ ДЛЯ НОВЫХ: У ЗАДАЧИ МОЖНО ПОМЕНЯТЬ В ЕЁ ОКНЕ"
+msgstr "NOTHING TICKED — NO REMINDER. THESE ARE DEFAULTS FOR NEW ITEMS; A TASK CAN CHANGE ITS OWN IN ITS WINDOW"
+
+msgid "БЕЗ ВРЕМЕНИ — В"
+msgstr "TASKS WITHOUT TIME — AT"
+
+msgid "КУДА СЛАТЬ"
+msgstr "SEND TO"
+
+msgid "ПОДКЛЮЧЁН"
+msgstr "CONNECTED"
+
+msgid "Подключён: {}"
+msgstr "Connected: {}"
+
+msgid "Напиши боту /start, он пришлёт код из 6 цифр — введи его здесь."
+msgstr "Message the bot /start, it will send a 6-digit code — enter it here."
+
+msgid "код 123456"
+msgstr "code 123456"
+
+msgid "Проверить"
+msgstr "Test"
+
+msgid "Отключить"
+msgstr "Disconnect"
+
+msgid "Выйти из Google"
+msgstr "Sign out of Google"
+
+msgid "Открыть папку с копиями"
+msgstr "Open backups folder"
+
+msgid "ЗНАНИЯ · ПАПКА ЗАМЕТОК"
+msgstr "NOTES · NOTES FOLDER"
+
+msgid "Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."
+msgstr "A folder of Markdown files (can be the same as Obsidian's). Notes stay in it as plain files — Sputnik doesn't touch them, only reads and adds to them."
+
+msgid "РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"
+msgstr "THE NOTES SECTION IS THE FIFTH TAB IN THE HEADER. SEARCH, LINKS AND GRAPH ARE THERE TOO"
+
+msgid "разделы: Сегодня, Календарь, Доска, Привычки, Знания"
+msgstr "sections: Today, Calendar, Board, Habits, Notes"
+
+msgid "раздел левее / правее"
+msgstr "section left / right"
+
+msgid "создать"
+msgstr "create"
+
+msgid "поиск"
+msgstr "search"
+
+msgid "синхронизировать"
+msgstr "sync"
+
+msgid "настройки"
+msgstr "settings"
+
+msgid "в настройках: разделы"
+msgstr "in settings: sections"
+
+msgid "отметить привычку"
+msgstr "mark a habit"
+
+msgid "предыдущий / следующий список на доске"
+msgstr "previous / next list on the board"
+
+msgid "найти список на доске"
+msgstr "find a list on the board"
+
+msgid "настройки списка"
+msgstr "list settings"
+
+msgid "календарь: листать, сегодня, неделя, месяц"
+msgstr "calendar: browse, today, week, month"
+
+msgid "закрыть окно"
+msgstr "close window"
+
+msgid "ОБНОВЛЕНИЯ"
+msgstr "UPDATES"
+
+msgid "СТОИТ {}"
+msgstr "ON {}"
+
+msgid "Спутник {} — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет."
+msgstr "Sputnik {} — Rust + Slint. Data lives in Google Tasks and Calendar; its own layer is on this computer and in the app's hidden folder on Google Drive. No server of its own."
+
+msgid "СКАЧИВАЮ ВЕРСИЮ {}"
+msgstr "DOWNLOADING VERSION {}"
+
+msgid "СТАВЛЮ ВЕРСИЮ {} — СПУТНИК ПЕРЕЗАПУСТИТСЯ САМ"
+msgstr "INSTALLING VERSION {} — SPUTNIK WILL RESTART BY ITSELF"
+
+msgid "ВЫШЛА ВЕРСИЯ {} — ЧИП «ВЕРСИЯ» В ШАПКЕ"
+msgstr "VERSION {} IS OUT — \"VERSION\" CHIP IN THE HEADER"
+
+msgid "Проверяю…"
+msgstr "Checking…"
+
+msgid "Проверить обновления"
+msgstr "Check for updates"
+
+msgid "ПОЯВИТСЯ НА ДОСКЕ"
+msgstr "WILL APPEAR ON THE BOARD"
+
+msgid "ПОЯВИТСЯ В «ПРИВЫЧКАХ»"
+msgstr "WILL APPEAR IN HABITS"
+
+msgid "ПОЯВИТСЯ В КАЛЕНДАРЕ"
+msgstr "WILL APPEAR IN THE CALENDAR"
+
+msgid "День рождения"
+msgstr "Birthday"
+
+msgid "День рождения {}"
+msgstr "Birthday {}"
+
+msgid "→ Попадёт"
+msgstr "→ Goes to"
+
+msgid "Ракурс, референсы…"
+msgstr "Angle, references…"
+
+msgid "Заметка…"
+msgstr "Note…"
+
+msgid "ДЛИТСЯ"
+msgstr "LASTS"
+
+msgid "  или до"
+msgstr "  or until"
+
+msgid "МЕСТО"
+msgstr "PLACE"
+
+msgid "Адрес или ссылка на созвон"
+msgstr "Address or call link"
+
+msgid "Повестка, ссылки…"
+msgstr "Agenda, links…"
+
+msgid "будет в списке привычек"
+msgstr "will be in the habits list"
+
+msgid "год"
+msgstr "year"
+
+msgid "КАЖДЫЙ ГОД · ГОД НЕОБЯЗАТЕЛЕН — НУЖЕН ДЛЯ «ИСПОЛНИТСЯ N»"
+msgstr "EVERY YEAR · YEAR IS OPTIONAL — USED FOR \"TURNS N\""
+
+msgid "НАПОМНИТЬ · МОЖНО НЕСКОЛЬКО"
+msgstr "REMIND · SEVERAL ALLOWED"
+
+msgid "ЗАДАЧА «КУПИТЬ ПОДАРОК» — ЗАВЕСТИ ЗАРАНЕЕ"
+msgstr "\"BUY A GIFT\" TASK — CREATE IN ADVANCE"
+
+msgid "Идеи подарков, размеры, что любит…"
+msgstr "Gift ideas, sizes, what they like…"
+
+msgid "Привычка"
+msgstr "Habit"
+
+msgid "Сделать иконки для клиента завтра 15:00 @работа !!"
+msgstr "Make icons for the client tomorrow 15:00 @work !!"
+
+msgid "Созвон с Олей в пт 14:00"
+msgstr "Call with Olya Fri 14:00"
+
+msgid "Вода 8 стаканов каждый день"
+msgstr "Water 8 glasses every day"
+
+msgid "Мама 12 марта"
+msgstr "Mom March 12"
+
+msgid "Enter — добавить · Esc — закрыть"
+msgstr "Enter — add · Esc — close"
+
+msgid "Добавить и ещё"
+msgstr "Add and another"
+
+msgid "Добавить задачу"
+msgstr "Add task"
+
+msgid "Добавить событие"
+msgstr "Add event"
+
+msgid "Добавить привычку"
+msgstr "Add habit"
+
+msgid "Добавить день рождения"
+msgstr "Add birthday"
+
+msgid "Найти задачу, заметку, раздел…"
+msgstr "Find a task, note, section…"
+
+msgid "{} найдено"
+msgstr "{} found"
+
+msgid "Ничего не нашлось — попробуй другое слово"
+msgstr "Nothing found — try another word"
+
+msgid "выбрать"
+msgstr "select"
+
+msgid "ё = е"
+msgstr "ё = е"
+
+msgid "НАЗВАНИЕ"
+msgstr "TITLE"
+
+msgid "ТОЧНО?"
+msgstr "EXACT?"
+
+msgid "тёмная, светлая"
+msgstr "dark, light"
+
+msgid "оформление цвет"
+msgstr "look color"
+
+msgid "цвет кнопок и выделения"
+msgstr "color of buttons and highlights"
+
+msgid "акцентный цвет оформление палитра"
+msgstr "accent color look palette"
+
+msgid "полные, минимум, выкл"
+msgstr "full, minimal, off"
+
+msgid "движение провода"
+msgstr "motion wires"
+
+msgid "При запуске"
+msgstr "On launch"
+
+msgid "какой раздел открыть первым"
+msgstr "which section to open first"
+
+msgid "старт открывать"
+msgstr "start open"
+
+msgid "разделы в шапке и клавиши 1–5"
+msgstr "header sections and keys 1–5"
+
+msgid "шапка меню переставить перетащить"
+msgstr "header menu reorder drag"
+
+msgid "какие списки видны"
+msgstr "which lists are visible"
+
+msgid "какие календари Google показывать"
+msgstr "which Google calendars to show"
+
+msgid "Напоминания задачам"
+msgstr "Reminders for tasks"
+
+msgid "за сколько напоминать"
+msgstr "how long before to remind"
+
+msgid "по умолчанию уведомления"
+msgstr "default notifications"
+
+msgid "Напоминания событиям"
+msgstr "Reminders for events"
+
+msgid "по умолчанию уведомления встречи"
+msgstr "default notifications meetings"
+
+msgid "Напоминания дням рождения"
+msgstr "Reminders for birthdays"
+
+msgid "по умолчанию уведомления др"
+msgstr "default notifications bday"
+
+msgid "во сколько напоминать"
+msgstr "what time to remind"
+
+msgid "час утро"
+msgstr "hour morning"
+
+msgid "Куда слать"
+msgstr "Send to"
+
+msgid "Telegram и Windows"
+msgstr "Telegram and Windows"
+
+msgid "уведомления телеграм виндовс включить выключить"
+msgstr "notifications telegram windows enable disable"
+
+msgid "Telegram-бот"
+msgstr "Telegram bot"
+
+msgid "подключить по коду"
+msgstr "connect with a code"
+
+msgid "телеграм бот код отключить проверить"
+msgstr "telegram bot code disconnect test"
+
+msgid "синхронизация обновить"
+msgstr "sync refresh"
+
+msgid "аккаунт"
+msgstr "account"
+
+msgid "войти выйти почта"
+msgstr "sign in sign out email"
+
+msgid "раз в день, хранятся 14"
+msgstr "once a day, 14 kept"
+
+msgid "горячие клавиши"
+msgstr "hotkeys"
+
+msgid "проверить и поставить новую версию"
+msgstr "check and install a new version"
+
+msgid "версия обновить"
+msgstr "version update"
+
+msgid "Папка заметок"
+msgstr "Notes folder"
+
+msgid "знания заметки папка"
+msgstr "notes knowledge folder"
+
+msgid "напоминания о задачах, событиях и привычках"
+msgstr "reminders for tasks, events and habits"
+
+msgid "сначала подключи бота — ниже"
+msgstr "connect the bot first — below"
+
+msgid "окно привычки; задачи — если Telegram выключен"
+msgstr "habit window; tasks — if Telegram is off"
+
+msgid "окно привычки и задачи, пока Спутник открыт"
+msgstr "habit window and tasks while Sputnik is open"
+
+msgid "тихий"
+msgstr "quiet"
+
+msgid "основной"
+msgstr "main"
+
+msgid "не напоминать"
+msgstr "don't remind"
+
+msgid "бот"
+msgstr "bot"
+
+msgid "Ошибка: {}"
+msgstr "Error: {}"
+
+msgid "Последний обмен — {}"
+msgstr "Last exchange — {}"
+
+msgid "Папка заметок не выбрана"
+msgstr "Notes folder not chosen"
+
+msgid "Ждёт первой сверки"
+msgstr "Waiting for the first check"
+
+msgid "Google: {}. Слой Спутника на Drive: {}. Правок в очереди: {}. Запуск за {} мс."
+msgstr "Google: {}. Sputnik layer on Drive: {}. Edits queued: {}. Started in {} ms."
+
+msgid "не выполнен вход"
+msgstr "not signed in"
+
+msgid "нет связи"
+msgstr "no connection"
+
+msgid "ошибка — {}"
+msgstr "error — {}"
+
+msgid "сверен в {}"
+msgstr "checked at {}"
+
+msgid "ещё не сверялся"
+msgstr "not checked yet"
+
+msgid "Резервные копии слоя — раз в день, хранятся 14. Последняя: {}"
+msgstr "Layer backups — once a day, 14 kept. Latest: {}"
+
+msgid "Резервные копии слоя — раз в день, хранятся 14. Пока ни одной."
+msgstr "Layer backups — once a day, 14 kept. None yet."
+
+msgid "{} ДН · ИДЁТ"
+msgstr "{} D · ACTIVE"
+
+msgid "{} ДН"
+msgstr "{} D"
+
+msgid "Нет связи — сохранится, когда появится"
+msgstr "No connection — will save when it's back"
+
+msgid "Сохраняю…"
+msgstr "Saving…"
+
+msgid "Сохранено в Google Tasks"
+msgstr "Saved to Google Tasks"
+
+msgid "выбрано"
+msgstr "chosen"
+
+msgid "текущая доска"
+msgstr "current board"
+
+msgid "по умолчанию"
+msgstr "default"
+
+msgid "нет"
+msgstr "none"
+
+msgid "дата?"
+msgstr "date?"
+
+msgid "!!! высокий"
+msgstr "!!! high"
+
+msgid "!! средний"
+msgstr "!! medium"
+
+msgid "! низкий"
+msgstr "! low"
+
+msgid "Привычка: цель («8 стаканов»), частота («по будням», «3 раза в неделю») и часть дня («утром»)."
+msgstr "Habit: goal (\"8 glasses\"), frequency (\"weekdays\", \"3 times a week\") and part of day (\"morning\")."
+
+msgid "Имя и дата: «Мама 12 марта». Каждый год, задача «Подарок» заведётся сама."
+msgstr "Name and date: \"Mom March 12\". Every year, a \"Gift\" task is created by itself."
+
+msgid "Событие в Google Календаре: день и время словами — «в пт 14:00» — или кнопкой «Выбрать…» (Alt+D)."
+msgstr "Event in Google Calendar: day and time in words — \"Fri 14:00\" — or the \"Pick…\" button (Alt+D)."
+
+msgid "Похоже на встречу — можно сделать событием: Alt+2"
+msgstr "Looks like a meeting — make it an event: Alt+2"
+
+msgid "Дата, время, @список, #тип, !!! — прямо в строке, в название они не попадут. Срок можно выбрать и кнопкой."
+msgstr "Date, time, @list, #type, !!! — right in the line, they won't end up in the title. You can also pick the due date with the button."
+
+msgid "15 мин"
+msgstr "15 min"
+
+msgid "30 мин"
+msgstr "30 min"
+
+msgid "1 час"
+msgstr "1 hour"
+
+msgid "⚠ пересекается с «{}»"
+msgstr "⚠ overlaps with \"{}\""
+
+msgid "свободно до {}"
+msgstr "free until {}"
+
+msgid "весь вечер свободен"
+msgstr "free all evening"
+
+msgid "Не надо"
+msgstr "No need"
+
+msgid "За 2 недели"
+msgstr "2 weeks before"
+
+msgid "через {}"
+msgstr "in {}"
+
+msgid "Исполнится {} · "
+msgstr "Turns {} · "
+
+msgid "Входящие"
+msgstr "Inbox"
+
+msgid "Основной"
+msgstr "Main"
+
+msgid "Напомнить"
+msgstr "Remind"
+
+msgid "Этап"
+msgstr "Stage"
+
+msgid "создана {}"
+msgstr "created {}"
+
+msgid "в этой колонке {} дн"
+msgstr "{} d in this column"
+
+msgid "всего {} дн"
+msgstr "{} d total"
+
+msgid "изменена {}"
+msgstr "changed {}"
+
+msgid "Создана в «{}»"
+msgstr "Created in \"{}\""
+
+msgid "Задачу заводить не буду"
+msgstr "Won't create a task"
+
+msgid "Задача «Подарок …» появится за {} дн. до дня рождения"
+msgstr "A \"Gift …\" task will appear {} days before the birthday"
+
+msgid "Задача «Подарок …» появится {} — сама, в список со стикерами"
+msgstr "A \"Gift …\" task will appear {} — by itself, in the stickers list"
+
+msgid "синхр. {}"
+msgstr "sync {}"
+
+msgid "не синхронизировано"
+msgstr "not synced"
+
+msgid "в очереди {}"
+msgstr "{} queued"
+
+msgid "{} · ждут {}"
+msgstr "{} · {} waiting"
+
+msgid "Проверяю подпись и ставлю…"
+msgstr "Checking signature and installing…"
+
+msgid "{} · попытка {} из {}"
+msgstr "{} · attempt {} of {}"
+
+msgid "Проверено в {} — стоит последняя."
+msgstr "Checked at {} — you're on the latest."
+
+msgid "Проверено в {}."
+msgstr "Checked at {}."
+
+msgid "Проверяется само через 30 секунд после запуска и раз в 6 часов."
+msgstr "Checks by itself 30 seconds after launch and every 6 hours."
+
+msgid "Вышла {}"
+msgstr "Out: {}"
+
+msgid "{} · стоит сейчас"
+msgstr "{} · current"
+
+msgid "Нет ни одного списка — создай его на «Доске»"
+msgstr "No lists yet — create one on the Board"
+
+msgid "Список создан"
+msgstr "List created"
+
+msgid "Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем."
+msgstr "Delete list \"{}\" and its {} tasks? It will be deleted from Google Tasks for good."
+
+msgid "Нужно название сферы"
+msgstr "The sphere needs a name"
+
+msgid "Сфера сохранена"
+msgstr "Sphere saved"
+
+msgid "Удалить навсегда"
+msgstr "Delete for good"
+
+msgid "Удалить привычку «{}»? История отметок тоже пропадёт."
+msgstr "Delete habit \"{}\"? Its check-in history will be lost too."
+
+msgid "Не понял срок — напиши «завтра», «пт 15:00» или «25.11»"
+msgstr "Couldn't read the date — write \"tomorrow\", \"Fri 15:00\" or \"25.11\""
+
+msgid "Отключить Telegram? Напоминания перестанут приходить."
+msgstr "Disconnect Telegram? Reminders will stop coming."
+
+msgid "Выйти из Google на этом компьютере? Правки, которые ещё не ушли, останутся в очереди."
+msgstr "Sign out of Google on this computer? Edits that haven't gone out yet will stay in the queue."
+
+msgid "Выйти"
+msgstr "Sign out"
+
+msgid "Заметка сохранена"
+msgstr "Note saved"
+
+msgid "Заметок в папке: {}"
+msgstr "Notes in folder: {}"
+
+msgid "Привычка «{}» заведена"
+msgstr "Habit \"{}\" added"
+
+msgid "Напиши название"
+msgstr "Enter a title"
+
+msgid "Нужно имя: «Мама 12 марта»"
+msgstr "A name is needed: \"Mom March 12\""
+
+msgid "Нужна дата: «Мама 12 марта» или кнопка «Выбрать…»"
+msgstr "A date is needed: \"Mom March 12\" or the \"Pick…\" button"
+
+msgid "Сначала создай список на «Доске»"
+msgstr "Create a list on the Board first"
+
+msgid "Создано в «{}»"
+msgstr "Created in \"{}\""
+
+msgid "Знания"
+msgstr "Notes"
+
+msgid "Доска · {}"
+msgstr "Board · {}"
+
+msgid "Новая заметка «{}»"
+msgstr "New note \"{}\""
+
+msgid "Разделы и списки"
+msgstr "Sections and lists"
+
+msgid "Действия"
+msgstr "Actions"
+
+msgid "Задача на {} → {}"
+msgstr "Task for {} → {}"
+
+msgid "{} · вид"
+msgstr "{} · view"
+
+msgid "{} · сфера"
+msgstr "{} · sphere"
+
+msgid "Основной список не удаляется"
+msgstr "The main list can't be deleted"
+
+msgid "Настроить список…"
+msgstr "List settings…"
+
+msgid "Скрыть из «Сегодня»"
+msgstr "Hide from Today"
+
+msgid "Вернуть в сводку и бота"
+msgstr "Back to digest and bot"
+
+msgid "Без сводки и бота"
+msgstr "No digest or bot"
+
+msgid "{} в список"
+msgstr "{} to a list"
+
+msgid "Заметка · {}"
+msgstr "Note · {}"
+
+msgid "Открепить"
+msgstr "Unpin"
+
+msgid "Закрепить вверху папки"
+msgstr "Pin to top of folder"
+
+msgid "Показать на графе"
+msgstr "Show on graph"
+
+msgid "Чек-лист → в задачи"
+msgstr "Checklist → to tasks"
+
+msgid "Чек-лист → в задачи · {}"
+msgstr "Checklist → to tasks · {}"
+
+msgid "Открыть в другой программе"
+msgstr "Open in another app"
+
+msgid "Переименовать…"
+msgstr "Rename…"
+
+msgid "Удалить в корзину"
+msgstr "Move to trash"
+
+msgid "Холст"
+msgstr "Canvas"
+
+msgid "Папка…"
+msgstr "Folder…"
+
+msgid "Заметка по шаблону «{}»"
+msgstr "Note from template \"{}\""
+
+msgid "Вкладка"
+msgstr "Tab"
+
+msgid "Закрыть остальные"
+msgstr "Close others"
+
+msgid "{} в «{}»"
+msgstr "{} in \"{}\""
+
+msgid "Оформление"
+msgstr "Formatting"
+
+msgid "Жирный"
+msgstr "Bold"
+
+msgid "Курсив"
+msgstr "Italic"
+
+msgid "Зачёркнутый"
+msgstr "Strikethrough"
+
+msgid "Маркер"
+msgstr "Highlight"
+
+msgid "Код в строке"
+msgstr "Inline code"
+
+msgid "Формула в строке"
+msgstr "Inline formula"
+
+msgid "Убрать оформление"
+msgstr "Clear formatting"
+
+msgid "Абзац"
+msgstr "Paragraph"
+
+msgid "Заголовок 1"
+msgstr "Heading 1"
+
+msgid "Заголовок 2"
+msgstr "Heading 2"
+
+msgid "Заголовок 3"
+msgstr "Heading 3"
+
+msgid "Обычный текст"
+msgstr "Plain text"
+
+msgid "Нумерованный список"
+msgstr "Numbered list"
+
+msgid "Чек-лист"
+msgstr "Checklist"
+
+msgid "Цитата"
+msgstr "Quote"
+
+msgid "Вставить"
+msgstr "Insert"
+
+msgid "Таблица"
+msgstr "Table"
+
+msgid "Выноска"
+msgstr "Callout"
+
+msgid "Блок кода"
+msgstr "Code block"
+
+msgid "Формула"
+msgstr "Formula"
+
+msgid "Сноска"
+msgstr "Footnote"
+
+msgid "Линия"
+msgstr "Line"
+
+msgid "Правка"
+msgstr "Edit"
+
+msgid "Вырезать"
+msgstr "Cut"
+
+msgid "Копировать"
+msgstr "Copy"
+
+msgid "Выделить всё"
+msgstr "Select all"
+
+msgid "Сделать ссылкой [[…]]"
+msgstr "Make a link [[…]]"
+
+msgid "Ссылка на заметку [["
+msgstr "Link to a note [["
+
+msgid "Найти выделенное в заметках"
+msgstr "Find selection in notes"
+
+msgid "Карточка здесь"
+msgstr "Card here"
+
+msgid "Картинка…"
+msgstr "Image…"
+
+msgid "Выбрано: {}"
+msgstr "Selected: {}"
+
+msgid "Ссылка"
+msgstr "Link"
+
+msgid "Карточка"
+msgstr "Card"
+
+msgid "Открыть заметку"
+msgstr "Open note"
+
+msgid "Картинка на канвас"
+msgstr "Image on canvas"
+
+msgid "Картинки"
+msgstr "Images"
+
+msgid "Картинка не скопировалась: {}"
+msgstr "Image couldn't be copied: {}"
+
+msgid "Заметки нет в папке"
+msgstr "Note isn't in the folder"
+
+msgid "Заметка не сохранилась: {}"
+msgstr "Note couldn't be saved: {}"
+
+msgid "Не напоминать"
+msgstr "Don't remind"
+
+msgid "Оранж"
+msgstr "Orange"
+
+msgid "Голубой"
+msgstr "Blue"
+
+msgid "Фиолет"
+msgstr "Violet"
+
+msgid "Зелень"
+msgstr "Green"
+
+msgid "Полные"
+msgstr "Full"
+
+msgid "Минимум"
+msgstr "Minimal"
+
+msgid "Выкл"
+msgstr "Off"
+
+msgid "Без цвета"
+msgstr "No color"
+
+msgid "задача создана|задачи созданы|задач создано"
+msgstr "task created|tasks created"
+
+msgid "Зову тебя в общую сферу «{}» в Спутнике.\n1) Открой ссылку и добавь календарь: {}\n2) Или в Спутнике: Доска → + сфера → «Войти в общую сферу…» и код: {}"
+msgstr "I'm inviting you to a shared sphere “{}” in Sputnik.\n1) Open the link and add the calendar: {}\n2) Or in Sputnik: Board → + sphere → “Join a shared sphere…” and enter the code: {}"
+
+msgid "→ {}"
+msgstr "→ {}"
+
+msgid "Работа"
+msgstr "Work"
+
+msgid "Заказы клиентов"
+msgstr "Client orders"
+
+msgid "Заказы"
+msgstr "Orders"
+
+msgid "3D-ассеты"
+msgstr "3D assets"
+
+msgid "3D-проекты"
+msgstr "3D projects"
+
+msgid "Личное"
+msgstr "Personal"
+
+msgid "Учёба"
+msgstr "Study"
+
+msgid "Задачи: входящие → в работе → ревью → готово"
+msgstr "Tasks: inbox → in progress → review → done"
+
+msgid "Заявка → смета → работа → правки → сдано → оплачено"
+msgstr "Request → estimate → work → revisions → delivered → paid"
+
+msgid "Каждая строка — модель, этапы пайплайна по порядку"
+msgstr "Each row is a model, pipeline stages in order"
+
+msgid "Простые дела стикерами: по темам или по срокам"
+msgstr "Simple to-dos as stickers: by topic or by due date"
+
+msgid "Курсы и уроки: в планах → прохожу → пройдено"
+msgstr "Courses and lessons: planned → in progress → completed"
+
+msgid "В работе"
+msgstr "In progress"
+
+msgid "На ревью"
+msgstr "Review"
+
+msgid "Заявка"
+msgstr "Request"
+
+msgid "Смета"
+msgstr "Estimate"
+
+msgid "Правки"
+msgstr "Revisions"
+
+msgid "Сдано"
+msgstr "Delivered"
+
+msgid "Оплачено"
+msgstr "Paid"
+
+msgid "Референсы"
+msgstr "References"
+
+msgid "Блокаут"
+msgstr "Blockout"
+
+msgid "Скульпт"
+msgstr "Sculpt"
+
+msgid "Ретопология"
+msgstr "Retopology"
+
+msgid "Текстуры"
+msgstr "Textures"
+
+msgid "Рендер"
+msgstr "Render"
+
+msgid "Надо сделать"
+msgstr "To do"
+
+msgid "Делаю"
+msgstr "Doing"
+
+msgid "В планах"
+msgstr "Planned"
+
+msgid "Прохожу"
+msgstr "In progress"
+
+msgid "Пройдено"
+msgstr "Completed"
+
+msgid "Документы"
+msgstr "Documents"
+
+msgid "Покупки"
+msgstr "Shopping"
+
+msgid "Звонки"
+msgstr "Calls"
+
+msgid "Здоровье"
+msgstr "Health"

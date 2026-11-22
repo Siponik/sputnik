@@ -235,7 +235,7 @@ pub fn task_view(rec: &Value) -> Value {
 }
 
 pub fn list_view(rec: &Value, cal: &Value) -> Value {
-    let title = ff(rec).get("title").cloned().filter(|x| !x.is_null()).unwrap_or(json!("Без названия"));
+    let title = ff(rec).get("title").cloned().filter(|x| !x.is_null()).unwrap_or(json!(crate::t!("Без названия")));
     json!({"id": list_id(s(&rec["k"])), "title": title, "updated": iso(last_time(rec)), "shared": cal})
 }
 
@@ -444,7 +444,7 @@ pub fn name_of(email: &Value) -> String {
     let local = e.split('@').next().unwrap_or("");
     let nm = rx::rx(r"[._+-]").split(local).next().and_then(|x| x.ok()).unwrap_or("").to_string();
     if nm.is_empty() {
-        return "Участник".into();
+        return crate::t!("Участник").into();
     }
     let mut c = nm.chars();
     first_upper(&nm) + {
@@ -505,9 +505,9 @@ pub fn seen_text(ms: &Value, now: Option<f64>) -> String {
     let hm = format!("{}:{:02}", d.hour(), d.minute());
     let diff = (nn.date() - d.date()).num_days();
     match diff {
-        0 => format!("сегодня в {hm}"),
-        1 => format!("вчера в {hm}"),
-        _ => format!("{} {}", d.day(), crate::reminders::MON_SHORT[d.month0() as usize]),
+        0 => crate::t!("сегодня в {}", hm),
+        1 => crate::t!("вчера в {}", hm),
+        _ => format!("{} {}", d.day(), crate::i18n::month_abbr(d.month0() as usize, &crate::reminders::MON_SHORT)),
     }
 }
 
@@ -552,11 +552,11 @@ pub fn who_options(people: &[Value], me: Option<&str>, q: &str, counts: &Value) 
     let ppl: Vec<&Value> = people.iter().filter(|p| p["email"] == me_v).chain(people.iter().filter(|p| p["email"] != me_v)).filter(|p| hit(p)).collect();
     let cnt = |k: &str| if counts[k].is_null() { json!(0) } else { counts[k].clone() };
     let mut rows: Vec<Value> = ppl.iter().enumerate().map(|(i, p)| json!({
-        "email": p["email"], "m": p, "label": if p["email"] == me_v { json!("Я") } else { p["name"].clone() },
-        "note": if t(&p["joined"]) { "" } else { "ещё не принял" }, "n": cnt(s(&p["email"])),
+        "email": p["email"], "m": p, "label": if p["email"] == me_v { json!(crate::t!("Я")) } else { p["name"].clone() },
+        "note": if t(&p["joined"]) { "" } else { crate::t!("ещё не принял") }, "n": cnt(s(&p["email"])),
         "key": if i < 9 { format!("{}", i + 1) } else { String::new() }})).collect();
     if f.is_empty() || "без исполнителя".contains(&f) || "никто".contains(&f) {
-        rows.push(json!({"email": null, "m": null, "label": "Без исполнителя", "note": "", "n": cnt(""), "key": "0"}));
+        rows.push(json!({"email": null, "m": null, "label": crate::t!("Без исполнителя"), "note": "", "n": cnt(""), "key": "0"}));
     }
     rows
 }
@@ -602,25 +602,25 @@ pub fn change_text(ed: &Value, people: &[Value], me: Option<&str>, col_name: &dy
     let who = if mo["name"].is_null() { name_of(&ed["by"]) } else { text(&mo["name"]) };
     let f: Vec<&str> = a(&ed["fields"]).iter().map(|x| s(x)).collect();
     let what = if f.contains(&"status") {
-        "отметка «сделано»".to_string()
+        crate::t!("отметка «сделано»").to_string()
     } else if f.contains(&"$status") {
-        format!("перенос{}", if t(&ed["col"]) { format!(" в «{}»", col_name(&ed["col"])) } else { String::new() })
+        format!("{}{}", crate::t!("перенос"), if t(&ed["col"]) { crate::t!(" в «{}»", col_name(&ed["col"])) } else { String::new() })
     } else if f.contains(&"$who") {
         if t(&ed["who"]) {
-            format!("отдано: {}", if me.is_some_and(|m| ed["who"] == m) { "тебе".into() } else { text(&member_of(people, &ed["who"])["name"]) })
+            crate::t!("отдано: {}", if me.is_some_and(|m| ed["who"] == m) { crate::t!("тебе").into() } else { text(&member_of(people, &ed["who"])["name"]) })
         } else {
-            "снят исполнитель".into()
+            crate::t!("снят исполнитель").into()
         }
     } else if f.contains(&"title") {
-        "новое название".into()
+        crate::t!("новое название").into()
     } else if f.contains(&"due") {
-        "новый срок".into()
+        crate::t!("новый срок").into()
     } else if f.contains(&"notes") {
-        "заметка".into()
+        crate::t!("заметка").into()
     } else {
-        "правка".into()
+        crate::t!("правка").into()
     };
-    let when = rx::first(r"^сегодня в ", &seen_text(&ed["at"], now), "");
+    let when = rx::first(r"^(?:сегодня в |today at )", &seen_text(&ed["at"], now), "");
     format!("{who} · {what} · {when}")
 }
 
@@ -681,10 +681,10 @@ pub fn for_me(by_list: &Value, lay_tasks: &Value, me: Option<&str>, together: &d
 
 fn who2(people: &[Value], email: &Value, me: Option<&str>, dat: bool) -> String {
     if me.map(|m| *email == m).unwrap_or(email.is_null()) {
-        return (if dat { "тебе" } else { "ты" }).into();
+        return (if dat { crate::t!("тебе") } else { crate::t!("ты") }).into();
     }
     let m = member_of(people, email);
-    if m["name"].is_null() { "никто".into() } else { text(&m["name"]) }
+    if m["name"].is_null() { crate::t!("никто").into() } else { text(&m["name"]) }
 }
 
 pub fn stage_pass(l: &Value, from: &str, to: &str, by: &str, now: Option<f64>) -> Value {
@@ -707,14 +707,15 @@ pub fn stage_pass(l: &Value, from: &str, to: &str, by: &str, now: Option<f64>) -
 
 pub fn pass_text(p: &Value, people: &[Value], me: Option<&str>, col_name: &dyn Fn(&Value) -> String) -> String {
     let by = who2(people, &p["by"], me, false);
-    let head = format!("{}{} · «{}» готов{}", first_upper(&by), by.chars().skip(1).collect::<String>(), col_name(&p["from"]), if t(&p["from"]) { "о" } else { "" });
+    let by_c = format!("{}{}", first_upper(&by), by.chars().skip(1).collect::<String>());
+    let head = if t(&p["from"]) { crate::t!("{} · «{}» готово", by_c, col_name(&p["from"])) } else { crate::t!("{} · «{}» готов", by_c, col_name(&p["from"])) };
     if !t(&p["who"]) {
-        return format!("{head} → на этапе никого");
+        return format!("{head} → {}", crate::t!("на этапе никого"));
     }
     if p["who"] != p["by"] {
         return format!("{head} → {}", who2(people, &p["who"], me, true));
     }
-    let tail = if me.is_some_and(|m| p["who"] == m) { "остаётся у тебя".into() } else { format!("снова у: {}", text(&member_of(people, &p["who"])["name"])) };
+    let tail = if me.is_some_and(|m| p["who"] == m) { crate::t!("остаётся у тебя").into() } else { crate::t!("снова у: {}", text(&member_of(people, &p["who"])["name"])) };
     format!("{head} → «{}» {tail}", col_name(&p["to"]))
 }
 
@@ -722,15 +723,15 @@ pub fn next_hint(l: &Value, next: Option<&str>, me: Option<&str>, people: &[Valu
     let Some(next) = next.filter(|x| !x.is_empty()) else { return String::new() };
     let cur = who_of(l);
     let to = l["stageWho"][next].as_str().map(String::from);
-    let Some(target) = to.or(cur.clone()).filter(|x| !x.is_empty()) else { return "этап без исполнителя".into() };
+    let Some(target) = to.or(cur.clone()).filter(|x| !x.is_empty()) else { return crate::t!("этап без исполнителя").into() };
     let nm = || text(&member_of(people, &json!(target))["name"]);
     let mine = me == Some(target.as_str());
     if Some(&target) == cur.as_ref() {
-        if mine { "этап твой — останется у тебя".into() } else { format!("останется: {}", nm()) }
+        if mine { crate::t!("этап твой — останется у тебя").into() } else { crate::t!("останется: {}", nm()) }
     } else if mine {
-        "уйдёт к тебе".into()
+        crate::t!("уйдёт к тебе").into()
     } else {
-        format!("уйдёт: {}", nm())
+        crate::t!("уйдёт: {}", nm())
     }
 }
 
@@ -759,7 +760,7 @@ pub fn invite_info(store: &Value, me: Option<&str>) -> Value {
     let people = members_of(rs);
     let owner = people.iter().find(|p| p["owner"] == true).cloned().unwrap_or(Value::Null);
     let name = rs[SPHERE_KEY]["f"]["name"].clone();
-    let mut out = json!({"cal": store["cal"], "name": if name.is_null() { json!("Общая сфера") } else { name }, "owner": owner,
+    let mut out = json!({"cal": store["cal"], "name": if name.is_null() { json!(crate::t!("Общая сфера")) } else { name }, "owner": owner,
            "lists": recs(rs).filter(|r| kind_of(&r["k"]) == Some("list")).count(),
            "tasks": recs(rs).filter(|r| kind_of(&r["k"]) == Some("task") && !t(&r["f"]["parent"]) && r["f"]["status"] != "completed").count(),
            "people": people.iter().filter(|p| p["joined"] == true && me.map(|m| p["email"] != m).unwrap_or(!p["email"].is_null())).cloned().collect::<Vec<_>>()});

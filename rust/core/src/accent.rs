@@ -4,13 +4,13 @@ use crate::rx;
 
 pub fn accents() -> Value {
     json!([
-        {"id": "clay", "name": "Глина", "dark": "#D9774F", "light": "#AD4F2C"},
-        {"id": "coral", "name": "Коралл", "dark": "#E8766E", "light": "#B23A33"},
-        {"id": "rose", "name": "Роза", "dark": "#E07A9B", "light": "#A83A60"},
-        {"id": "lavender", "name": "Лаванда", "dark": "#A68BE8", "light": "#5B45A8"},
-        {"id": "sky", "name": "Небо", "dark": "#6E9EE8", "light": "#2D5BA8"},
-        {"id": "mint", "name": "Мята", "dark": "#5DBB98", "light": "#1E7356"},
-        {"id": "olive", "name": "Олива", "dark": "#A8B85A", "light": "#55661A"},
+        {"id": "clay", "name": crate::t!("Глина"), "dark": "#D9774F", "light": "#AD4F2C"},
+        {"id": "coral", "name": crate::t!("Коралл"), "dark": "#E8766E", "light": "#B23A33"},
+        {"id": "rose", "name": crate::t!("Роза"), "dark": "#E07A9B", "light": "#A83A60"},
+        {"id": "lavender", "name": crate::t!("Лаванда"), "dark": "#A68BE8", "light": "#5B45A8"},
+        {"id": "sky", "name": crate::t!("Небо"), "dark": "#6E9EE8", "light": "#2D5BA8"},
+        {"id": "mint", "name": crate::t!("Мята"), "dark": "#5DBB98", "light": "#1E7356"},
+        {"id": "olive", "name": crate::t!("Олива"), "dark": "#A8B85A", "light": "#55661A"},
     ])
 }
 pub const DEFAULT: &str = "clay";
@@ -69,7 +69,7 @@ pub fn accent_of(v: &Value) -> Value {
     }
     match hex(v) {
         None => accents()[0].clone(),
-        Some(h) => json!({"id": "custom", "name": "Свой", "dark": fit(&h, BG_DARK, 4.5), "light": fit(&h, BG_LIGHT, 4.5)}),
+        Some(h) => json!({"id": "custom", "name": crate::t!("Свой"), "dark": fit(&h, BG_DARK, 4.5), "light": fit(&h, BG_LIGHT, 4.5)}),
     }
 }
 

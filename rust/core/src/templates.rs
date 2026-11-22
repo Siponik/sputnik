@@ -6,10 +6,10 @@ use std::collections::HashMap;
 
 pub fn palette() -> Value {
     json!([
-        {"v": "var(--ink-faint)", "name": "серый"}, {"v": "var(--type-work)", "name": "синий"},
-        {"v": "var(--clay)", "name": "глина"}, {"v": "var(--gold)", "name": "золото"},
-        {"v": "var(--type-study)", "name": "фиолетовый"}, {"v": "var(--type-personal)", "name": "зелёный"},
-        {"v": "var(--signal-done)", "name": "бирюзовый"},
+        {"v": "var(--ink-faint)", "name": crate::t!("серый")}, {"v": "var(--type-work)", "name": crate::t!("синий")},
+        {"v": "var(--clay)", "name": crate::t!("глина")}, {"v": "var(--gold)", "name": crate::t!("золото")},
+        {"v": "var(--type-study)", "name": crate::t!("фиолетовый")}, {"v": "var(--type-personal)", "name": crate::t!("зелёный")},
+        {"v": "var(--signal-done)", "name": crate::t!("бирюзовый")},
     ])
 }
 
@@ -24,19 +24,19 @@ pub fn col_color(c: &Value) -> String {
 
 pub fn views() -> Value {
     json!([
-        {"id": "kanban", "name": "Канбан", "hint": "Колонки рядом, карточки перетаскиваются. Подходит, когда задач много и они быстро двигаются."},
-        {"id": "pipe", "name": "Конвейер", "hint": "Строка = задача, колонки — этапы по порядку. Для долгих задач с этапами: ассеты, большие заказы."},
-        {"id": "stickers", "name": "Стикеры", "hint": "Дела-стикеры по темам или по срокам, кружок — сделано. Для простых дел без этапов: покупки, звонки, дом."},
-        {"id": "list", "name": "Список", "hint": "Простой список с этапом в виде метки. Для курсов и дел, где этапов мало."},
+        {"id": "kanban", "name": crate::t!("Канбан"), "hint": crate::t!("Колонки рядом, карточки перетаскиваются. Подходит, когда задач много и они быстро двигаются.")},
+        {"id": "pipe", "name": crate::t!("Конвейер"), "hint": crate::t!("Строка = задача, колонки — этапы по порядку. Для долгих задач с этапами: ассеты, большие заказы.")},
+        {"id": "stickers", "name": crate::t!("Стикеры"), "hint": crate::t!("Дела-стикеры по темам или по срокам, кружок — сделано. Для простых дел без этапов: покупки, звонки, дом.")},
+        {"id": "list", "name": crate::t!("Список"), "hint": crate::t!("Простой список с этапом в виде метки. Для курсов и дел, где этапов мало.")},
     ])
 }
 
 pub fn fields_list() -> Value {
     json!([
-        {"id": "due", "name": "Срок"}, {"id": "prio", "name": "Приоритет"}, {"id": "type", "name": "Тип"},
-        {"id": "stage", "name": "Дорожка этапов"}, {"id": "subtasks", "name": "Подзадачи"},
-        {"id": "time", "name": "Учёт времени"}, {"id": "progress", "name": "Прогресс (3 из 10)"},
-        {"id": "client", "name": "Клиент"}, {"id": "money", "name": "Сумма"},
+        {"id": "due", "name": crate::t!("Срок")}, {"id": "prio", "name": crate::t!("Приоритет")}, {"id": "type", "name": crate::t!("Тип")},
+        {"id": "stage", "name": crate::t!("Дорожка этапов")}, {"id": "subtasks", "name": crate::t!("Подзадачи")},
+        {"id": "time", "name": crate::t!("Учёт времени")}, {"id": "progress", "name": crate::t!("Прогресс (3 из 10)")},
+        {"id": "client", "name": crate::t!("Клиент")}, {"id": "money", "name": crate::t!("Сумма")},
     ])
 }
 
@@ -104,7 +104,7 @@ pub fn templates_from(lay: &Value) -> Vec<Value> {
         } else {
             m.insert("changed".into(), json!(false));
         }
-        out.push(Value::Object(m));
+        out.push(shown(Value::Object(m)));
     }
     for (k, tt) in o(&lay["templates"]) {
         if !tt.is_object() || t(&tt["removed"]) || a(&tt["cols"]).is_empty() {
@@ -116,9 +116,38 @@ pub fn templates_from(lay: &Value) -> Vec<Value> {
         m.insert("hint".into(), json!(a(&tt["cols"]).iter().map(|c| text(&c["name"])).collect::<Vec<_>>().join(" → ")));
         extend(&mut m, &pick(&spread(&[&json!({"view": "kanban", "fields": []}), tt])));
         m.insert("mine".into(), json!(true));
-        out.push(Value::Object(m));
+        out.push(shown(Value::Object(m)));
     }
     out
+}
+
+/// Названия встроенных шаблонов и колонок — на языке интерфейса. Переводятся только точные
+/// стандартные названия («Входящие», «В работе»…); свои, переименованные — как есть. В слой не пишется.
+fn shown(mut t0: Value) -> Value {
+    if let Some(m) = t0.as_object_mut() {
+        for k in ["name", "title", "hint"] {
+            if let Some(x) = m.get(k).and_then(|x| x.as_str()) {
+                let v = crate::i18n::tr(x).to_string();
+                m.insert(k.into(), json!(v));
+            }
+        }
+        if let Some(c) = m.get("cols").cloned() {
+            m.insert("cols".into(), shown_cols(c));
+        }
+    }
+    t0
+}
+
+fn shown_cols(mut cols: Value) -> Value {
+    if let Some(v) = cols.as_array_mut() {
+        for c in v.iter_mut() {
+            if let Some(n) = c.get("name").and_then(|x| x.as_str()) {
+                let t1 = crate::i18n::tr(n).to_string();
+                c["name"] = json!(t1);
+            }
+        }
+    }
+    cols
 }
 
 /// Шаблон по id; неизвестный — «Работа».
@@ -156,7 +185,7 @@ pub fn board_of(list_id: &str, lay: &Value) -> Value {
     let view = if !l["view"].is_null() { l["view"].clone() } else if !base["view"].is_null() { base["view"].clone() } else { json!("kanban") };
     let mut m = o(&base).clone();
     m.insert("view".into(), view);
-    m.insert("cols".into(), cols);
+    m.insert("cols".into(), shown_cols(cols));
     m.insert("fields".into(), fields);
     m.insert("own".into(), json!(is_own(l)));
     m.insert("base".into(), base);
@@ -173,7 +202,7 @@ pub fn own_patch(d: &Value) -> Value {
         .map(|c| {
             let nm = text(&c["name"]);
             let nm = nm.trim();
-            json!({"id": c["id"], "name": if nm.is_empty() { "Без названия" } else { nm },
+            json!({"id": c["id"], "name": if nm.is_empty() { crate::t!("Без названия") } else { nm },
                    "color": if c["color"].is_null() { json!(0) } else { c["color"].clone() },
                    "limit": if c["limit"].is_null() { json!(0) } else { c["limit"].clone() }})
         })
@@ -309,7 +338,7 @@ pub fn switch_plan(lay: &Value, list_id: &str, tpl: &str, task_list: &Value, map
 }
 
 pub fn sorts() -> Value {
-    json!([{"id": "own", "name": "Свой"}, {"id": "due", "name": "Срок"}, {"id": "prio", "name": "Приоритет"}])
+    json!([{"id": "own", "name": crate::t!("Свой")}, {"id": "due", "name": crate::t!("Срок")}, {"id": "prio", "name": crate::t!("Приоритет")}])
 }
 
 pub fn sort_of(l: &Value) -> String {

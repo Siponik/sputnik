@@ -153,7 +153,7 @@ component PipeLine inherits Rectangle {
                             if sb.done: Rectangle { x: 42px; y: 14px; height: 1px; width: min(st.preferred-width, parent.width - 48px); background: #62646E; }
                             TouchArea { x: 20px; width: parent.width - 20px; clicked => { S.toggle(r.list-id, sb.id); } mouse-cursor: pointer; }
                         }
-                        Field { height: 30px; bare: true; font-size: 12.5px; placeholder: "+ подзадача · Enter"; accepted(t) => { if (t != "") { S.pipe-sub-add(r.list-id, r.id, b.stage-id, t); self.clear(); } } }
+                        Field { height: 30px; bare: true; font-size: 12.5px; placeholder: @tr("+ подзадача · Enter"); accepted(t) => { if (t != "") { S.pipe-sub-add(r.list-id, r.id, b.stage-id, t); self.clear(); } } }
                     }
                 }
             }
@@ -172,7 +172,7 @@ component PipeLine inherits Rectangle {
             if S.dp-open && S.dp-drop == "pipe": DueDrop { x: 0; y: parent.height + 4px; }
         }
         ptb := TimeBox { x: rx + min(196px, (parent.width - rx - 20px) * 0.4) + 6px; y: 12px; width: 128px; height: 34px; z: self.open ? 20 : 0; border-radius: 8px;
-            val: S.pipe-time; label: S.pipe-time-label; empty: "Весь день"; clearable: true; picked(t) => { S.w-time(r.list-id, r.id, t); } }
+            val: S.pipe-time; label: S.pipe-time-label; empty: @tr("Весь день"); clearable: true; picked(t) => { S.w-time(r.list-id, r.id, t); } }
         HorizontalLayout {
             x: ptb.x + ptb.width + 16px; y: 12px; height: 34px; spacing: 6px;
             for p[k] in ["!!!", "!!", "!"]: Rectangle {
@@ -204,7 +204,7 @@ component PipeLine inherits Rectangle {
         Rectangle {
             x: rx; y: 90px; width: parent.width - rx - 20px; height: 184px;
             border-radius: 8px; background: #2C2D33; border-width: 1px; border-color: G.line;
-            Text { x: 10px; y: 8px; text: "ЗАМЕТКА"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
+            Text { x: 10px; y: 8px; text: @tr("ЗАМЕТКА"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; }
             IconBtn { x: parent.width - 30px; y: 4px; icon: "expand"; clicked => { S.open-task(r.list-id, r.id); } }
             pn := MdNote {
                 x: 10px; y: 30px; width: parent.width - 20px; height: parent.height - 38px;
@@ -248,7 +248,7 @@ component PipeLine inherits Rectangle {
         // «Открыть полностью» всегда у правого края, есть полоса этапов или нет
         oft := Text {
             x: parent.width - 20px - self.preferred-width; y: 287px; height: 52px;
-            text: "Открыть полностью"; font-size: 12.5px; color: ofa.has-hover ? G.accent-ink : G.accent; vertical-alignment: center;
+            text: @tr("Открыть полностью"); font-size: 12.5px; color: ofa.has-hover ? G.accent-ink : G.accent; vertical-alignment: center;
             ofa := TouchArea { clicked => { S.open-task(r.list-id, r.id); } mouse-cursor: pointer; }
         }
     }
@@ -289,13 +289,13 @@ export component Pipe inherits Rectangle {
                 }
                 PipeLine { r: r; }
             }
-            if S.pipe.length == 0: Empty { height: 220px; text: "Ассетов пока нет — добавь первый строкой ниже"; }
+            if S.pipe.length == 0: Empty { height: 220px; text: @tr("Ассетов пока нет — добавь первый строкой ниже"); }
             Rectangle {
                 height: 40px;
                 border-radius: 8px;
                 border-width: 1px;
                 border-color: #55575F;
-                Field { x: 6px; y: 3px; width: parent.width - 12px; bare: true; font-size: 13px; placeholder: "+ Новый ассет · Enter"; accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } } }
+                Field { x: 6px; y: 3px; width: parent.width - 12px; bare: true; font-size: 13px; placeholder: @tr("+ Новый ассет · Enter"); accepted(t) => { if (t != "") { S.add-card(S.board-id, "", t); self.clear(); } } }
             }
         }
     }

@@ -29,9 +29,21 @@ pub fn add_min(hhmm: &str, n: i64) -> String {
 }
 
 const WD: [&str; 7] = ["вс", "пн", "вт", "ср", "чт", "пт", "сб"];
-const WDF: [&str; 7] = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-use crate::habits::MONTH_GEN as MONG;
 use crate::reminders::MON_SHORT as MON;
+
+/// «пн» / «mo».
+fn wd(d: NaiveDate) -> String {
+    crate::i18n::wd(d.weekday().num_days_from_monday() as usize).to_lowercase()
+}
+/// «Пн» / «Mon».
+fn wdf(d: NaiveDate) -> &'static str {
+    crate::i18n::wd3(d.weekday().num_days_from_monday() as usize)
+}
+
+/// «12 нояб.» / «Nov 12».
+fn dm_short(d: NaiveDate) -> String {
+    if crate::i18n::is_en() { crate::i18n::day_month(d.day(), d.month0() as usize) } else { format!("{} {}", d.day(), MON[d.month0() as usize]) }
+}
 
 fn dday(d: NaiveDate) -> usize {
     d.weekday().num_days_from_sunday() as usize
@@ -39,21 +51,21 @@ fn dday(d: NaiveDate) -> usize {
 
 pub fn short_day(s: &str) -> String {
     let d = pd(s);
-    format!("{}, {} {}", WD[dday(d)], d.day(), MON[d.month0() as usize])
+    format!("{}, {}", wd(d), dm_short(d))
 }
 
 pub fn long_day(s: &str) -> String {
     let d = pd(s);
-    format!("{}, {} {}", WDF[dday(d)], d.day(), MONG[d.month0() as usize])
+    format!("{}, {}", wdf(d), crate::i18n::day_month(d.day(), d.month0() as usize))
 }
 
 pub fn event_day(s: &str, today: &str) -> String {
     let d = pd(s);
-    let base = format!("{} {} {}", WD[dday(d)], d.day(), MONG[d.month0() as usize]);
+    let base = format!("{} {}", wd(d), crate::i18n::day_month(d.day(), d.month0() as usize));
     if s == today {
-        format!("сегодня, {base}")
+        crate::t!("сегодня, {}", base)
     } else if s == plus(today, 1) {
-        format!("завтра, {base}")
+        crate::t!("завтра, {}", base)
     } else {
         base
     }
@@ -61,11 +73,11 @@ pub fn event_day(s: &str, today: &str) -> String {
 
 pub fn day_month(s: &str) -> String {
     let d = pd(s);
-    format!("{} {}", d.day(), MONG[d.month0() as usize])
+    crate::i18n::day_month(d.day(), d.month0() as usize)
 }
 
 pub fn weekday(s: &str) -> &'static str {
-    WD[dday(pd(s))]
+    if crate::i18n::is_en() { crate::i18n::wd_sun(dday(pd(s))) } else { WD[dday(pd(s))] }
 }
 
 pub fn due_short(due: &str, today: &str, slot: &Value) -> String {
@@ -74,19 +86,19 @@ pub fn due_short(due: &str, today: &str, slot: &Value) -> String {
     }
     let tt = if t(&slot["s"]) { format!(", {}", s(&slot["s"])) } else { String::new() };
     if due == today {
-        return format!("сегодня{tt}");
+        return format!("{}{tt}", crate::t!("сегодня"));
     }
     if due == plus(today, 1) {
-        return format!("завтра{tt}");
+        return format!("{}{tt}", crate::t!("завтра"));
     }
     if due < today {
-        return "просрочено".into();
+        return crate::t!("просрочено").into();
     }
     if bucket(due, today) == "week" {
         return format!("{}{tt}", weekday(due));
     }
     let d = pd(due);
-    format!("{} {}{tt}", d.day(), MON[d.month0() as usize])
+    format!("{}{tt}", dm_short(d))
 }
 
 pub fn when_chip(due: &str, today: &str) -> &'static str {
@@ -144,6 +156,9 @@ pub fn age_at(year: &Value, day: &str, today: &str) -> Option<i64> {
 }
 
 pub fn plural(n: i64, one: &str, few: &str, many: &str) -> String {
+    if crate::i18n::is_en() {
+        return format!("{n} {}", crate::habits::plural(n, [one, few, many]));
+    }
     let (a, b) = (n % 100, n % 10);
     let w = if a > 10 && a < 20 { many } else if b == 1 { one } else if b > 1 && b < 5 { few } else { many };
     format!("{n} {w}")
@@ -178,7 +193,7 @@ fn timed_of(events: &[Value], day: &str) -> Vec<Timed> {
         let (Some(a0), Some(b0)) = (local_dt(st), local_dt(en)) else { continue };
         let am = if ymd(a0.date()).as_str() < day { 0 } else { (a0.hour() * 60 + a0.minute()) as i64 };
         let bm = if ymd(b0.date()).as_str() > day { 1440 } else { (b0.hour() * 60 + b0.minute()) as i64 };
-        out.push(Timed { a: am, b: bm, title: if t(&x["summary"]) { x["summary"].clone() } else { json!("событие") } });
+        out.push(Timed { a: am, b: bm, title: if t(&x["summary"]) { x["summary"].clone() } else { json!(crate::t!("событие")) } });
     }
     out
 }
@@ -287,29 +302,29 @@ const BDAY: &str = r"день рождени[яе]|дня рождения|дн�
 
 pub fn suggest_kind(text_: &str, p: &Value) -> Value {
     if rx::is(&w(BDAY), text_) && t(&p["day"]) {
-        return json!({"kind": "birthday", "what": "день рождения", "why": "раз в год"});
+        return json!({"kind": "birthday", "what": crate::t!("день рождения"), "why": crate::t!("раз в год")});
     }
     let h = rx::cap(&w(HABIT), text_);
     let every = &p["repeat"]["every"];
     if h.is_some() || every == "day" || every == "weekdays" {
         let phrase = match &h {
             Some(c) => c[0].clone().unwrap().trim().to_lowercase(),
-            None => (if every == "day" { "каждый день" } else { "по будням" }).into(),
+            None => (if every == "day" { crate::t!("каждый день") } else { crate::t!("по будням") }).into(),
         };
-        return json!({"kind": "habit", "what": "привычку", "why": format!("повторяется {phrase}")});
+        return json!({"kind": "habit", "what": crate::t!("привычку"), "why": crate::t!("повторяется {}", phrase)});
     }
     let (meet, with, time) = (rx::is(&w(MEET), text_), rx::is(WITH, text_), t(&p["time"]));
     if meet || (time && with) {
         let why = if time && with {
-            "у неё есть время и с кем-то"
+            crate::t!("у неё есть время и с кем-то")
         } else if time {
-            "у неё есть время"
+            crate::t!("у неё есть время")
         } else if with {
-            "она с кем-то"
+            crate::t!("она с кем-то")
         } else {
-            "её не отмечают сделанной"
+            crate::t!("её не отмечают сделанной")
         };
-        return json!({"kind": "event", "what": "встречу", "why": why});
+        return json!({"kind": "event", "what": crate::t!("встречу"), "why": why});
     }
     Value::Null
 }
@@ -367,12 +382,11 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
                 let (val, label) = match k {
                     0 => {
                         let nn: i64 = g[2].as_ref().unwrap().parse().unwrap_or(1);
-                        let word = if nn % 10 >= 2 && nn % 10 <= 4 { "раза" } else { "раз" };
-                        (json!({"freq": "week", "perWeek": nn.clamp(1, 6)}), format!("{} {word} в неделю", g[2].as_ref().unwrap()))
+                        (json!({"freq": "week", "perWeek": nn.clamp(1, 6)}), crate::t!("{} {} в неделю", g[2].as_ref().unwrap(), crate::habits::plural(nn, ["раз", "раза", "раз"])))
                     }
-                    1 => (json!({"freq": "days", "days": [0, 1, 2, 3, 4]}), "по будням".into()),
-                    2 => (json!({"freq": "days", "days": [5, 6]}), "по выходным".into()),
-                    _ => (json!({"freq": "daily"}), "каждый день".into()),
+                    1 => (json!({"freq": "days", "days": [0, 1, 2, 3, 4]}), crate::t!("по будням").into()),
+                    2 => (json!({"freq": "days", "days": [5, 6]}), crate::t!("по выходным").into()),
+                    _ => (json!({"freq": "daily"}), crate::t!("каждый день").into()),
                 };
                 extend(&mut out, o(&val));
                 toks.push(json!({"k": "freq", "l": label}));
@@ -381,8 +395,8 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
         }
     }
     if !t(&off["part"]) {
-        let parts = [(pp("каждое утро|по утрам|утром"), "morning", "утро"), (pp("днём|днем|после обеда"), "day", "день"),
-                     (pp("каждый вечер|по вечерам|вечером|перед сном"), "evening", "вечер")];
+        let parts = [(pp("каждое утро|по утрам|утром"), "morning", crate::t!("утро")), (pp("днём|днем|после обеда"), "day", crate::t!("день")),
+                     (pp("каждый вечер|по вечерам|вечером|перед сном"), "evening", crate::t!("вечер"))];
         for (re, part, label) in parts {
             if let Some((f, to, g)) = find(&re, raw) {
                 if !free(&marks, f, to) {
@@ -408,7 +422,7 @@ pub fn parse_habit(raw: &str, off: &Value) -> Value {
                 let unit = units.iter().find(|u| rx::is(u.0, &word)).map(|u| u.1.to_string()).unwrap_or(word);
                 let gn = nn.min(999);
                 out.insert("goal".into(), json!({"n": gn, "unit": unit}));
-                toks.insert(0, json!({"k": "goal", "l": format!("цель {gn} {unit}")}));
+                toks.insert(0, json!({"k": "goal", "l": crate::t!("цель {} {}", gn, crate::i18n::tr(&unit))}));
             }
         }
     }

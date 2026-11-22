@@ -38,9 +38,9 @@ component HourRow inherits HorizontalLayout {
 
 export component DatePicker inherits Node {
     in property <length> max-h: 720px;
-    num: "СРОК";
-    title: "ВЫБОР ДАТЫ И ВРЕМЕНИ";
-    aside: "ПРО «" + S.dp-title + "»";
+    num: @tr("СРОК");
+    title: @tr("ВЫБОР ДАТЫ И ВРЕМЕНИ");
+    aside: @tr("ПРО «{}»", S.dp-title);
     head: G.accent.darker(0.3);
     width: max(860px, dpb.preferred-width);
     height: min(34px + dpb.preferred-height, root.max-h);   // у ScrollView нет своей высоты — меряем содержимое
@@ -56,9 +56,9 @@ export component DatePicker inherits Node {
             VerticalLayout {
                 width: max(330px, qr.preferred-width);
                 spacing: 8px;
-                Mono { text: "СЛОВАМИ"; }
-                Field { placeholder: "завтра в 15, в пятницу…"; edited(t) => { S.dp-words(t); } accepted(t) => { S.dp-words(t); } escape => { S.dp-cancel(); } }
-                Text { text: S.dp-said == "" ? " " : "Понял: " + S.dp-said; color: G.accent-ink; font-size: 12px; wrap: word-wrap; }
+                Mono { text: @tr("СЛОВАМИ"); }
+                Field { placeholder: @tr("завтра в 15, в пятницу…"); edited(t) => { S.dp-words(t); } accepted(t) => { S.dp-words(t); } escape => { S.dp-cancel(); } }
+                Text { text: S.dp-said == "" ? " " : @tr("Понял: {}", S.dp-said); color: G.accent-ink; font-size: 12px; wrap: word-wrap; }
                 ScrollView {
                     height: 30px;
                     viewport-width: qr.preferred-width;
@@ -74,7 +74,7 @@ export component DatePicker inherits Node {
                     Chip { icon: "next"; width: 28px; clicked => { S.dp-month-step(1); } }
                 }
                 HorizontalLayout { spacing: 2px;
-                    for d in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Mono { text: d; width: 45px; horizontal-alignment: center; font-size: 10px; }
+                    for d in [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")]: Mono { text: d; width: 45px; horizontal-alignment: center; font-size: 10px; }
                 }
                 Rectangle {
                     height: 6 * 32px;
@@ -95,22 +95,22 @@ export component DatePicker inherits Node {
             Rectangle { width: 1px; background: G.line; }
             VerticalLayout {
                 spacing: 8px;
-                Mono { text: "ВРЕМЯ · СЕРАЯ ПОЛОСКА — ЧАС УЖЕ ЗАНЯТ"; }
-                HourRow { label: "НОЧЬ"; from: 0; }
-                HourRow { label: "УТРО"; from: 6; }
-                HourRow { label: "ДЕНЬ"; from: 12; }
-                HourRow { label: "ВЕЧЕР"; from: 18; }
-                Mono { text: "МИНУТЫ"; }
+                Mono { text: @tr("ВРЕМЯ · СЕРАЯ ПОЛОСКА — ЧАС УЖЕ ЗАНЯТ"); }
+                HourRow { label: @tr("НОЧЬ"); from: 0; }
+                HourRow { label: @tr("УТРО"); from: 6; }
+                HourRow { label: @tr("ДЕНЬ"); from: 12; }
+                HourRow { label: @tr("ВЕЧЕР"); from: 18; }
+                Mono { text: @tr("МИНУТЫ"); }
                 HorizontalLayout { spacing: 4px; alignment: start;
                     for m in [0, 15, 30, 45]: Chip { width: 44px; text: m == 0 ? ":00" : ":" + m; on: S.dp-hour >= 0 && S.dp-min == m; clicked => { S.dp-min-set(m); } }
-                    Mono { text: "  ИЛИ ТОЧНО"; vertical-alignment: center; }
-                    Field { width: 80px; height: 28px; mono: true; placeholder: "чч:мм"; text: S.dp-exact; accepted(t) => { S.dp-exact-set(t); } }
+                    Mono { text: @tr("  ИЛИ ТОЧНО"); vertical-alignment: center; }
+                    Field { width: 80px; height: 28px; mono: true; placeholder: @tr("чч:мм"); text: S.dp-exact; accepted(t) => { S.dp-exact-set(t); } }
                 }
-                Mono { text: "ДО"; }
+                Mono { text: @tr("ДО"); }
                 HorizontalLayout { spacing: 4px; alignment: start;
-                    Chip { text: "БЕЗ КОНЦА"; on: S.dp-dur == 0; clicked => { S.dp-dur-set(0); } }
-                    Chip { text: "30 МИН"; on: S.dp-dur == 30; clicked => { S.dp-dur-set(30); } }
-                    Chip { text: "1 ЧАС"; on: S.dp-dur == 60; clicked => { S.dp-dur-set(60); } }
+                    Chip { text: @tr("БЕЗ КОНЦА"); on: S.dp-dur == 0; clicked => { S.dp-dur-set(0); } }
+                    Chip { text: @tr("30 МИН"); on: S.dp-dur == 30; clicked => { S.dp-dur-set(30); } }
+                    Chip { text: @tr("1 ЧАС"); on: S.dp-dur == 60; clicked => { S.dp-dur-set(60); } }
                     Chip { text: S.dp-dur-long; on: S.dp-dur > 60; clicked => { S.dp-dur-set(120); } }
                 }
                 Rectangle { }
@@ -122,8 +122,8 @@ export component DatePicker inherits Node {
             Icon { name: "calendar"; width: 16px; c: G.accent; }
             Text { text: S.dp-summary; color: G.ink; font-size: 13px; vertical-alignment: center; overflow: elide; }
             Rectangle { }
-            Button { text: "Отмена"; clicked => { S.dp-cancel(); } }
-            Button { text: "Готово"; primary: true; clicked => { S.dp-done(); } }
+            Button { text: @tr("Отмена"); clicked => { S.dp-cancel(); } }
+            Button { text: @tr("Готово"); primary: true; clicked => { S.dp-done(); } }
         }
         }
     }
@@ -150,7 +150,7 @@ export component DueDrop inherits Rectangle {
             Text { text: st < 0 ? "‹" : "›"; color: G.ink; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; }
             sa := TouchArea { clicked => { S.dp-month-step(st); } mouse-cursor: pointer; }
         }
-        for d[i] in ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"]: Text {
+        for d[i] in [@tr("ПН"), @tr("ВТ"), @tr("СР"), @tr("ЧТ"), @tr("ПТ"), @tr("СБ"), @tr("ВС")]: Text {
             x: 10px + i * 35px; y: 44px; width: 35px; text: d; font-family: G.mono; font-size: 9.5px; color: #8A8C96; horizontal-alignment: center;
         }
         for c[i] in S.dp-cells: Rectangle {
@@ -163,7 +163,7 @@ export component DueDrop inherits Rectangle {
         }
         HorizontalLayout {
             x: 10px; y: 64px + ceil(S.dp-cells.length / 7) * 32px + 8px; width: parent.width - 20px; height: 30px; spacing: 4px;
-            for q[i] in [{ id: "today", t: "Сегодня" }, { id: "tomorrow", t: "Завтра" }, { id: "mon", t: "Пн" }, { id: "week", t: "+1 нед" }]: Rectangle {
+            for q[i] in [{ id: "today", t: @tr("Сегодня") }, { id: "tomorrow", t: @tr("Завтра") }, { id: "mon", t: @tr("Пн") }, { id: "week", t: @tr("+1 нед") }]: Rectangle {
                 horizontal-stretch: i == 2 ? 0.6 : 1;
                 border-radius: 5px; border-width: 1px; border-color: G.line; background: qa.has-hover ? G.node-hover : transparent;
                 Text { text: q.t; font-size: 11px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
@@ -175,7 +175,7 @@ export component DueDrop inherits Rectangle {
             x: 10px; y: parent.height - 42px; width: parent.width - 20px; height: 30px; border-radius: 5px;
             background: na.has-hover ? G.node-hover : transparent;
             animate background { duration: G.motion == 2 ? 0ms : G.fast; }
-            Text { x: 10px; text: "Без срока"; font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
+            Text { x: 10px; text: @tr("Без срока"); font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
             na := TouchArea { clicked => { S.dp-quick-set("none"); S.dp-done(); } mouse-cursor: pointer; }
         }
     }

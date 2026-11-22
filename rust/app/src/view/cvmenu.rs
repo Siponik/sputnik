@@ -20,37 +20,37 @@ fn at(id: &str) -> (f64, f64) {
 pub fn items(u: &Ui, m: &menu::Menu) -> (String, Vec<MItem>) {
     if m.kind == "cv-bg" {
         let paste = !u.cv_clip.is_empty();
-        return (String::from("Холст"), vec![
-            it("cv-card", "Карточка здесь", "plus", ""),
-            it("cv-note", "Заметка…", "note", ""),
-            it("cv-image", "Картинка…", "image", ""),
-            MItem { sep: true, off: !paste, ..it("cv-paste", "Вставить", "copy", "Ctrl V") },
-            it("cv-all", "Выделить всё", "check", "Ctrl A"),
+        return (String::from(t!("Холст")), vec![
+            it("cv-card", t!("Карточка здесь"), "plus", ""),
+            it("cv-note", t!("Заметка…"), "note", ""),
+            it("cv-image", t!("Картинка…"), "image", ""),
+            MItem { sep: true, off: !paste, ..it("cv-paste", t!("Вставить"), "copy", "Ctrl V") },
+            it("cv-all", t!("Выделить всё"), "check", "Ctrl A"),
         ]);
     }
     let Some(c) = u.cv.as_ref() else { return (String::new(), vec![]) };
     if m.sub == "color" {
-        return (String::from("Цвет"), COLORS.iter().map(|(k, l)| MItem { hue: super::canvas::hex_color(&sputnik_core::canvas::color_hex(k)).unwrap_or_default(), ..it(&format!("cv-color:{k}"), l, "circle", "") }).collect());
+        return (String::from(t!("Цвет")), COLORS.iter().map(|(k, l)| MItem { hue: super::canvas::hex_color(&sputnik_core::canvas::color_hex(k)).unwrap_or_default(), ..it(&format!("cv-color:{k}"), sputnik_core::i18n::tr(l), "circle", "") }).collect());
     }
     let n = c.doc.node(&m.id);
     let kind = n.map(|n| if n.kind() == "file" && super::canvas::is_image(n.file()) { "image" } else { n.kind() }).unwrap_or("");
     let many = c.sel.len() > 1;
-    let title = if many { format!("Выбрано: {}", c.sel.len()) } else {
-        match kind { "file" => "Заметка", "image" => "Картинка", "link" => "Ссылка", "group" => "Группа", _ => "Карточка" }.to_string()
+    let title = if many { t!("Выбрано: {}", c.sel.len()) } else {
+        match kind { "file" => t!("Заметка"), "image" => t!("Картинка"), "link" => t!("Ссылка"), "group" => t!("Группа"), _ => t!("Карточка") }.to_string()
     };
     let mut v = vec![];
     if !many && matches!(kind, "text" | "group" | "file") {
-        v.push(it("cv-edit", "Править", "edit", ""));
+        v.push(it("cv-edit", t!("Править"), "edit", ""));
     }
     if !many && matches!(kind, "file" | "image" | "link") {
-        v.push(it("cv-open", if kind == "file" { "Открыть заметку" } else { "Открыть" }, "open", ""));
+        v.push(it("cv-open", if kind == "file" { t!("Открыть заметку") } else { t!("Открыть") }, "open", ""));
     }
-    v.push(MItem { sub: true, ..it("sub:color", "Цвет", "accent", "") });
-    v.push(MItem { sep: true, ..it("cv-copy", "Копировать", "copy", "Ctrl C") });
-    v.push(it("cv-cut", "Вырезать", "copy", "Ctrl X"));
-    v.push(it("cv-dup", "Дублировать", "copy", "Ctrl D"));
-    v.push(it("cv-group", "В группу", "canvas", "Ctrl G"));
-    v.push(MItem { sep: true, red: true, ..it("cv-delete", "Удалить", "trash", "Del") });
+    v.push(MItem { sub: true, ..it("sub:color", t!("Цвет"), "accent", "") });
+    v.push(MItem { sep: true, ..it("cv-copy", t!("Копировать"), "copy", "Ctrl C") });
+    v.push(it("cv-cut", t!("Вырезать"), "copy", "Ctrl X"));
+    v.push(it("cv-dup", t!("Дублировать"), "copy", "Ctrl D"));
+    v.push(it("cv-group", t!("В группу"), "canvas", "Ctrl G"));
+    v.push(MItem { sep: true, red: true, ..it("cv-delete", t!("Удалить"), "trash", "Del") });
     (title, v)
 }
 
@@ -93,19 +93,19 @@ pub fn add(app: &mut App, u: &mut Ui, kind: &str, x: f64, y: f64) {
 
 /// Картинка с компьютера в точку (x, y): из папки заметок — ссылкой, иначе копией в «Вложения/».
 pub fn add_image(app: &mut App, u: &mut Ui, x: f64, y: f64) {
-    let Some(src) = rfd::FileDialog::new().set_title("Картинка на канвас").add_filter("Картинки", &["png", "jpg", "jpeg", "webp", "gif"]).pick_file() else { return };
+    let Some(src) = rfd::FileDialog::new().set_title(t!("Картинка на канвас")).add_filter(t!("Картинки"), &["png", "jpg", "jpeg", "webp", "gif"]).pick_file() else { return };
     let Some(root) = app.notes.root.clone() else { return };
     let name = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "картинка.png".into());
     // уже в папке заметок — ссылаемся как есть; иначе копия в «Вложения/»
     let rel = match src.strip_prefix(&root) {
         Ok(r) => r.to_string_lossy().replace('\\', "/"),
         Err(_) => {
-            let dir = root.join("Вложения");
+            let dir = root.join(t!("Вложения"));
             let _ = std::fs::create_dir_all(&dir);
             let (stem, ext) = name.rsplit_once('.').unwrap_or((&name, "png"));
             let file = (1..).map(|i| if i == 1 { name.clone() } else { format!("{stem} {i}.{ext}") }).find(|f| !dir.join(f).exists()).unwrap();
             if let Err(e) = std::fs::copy(&src, dir.join(&file)) {
-                app.say(format!("Картинка не скопировалась: {e}"));
+                app.say(t!("Картинка не скопировалась: {}", e));
                 return;
             }
             format!("Вложения/{file}")
@@ -125,7 +125,7 @@ pub fn open_node(app: &mut App, u: &mut Ui, id: &str) {
         "file" if super::canvas::is_image(n.file()) => { if let Some(p) = super::canvas::file_of(app, n.file()) { let _ = open::that(p); } }
         "file" => {
             let p = n.file().to_string();
-            if app.notes.notes.iter().any(|x| x.path == p) { super::wire::open_note_tab(app, u, &p); } else { app.say("Заметки нет в папке"); }
+            if app.notes.notes.iter().any(|x| x.path == p) { super::wire::open_note_tab(app, u, &p); } else { app.say(t!("Заметки нет в папке")); }
         }
         "link" => { let _ = open::that(n.url()); }
         _ => { let id = id.to_string(); if let Some(c) = u.cv.as_mut() { c.edit = id; } }
@@ -140,6 +140,6 @@ pub fn save_note(app: &mut App, path: &str, body: &str) {
         return;
     }
     if let Err(e) = app.notes.save(path, &format!("{front}{body}")) {
-        app.say(format!("Заметка не сохранилась: {e}"));
+        app.say(t!("Заметка не сохранилась: {}", e));
     }
 }

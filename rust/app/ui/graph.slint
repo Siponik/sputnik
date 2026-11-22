@@ -14,7 +14,7 @@ export component ModeSwitch inherits Rectangle {
         border-radius: 9px; background: G.bg;
         HorizontalLayout {
             padding: 3px; spacing: 3px;
-            for it[i] in [{ t: "Заметки", ic: "read" }, { t: "Граф", ic: "graph" }]: Rectangle {
+            for it[i] in [{ t: @tr("Заметки"), ic: "read" }, { t: @tr("Граф"), ic: "graph" }]: Rectangle {
                 border-radius: 7px;
                 background: i == root.current ? G.accent : (ma.has-hover ? G.node-hover : transparent);
                 HorizontalLayout {
@@ -82,14 +82,14 @@ export component GraphFilters inherits Rectangle {
             Rectangle {
                 x: 12px; y: 10px; width: parent.width - 24px; height: 32px; border-radius: 6px; background: G.bg; border-width: 1px; border-color: G.line;
                 Icon { name: "search"; x: 10px; y: 9.5px; width: 13px; c: G.muted; }
-                Field { x: 30px; y: 0; width: parent.width - 36px; height: 32px; bare: true; font-size: 13px; placeholder: "Найти на графе"; text: S.graph-q; edited(t) => { S.graph-search(t); } escape => { self.clear(); S.graph-search(""); } }
+                Field { x: 30px; y: 0; width: parent.width - 36px; height: 32px; bare: true; font-size: 13px; placeholder: @tr("Найти на графе"); text: S.graph-q; edited(t) => { S.graph-search(t); } escape => { self.clear(); S.graph-search(""); } }
             }
         }
         Rectangle {
             height: 38px;
             GSeg {
                 x: 12px; y: 0; height: 28px; border-radius: 6px; pad: 2px; ir: 4px; weight: 600;
-                items: ["ВЕСЬ", "ЛОКАЛЬНЫЙ"];
+                items: [@tr("ВЕСЬ"), @tr("ЛОКАЛЬНЫЙ")];
                 current: S.graph-local ? 1 : 0;
                 picked(i) => { S.graph-local-set(i == 1); }
             }
@@ -97,7 +97,7 @@ export component GraphFilters inherits Rectangle {
         Rectangle { height: 1px; background: G.line; }
         VerticalLayout {
             padding-top: 10px; padding-bottom: 4px;
-            Micro { x: 12px; text: "ГРУППЫ · ЦВЕТ ПО ПАПКЕ"; height: 18px; }
+            Micro { x: 12px; text: @tr("ГРУППЫ · ЦВЕТ ПО ПАПКЕ"); height: 18px; }
             for gr in S.graph-groups: Rectangle {
                 height: 28px;
                 background: ga.has-hover ? G.node-hover : transparent;
@@ -109,14 +109,14 @@ export component GraphFilters inherits Rectangle {
         Rectangle { height: 1px; background: G.line; }
         VerticalLayout {
             padding: 12px; padding-top: 10px; spacing: 4px;
-            Micro { text: "ПОКАЗЫВАТЬ"; height: 16px; }
-            for t[i] in ["Теги точками", "Вложения", "Без связей", "Ещё не созданные"]: Toggle { label: t; on: S.graph-show[i]; clicked => { S.graph-show-set(i); } }
+            Micro { text: @tr("ПОКАЗЫВАТЬ"); height: 16px; }
+            for t[i] in [@tr("Теги точками"), @tr("Вложения"), @tr("Без связей"), @tr("Ещё не созданные")]: Toggle { label: t; on: S.graph-show[i]; clicked => { S.graph-show-set(i); } }
         }
         Rectangle { height: 1px; background: G.line; }
         VerticalLayout {
             padding: 12px; padding-top: 10px; spacing: 4px;
-            Micro { text: "СИЛЫ"; height: 18px; }
-            for t[i] in ["Отталкивание", "Длина связей", "Притяжение к центру"]: Slider { label: t; value: S.graph-forces[i]; changed(v) => { S.graph-force(i, v); } }
+            Micro { text: @tr("СИЛЫ"); height: 18px; }
+            for t[i] in [@tr("Отталкивание"), @tr("Длина связей"), @tr("Притяжение к центру")]: Slider { label: t; value: S.graph-forces[i]; changed(v) => { S.graph-force(i, v); } }
         }
         Rectangle { }
     }
@@ -280,7 +280,7 @@ export component GraphRead inherits Rectangle {
     background: G.node; border-radius: 12px; border-width: 1px; border-color: G.accent-line; clip: true;
     Rectangle {
         y: 0; height: 34px; background: G.head-main;
-        Text { x: 12px; width: parent.width - 70px; text: "ЧИТАЮ · " + S.graph-sel-head; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
+        Text { x: 12px; width: parent.width - 70px; text: @tr("ЧИТАЮ · {}", S.graph-sel-head); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; overflow: elide; }
         Text { x: parent.width - self.preferred-width - 12px; text: "↔ " + S.graph-sel-n; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: #FFFFFFE6; vertical-alignment: center; }
     }
     ScrollView {
@@ -300,11 +300,11 @@ export component GraphRead inherits Rectangle {
         Rectangle { height: 12px; }
         for l in S.graph-sel-lines: MdLine { line: l; fs: 13.5px; }
         Rectangle { height: 12px; }
-        Text { text: "Клик по соседу — граф переезжает к той заметке, панель показывает её."; font-size: 12px; color: G.muted; wrap: word-wrap; }
+        Text { text: @tr("Клик по соседу — граф переезжает к той заметке, панель показывает её."); font-size: 12px; color: G.muted; wrap: word-wrap; }
         Rectangle { height: 12px; }
         Rectangle { height: 1px; background: G.line; }
         Rectangle { height: 10px; }
-        Micro { text: "СОСЕДИ · " + S.graph-sel-n; }
+        Micro { text: @tr("СОСЕДИ · {}", S.graph-sel-n); }
         Rectangle { height: 8px; }
         for nb in S.graph-sel-near: HorizontalLayout {
             alignment: start; padding-bottom: 6px;
@@ -316,7 +316,7 @@ export component GraphRead inherits Rectangle {
                 na := TouchArea { mouse-cursor: pointer; clicked => { S.graph-pick(nb.id); } }
             }
         }
-        if S.graph-sel-rest > 0: Text { text: "ещё " + S.graph-sel-rest; font-size: 12.5px; color: G.muted; }
+        if S.graph-sel-rest > 0: Text { text: @tr("ещё {}", S.graph-sel-rest); font-size: 12.5px; color: G.muted; }
         Rectangle { height: 12px; }
     }
     }
@@ -325,17 +325,17 @@ export component GraphRead inherits Rectangle {
         Rectangle { y: 0; height: 1px; background: G.line; }
         VerticalLayout {
             padding: 12px; padding-left: 16px; padding-right: 16px; spacing: 8px;
-            Btn { t: "Открыть в заметках"; acc: true; clicked => { root.open(); } }
+            Btn { t: @tr("Открыть в заметках"); acc: true; clicked => { root.open(); } }
             HorizontalLayout {
                 spacing: 8px;
-                Btn { t: "Открыть в фокусе"; clicked => { root.zen(); } }
-                Btn { t: S.graph-local ? "Весь граф" : "Локальный граф"; clicked => { S.graph-local-set(!S.graph-local); } }
+                Btn { t: @tr("Открыть в фокусе"); clicked => { root.zen(); } }
+                Btn { t: S.graph-local ? @tr("Весь граф") : @tr("Локальный граф"); clicked => { S.graph-local-set(!S.graph-local); } }
             }
             HorizontalLayout {
                 spacing: 12px; alignment: start;
-                Kbd { k: "ENTER"; t: "открыть"; }
-                Kbd { k: "L"; t: "локальный"; }
-                Kbd { k: "ESC"; t: "закрыть"; }
+                Kbd { k: "ENTER"; t: @tr("открыть"); }
+                Kbd { k: "L"; t: @tr("локальный"); }
+                Kbd { k: "ESC"; t: @tr("закрыть"); }
             }
         }
     }
@@ -355,15 +355,15 @@ export component GraphPage inherits Rectangle {
     }
     HorizontalLayout {
         x: root.lw + 16px; y: 14px; height: 16px; spacing: 12px; alignment: start; width: gv.width - 60px;
-        Text { text: "ГРАФ ЗНАНИЙ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 2px; color: G.ink; vertical-alignment: center; }
-        Micro { text: S.graph-info + (S.graph-local ? " · ЛОКАЛЬНЫЙ" : "") + " · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"; vertical-alignment: center; }
+        Text { text: @tr("ГРАФ ЗНАНИЙ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 2px; color: G.ink; vertical-alignment: center; }
+        Micro { text: S.graph-info + (S.graph-local ? @tr(" · ЛОКАЛЬНЫЙ") : "") + @tr(" · КЛИК ПО ТОЧКЕ — ЧИТАТЬ СПРАВА"); vertical-alignment: center; }
     }
     VerticalLayout {
         x: gv.x + gv.width - 44px; y: 52px; width: 32px; spacing: 6px;
-        ZoomBtn { t: "+"; tip: "Крупнее"; clicked => { gv.k = min(8, gv.k * 1.3); } }
-        ZoomBtn { t: "−"; tip: "Мельче"; clicked => { gv.k = max(0.3, gv.k / 1.3); } }
-        ZoomBtn { t: "⤢"; tip: "Весь граф"; clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
-        ZoomBtn { ic: "sync"; tip: "Пересобрать граф"; clicked => { S.graph-rebuild(); gv.k = 1; gv.ox = 0; gv.oy = 0; } }
+        ZoomBtn { t: "+"; tip: @tr("Крупнее"); clicked => { gv.k = min(8, gv.k * 1.3); } }
+        ZoomBtn { t: "−"; tip: @tr("Мельче"); clicked => { gv.k = max(0.3, gv.k / 1.3); } }
+        ZoomBtn { t: "⤢"; tip: @tr("Весь граф"); clicked => { gv.k = 1; gv.ox = 0; gv.oy = 0; } }
+        ZoomBtn { ic: "sync"; tip: @tr("Пересобрать граф"); clicked => { S.graph-rebuild(); gv.k = 1; gv.ox = 0; gv.oy = 0; } }
     }
     if root.rw > 0: GraphRead {
         x: parent.width - 8px - 320px; y: 8px; width: 320px; height: parent.height - 16px;

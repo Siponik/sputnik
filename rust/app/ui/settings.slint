@@ -199,7 +199,7 @@ export component SettingsPage inherits Rectangle {
         background: G.node;
         border-width: 1px;
         border-color: G.line;
-        Text { x: 12px; y: 0; height: 32px; text: "НАСТРОЙКИ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; }
+        Text { x: 12px; y: 0; height: 32px; text: @tr("НАСТРОЙКИ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: G.ink; vertical-alignment: center; }
         // закрыть окно: «ESC ×» в шапке меню
         Rectangle {
             x: parent.width - self.width - 6px; y: 4px; width: xl.preferred-width + 16px; height: 24px;
@@ -219,7 +219,7 @@ export component SettingsPage inherits Rectangle {
             x: 9px; y: 82px; width: parent.width - 18px;
             spacing: 2px;
             alignment: start;
-            for t[i] in ["ВИД", "ЧТО ПОКАЗЫВАТЬ", "НАПОМИНАНИЯ", "СИНХРОНИЗАЦИЯ", "КЛАВИШИ", "ЗНАНИЯ"]: Rectangle {
+            for t[i] in [@tr("ВИД"), @tr("ЧТО ПОКАЗЫВАТЬ"), @tr("НАПОМИНАНИЯ"), @tr("СИНХРОНИЗАЦИЯ"), @tr("КЛАВИШИ"), @tr("ЗНАНИЯ")]: Rectangle {
                 height: 36px;
                 border-radius: 6px;
                 background: S.set-tab != i && ta.has-hover ? G.node-hover : transparent;
@@ -233,7 +233,7 @@ export component SettingsPage inherits Rectangle {
         fq := Field {
             x: 10px; y: 42px; width: parent.width - 20px; height: 32px;
             font-size: 13px;
-            placeholder: "Найти настройку";
+            placeholder: @tr("Найти настройку");
             edited(t) => { root.q = t; S.set-find(t); }
             accepted(t) => { if (S.set-found.length > 0) { root.pick(S.set-found[0].id.to-float()); } }
             escape => { root.pick(S.set-tab); }
@@ -250,9 +250,9 @@ export component SettingsPage inherits Rectangle {
                 Text { x: 10px; y: 25px; width: parent.width - 20px; text: r.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; overflow: elide; }
                 ra := TouchArea { clicked => { root.pick(r.id.to-float()); } mouse-cursor: pointer; }
             }
-            if S.set-found.length == 0: Text { text: "  Ничего не нашлось"; font-size: 13px; color: #7A7C86; }
+            if S.set-found.length == 0: Text { text: @tr("  Ничего не нашлось"); font-size: 13px; color: #7A7C86; }
         }
-        Text { x: 12px; y: parent.height - 30px; text: "СПУТНИК " + S.version; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
+        Text { x: 12px; y: parent.height - 30px; text: @tr("СПУТНИК {}", S.version); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; }
     }
     // разделы
     ScrollView {
@@ -264,12 +264,12 @@ export component SettingsPage inherits Rectangle {
             spacing: 24px;
             alignment: start;
             if S.set-tab == 0: Sec {
-                main: true; num: "01"; title: "ВИД";
-                SRow { label: "ТЕМА";
-                    OSeg { items: [{ id: "dark", label: "Тёмная", on: true }, { id: "light", label: "Светлая" }, { id: "sys", label: "Как в системе" }]; }
-                    Text { text: "светлая появится позже"; font-size: 12.5px; color: #7A7C86; vertical-alignment: center; }
+                main: true; num: "01"; title: @tr("ВИД");
+                SRow { label: @tr("ТЕМА");
+                    OSeg { items: [{ id: "dark", label: @tr("Тёмная"), on: true }, { id: "light", label: @tr("Светлая") }, { id: "sys", label: @tr("Как в системе") }]; }
+                    Text { text: @tr("светлая появится позже"); font-size: 12.5px; color: #7A7C86; vertical-alignment: center; }
                 }
-                SRow { label: "АКЦЕНТ";
+                SRow { label: @tr("АКЦЕНТ");
                     for o in S.set-accent: Rectangle {
                         width: 32px; height: 32px; border-radius: 7px;
                         background: o.hue;
@@ -278,15 +278,16 @@ export component SettingsPage inherits Rectangle {
                         aa := TouchArea { clicked => { S.accent-set(o.id); } mouse-cursor: pointer; }
                     }
                 }
-                SRow { label: "АНИМАЦИИ"; OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } }
-                    Text { text: "Провода рисуются при открытии экрана"; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
+                SRow { label: @tr("АНИМАЦИИ"); OSeg { items: S.set-anim; picked(id) => { S.anim-set(id); } }
+                    Text { text: @tr("Провода рисуются при открытии экрана"); font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 }
-                SRow { label: "ПРИ ЗАПУСКЕ"; OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
+                SRow { label: @tr("ЯЗЫК"); OSeg { items: S.set-lang; picked(id) => { S.lang-set(id); } } }
+                SRow { label: @tr("ПРИ ЗАПУСКЕ"); OSeg { items: S.set-start; picked(id) => { S.set-toggle("start", id); } } }
                 // порядок разделов в шапке: перетаскиваются, номер — клавиша.
                 // Пока тащишь, карточка идёт за мышью, а соседи плавно раздвигаются под место, куда она встанет.
                 Rectangle {
                     height: 30px + 40px;
-                    Text { x: 0; y: 0; height: 26px; text: "ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
+                    Text { x: 0; y: 0; height: 26px; text: @tr("ПОРЯДОК ВКЛАДОК · ПЕРЕТАЩИ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #A3A5AE; vertical-alignment: center; }
                     property <length> cw: min(150px, (self.width - (S.tab-order.length - 1) * 18px) / max(1, S.tab-order.length));
                     property <length> step: cw + 18px;
                     property <int> drag: -1;      // кого тащим
@@ -316,7 +317,7 @@ export component SettingsPage inherits Rectangle {
                             drop-shadow-color: #0009;
                             animate y, drop-shadow-blur { duration: G.fast; }
                             Icon { x: 10px; width: 14px; name: "drag"; c: me ? G.accent : G.dim; }
-                            Text { x: 30px; text: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
+                            Text { x: 30px; text: [@tr("СЕГОДНЯ"), @tr("КАЛЕНДАРЬ"), @tr("ДОСКА"), @tr("ПРИВЫЧКИ"), @tr("ЗНАНИЯ")][t]; font-family: G.mono; font-size: 10px; font-weight: 600; letter-spacing: 1.3px; color: G.ink; vertical-alignment: center; height: parent.height; }
                             Text { x: parent.width - 18px; text: ((me ? tgt : slot) + 1) + ""; font-family: G.mono; font-size: 9.5px; color: me ? G.accent : #7A7C86; vertical-alignment: center; height: parent.height; }
                         }
                         dg := TouchArea {
@@ -338,11 +339,11 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                 }
-                Note { text: "ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–" + S.tab-order.length + " И Q / E"; }
+                Note { text: @tr("ПО ЭТОМУ ПОРЯДКУ РАБОТАЮТ КЛАВИШИ 1–{} И Q / E", S.tab-order.length); }
             }
             if S.set-tab == 0 || S.set-tab == 1: Sec {
-                main: S.set-tab == 1; num: S.set-tab == 0 ? "02" : "01"; title: "ЧТО ПОКАЗЫВАТЬ";
-                aside: S.set-lists.length + " СПИСКОВ · " + S.set-cals.length + " КАЛЕНДАРЕЙ";
+                main: S.set-tab == 1; num: S.set-tab == 0 ? "02" : "01"; title: @tr("ЧТО ПОКАЗЫВАТЬ");
+                aside: @tr("{} СПИСКОВ · {} КАЛЕНДАРЕЙ", S.set-lists.length, S.set-cals.length);
                 ll := Rectangle {
                     height: lf.preferred-height;
                     lf := VerticalLayout {
@@ -365,66 +366,66 @@ export component SettingsPage inherits Rectangle {
                         }
                     }
                 }
-                Note { text: "СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ"; }
+                Note { text: @tr("СКРЫТЫЕ СПИСКИ НЕ ПОПАДАЮТ В «СЕГОДНЯ», КАЛЕНДАРЬ И НАПОМИНАНИЯ"); }
             }
             if S.set-tab == 2: Sec {
-                main: true; num: "01"; title: "НАПОМИНАНИЯ"; aside: "МОЖНО НЕСКОЛЬКО";
+                main: true; num: "01"; title: @tr("НАПОМИНАНИЯ"); aside: @tr("МОЖНО НЕСКОЛЬКО");
                 // «не напоминать» — это «ничего не отмечено», отдельной галочки нет (её убирает settings.rs)
-                SRow { label: "ЗАДАЧАМ"; for o in S.set-remind-task: CBox { o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
-                SRow { label: "СОБЫТИЯМ"; for o in S.set-remind-event: CBox { o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
-                SRow { label: "ДНЯМ РОЖДЕНИЯ"; for o in S.set-remind-bday: CBox { o: o; clicked => { S.set-toggle("remind-bday", o.id); } } }
-                Note { text: "НИЧЕГО НЕ ОТМЕЧЕНО — НЕ НАПОМИНАТЬ. ЭТО УМОЛЧАНИЯ ДЛЯ НОВЫХ: У ЗАДАЧИ МОЖНО ПОМЕНЯТЬ В ЕЁ ОКНЕ"; }
-                SRow { label: "БЕЗ ВРЕМЕНИ — В"; for o in S.set-remind-hour: CBox { radio: true; o: o; clicked => { S.set-toggle("hour", o.id); } } }
+                SRow { label: @tr("ЗАДАЧАМ"); for o in S.set-remind-task: CBox { o: o; clicked => { S.set-toggle("remind-task", o.id); } } }
+                SRow { label: @tr("СОБЫТИЯМ"); for o in S.set-remind-event: CBox { o: o; clicked => { S.set-toggle("remind-event", o.id); } } }
+                SRow { label: @tr("ДНЯМ РОЖДЕНИЯ"); for o in S.set-remind-bday: CBox { o: o; clicked => { S.set-toggle("remind-bday", o.id); } } }
+                Note { text: @tr("НИЧЕГО НЕ ОТМЕЧЕНО — НЕ НАПОМИНАТЬ. ЭТО УМОЛЧАНИЯ ДЛЯ НОВЫХ: У ЗАДАЧИ МОЖНО ПОМЕНЯТЬ В ЕЁ ОКНЕ"); }
+                SRow { label: @tr("БЕЗ ВРЕМЕНИ — В"); for o in S.set-remind-hour: CBox { radio: true; o: o; clicked => { S.set-toggle("hour", o.id); } } }
                 Rectangle { height: 1px; background: G.line-soft; }
-                SRow { label: "КУДА СЛАТЬ"; for o in S.set-flags: CBox { o: o; clicked => { S.set-toggle("flag", o.id); } } }
+                SRow { label: @tr("КУДА СЛАТЬ"); for o in S.set-flags: CBox { o: o; clicked => { S.set-toggle("flag", o.id); } } }
                 for o in S.set-flags: Note { text: o.label.to-uppercase() + " — " + o.hint.to-uppercase(); }
             }
             if S.set-tab == 2: Sec {
-                num: "02"; title: "TELEGRAM · @SPUTNIKTASKSBOT"; aside: S.bot-name != "" ? "ПОДКЛЮЧЁН" : "";
-                Text { text: S.bot-name != "" ? "Подключён: " + S.bot-name : "Напиши боту /start, он пришлёт код из 6 цифр — введи его здесь."; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                num: "02"; title: "TELEGRAM · @SPUTNIKTASKSBOT"; aside: S.bot-name != "" ? @tr("ПОДКЛЮЧЁН") : "";
+                Text { text: S.bot-name != "" ? @tr("Подключён: {}", S.bot-name) : @tr("Напиши боту /start, он пришлёт код из 6 цифр — введи его здесь."); color: G.ink; font-size: 13px; wrap: word-wrap; }
                 if S.bot-status != "": Note { text: S.bot-status.to-uppercase(); }
-                if S.bot-name == "": Field { width: 220px; mono: true; placeholder: "код 123456"; accepted(t) => { S.bot-link(t); self.clear(); } }
+                if S.bot-name == "": Field { width: 220px; mono: true; placeholder: @tr("код 123456"); accepted(t) => { S.bot-link(t); self.clear(); } }
                 if S.bot-name != "": HorizontalLayout {
                     spacing: 8px;
                     alignment: start;
-                    Button { text: "Проверить"; clicked => { S.bot-test(); } }
-                    Button { text: "Отключить"; clicked => { S.bot-unlink(); } }
+                    Button { text: @tr("Проверить"); clicked => { S.bot-test(); } }
+                    Button { text: @tr("Отключить"); clicked => { S.bot-unlink(); } }
                 }
             }
             if S.set-tab == 3: Sec {
-                main: true; num: "01"; title: "СИНХРОНИЗАЦИЯ";
+                main: true; num: "01"; title: @tr("СИНХРОНИЗАЦИЯ");
                 Text { text: S.sync-info; color: G.ink; font-size: 13px; wrap: word-wrap; }
                 HorizontalLayout {
                     spacing: 8px;
                     alignment: start;
-                    Button { text: "Синхронизировать сейчас"; primary: true; clicked => { S.refresh(); } }
-                    Button { text: "Выйти из Google"; clicked => { S.sign-out(); } }
+                    Button { text: @tr("Синхронизировать сейчас"); primary: true; clicked => { S.refresh(); } }
+                    Button { text: @tr("Выйти из Google"); clicked => { S.sign-out(); } }
                 }
                 Note { text: S.backup-info.to-uppercase(); }
-                HorizontalLayout { alignment: start; Button { text: "Открыть папку с копиями"; clicked => { S.open-backups(); } } }
+                HorizontalLayout { alignment: start; Button { text: @tr("Открыть папку с копиями"); clicked => { S.open-backups(); } } }
             }
             if S.set-tab == 5: Sec {
-                main: true; num: "01"; title: "ЗНАНИЯ · ПАПКА ЗАМЕТОК";
-                Text { text: "Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."; color: #A3A5AE; font-size: 13px; wrap: word-wrap; }
+                main: true; num: "01"; title: @tr("ЗНАНИЯ · ПАПКА ЗАМЕТОК");
+                Text { text: @tr("Папка с Markdown-файлами (можно ту же, что у Obsidian). Заметки лежат в ней обычными файлами — Спутник их не трогает, только читает и дополняет."); color: #A3A5AE; font-size: 13px; wrap: word-wrap; }
                 Field { width: 100%; mono: true; font-size: 12px; text: S.notes-root; edited(t) => { root.typed-root = t; } accepted(t) => { root.typed-root = ""; S.notes-root-set(t); } }
-                Note { text: "РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"; }
+                Note { text: @tr("РАЗДЕЛ «ЗНАНИЯ» — ПЯТАЯ ВКЛАДКА В ШАПКЕ. ТАМ ЖЕ ПОИСК, СВЯЗИ И ГРАФ"); }
             }
             if S.set-tab == 4: Sec {
-                main: true; num: "01"; title: "КЛАВИШИ";
+                main: true; num: "01"; title: @tr("КЛАВИШИ");
                 for k in [
-                    ["1 … 5", "разделы: Сегодня, Календарь, Доска, Привычки, Знания"],
-                    ["Q / E", "раздел левее / правее"],
-                    ["N, Ctrl+N", "создать"],
-                    ["Ctrl+K, /", "поиск"],
-                    ["R, F5", "синхронизировать"],
-                    ["Ctrl+,", "настройки"],
-                    ["1 … 6, ↑ ↓", "в настройках: разделы"],
-                    ["Shift+1…9", "отметить привычку"],
-                    ["[ ]", "предыдущий / следующий список на доске"],
-                    ["Ctrl+Shift+L", "найти список на доске"],
-                    ["Ctrl+.", "настройки списка"],
-                    ["← → T W M", "календарь: листать, сегодня, неделя, месяц"],
-                    ["Esc", "закрыть окно"],
+                    ["1 … 5", @tr("разделы: Сегодня, Календарь, Доска, Привычки, Знания")],
+                    ["Q / E", @tr("раздел левее / правее")],
+                    ["N, Ctrl+N", @tr("создать")],
+                    ["Ctrl+K, /", @tr("поиск")],
+                    ["R, F5", @tr("синхронизировать")],
+                    ["Ctrl+,", @tr("настройки")],
+                    ["1 … 6, ↑ ↓", @tr("в настройках: разделы")],
+                    ["Shift+1…9", @tr("отметить привычку")],
+                    ["[ ]", @tr("предыдущий / следующий список на доске")],
+                    ["Ctrl+Shift+L", @tr("найти список на доске")],
+                    ["Ctrl+.", @tr("настройки списка")],
+                    ["← → T W M", @tr("календарь: листать, сегодня, неделя, месяц")],
+                    ["Esc", @tr("закрыть окно")],
                 ]: Rectangle {
                     height: 30px;
                     Rectangle {
@@ -437,8 +438,8 @@ export component SettingsPage inherits Rectangle {
                 }
             }
             if S.set-tab == 3: Sec {
-                num: "02"; title: "ОБНОВЛЕНИЯ"; aside: "СТОИТ " + S.version;
-                Text { text: "Спутник " + S.version + " — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет."; color: G.ink; font-size: 13px; wrap: word-wrap; }
+                num: "02"; title: @tr("ОБНОВЛЕНИЯ"); aside: @tr("СТОИТ {}", S.version);
+                Text { text: @tr("Спутник {} — Rust + Slint. Данные в Google Tasks и Календаре, свой слой — на этом компьютере и в скрытой папке приложения на Google Drive. Своего сервера нет.", S.version); color: G.ink; font-size: 13px; wrap: word-wrap; }
                 if S.upd-rows.length > 0: VerticalLayout {
                     spacing: 4px;
                     alignment: start;
@@ -451,13 +452,13 @@ export component SettingsPage inherits Rectangle {
                         wrap: word-wrap;
                     }
                 }
-                Note { text: (S.upd-phase == 2 ? "СКАЧИВАЮ ВЕРСИЮ " + S.upd-version : S.upd-phase == 3 ? "СТАВЛЮ ВЕРСИЮ " + S.upd-version + " — СПУТНИК ПЕРЕЗАПУСТИТСЯ САМ" : S.upd-version != "" ? "ВЫШЛА ВЕРСИЯ " + S.upd-version + " — ЧИП «ВЕРСИЯ» В ШАПКЕ" : S.upd-info).to-uppercase(); }
+                Note { text: (S.upd-phase == 2 ? @tr("СКАЧИВАЮ ВЕРСИЮ {}", S.upd-version) : S.upd-phase == 3 ? @tr("СТАВЛЮ ВЕРСИЮ {} — СПУТНИК ПЕРЕЗАПУСТИТСЯ САМ", S.upd-version) : S.upd-version != "" ? @tr("ВЫШЛА ВЕРСИЯ {} — ЧИП «ВЕРСИЯ» В ШАПКЕ", S.upd-version) : S.upd-info).to-uppercase(); }
                 if S.upd-phase == 2 || S.upd-phase == 3: UpdBar { frac: S.upd-phase == 3 ? -1 : S.upd-frac; text: S.upd-progress; }
                 if S.upd-phase == 4: UpdFail { what: S.upd-err; hint: S.upd-hint; }
                 HorizontalLayout { alignment: start; spacing: 8px;
-                    if S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-busy ? "Проверяю…" : "Проверить обновления"; clicked => { S.upd-check(); } }
-                    if S.upd-version != "" && S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-phase == 4 ? "Повторить" : "Обновить сейчас"; primary: true; clicked => { S.upd-install(); } }
-                    if S.upd-phase == 2: Button { text: "Остановить"; clicked => { S.upd-cancel(); } }
+                    if S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-busy ? @tr("Проверяю…") : @tr("Проверить обновления"); clicked => { S.upd-check(); } }
+                    if S.upd-version != "" && S.upd-phase != 2 && S.upd-phase != 3: Button { text: S.upd-phase == 4 ? @tr("Повторить") : @tr("Обновить сейчас"); primary: true; clicked => { S.upd-install(); } }
+                    if S.upd-phase == 2: Button { text: @tr("Остановить"); clicked => { S.upd-cancel(); } }
                 }
             }
         }

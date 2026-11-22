@@ -107,10 +107,10 @@ pub fn timer_toggle(lay_tasks: &Value, id: &str, now: f64) -> Vec<(String, Value
 pub fn fmt_min(min: f64) -> String {
     let m = min.floor() as i64;
     if m < 1 {
-        return "меньше минуты".into();
+        return crate::t!("меньше минуты").into();
     }
     let h = m / 60;
-    if h > 0 { format!("{h} ч {:02} мин", m % 60) } else { format!("{m} мин") }
+    if h > 0 { crate::t!("{} ч {} мин", h, format!("{:02}", m % 60)) } else { crate::t!("{} мин", m) }
 }
 
 pub fn clock(ms: f64) -> String {
@@ -132,9 +132,9 @@ pub fn type_label(id: &Value) -> String {
 
 pub fn priorities() -> Value {
     json!([
-        {"id": 1, "label": "Высокий", "mark": "!!!", "cls": "p1"},
-        {"id": 2, "label": "Средний", "mark": "!!", "cls": "p2"},
-        {"id": 3, "label": "Низкий", "mark": "!", "cls": "p3"},
+        {"id": 1, "label": crate::t!("Высокий"), "mark": "!!!", "cls": "p1"},
+        {"id": 2, "label": crate::t!("Средний"), "mark": "!!", "cls": "p2"},
+        {"id": 3, "label": crate::t!("Низкий"), "mark": "!", "cls": "p3"},
     ])
 }
 
@@ -176,12 +176,12 @@ pub fn next_reason(task: &Value, lay_tasks: &Value, today: &str, human_due: impl
     if has && due.chars().take(10).collect::<String>().as_str() < today {
         let h = human_due(due);
         let h = match h.find(", ") { Some(i) if !h[..i].contains(char::is_whitespace) => h[i + 2..].to_string(), _ => h };
-        return format!("просрочено с {h}");
+        return crate::t!("просрочено с {}", h);
     }
     let p = priority_of(&lay_tasks[s(&task["id"])]["priority"]);
     if !p.is_null() && n(&p["id"]).unwrap_or(9.0) < 3.0 {
-        let tail = if has { format!(", срок {}", human_due(due)) } else { String::new() };
-        return format!("{} приоритет{tail}", s(&p["label"]).to_lowercase());
+        let tail = if has { crate::t!(", срок {}", human_due(due)) } else { String::new() };
+        return crate::t!("{} приоритет{}", s(&p["label"]).to_lowercase(), tail);
     }
-    if has { format!("срок {}", human_due(due)) } else { String::new() }
+    if has { crate::t!("срок {}", human_due(due)) } else { String::new() }
 }

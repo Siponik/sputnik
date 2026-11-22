@@ -28,7 +28,7 @@ pub fn stage_mode(view: &str, cols: usize) -> &'static str {
 }
 
 pub fn lead_chip(min: f64) -> String {
-    LEADS.iter().find(|l| l.0 as f64 == min).map(|l| l.1.to_lowercase()).unwrap_or_else(|| format!("за {} мин", text(&num(min))))
+    LEADS.iter().find(|l| l.0 as f64 == min).map(|l| crate::i18n::tr(l.1).to_lowercase()).unwrap_or_else(|| crate::t!("за {} мин", text(&num(min))))
 }
 
 pub fn custom_chip(rule: &Value) -> String {
@@ -42,20 +42,20 @@ pub fn custom_chip(rule: &Value) -> String {
         let tm = parts.next();
         let ymd: Vec<Option<i64>> = d.split('-').map(|x| x.parse().ok()).collect();
         let g = |i: usize| ymd.get(i).copied().flatten().filter(|x| *x != 0);
-        let (Some(y), Some(mo), Some(dd)) = (g(0), g(1), g(2)) else { return "точное время".into() };
+        let (Some(y), Some(mo), Some(dd)) = (g(0), g(1), g(2)) else { return crate::t!("точное время").into() };
         let date = crate::dates::js_date(y as i32, mo as i32 - 1, dd as i32);
         use chrono::Datelike;
         let tt = match tm {
-            Some(x) if !x.is_empty() => format!(" в {}", x.chars().take(5).collect::<String>()),
+            Some(x) if !x.is_empty() => crate::t!(" в {}", x.chars().take(5).collect::<String>()),
             _ => String::new(),
         };
-        return format!("{} {}{tt}", date.day(), crate::reminders::MON_SHORT[date.month0() as usize]);
+        return format!("{} {}{tt}", date.day(), crate::i18n::month_abbr(date.month0() as usize, &crate::reminders::MON_SHORT));
     }
     let days = if rule["days"].is_null() { json!(0) } else { rule["days"].clone() };
-    let name = BEFORE.iter().filter(|b| n(&days) == Some(b.0 as f64)).last().map(|b| b.1.to_string());
-    let name = name.unwrap_or_else(|| format!("За {} дн.", if rule["days"].is_null() { "null".into() } else { text(&rule["days"]) }));
+    let name = BEFORE.iter().filter(|b| n(&days) == Some(b.0 as f64)).last().map(|b| crate::i18n::tr(b.1).to_string());
+    let name = name.unwrap_or_else(|| crate::t!("За {} дн.", if rule["days"].is_null() { "null".into() } else { text(&rule["days"]) }));
     let time = if rule["time"].is_null() { "10:00".into() } else { text(&rule["time"]) };
-    format!("{} в {time}", name.to_lowercase())
+    crate::t!("{} в {}", name.to_lowercase(), time)
 }
 
 pub fn split_remind(remind: &Value) -> Value {

@@ -7,27 +7,27 @@ pub fn settings_tabs() -> Value {
     json!([
   {
     "id": "look",
-    "name": "Вид"
+    "name": crate::t!("Вид")
   },
   {
     "id": "show",
-    "name": "Что показывать"
+    "name": crate::t!("Что показывать")
   },
   {
     "id": "rem",
-    "name": "Напоминания"
+    "name": crate::t!("Напоминания")
   },
   {
     "id": "sync",
-    "name": "Синхронизация"
+    "name": crate::t!("Синхронизация")
   },
   {
     "id": "upd",
-    "name": "Обновления"
+    "name": crate::t!("Обновления")
   },
   {
     "id": "keys",
-    "name": "Клавиши"
+    "name": crate::t!("Клавиши")
   }
 ])
 }
@@ -37,173 +37,173 @@ pub fn settings_index() -> Value {
   {
     "tab": "look",
     "id": "theme",
-    "title": "Тема",
-    "hint": "Тёмная — основная. «Как в Windows» переключается вместе с системой.",
-    "also": "светлая цвет оформление"
+    "title": crate::t!("Тема"),
+    "hint": crate::t!("Тёмная — основная. «Как в Windows» переключается вместе с системой."),
+    "also": crate::t!("светлая цвет оформление")
   },
   {
     "tab": "look",
     "id": "accent",
-    "title": "Акцент",
-    "hint": "Цвет кнопок, выделения и подсветки",
-    "also": "акцентный цвет оформление глина палитра"
+    "title": crate::t!("Акцент"),
+    "hint": crate::t!("Цвет кнопок, выделения и подсветки"),
+    "also": crate::t!("акцентный цвет оформление глина палитра")
   },
   {
     "tab": "look",
     "id": "motion",
-    "title": "Анимации",
-    "hint": "«Минимум» — только мягкое появление. «Выкл» — всё сразу.",
-    "also": "движение"
+    "title": crate::t!("Анимации"),
+    "hint": crate::t!("«Минимум» — только мягкое появление. «Выкл» — всё сразу."),
+    "also": crate::t!("движение")
   },
   {
     "tab": "look",
     "id": "tabs",
-    "title": "Порядок вкладок",
-    "hint": "Сегодня, Календарь, Доска, Привычки — в каком порядке стоят в шапке. Клавиши 1–4 идут так же.",
-    "also": "меню шапка разделы переставить порядок верхнее"
+    "title": crate::t!("Порядок вкладок"),
+    "hint": crate::t!("Сегодня, Календарь, Доска, Привычки — в каком порядке стоят в шапке. Клавиши 1–4 идут так же."),
+    "also": crate::t!("меню шапка разделы переставить порядок верхнее")
   },
   {
     "tab": "look",
     "id": "start",
-    "title": "Открывать при запуске",
-    "hint": "Какой раздел показывать первым",
-    "also": "старт"
+    "title": crate::t!("Открывать при запуске"),
+    "hint": crate::t!("Какой раздел показывать первым"),
+    "also": crate::t!("старт")
   },
   {
     "tab": "look",
     "id": "tips",
-    "title": "Енот-советчик",
-    "hint": "Советы внизу колонки доски",
-    "also": "совет подсказки"
+    "title": crate::t!("Енот-советчик"),
+    "hint": crate::t!("Советы внизу колонки доски"),
+    "also": crate::t!("совет подсказки")
   },
   {
     "tab": "show",
     "id": "lists",
-    "title": "Списки задач",
-    "hint": "Какие списки видны на доске, в «Сегодня» и в календаре",
-    "also": "скрыть показывать"
+    "title": crate::t!("Списки задач"),
+    "hint": crate::t!("Какие списки видны на доске, в «Сегодня» и в календаре"),
+    "also": crate::t!("скрыть показывать")
   },
   {
     "tab": "show",
     "id": "cals",
-    "title": "Календари",
-    "hint": "Какие календари Google показывать",
-    "also": "скрыть показывать дни рождения праздники"
+    "title": crate::t!("Календари"),
+    "hint": crate::t!("Какие календари Google показывать"),
+    "also": crate::t!("скрыть показывать дни рождения праздники")
   },
   {
     "tab": "rem",
     "id": "tgbot",
     "title": "Telegram",
-    "hint": "Общий бот: напоминания и задачи текстом",
-    "also": "телеграм бот подключить код"
+    "hint": crate::t!("Общий бот: напоминания и задачи текстом"),
+    "also": crate::t!("телеграм бот подключить код")
   },
   {
     "tab": "rem",
     "id": "bot",
-    "title": "Свой бот (Apps Script)",
-    "hint": "Только у владельца: файл напоминаний, проверка связи, выключить",
-    "also": "телеграм бот проверить apps script выключить"
+    "title": crate::t!("Свой бот (Apps Script)"),
+    "hint": crate::t!("Только у владельца: файл напоминаний, проверка связи, выключить"),
+    "also": crate::t!("телеграм бот проверить apps script выключить")
   },
   {
     "tab": "rem",
     "id": "rtask",
-    "title": "Задачи — по умолчанию",
-    "hint": "Напоминание, которое ставится новой задаче со сроком"
+    "title": crate::t!("Задачи — по умолчанию"),
+    "hint": crate::t!("Напоминание, которое ставится новой задаче со сроком")
   },
   {
     "tab": "rem",
     "id": "revent",
-    "title": "События",
-    "hint": "Напоминание о событии по умолчанию"
+    "title": crate::t!("События"),
+    "hint": crate::t!("Напоминание о событии по умолчанию")
   },
   {
     "tab": "rem",
     "id": "rbday",
-    "title": "Дни рождения",
-    "hint": "Напоминание о дне рождения по умолчанию"
+    "title": crate::t!("Дни рождения"),
+    "hint": crate::t!("Напоминание о дне рождения по умолчанию")
   },
   {
     "tab": "rem",
     "id": "rhour",
-    "title": "Задачи без времени",
-    "hint": "Во сколько напоминать, если у задачи только дата, или не напоминать",
-    "also": "выключить отключить уведомление"
+    "title": crate::t!("Задачи без времени"),
+    "hint": crate::t!("Во сколько напоминать, если у задачи только дата, или не напоминать"),
+    "also": crate::t!("выключить отключить уведомление")
   },
   {
     "tab": "rem",
     "id": "notify",
-    "title": "Уведомления Windows",
-    "hint": "Вехи привычек; основное — в боте"
+    "title": crate::t!("Уведомления Windows"),
+    "hint": crate::t!("Вехи привычек; основное — в боте")
   },
   {
     "tab": "sync",
     "id": "acct",
-    "title": "Google-аккаунт",
-    "hint": "Задачи, календарь, скрытая папка",
-    "also": "выйти войти почта"
+    "title": crate::t!("Google-аккаунт"),
+    "hint": crate::t!("Задачи, календарь, скрытая папка"),
+    "also": crate::t!("выйти войти почта")
   },
   {
     "tab": "sync",
     "id": "google",
-    "title": "Google Задачи и Календарь",
-    "hint": "Обновляется само раз в 2 минуты",
-    "also": "обновить синхронизация"
+    "title": crate::t!("Google Задачи и Календарь"),
+    "hint": crate::t!("Обновляется само раз в 2 минуты"),
+    "also": crate::t!("обновить синхронизация")
   },
   {
     "tab": "sync",
     "id": "cloud",
-    "title": "Между компьютерами",
-    "hint": "Слой Спутника в скрытой папке на Drive",
-    "also": "синхронизация второй компьютер"
+    "title": crate::t!("Между компьютерами"),
+    "hint": crate::t!("Слой Спутника в скрытой папке на Drive"),
+    "also": crate::t!("синхронизация второй компьютер")
   },
   {
     "tab": "sync",
     "id": "dupes",
-    "title": "Дубли задач",
-    "hint": "Одинаковые задачи в одном списке",
-    "also": "дубли копии повторы двойные"
+    "title": crate::t!("Дубли задач"),
+    "hint": crate::t!("Одинаковые задачи в одном списке"),
+    "also": crate::t!("дубли копии повторы двойные")
   },
   {
     "tab": "sync",
     "id": "backup",
-    "title": "Резервные копии",
-    "hint": "Каждый день, хранятся 14",
-    "also": "бэкап копия папка"
+    "title": crate::t!("Резервные копии"),
+    "hint": crate::t!("Каждый день, хранятся 14"),
+    "also": crate::t!("бэкап копия папка")
   },
   {
     "tab": "upd",
     "id": "ver",
-    "title": "Версия Спутника",
-    "hint": "Обновить или проверить обновления",
-    "also": "обновление"
+    "title": crate::t!("Версия Спутника"),
+    "hint": crate::t!("Обновить или проверить обновления"),
+    "also": crate::t!("обновление")
   },
   {
     "tab": "upd",
     "id": "auto",
-    "title": "Проверять самому",
-    "hint": "Через 30 секунд после запуска и раз в 6 часов",
-    "also": "обновления автоматически"
+    "title": crate::t!("Проверять самому"),
+    "hint": crate::t!("Через 30 секунд после запуска и раз в 6 часов"),
+    "also": crate::t!("обновления автоматически")
   },
   {
     "tab": "upd",
     "id": "night",
-    "title": "Ставить ночью",
-    "hint": "Если компьютер включён — обновится в 3:00 без вопросов",
-    "also": "обновления"
+    "title": crate::t!("Ставить ночью"),
+    "hint": crate::t!("Если компьютер включён — обновится в 3:00 без вопросов"),
+    "also": crate::t!("обновления")
   },
   {
     "tab": "upd",
     "id": "all",
-    "title": "Все версии",
-    "hint": "Список изменений на GitHub",
-    "also": "релизы"
+    "title": crate::t!("Все версии"),
+    "hint": crate::t!("Список изменений на GitHub"),
+    "also": crate::t!("релизы")
   },
   {
     "tab": "keys",
     "id": "keys",
-    "title": "Клавиши",
-    "hint": "Горячие клавиши — работают и в русской раскладке",
-    "also": "сочетания хоткеи"
+    "title": crate::t!("Клавиши"),
+    "hint": crate::t!("Горячие клавиши — работают и в русской раскладке"),
+    "also": crate::t!("сочетания хоткеи")
   }
 ])
 }
@@ -212,19 +212,19 @@ pub fn view_tabs() -> Value {
     json!([
   {
     "id": "today",
-    "name": "Сегодня"
+    "name": crate::t!("Сегодня")
   },
   {
     "id": "calendar",
-    "name": "Календарь"
+    "name": crate::t!("Календарь")
   },
   {
     "id": "board",
-    "name": "Доска"
+    "name": crate::t!("Доска")
   },
   {
     "id": "habits",
-    "name": "Привычки"
+    "name": crate::t!("Привычки")
   }
 ])
 }
@@ -258,11 +258,11 @@ pub fn status_dots(sync: &Value, offline: bool, cloud: &Value, upd: &Value) -> V
     let l = json!({"c": if st == "login" { "w" } else if st == "err" { "e" } else { "" }, "busy": st == "busy"});
     let v = json!({"c": if t(&upd["found"]) { "w" } else if t(&upd["err"]) { "e" } else { "" }, "busy": t(&upd["busy"])});
     let label = if offline {
-        "Нет связи".into()
+        crate::t!("Нет связи").into()
     } else if st == "login" {
-        "Нужен вход".into()
+        crate::t!("Нужен вход").into()
     } else if t(&sync["err"]) {
-        "Ошибка".into()
+        crate::t!("Ошибка").into()
     } else {
         hm(&sync["at"])
     };
@@ -271,27 +271,27 @@ pub fn status_dots(sync: &Value, offline: bool, cloud: &Value, upd: &Value) -> V
 
 pub fn google_line(sync: &Value, offline: bool) -> Value {
     if t(&sync["busy"]) {
-        return line("обновляю…", "");
+        return line(crate::t!("обновляю…"), "");
     }
     if offline {
-        return line("нет связи — повторю через минуту", "e");
+        return line(crate::t!("нет связи — повторю через минуту"), "e");
     }
     if t(&sync["err"]) {
         return line(sync["err"].clone(), "e");
     }
     if !t(&sync["at"]) {
-        return line("ещё не обновлялось", "");
+        return line(crate::t!("ещё не обновлялось"), "");
     }
-    line(format!("обновлено в {} · раз в 2 минуты", hm(&sync["at"])), "ok")
+    line(crate::t!("обновлено в {} · раз в 2 минуты", hm(&sync["at"])), "ok")
 }
 
 pub fn cloud_line(c: &Value) -> Value {
     match s(&c["state"]) {
-        "login" => line("нужно разрешить скрытую папку на Drive", "w"),
-        "err" => line(if t(&c["err"]) { c["err"].clone() } else { json!("не удалось синхронизировать") }, "e"),
-        "busy" => line("синхронизирую…", ""),
-        "ok" if t(&c["at"]) => line(format!("синхронизировано в {}", hm(&c["at"])), "ok"),
-        _ => line("ещё не синхронизировано", ""),
+        "login" => line(crate::t!("нужно разрешить скрытую папку на Drive"), "w"),
+        "err" => line(if t(&c["err"]) { c["err"].clone() } else { json!(crate::t!("не удалось синхронизировать")) }, "e"),
+        "busy" => line(crate::t!("синхронизирую…"), ""),
+        "ok" if t(&c["at"]) => line(crate::t!("синхронизировано в {}", hm(&c["at"])), "ok"),
+        _ => line(crate::t!("ещё не синхронизировано"), ""),
     }
 }
 
@@ -300,18 +300,18 @@ pub fn version_line(u: &Value) -> Value {
     if t(&u["busy"]) {
         let p = (n(&u["progress"]).unwrap_or(0.0) * 100.0 + 0.5).floor() as i64;
         let v = if f["version"].is_null() { String::new() } else { text(&f["version"]) };
-        return line(format!("ставлю {v} · {p}%"), "w");
+        return line(crate::t!("ставлю {} · {}%", v, p), "w");
     }
     if !f.is_null() {
-        return line(format!("вышла {} · меньше минуты", text(&f["version"])), "c");
+        return line(crate::t!("вышла {} · меньше минуты", text(&f["version"])), "c");
     }
     if t(&u["err"]) {
         return line(u["err"].clone(), "e");
     }
     if t(&u["checkedAt"]) {
-        return line(format!("последняя версия · проверено в {}", hm(&u["checkedAt"])), "ok");
+        return line(crate::t!("последняя версия · проверено в {}", hm(&u["checkedAt"])), "ok");
     }
-    line("обновления проверяются сами", "")
+    line(crate::t!("обновления проверяются сами"), "")
 }
 
 pub fn remind_line(r: &Value) -> Value {
@@ -319,15 +319,15 @@ pub fn remind_line(r: &Value) -> Value {
         if t(&r["err"]) {
             return line(r["err"].clone(), "e");
         }
-        return if t(&r["linked"]) { line("через общий бот", "ok") } else { line("бот не подключён — Настройки → Напоминания", "w") };
+        return if t(&r["linked"]) { line(crate::t!("через общий бот"), "ok") } else { line(crate::t!("бот не подключён — Настройки → Напоминания"), "w") };
     }
     if t(&r["err"]) {
         return line(r["err"].clone(), "e");
     }
     if !t(&r["at"]) {
-        return line("файл ещё не обновлялся", "");
+        return line(crate::t!("файл ещё не обновлялся"), "");
     }
-    line(format!("файл обновлён {} · {} впереди", hm(&r["at"]), text(&r["n"])), "ok")
+    line(crate::t!("файл обновлён {} · {} впереди", hm(&r["at"]), text(&r["n"])), "ok")
 }
 
 /// Свой бот на Apps Script — только у владельца.
@@ -517,34 +517,34 @@ pub fn filter_side(query: &str, spheres: &[Value], lists_of: &dyn Fn(&Value) -> 
 /// Советы енота для доски: 2–3 штуки { id, text, act, kind, ref }.
 pub fn board_tips(open: &[Value], cols: &[Value], col_of: &dyn Fn(&Value) -> Value, first: &Value) -> Vec<Value> {
     if open.is_empty() {
-        return vec![json!({"id": "empty", "text": "Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке или «Создать».",
-                           "act": "Новая задача", "kind": "new"})];
+        return vec![json!({"id": "empty", "text": crate::t!("Всё разобрано. Новые задачи — кнопкой «+ Добавить задачу» в колонке или «Создать»."),
+                           "act": crate::t!("Новая задача"), "kind": "new"})];
     }
     let mut tips = vec![];
     if !first.is_null() {
         let task = &first["task"];
-        let title = if t(&task["title"]) { text(&task["title"]) } else { "Без названия".into() };
-        let head = format!("Начни с «{title}»{}", if t(&first["why"]) { format!(" — {}", text(&first["why"])) } else { String::new() });
+        let title = if t(&task["title"]) { text(&task["title"]) } else { crate::t!("Без названия").into() };
+        let head = crate::t!("Начни с «{}»{}", title, if t(&first["why"]) { format!(" — {}", text(&first["why"])) } else { String::new() });
         let dot = if head.ends_with('.') { "" } else { "." };
-        tips.push(json!({"id": "first", "text": format!("{head}{dot} Остальное подождёт."), "act": "Открыть", "kind": "task", "ref": task["id"]}));
+        tips.push(json!({"id": "first", "text": format!("{head}{dot} {}", crate::t!("Остальное подождёт.")), "act": crate::t!("Открыть"), "kind": "task", "ref": task["id"]}));
     }
     let cnt = |c: &Value| open.iter().filter(|tk| col_of(tk) == c["id"]).count() as f64;
     if let Some(lim) = cols.iter().find(|c| t(&c["limit"]) && cnt(c) >= n(&c["limit"]).unwrap_or(0.0) - 1.0) {
         let k = cnt(lim);
         let (nm, li) = (text(&lim["name"]), text(&lim["limit"]));
         let txt = if k > n(&lim["limit"]).unwrap_or(0.0) {
-            format!("В «{nm}» {k} из {li} — больше лимита. Закончи что-нибудь, прежде чем брать новое.")
+            crate::t!("В «{}» {} из {} — больше лимита. Закончи что-нибудь, прежде чем брать новое.", nm, k, li)
         } else {
-            format!("«{nm}» уже {k} из {li} — закончи одну, прежде чем брать новую.")
+            crate::t!("«{}» уже {} из {} — закончи одну, прежде чем брать новую.", nm, k, li)
         };
-        tips.push(json!({"id": "limit", "kind": "col", "ref": lim["id"], "act": format!("К «{nm}»"), "text": txt}));
+        tips.push(json!({"id": "limit", "kind": "col", "ref": lim["id"], "act": crate::t!("К «{}»", nm), "text": txt}));
     }
     if let Some(inbox) = cols.first() {
         let ni = cnt(inbox);
         if ni >= 3.0 && cols.len() > 2 {
             let nm = text(&inbox["name"]);
-            tips.push(json!({"id": "inbox", "kind": "col", "ref": inbox["id"], "act": format!("К «{nm}»"),
-                             "text": format!("Во «{nm}» {ni} — разбери: что в работу, что на потом.")}));
+            tips.push(json!({"id": "inbox", "kind": "col", "ref": inbox["id"], "act": crate::t!("К «{}»", nm),
+                             "text": crate::t!("Во «{}» {} — разбери: что в работу, что на потом.", nm, ni)}));
         }
     }
     tips.truncate(3);

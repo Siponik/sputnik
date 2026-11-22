@@ -66,9 +66,9 @@ component SphNode inherits Rectangle {
             }
             Rectangle {
                 height: 32px;
-                if !root.adding: Text { x: 6px; text: "＋ Список"; font-size: 13px; color: aa.has-hover ? G.ink : G.muted; vertical-alignment: center; height: parent.height;
+                if !root.adding: Text { x: 6px; text: @tr("＋ Список"); font-size: 13px; color: aa.has-hover ? G.ink : G.muted; vertical-alignment: center; height: parent.height;
                     aa := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; } }
-                if root.adding: Field { x: 0; y: 1px; height: 30px; width: parent.width; font-size: 13px; placeholder: "Название списка · Enter";
+                if root.adding: Field { x: 0; y: 1px; height: 30px; width: parent.width; font-size: 13px; placeholder: @tr("Название списка · Enter");
                     init => { self.grab(); }
                     accepted(t) => { if (t != "") { S.sph-add-list(root.sid, t); } root.adding = false; }
                     escape => { root.adding = false; } }
@@ -89,7 +89,7 @@ component SphEditor inherits Rectangle {
     border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
     Rectangle {
         y: 0; height: 32px; background: S.sph-ehead;
-        Text { x: 12px; text: "СФЕРА · ПРАВКА"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; height: parent.height; }
+        Text { x: 12px; text: @tr("СФЕРА · ПРАВКА"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; height: parent.height; }
         Text { x: parent.width - self.width - 12px; text: "ESC"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.5px; color: #ffffffd0; vertical-alignment: center; height: parent.height;
             TouchArea { clicked => { S.sph-show(""); } mouse-cursor: pointer; } }
     }
@@ -98,11 +98,11 @@ component SphEditor inherits Rectangle {
         padding-left: 18px; padding-right: 18px; padding-top: 16px; padding-bottom: 16px;
         spacing: 18px;
         VerticalLayout { spacing: 8px;
-            Label { text: "Название"; }
+            Label { text: @tr("Название"); }
             nf := Field { height: 38px; font-size: 14px; text: S.sph-ename; accepted(t) => { S.sph-save(t, root.ci); } escape => { S.sph-show(""); } }
         }
         VerticalLayout { spacing: 8px;
-            Label { text: "Цвет шапки"; }
+            Label { text: @tr("Цвет шапки"); }
             HorizontalLayout { spacing: 6px; alignment: start; height: 34px;
                 for c[i] in S.sph-colors: Rectangle {
                     width: 34px; height: 34px;
@@ -113,7 +113,7 @@ component SphEditor inherits Rectangle {
             }
         }
         VerticalLayout { spacing: 8px;
-            Label { text: "Списки в сфере"; }
+            Label { text: @tr("Списки в сфере"); }
             VerticalLayout { spacing: 6px;
                 for row in S.sph-erows: HorizontalLayout { spacing: 6px; alignment: start; height: 30px;
                     for o in row.items: Rectangle {
@@ -126,18 +126,18 @@ component SphEditor inherits Rectangle {
                         width: at.preferred-width + 24px; border-radius: 8px; border-width: 1px; border-color: G.line;
                         background: aa.has-hover ? G.node-hover : transparent;
                         animate background { duration: G.motion == 2 ? 0ms : G.fast; }
-                        at := Text { text: "＋ Добавить"; font-size: 13px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
+                        at := Text { text: @tr("＋ Добавить"); font-size: 13px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
                         aa := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
                     }
                 }
-                if root.adding: Field { height: 30px; font-size: 13px; placeholder: "Название списка · Enter";
+                if root.adding: Field { height: 30px; font-size: 13px; placeholder: @tr("Название списка · Enter");
                     init => { self.grab(); }
                     accepted(t) => { if (t != "") { S.sph-add-list(S.sph-edit, t); } root.adding = false; }
                     escape => { root.adding = false; } }
             }
         }
         VerticalLayout { spacing: 8px;
-            Label { text: "Вместе с другими"; }
+            Label { text: @tr("Вместе с другими"); }
             HorizontalLayout { spacing: 6px; alignment: start;
                 Text { text: S.sph-people; font-size: 12.5px; color: G.muted; vertical-alignment: center; }
             }
@@ -145,12 +145,12 @@ component SphEditor inherits Rectangle {
         VerticalLayout { spacing: 10px;
             Rectangle { height: 5px; Rectangle { y: 4px; height: 1px; background: G.line; } }
             HorizontalLayout { spacing: 8px; height: 32px;
-                GBtn { text: "Сохранить"; kind: "acc"; clicked => { S.sph-save(nf.text, root.ci); } }
-                if !S.sph-shared: GBtn { text: "В архив"; clicked => { S.sph-archive("sphere", S.sph-edit, true); } }
+                GBtn { text: @tr("Сохранить"); kind: "acc"; clicked => { S.sph-save(nf.text, root.ci); } }
+                if !S.sph-shared: GBtn { text: @tr("В архив"); clicked => { S.sph-archive("sphere", S.sph-edit, true); } }
                 Rectangle { }
-                GBtn { text: "Удалить"; kind: "ghost"; ink: G.red; clicked => { S.sph-delete("sphere", S.sph-edit); } }
+                GBtn { text: @tr("Удалить"); kind: "ghost"; ink: G.red; clicked => { S.sph-delete("sphere", S.sph-edit); } }
             }
-            Text { text: "В архиве сфера со всеми списками пропадает из колонки, «Сегодня», доски и календаря. Задачи остаются в Google, вернуть можно в любой момент.";
+            Text { text: @tr("В архиве сфера со всеми списками пропадает из колонки, «Сегодня», доски и календаря. Задачи остаются в Google, вернуть можно в любой момент.");
                 font-size: 12px; color: G.dim; wrap: word-wrap; min-height: 70px; }
         }
     }
@@ -163,9 +163,9 @@ export component SpheresPage inherits Rectangle {
     Rectangle {
         x: 0; y: 0; width: 2 * root.cw + 20px; height: 48px;
         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line;
-        Text { x: 12px; text: "Сферы"; font-size: 15px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; }
+        Text { x: 12px; text: @tr("Сферы"); font-size: 15px; font-weight: 600; color: G.ink; vertical-alignment: center; height: parent.height; }
         Text { x: 76px; text: S.sph-info; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.1px; color: G.muted; vertical-alignment: center; height: parent.height; }
-        GBtn { x: parent.width - self.width - 12px; y: 10px; sm: true; kind: "acc"; text: "＋ Сфера"; clicked => { S.sph-new(); } }
+        GBtn { x: parent.width - self.width - 12px; y: 10px; sm: true; kind: "acc"; text: @tr("＋ Сфера"); clicked => { S.sph-new(); } }
     }
     ScrollView {
         x: 0; y: 64px; width: 2 * root.cw + 28px; height: parent.height - 64px;
@@ -189,15 +189,15 @@ export component SpheresPage inherits Rectangle {
                 height: 30px + 12px + min(3, self.n) * 36px + 8px;
                 border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
                 Rectangle { y: 0; height: 30px; background: #3D3E45;
-                    Text { x: 12px; text: "В АРХИВЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; height: parent.height; }
+                    Text { x: 12px; text: @tr("В АРХИВЕ"); font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.5px; color: #fff; vertical-alignment: center; height: parent.height; }
                     Text { x: parent.width - self.width - 12px; text: an.n; font-family: G.mono; font-size: 10.5px; color: #ffffffd0; vertical-alignment: center; height: parent.height; } }
                 VerticalLayout { y: 36px; padding-left: 12px; padding-right: 12px; alignment: start;
                     for a[i] in S.sph-arch3: Rectangle { height: 36px;
                         Rectangle { y: 14px; width: 8px; height: 8px; x: 0; border-radius: 2px; background: a.head.brighter(0.6); }
                         Text { x: 18px; text: a.name; font-size: 13px; color: #C9CAD0; vertical-alignment: center; height: parent.height; width: parent.width - 330px; overflow: elide; }
-                        Text { x: parent.width - 312px; width: 110px; horizontal-alignment: right; text: (a.kind == "sphere" ? "СФЕРА" : "СПИСОК") + " · " + a.date.to-uppercase(); font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
-                        GBtn { x: parent.width - 192px; y: 4px; sm: true; text: "Вернуть"; clicked => { S.sph-archive(a.kind, a.id, false); } }
-                        if i == 0: GBtn { x: parent.width - self.width; y: 4px; sm: true; kind: "ghost"; text: "Весь архив"; clicked => { S.sph-close(); S.open-archive(); S.arch-tab-set(1); } }
+                        Text { x: parent.width - 312px; width: 110px; horizontal-alignment: right; text: (a.kind == "sphere" ? @tr("СФЕРА") : @tr("СПИСОК")) + " · " + a.date.to-uppercase(); font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
+                        GBtn { x: parent.width - 192px; y: 4px; sm: true; text: @tr("Вернуть"); clicked => { S.sph-archive(a.kind, a.id, false); } }
+                        if i == 0: GBtn { x: parent.width - self.width; y: 4px; sm: true; kind: "ghost"; text: @tr("Весь архив"); clicked => { S.sph-close(); S.open-archive(); S.arch-tab-set(1); } }
                     }
                 }
             }
@@ -222,7 +222,7 @@ export component ArchSpheres inherits Rectangle {
                     Text { x: 46px; y: 7px; width: parent.width - 320px; text: r.name; font-size: 13.5px; color: G.ink; overflow: elide; }
                     Text { x: 46px; y: 26px; width: parent.width - 320px; text: r.meta; font-size: 12px; color: G.muted; overflow: elide; }
                     Text { x: parent.width - 244px; text: r.date; font-family: G.mono; font-size: 11px; color: G.muted; vertical-alignment: center; height: parent.height; }
-                    GBtn { x: parent.width - 150px; y: 10px; sm: true; text: "Вернуть"; clicked => { S.sph-archive(r.kind, r.id, false); } }
+                    GBtn { x: parent.width - 150px; y: 10px; sm: true; text: @tr("Вернуть"); clicked => { S.sph-archive(r.kind, r.id, false); } }
                     GBtn { x: parent.width - 52px; y: 10px; sm: true; kind: "ghost"; text: "···"; clicked => { S.sph-delete(r.kind, r.id); } }
                     Rectangle { y: parent.height - 1px; height: 1px; background: G.line-soft; }
                 } }
@@ -233,7 +233,7 @@ export component ArchSpheres inherits Rectangle {
                     x: 16px; y: 16px; width: parent.width - 32px; height: 62px;
                     border-radius: 8px; border-width: 1px; border-color: #55575F;
                     Sat { x: 12px; y: 12px; width: 38px; height: 38px; c: G.gold; }
-                    Text { x: 60px; width: parent.width - 72px; text: S.sph-arch.length == 0 ? "Сфер и списков в архиве нет. Убрать их сюда — правой кнопкой по сфере или списку → «В архив»." : "Сфера в архиве не видна нигде, кроме этой вкладки. Задачи из неё не удаляются из Google. «Удалить навсегда» — в меню ···.";
+                    Text { x: 60px; width: parent.width - 72px; text: S.sph-arch.length == 0 ? @tr("Сфер и списков в архиве нет. Убрать их сюда — правой кнопкой по сфере или списку → «В архив».") : @tr("Сфера в архиве не видна нигде, кроме этой вкладки. Задачи из неё не удаляются из Google. «Удалить навсегда» — в меню ···.");
                         font-size: 12.5px; color: #C9CAD0; vertical-alignment: center; height: parent.height; wrap: word-wrap; }
                 }
             }

@@ -16,30 +16,30 @@ fn text_of(v: &Value) -> String {
 pub fn check_secret_text(text: &Value, size: Option<usize>) -> String {
     let st = text_of(text);
     if size.unwrap_or(st.encode_utf16().count()) > SECRET_MAX {
-        return "Файл слишком большой — это не client_secret.json. Нужен маленький файл ключа из Google Cloud.".into();
+        return crate::t!("Файл слишком большой — это не client_secret.json. Нужен маленький файл ключа из Google Cloud.").into();
     }
     let tt = st.strip_prefix('\u{feff}').unwrap_or(&st).trim();
     if tt.is_empty() {
-        return "Файл пустой. Скачай JSON клиента в Google Cloud ещё раз.".into();
+        return crate::t!("Файл пустой. Скачай JSON клиента в Google Cloud ещё раз.").into();
     }
-    let Ok(j) = serde_json::from_str::<Value>(tt) else { return "Это не похоже на client_secret.json: в файле не JSON.".into() };
+    let Ok(j) = serde_json::from_str::<Value>(tt) else { return crate::t!("Это не похоже на client_secret.json: в файле не JSON.").into() };
     if !j.is_object() {
-        return "Это не похоже на client_secret.json из Google Cloud.".into();
+        return crate::t!("Это не похоже на client_secret.json из Google Cloud.").into();
     }
     if !t(&j["installed"]) && t(&j["web"]) {
-        return "Это ключ типа «Веб-приложение», а нужен «Приложение для компьютера» (Desktop app). Создай в Google Cloud клиента Desktop app и скачай его JSON.".into();
+        return crate::t!("Это ключ типа «Веб-приложение», а нужен «Приложение для компьютера» (Desktop app). Создай в Google Cloud клиента Desktop app и скачай его JSON.").into();
     }
     if s(&j["type"]) == "service_account" {
-        return "Это ключ сервисного аккаунта, а нужен ключ OAuth типа Desktop app (Google Cloud → Clients).".into();
+        return crate::t!("Это ключ сервисного аккаунта, а нужен ключ OAuth типа Desktop app (Google Cloud → Clients).").into();
     }
     let inst = &j["installed"];
     if !t(inst) || !inst.is_object() {
-        return "В файле нет раздела «installed» — нужен ключ OAuth типа Desktop app из Google Cloud → Clients.".into();
+        return crate::t!("В файле нет раздела «installed» — нужен ключ OAuth типа Desktop app из Google Cloud → Clients.").into();
     }
     let id = text_of(&inst["client_id"]);
     let id = id.trim();
     if id.is_empty() || id.chars().any(char::is_whitespace) || !id.ends_with(".apps.googleusercontent.com") {
-        return "В файле неправильный client_id — скачай JSON клиента заново.".into();
+        return crate::t!("В файле неправильный client_id — скачай JSON клиента заново.").into();
     }
     String::new()
 }
@@ -59,19 +59,19 @@ pub fn login_hint(e: &str) -> String {
     }
     if is_scope_lack(&st) {
         let head = match rx::cap(r"не дал доступ — (.+?)\.", &st).and_then(|c| c[1].clone()) {
-            Some(n) => format!("Google не дал доступ: {n}."),
-            None => "Google не дал Спутнику все доступы.".into(),
+            Some(n) => crate::t!("Google не дал доступ: {}.", n),
+            None => crate::t!("Google не дал Спутнику все доступы.").into(),
         };
-        return format!("{head} Нажми «Открыть вход» ещё раз и на странице Google отметь все галочки (или «Выбрать всё»).");
+        return format!("{head} {}", crate::t!("Нажми «Открыть вход» ещё раз и на странице Google отметь все галочки (или «Выбрать всё»)."));
     }
     if st.contains("access_denied") {
-        return "Вход отменён на странице Google. Если там было «доступ заблокирован» — приложение в Google Cloud ещё в режиме теста: добавь свою почту в тестовые пользователи или опубликуй его.".into();
+        return crate::t!("Вход отменён на странице Google. Если там было «доступ заблокирован» — приложение в Google Cloud ещё в режиме теста: добавь свою почту в тестовые пользователи или опубликуй его.").into();
     }
     if rx::is(r"(?i)invalid_client|unauthorized_client|401", &st) {
-        return "Google не принял ключ приложения. Верни встроенный ключ или скачай client_secret.json заново.".into();
+        return crate::t!("Google не принял ключ приложения. Верни встроенный ключ или скачай client_secret.json заново.").into();
     }
     if st.contains("за 5 минут") {
-        return "Вход не завершился за 5 минут. Нажми «Открыть вход» ещё раз.".into();
+        return crate::t!("Вход не завершился за 5 минут. Нажми «Открыть вход» ещё раз.").into();
     }
     st
 }

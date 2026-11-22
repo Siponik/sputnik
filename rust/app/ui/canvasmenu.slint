@@ -30,16 +30,16 @@ export component SelMenu inherits Rectangle {
     TouchArea { }
     row := HorizontalLayout {
         x: 6px; spacing: 2px; alignment: start; padding-top: 5px; padding-bottom: 5px;
-        IconBtn { icon: "trash"; tip: "Удалить"; clicked => { root.palette = false; S.cv-key("delete", 0, 0); } }
-        IconBtn { icon: "accent"; tip: "Цвет"; on: root.palette; clicked => { root.palette = !root.palette; } }
-        IconBtn { icon: "focus"; tip: "Приблизить к выделенному"; clicked => { root.zoom(); } }
-        if S.cv-sel-kind == "edge": IconBtn { icon: "next"; tip: "Стрелка"; clicked => { S.cv-key("arrow", 0, 0); } }
+        IconBtn { icon: "trash"; tip: @tr("Удалить"); clicked => { root.palette = false; S.cv-key("delete", 0, 0); } }
+        IconBtn { icon: "accent"; tip: @tr("Цвет"); on: root.palette; clicked => { root.palette = !root.palette; } }
+        IconBtn { icon: "focus"; tip: @tr("Приблизить к выделенному"); clicked => { root.zoom(); } }
+        if S.cv-sel-kind == "edge": IconBtn { icon: "next"; tip: @tr("Стрелка"); clicked => { S.cv-key("arrow", 0, 0); } }
         if S.cv-sel-kind == "edge" || S.cv-sel-kind == "text" || S.cv-sel-kind == "group" || S.cv-sel-kind == "file": IconBtn {
-            icon: "edit"; tip: "Править"; clicked => { root.palette = false; S.cv-key("edit", 0, 0); }
+            icon: "edit"; tip: @tr("Править"); clicked => { root.palette = false; S.cv-key("edit", 0, 0); }
         }
-        if S.cv-sel-kind == "file" || S.cv-sel-kind == "link" || S.cv-sel-kind == "image": IconBtn { icon: "open"; tip: "Открыть"; clicked => { S.cv-key("open", 0, 0); } }
-        if S.cv-sel-kind != "edge": IconBtn { icon: "canvas"; tip: "В группу"; clicked => { S.cv-key("group", 0, 0); } }
-        if S.cv-sel-kind != "edge": IconBtn { icon: "copy"; tip: "Дублировать"; clicked => { S.cv-key("dup", 0, 0); } }
+        if S.cv-sel-kind == "file" || S.cv-sel-kind == "link" || S.cv-sel-kind == "image": IconBtn { icon: "open"; tip: @tr("Открыть"); clicked => { S.cv-key("open", 0, 0); } }
+        if S.cv-sel-kind != "edge": IconBtn { icon: "canvas"; tip: @tr("В группу"); clicked => { S.cv-key("group", 0, 0); } }
+        if S.cv-sel-kind != "edge": IconBtn { icon: "copy"; tip: @tr("Дублировать"); clicked => { S.cv-key("dup", 0, 0); } }
     }
     // цвета — полоской рядом с меню
     if root.palette: Pop {
@@ -74,7 +74,7 @@ export component NotePick inherits Rectangle {
     drop-shadow-blur: 24px; drop-shadow-offset-y: 10px; drop-shadow-color: #00000080;
     TouchArea { }
     Field {
-        x: 6px; y: 6px; width: parent.width - 12px; height: 32px; placeholder: "Найти заметку";
+        x: 6px; y: 6px; width: parent.width - 12px; height: 32px; placeholder: @tr("Найти заметку");
         init => { self.grab(); }
         edited(t) => { root.q = t; }
         escape => { root.closed(); }

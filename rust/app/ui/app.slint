@@ -55,7 +55,7 @@ component Tab inherits Rectangle {
 }
 
 export component AppWindow inherits Window {
-    title: "Спутник";
+    title: @tr("Спутник");
     no-frame: true;
     preferred-width: 1360px;
     preferred-height: 860px;
@@ -96,7 +96,7 @@ export component AppWindow inherits Window {
         root.pg-seen = root.pg-tab;
     }
     tpg := Timer { interval: 1ms; running: false; triggered => { self.running = false; root.pg-snap = false; root.pg-off = 0; root.pg-op = 1; } }
-    property <[string]> tab-names: ["СЕГОДНЯ", "КАЛЕНДАРЬ", "ДОСКА", "ПРИВЫЧКИ", "ЗНАНИЯ"];
+    property <[string]> tab-names: [@tr("СЕГОДНЯ"), @tr("КАЛЕНДАРЬ"), @tr("ДОСКА"), @tr("ПРИВЫЧКИ"), @tr("ЗНАНИЯ")];
     property <[string]> tab-icons: ["today", "calendar", "board", "habits", "notes"];
 
     // Холст: точки 1 px через 24 px.
@@ -238,9 +238,9 @@ export component AppWindow inherits Window {
                         border-width: 1px;
                         border-color: G.accent-line;
                         background: ua.has-hover ? G.accent-wash : transparent;
-                        ut := Text { text: (root.hd-compact ? "" : "ВЕРСИЯ ") + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
+                        ut := Text { text: (root.hd-compact ? "" : @tr("ВЕРСИЯ ")) + S.upd-version; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: G.accent-ink; horizontal-alignment: center; vertical-alignment: center; }
                         ua := TouchArea { clicked => { S.upd-toggle(); } mouse-cursor: pointer; }
-                        Tip { text: "Есть обновление — открыть"; on: ua.has-hover; }
+                        Tip { text: @tr("Есть обновление — открыть"); on: ua.has-hover; }
                     }
                     if !root.hd-compact || S.busy || S.offline: Rectangle {
                         width: st.preferred-width + 16px;
@@ -249,13 +249,13 @@ export component AppWindow inherits Window {
                         st := Text {
                             x: S.search-open && G.motion == 0 ? -18px : 0px;
                             animate x { duration: G.motion == 0 ? 180ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
-                            text: S.busy ? "СИНХРОНИЗАЦИЯ…" : S.now-label;
+                            text: S.busy ? @tr("СИНХРОНИЗАЦИЯ…") : S.now-label;
                             font-family: G.mono; font-size: 11px; letter-spacing: 1.4px;
                             color: S.offline ? G.red : S.error != "" ? G.gold : #8A8C96;
                             horizontal-alignment: center; vertical-alignment: center;
                         }
                         sa := TouchArea { clicked => { S.refresh(); } mouse-cursor: pointer; }
-                        Tip { text: "Обновить сейчас"; on: sa.has-hover; }
+                        Tip { text: @tr("Обновить сейчас"); on: sa.has-hover; }
                     }
                     sbox := Rectangle {
                         width: root.hd-compact ? 40px : 172px;
@@ -265,10 +265,10 @@ export component AppWindow inherits Window {
                         border-width: 1px;
                         border-color: fa.has-hover ? G.line-strong : G.line;
                         Path { x: root.hd-compact ? 13px : 10px; y: 9px; width: 13px; height: 13px; viewbox-width: 24; viewbox-height: 24; stroke: #8A8C96; stroke-width: 1.6px; commands: "M 18 11 A 7 7 0 1 1 4 11 A 7 7 0 1 1 18 11 M 20 20 L 16 16"; }
-                        if !root.hd-compact: Text { x: 31px; text: "НАЙТИ"; font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; }
+                        if !root.hd-compact: Text { x: 31px; text: @tr("НАЙТИ"); font-family: G.mono; font-size: 11px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; }
                         if !root.hd-compact: Text { x: parent.width - self.preferred-width - 10px; text: "CTRL K"; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #62646E; vertical-alignment: center; }
                         fa := TouchArea { clicked => { S.search-open-set(true); } mouse-cursor: pointer; }
-                        Tip { text: "Поиск · Ctrl K"; on: fa.has-hover; }
+                        Tip { text: @tr("Поиск · Ctrl K"); on: fa.has-hover; }
                     }
                     // «Состояние»: три точки — связь, синхронизация, очередь; клик — Настройки
                     Rectangle {
@@ -286,7 +286,7 @@ export component AppWindow inherits Window {
                             Rectangle { width: 6px; height: 6px; y: 13px; border-radius: 3px; background: S.status-ok ? G.green : G.gold; }
                         }
                         pa := TouchArea { clicked => { stat.visible = !stat.visible; } mouse-cursor: pointer; }
-                        Tip { text: "Состояние: связь, синхронизация, очередь"; on: pa.has-hover; }
+                        Tip { text: @tr("Состояние: связь, синхронизация, очередь"); on: pa.has-hover; }
                     }
                     // настройки — отдельной кнопкой
                     Rectangle {
@@ -296,7 +296,7 @@ export component AppWindow inherits Window {
                         border-color: S.set-open ? G.accent-line : (ga.has-hover ? G.line-strong : G.line);
                         Icon { name: "settings"; width: 15px; height: 15px; x: (parent.width - 15px) / 2; y: (parent.height - 15px) / 2; c: S.set-open ? G.accent : G.ink; }
                         ga := TouchArea { clicked => { S.go(5); } mouse-cursor: pointer; }
-                        Tip { text: "Настройки"; on: ga.has-hover; }
+                        Tip { text: @tr("Настройки"); on: ga.has-hover; }
                     }
                     Rectangle {
                         width: chl.preferred-width + 26px;
@@ -307,10 +307,10 @@ export component AppWindow inherits Window {
                         chl := HorizontalLayout {
                             alignment: center; spacing: 7px;
                             Rectangle { width: 12px; Icon { name: "plus"; width: 12px; height: 12px; y: (parent.height - 12px) / 2; stroke-width: 2px; c: #1C1D21; } }
-                            ct := Text { text: "Создать"; font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
+                            ct := Text { text: @tr("Создать"); font-size: 13px; font-weight: 600; color: #1C1D21; horizontal-alignment: center; vertical-alignment: center; }
                         }
                         ca := TouchArea { clicked => { S.create(""); } mouse-cursor: pointer; }
-                        Tip { text: "Создать задачу, список или заметку"; on: ca.has-hover; }
+                        Tip { text: @tr("Создать задачу, список или заметку"); on: ca.has-hover; }
                     }
                     // кнопки окна (G_Window): 34×32, скругление 8, у «Закрыть» — красный при наведении
                     HorizontalLayout {
@@ -324,7 +324,7 @@ export component AppWindow inherits Window {
                             background: wa.has-hover ? (i == 2 ? #E5484D : #2C2D33) : transparent;
                             Icon { name: b; width: 11px; height: 11px; x: (parent.width - 11px) / 2; y: (parent.height - 11px) / 2; stroke-width: 1.2px; c: wa.has-hover ? #fff : #A3A5AE; }
                             wa := TouchArea { clicked => { if (i == 0) { S.win-min(); } else if (i == 1) { S.win-max(); } else { S.win-close(); } } }
-                            Tip { text: i == 0 ? "Свернуть" : i == 1 ? (S.win-maxed ? "Восстановить" : "Развернуть") : "Закрыть"; on: wa.has-hover; }
+                            Tip { text: i == 0 ? @tr("Свернуть") : i == 1 ? (S.win-maxed ? @tr("Восстановить") : @tr("Развернуть")) : @tr("Закрыть"); on: wa.has-hover; }
                         }
                     }
                 }
@@ -333,7 +333,7 @@ export component AppWindow inherits Window {
             if S.offline && S.signed-in: Rectangle {
                 height: 26px;
                 background: #3A2020;
-                Text { text: "Нет связи с Google — правки сохранены здесь и уйдут сами, когда связь вернётся"; color: G.red; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
+                Text { text: @tr("Нет связи с Google — правки сохранены здесь и уйдут сами, когда связь вернётся"); color: G.red; font-size: 12px; horizontal-alignment: center; vertical-alignment: center; }
             }
             // Тело
             Rectangle {
@@ -349,15 +349,15 @@ export component AppWindow inherits Window {
                     height: fr.content-height;
                     property <length> mx: 8px;
                     property <length> nw: (self.width - 2 * self.mx - 3 * 42px) / 4;
-                    Text { x: parent.mx; y: 14px; text: "Первый запуск"; font-size: 60px; font-weight: 200; color: G.ink; }
-                    Text { x: parent.mx; y: 90px; text: "ТРИ ШАГА · ОКОЛО МИНУТЫ · ВСЁ МОЖНО ПОМЕНЯТЬ В НАСТРОЙКАХ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #8A8C96; }
+                    Text { x: parent.mx; y: 14px; text: @tr("Первый запуск"); font-size: 60px; font-weight: 200; color: G.ink; }
+                    Text { x: parent.mx; y: 90px; text: @tr("ТРИ ШАГА · ОКОЛО МИНУТЫ · ВСЁ МОЖНО ПОМЕНЯТЬ В НАСТРОЙКАХ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #8A8C96; }
                     // 01 · вход и доступы
                     st1 := Rectangle {
                         x: parent.mx; y: 148px; width: parent.nw * 1.4; height: 30px + s1.preferred-height;
                         border-radius: 12px; background: G.node; border-width: 1px; border-color: G.accent-line; clip: true;
                         Rectangle { y: 0; height: 30px; background: G.head-main;
-                            Text { x: 12px; text: "01  ВХОД И ДОСТУПЫ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
-                            Text { x: parent.width - self.preferred-width - 12px; text: "СЕЙЧАС"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; } }
+                            Text { x: 12px; text: @tr("01  ВХОД И ДОСТУПЫ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - self.preferred-width - 12px; text: @tr("СЕЙЧАС"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; } }
                         s1 := VerticalLayout {
                             y: 30px;
                             height: self.preferred-height;
@@ -366,10 +366,10 @@ export component AppWindow inherits Window {
                             HorizontalLayout {
                                 spacing: 12px;
                                 Rectangle { width: 44px; height: 44px; border-radius: 22px; border-width: 1px; border-color: #6E7079;
-                                    Text { text: "ПРИВЕТ"; font-family: G.mono; font-size: 7.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; } }
-                                Text { text: "Привет! Я Спутник. Работаю поверх твоих Google Задач и Календаря. Своего сервера нет: всё остаётся в твоём аккаунте."; wrap: word-wrap; color: G.ink; font-size: 13.5px; }
+                                    Text { text: @tr("ПРИВЕТ"); font-family: G.mono; font-size: 7.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; } }
+                                Text { text: @tr("Привет! Я Спутник. Работаю поверх твоих Google Задач и Календаря. Своего сервера нет: всё остаётся в твоём аккаунте."); wrap: word-wrap; color: G.ink; font-size: 13.5px; }
                             }
-                            for a in [["Задачи", "читать и менять списки и задачи"], ["Календарь", "показывать события и создавать новые"], ["Контакты", "дни рождения, только чтение"], ["Скрытая папка Drive", "слой Спутника для второго компьютера"]]: Rectangle {
+                            for a in [[@tr("Задачи"), @tr("читать и менять списки и задачи")], [@tr("Календарь"), @tr("показывать события и создавать новые")], [@tr("Контакты"), @tr("дни рождения, только чтение")], [@tr("Скрытая папка Drive"), @tr("слой Спутника для второго компьютера")]]: Rectangle {
                                 height: 50px;
                                 Rectangle { x: 0; y: 8px; width: 14px; height: 14px; border-radius: 3px; background: #3D3E45; border-width: 1px; border-color: #7C7E88;
                                     Icon { name: "check"; width: 10px; x: 2px; y: 2px; c: G.ink; stroke-width: 2.2px; } }
@@ -381,15 +381,15 @@ export component AppWindow inherits Window {
                             Rectangle {
                                 height: 38px; border-radius: 6px;
                                 background: S.logging-in ? G.node-hover : (la.has-hover ? G.accent-ink : G.accent);
-                                Text { text: S.logging-in ? "Жду ответа в браузере…" : "Продолжить в Google"; font-size: 13.5px; font-weight: 600; color: S.logging-in ? G.ink : G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+                                Text { text: S.logging-in ? @tr("Жду ответа в браузере…") : @tr("Продолжить в Google"); font-size: 13.5px; font-weight: 600; color: S.logging-in ? G.ink : G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
                                 la := TouchArea { clicked => { if (!S.logging-in) { S.login(); } } mouse-cursor: pointer; }
                             }
                             if S.logging-in: Rectangle {
                                 height: 30px;
-                                Text { text: "Отмена"; font-size: 13px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
+                                Text { text: @tr("Отмена"); font-size: 13px; color: G.muted; horizontal-alignment: center; vertical-alignment: center; }
                                 TouchArea { clicked => { S.cancel-login(); } mouse-cursor: pointer; }
                             }
-                            Text { text: "GOOGLE ДАЁТ СНЯТЬ ГАЛОЧКИ · БЕЗ ВСЕХ ЧЕТЫРЁХ ВХОД НЕ ЗАСЧИТАЕТСЯ"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; wrap: word-wrap; }
+                            Text { text: @tr("GOOGLE ДАЁТ СНЯТЬ ГАЛОЧКИ · БЕЗ ВСЕХ ЧЕТЫРЁХ ВХОД НЕ ЗАСЧИТАЕТСЯ"); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; wrap: word-wrap; }
                         }
                     }
                     Brackets { x: st1.x; y: st1.y; width: st1.width; height: st1.height; }
@@ -401,11 +401,11 @@ export component AppWindow inherits Window {
                         x: st1.x + st1.width + 42px; y: 148px; width: parent.nw; height: 30px + s2.preferred-height;
                         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
                         Rectangle { y: 0; height: 30px; background: #3D3E45;
-                            Text { x: 12px; text: "02  ЧТО ПОКАЗЫВАТЬ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
-                            Text { x: parent.width - self.preferred-width - 12px; text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #FFFFFFE6; vertical-alignment: center; height: parent.height; } }
+                            Text { x: 12px; text: @tr("02  ЧТО ПОКАЗЫВАТЬ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - self.preferred-width - 12px; text: @tr("ДАЛЬШЕ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #FFFFFFE6; vertical-alignment: center; height: parent.height; } }
                         s2 := VerticalLayout {
                             y: 30px; height: self.preferred-height; padding: 14px; spacing: 0;
-                            for c[i] in ["Мои задачи", "Основной календарь", "Праздники России", "Дни рождения", "Рабочий календарь"]: Rectangle {
+                            for c[i] in [@tr("Мои задачи"), @tr("Основной календарь"), @tr("Праздники России"), @tr("Дни рождения"), @tr("Рабочий календарь")]: Rectangle {
                                 height: 36px;
                                 Rectangle { x: 0; y: 11px; width: 14px; height: 14px; border-radius: 3px; border-width: 1px; border-color: #7C7E88; background: i < 3 ? #3D3E45 : transparent;
                                     Icon { name: "check"; width: 10px; x: 2px; y: 2px; visible: i < 3; c: G.ink; stroke-width: 2.2px; } }
@@ -419,13 +419,13 @@ export component AppWindow inherits Window {
                         x: st2.x + st2.width + 42px; y: 148px; width: parent.nw; height: 30px + s3.preferred-height;
                         border-radius: 8px; background: G.node; border-width: 1px; border-color: G.line; clip: true;
                         Rectangle { y: 0; height: 30px; background: #3D3E45;
-                            Text { x: 12px; text: "03  ГОТОВО"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
-                            Text { x: parent.width - self.preferred-width - 12px; text: "ДАЛЬШЕ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #FFFFFFE6; vertical-alignment: center; height: parent.height; } }
+                            Text { x: 12px; text: @tr("03  ГОТОВО"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+                            Text { x: parent.width - self.preferred-width - 12px; text: @tr("ДАЛЬШЕ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #FFFFFFE6; vertical-alignment: center; height: parent.height; } }
                         s3 := VerticalLayout {
                             y: 30px; height: self.preferred-height; padding: 12px; spacing: 0;
-                            for h[i] in ["Ctrl N — создать из любого места", "«Запиши в Спутник» в чате с Claude", "Сводка дня в Telegram в 8:00"]: Rectangle {
+                            for h[i] in [@tr("Ctrl N — создать из любого места"), @tr("«Запиши в Спутник» в чате с Claude"), @tr("Сводка дня в Telegram в 8:00")]: Rectangle {
                                 height: 27px;
-                                Text { x: 0; text: ["А", "Б", "В"][i]; font-family: G.mono; font-size: 9px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                                Text { x: 0; text: [@tr("А"), @tr("Б"), @tr("В")][i]; font-family: G.mono; font-size: 9px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
                                 Text { x: 18px; text: h; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; width: parent.width - 18px; }
                             }
                         }
@@ -437,13 +437,13 @@ export component AppWindow inherits Window {
                         Rectangle { x: parent.width - 1px; width: 1px; background: #55575F; }
                         Rectangle { x: 12px; y: 6px; width: parent.width - 24px; height: 1px; background: #3A3B42; }
                         Rectangle { x: (parent.width - rt.preferred-width) / 2 - 10px; width: rt.preferred-width + 20px; background: G.ground; }
-                        rt := Text { x: (parent.width - self.preferred-width) / 2; text: "ВХОД И ДОСТУПЫ → ЧТО ПОКАЗЫВАТЬ → ГОТОВО"; font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
+                        rt := Text { x: (parent.width - self.preferred-width) / 2; text: @tr("ВХОД И ДОСТУПЫ → ЧТО ПОКАЗЫВАТЬ → ГОТОВО"); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; vertical-alignment: center; height: parent.height; }
                     }
                     if S.offline: Rectangle {
                         x: parent.mx; y: parent.height - 90px; width: 520px; height: 40px;
                         border-radius: 6px; border-width: 1px; border-color: #55575F;
                         Rectangle { x: 14px; y: 17px; width: 6px; height: 6px; border-radius: 3px; background: G.red; }
-                        Text { x: 28px; text: "НЕТ СВЯЗИ С GOOGLE · ПОВТОРЮ ЧЕРЕЗ МИНУТУ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.red; vertical-alignment: center; height: parent.height; }
+                        Text { x: 28px; text: @tr("НЕТ СВЯЗИ С GOOGLE · ПОВТОРЮ ЧЕРЕЗ МИНУТУ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.2px; color: G.red; vertical-alignment: center; height: parent.height; }
                     }
                     }
                 }
@@ -536,7 +536,7 @@ export component AppWindow inherits Window {
             TouchArea { }
             Rectangle { y: 0; height: 34px; background: S.upd-phase == 4 ? #8A3A2E : G.head-main;
                 animate background { duration: G.mid; }
-                Text { x: 13px; text: S.upd-phase == 2 ? "СКАЧИВАЮ ОБНОВЛЕНИЕ" : S.upd-phase == 3 ? "СТАВЛЮ ОБНОВЛЕНИЕ" : S.upd-phase == 4 ? "ОБНОВЛЕНИЕ НЕ ВСТАЛО" : "ОБНОВЛЕНИЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+                Text { x: 13px; text: S.upd-phase == 2 ? @tr("СКАЧИВАЮ ОБНОВЛЕНИЕ") : S.upd-phase == 3 ? @tr("СТАВЛЮ ОБНОВЛЕНИЕ") : S.upd-phase == 4 ? @tr("ОБНОВЛЕНИЕ НЕ ВСТАЛО") : @tr("ОБНОВЛЕНИЕ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
                 Text { x: parent.width - self.preferred-width - 13px; text: S.version + " → " + S.upd-version; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: #ffffffc0; vertical-alignment: center; height: parent.height; } }
             ul := VerticalLayout {
                 y: 34px;
@@ -546,16 +546,16 @@ export component AppWindow inherits Window {
                 HorizontalLayout {
                     spacing: 14px;
                     Rectangle { width: 50px; height: 50px; border-radius: 25px; border-width: 1px; border-color: #6E7079;
-                        Text { text: "УРА"; font-family: G.mono; font-size: 8.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; } }
+                        Text { text: @tr("УРА"); font-family: G.mono; font-size: 8.5px; color: #8A8C96; horizontal-alignment: center; vertical-alignment: center; } }
                     VerticalLayout {
                         alignment: center;
-                        Text { text: "Вышла версия " + S.upd-version; font-size: 19px; font-weight: 500; color: G.ink; }
-                        Text { text: "Сейчас стоит " + S.version; font-size: 12.5px; color: #A3A5AE; }
+                        Text { text: @tr("Вышла версия {}", S.upd-version); font-size: 19px; font-weight: 500; color: G.ink; }
+                        Text { text: @tr("Сейчас стоит {}", S.version); font-size: 12.5px; color: #A3A5AE; }
                     }
                 }
-                Text { text: "Что нового"; font-size: 13px; font-weight: 600; color: G.ink; }
+                Text { text: @tr("Что нового"); font-size: 13px; font-weight: 600; color: G.ink; }
                 // длинный список «Что нового» не выталкивает кнопки за низ окна
-                Text { text: S.upd-notes == "" ? "Исправления и улучшения." : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; overflow: elide; height: min(self.preferred-height, max(60px, root.height - 400px)); }
+                Text { text: S.upd-notes == "" ? @tr("Исправления и улучшения.") : S.upd-notes; color: G.ink; font-size: 13px; wrap: word-wrap; overflow: elide; height: min(self.preferred-height, max(60px, root.height - 400px)); }
                 if S.upd-phase == 2 || S.upd-phase == 3: UpdBar { frac: S.upd-phase == 3 ? -1 : S.upd-frac; text: S.upd-progress; }
                 if S.upd-phase == 4: UpdFail { what: S.upd-err; hint: S.upd-hint; }
                 HorizontalLayout {
@@ -565,21 +565,21 @@ export component AppWindow inherits Window {
                         width: ui1.preferred-width + 24px; height: 32px; border-radius: 6px;
                         background: ub1.has-hover ? G.accent-ink : G.accent;
                         animate background { duration: G.fast; }
-                        ui1 := Text { text: S.upd-phase == 4 ? "Повторить" : "Обновить сейчас"; font-size: 13px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
+                        ui1 := Text { text: S.upd-phase == 4 ? @tr("Повторить") : @tr("Обновить сейчас"); font-size: 13px; font-weight: 600; color: G.on-accent; horizontal-alignment: center; vertical-alignment: center; }
                         ub1 := TouchArea { clicked => { S.upd-install(); } mouse-cursor: pointer; }
                     }
                     if S.upd-phase == 2: Rectangle {
                         width: ui3.preferred-width + 24px; height: 32px; border-radius: 6px; border-width: 1px; border-color: #8A8C96;
-                        ui3 := Text { text: "Остановить"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        ui3 := Text { text: @tr("Остановить"); font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                         TouchArea { clicked => { S.upd-cancel(); } mouse-cursor: pointer; }
                     }
                     if S.upd-phase != 3: Rectangle {
                         width: ui2.preferred-width + 24px; height: 32px; border-radius: 6px; border-width: 1px; border-color: #8A8C96;
-                        ui2 := Text { text: S.upd-phase == 2 ? "Скрыть" : "Позже"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        ui2 := Text { text: S.upd-phase == 2 ? @tr("Скрыть") : @tr("Позже"); font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                         TouchArea { clicked => { S.upd-later(); } mouse-cursor: pointer; }
                     }
                 }
-                Text { text: S.upd-phase == 2 ? "Можно скрыть окно и работать дальше — после скачивания Спутник перезапустится сам." : S.upd-phase == 3 ? "Ещё пара секунд — Спутник перезапустится сам." : "Обновление займёт пару минут, задачи никуда не денутся. Окно можно открыть снова чипом «Версия» в шапке."; font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
+                Text { text: S.upd-phase == 2 ? @tr("Можно скрыть окно и работать дальше — после скачивания Спутник перезапустится сам.") : S.upd-phase == 3 ? @tr("Ещё пара секунд — Спутник перезапустится сам.") : @tr("Обновление займёт пару минут, задачи никуда не денутся. Окно можно открыть снова чипом «Версия» в шапке."); font-size: 12px; color: #A3A5AE; wrap: word-wrap; }
             }
         }
         // «Состояние» (G_Status, справа)
@@ -598,19 +598,19 @@ export component AppWindow inherits Window {
             clip: true;
             TouchArea { }
             Rectangle { y: 0; height: 34px; background: S.status-ok && !S.offline ? #2E6B3E : #8A3A2E;
-                Text { x: 13px; text: "СОСТОЯНИЕ"; font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
-                Text { x: parent.width - self.preferred-width - 13px; text: S.status-ok && !S.offline ? "ВСЁ В ПОРЯДКЕ" : "ЕСТЬ ВОПРОСЫ"; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #ffffffd0; vertical-alignment: center; height: parent.height; } }
+                Text { x: 13px; text: @tr("СОСТОЯНИЕ"); font-family: G.mono; font-size: 10.5px; font-weight: 600; letter-spacing: 1.4px; color: #fff; vertical-alignment: center; height: parent.height; }
+                Text { x: parent.width - self.preferred-width - 13px; text: S.status-ok && !S.offline ? @tr("ВСЁ В ПОРЯДКЕ") : @tr("ЕСТЬ ВОПРОСЫ"); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.4px; color: #ffffffd0; vertical-alignment: center; height: parent.height; } }
             sl := VerticalLayout {
                 y: 34px;
                 height: self.preferred-height;
                 padding: 14px;
                 spacing: 0;
                 for r[i] in [
-                    { t: "Google Задачи и Календарь", s: S.offline ? "Нет связи — правки уйдут, когда вернётся" : S.status, ok: !S.offline && S.error == "" },
-                    { t: "Слой Спутника на Drive", s: S.sync-info, ok: true },
-                    { t: "Знания на Drive", s: S.notes-sync-info, ok: S.notes-sync-ok },
-                    { t: "Бот в Telegram", s: S.bot-name == "" ? "Не подключён — Настройки → Напоминания" : (S.bot-status == "" ? "Работает" : S.bot-status), ok: S.bot-name != "" },
-                    { t: "Входящие от Claude", s: S.inbox-count == 0 ? "Пусто" : "Ждут ответа: " + S.inbox-count, ok: S.inbox-count == 0 },
+                    { t: @tr("Google Задачи и Календарь"), s: S.offline ? @tr("Нет связи — правки уйдут, когда вернётся") : S.status, ok: !S.offline && S.error == "" },
+                    { t: @tr("Слой Спутника на Drive"), s: S.sync-info, ok: true },
+                    { t: @tr("Знания на Drive"), s: S.notes-sync-info, ok: S.notes-sync-ok },
+                    { t: @tr("Бот в Telegram"), s: S.bot-name == "" ? @tr("Не подключён — Настройки → Напоминания") : (S.bot-status == "" ? @tr("Работает") : S.bot-status), ok: S.bot-name != "" },
+                    { t: @tr("Входящие от Claude"), s: S.inbox-count == 0 ? @tr("Пусто") : @tr("Ждут ответа: {}", S.inbox-count), ok: S.inbox-count == 0 },
                 ]: Rectangle {
                     height: 55px;
                     Rectangle { x: 0; y: 13px; width: 7px; height: 7px; border-radius: 1.5px; background: r.ok ? G.green : G.gold; }
@@ -625,10 +625,10 @@ export component AppWindow inherits Window {
                     alignment: start;
                     Rectangle {
                         width: sb.preferred-width + 24px; height: 32px; border-radius: 6px; border-width: 1px; border-color: #8A8C96;
-                        sb := Text { text: "Синхронизировать сейчас"; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
+                        sb := Text { text: @tr("Синхронизировать сейчас"); font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                         TouchArea { clicked => { stat.visible = false; S.refresh(); } mouse-cursor: pointer; }
                     }
-                    Text { text: "Настройки"; font-size: 13px; color: G.accent; vertical-alignment: center; TouchArea { clicked => { stat.visible = false; S.go(5); } mouse-cursor: pointer; } }
+                    Text { text: @tr("Настройки"); font-size: 13px; color: G.accent; vertical-alignment: center; TouchArea { clicked => { stat.visible = false; S.go(5); } mouse-cursor: pointer; } }
                 }
             }
         }

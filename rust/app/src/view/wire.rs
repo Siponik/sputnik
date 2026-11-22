@@ -180,7 +180,7 @@ pub fn wire(w: &AppWindow) {
         u.quick.clear();
         match app.add_line(&t, None, true) {
             Some((l, title)) => app.say(format!("«{}» → {}", short(&title, 30), app.list_name(&l))),
-            None => app.say("Нет ни одного списка — создай его на «Доске»"),
+            None => app.say(t!("Нет ни одного списка — создай его на «Доске»")),
         }
     }));
     g.on_quick_full(|t| act(|_, u| {
@@ -380,7 +380,7 @@ pub fn wire(w: &AppWindow) {
         let tpl = if u.board.is_empty() { "work".to_string() } else { text(&app.ll(&u.board)["template"]) };
         let tpl = if tpl.is_empty() { "work".into() } else { tpl };
         app.create_list(&t, &tpl, None, None, Some(Box::new(|app: &mut App, id: String| {
-            app.say("Список создан");
+            app.say(t!("Список создан"));
             ui_now(|u| u.board = id);
         })));
     }));
@@ -392,7 +392,7 @@ pub fn wire(w: &AppWindow) {
     g.on_delete_list(|id| act(|app, u| {
         let id = str_(&id);
         let n0 = app.tasks_of(&id).len();
-        ask(u, format!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&id), n0), "Удалить", move |app, u| {
+        ask(u, t!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&id), n0), t!("Удалить"), move |app, u| {
             app.delete_list(&id);
             u.board.clear();
         });
@@ -414,11 +414,11 @@ pub fn wire(w: &AppWindow) {
     g.on_sph_save(|name, ci| act(|app, u| {
         let Some(id) = u.sph.clone().filter(|x| !x.is_empty()) else { return };
         let name = name.trim().to_string();
-        if name.is_empty() { app.say("Нужно название сферы"); return; }
+        if name.is_empty() { app.say(t!("Нужно название сферы")); return; }
         let c = sputnik_core::spheres::PICKER.get(ci.max(0) as usize).copied().unwrap_or("clay");
         let keep = ci < 0;  // старый бирюзовый цвет, которого нет в правке: не трогаем
         app.save_sphere(Some(&id), if keep { json!({"name": name}) } else { json!({"name": name, "color": c}) });
-        app.say("Сфера сохранена");
+        app.say(t!("Сфера сохранена"));
     }));
     g.on_sph_new(|| act(|app, u| {
         let n0 = app.spheres().len();
@@ -430,14 +430,14 @@ pub fn wire(w: &AppWindow) {
         u.sph_add = false;
         let t = t.trim().to_string();
         if t.is_empty() { return; }
-        app.create_list(&t, "work", Some(str_(&sp)), None, Some(Box::new(|app: &mut App, _id: String| { app.say("Список создан"); })));
+        app.create_list(&t, "work", Some(str_(&sp)), None, Some(Box::new(|app: &mut App, _id: String| { app.say(t!("Список создан")); })));
     }));
     g.on_sph_archive(|k, id, on| act(|app, u| super::spheres::archive(app, u, &k, &id, on)));
     g.on_sph_delete(|k, id| act(|app, u| {
         let id = str_(&id);
         if k == "sphere" { super::spheres::ask_delete(app, u, id); return; }
         let n0 = app.tasks_of(&id).len();
-        ask(u, format!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&id), n0), "Удалить навсегда", move |app, _| app.delete_list(&id));
+        ask(u, t!("Удалить список «{}» и {} задач в нём? В Google Tasks он удалится насовсем.", app.list_name(&id), n0), t!("Удалить навсегда"), move |app, _| app.delete_list(&id));
     }));
     g.on_arch_q_set(|q| act(|_, u| u.arch_q = str_(&q)));
     g.on_arch_sphere_set(|v| act(|_, u| u.arch_sphere = str_(&v)));
@@ -584,7 +584,7 @@ pub fn wire(w: &AppWindow) {
     g.on_habit_remove(|id| act(|app, u| {
         let Some(h) = habit_by(app, &id) else { return };
         let id = text(&h["id"]);
-        ask(u, format!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), "Удалить", move |app, _| app.remove_habit(&id));
+        ask(u, t!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), t!("Удалить"), move |app, _| app.remove_habit(&id));
     }));
 
     // ---------- Окно правки привычки (#193): каждое действие сразу пишется в слой ----------
@@ -692,7 +692,7 @@ pub fn wire(w: &AppWindow) {
         let Some(he) = u.hedit.clone() else { return };
         let Some(h) = habit_by(app, &he.id) else { return };
         let id = text(&h["id"]);
-        ask(u, format!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), "Удалить", move |app, u| {
+        ask(u, t!("Удалить привычку «{}»? История отметок тоже пропадёт.", text(&h["name"])), t!("Удалить"), move |app, u| {
             app.remove_habit(&id);
             u.hedit = None;
         });
@@ -830,7 +830,7 @@ pub fn wire(w: &AppWindow) {
                 app.schedule(&l, &tk, &day, json!({"s": tm, "e": en}));
             }
             (Some(day), None) => app.schedule(&l, &tk, &day, if w.all_day { Value::Null } else { app.lt(&id)["slot"].clone() }),
-            (None, None) => app.say("Не понял срок — напиши «завтра», «пт 15:00» или «25.11»"),
+            (None, None) => app.say(t!("Не понял срок — напиши «завтра», «пт 15:00» или «25.11»")),
         }
     }));
     g.on_t_sub_add(|t| act(|app, u| {
@@ -864,7 +864,7 @@ pub fn wire(w: &AppWindow) {
         if let Some(tk) = task_of(app, &l, &id) {
             if let Some(nid) = app.move_to_list(&l, &tk, &to) {
                 u.task = Some((str_(&to), nid));
-                app.say(format!("Перенесено в «{}»", app.list_name(&to)));
+                app.say(t!("Перенесено в «{}»", app.list_name(&to)));
             }
         }
     }));
@@ -1143,6 +1143,10 @@ pub fn wire(w: &AppWindow) {
         act(|app, _| app.set_setting("anim", json!(i)));
         if let Some(w) = ww.upgrade() { settings::apply_anim(&w, i); }
     });
+    g.on_lang_set(|id| act(|app, _| {
+        app.set_setting("lang", json!(str_(&id)));
+        settings::apply_lang(app);
+    }));
     g.on_tab_move(|from, to| act(|app, _| {
         let mut v = settings::tab_order(app);
         if from >= 0 && to >= 0 && (from as usize) < v.len() && (to as usize) < v.len() {
@@ -1154,8 +1158,8 @@ pub fn wire(w: &AppWindow) {
     g.on_set_find(|q| act(|_, u| u.set_q = str_(&q)));
     g.on_bot_link(|c| act(|app, _| app.bot_link(&c)));
     g.on_bot_test(|| act(|app, _| app.bot_test()));
-    g.on_bot_unlink(|| act(|app, u| ask(u, "Отключить Telegram? Напоминания перестанут приходить.", "Отключить", |app, _| app.bot_unlink())));
-    g.on_sign_out(|| act(|_, u| ask(u, "Выйти из Google на этом компьютере? Правки, которые ещё не ушли, останутся в очереди.", "Выйти", |app, _| app.sign_out())));
+    g.on_bot_unlink(|| act(|app, u| ask(u, t!("Отключить Telegram? Напоминания перестанут приходить."), t!("Отключить"), |app, _| app.bot_unlink())));
+    g.on_sign_out(|| act(|_, u| ask(u, t!("Выйти из Google на этом компьютере? Правки, которые ещё не ушли, останутся в очереди."), t!("Выйти"), |app, _| app.sign_out())));
     g.on_open_backups(|| act(|_, _| {
         let _ = open::that(crate::data::store::own("backups"));
     }));
@@ -1379,7 +1383,7 @@ pub fn wire(w: &AppWindow) {
         caret
     });
     g.on_notes_pick(|| act(|app, u| {
-        if let Some(dir) = rfd::FileDialog::new().set_title("Папка заметок").pick_folder() {
+        if let Some(dir) = rfd::FileDialog::new().set_title(t!("Папка заметок")).pick_folder() {
             set_notes_root(app, u, Some(dir.to_string_lossy().to_string()));
         }
     }));
@@ -1398,9 +1402,9 @@ pub fn wire(w: &AppWindow) {
         match app.notes.save(&p, &b) {
             Ok(()) => {
                 u.note_dirty = false;
-                app.say("Заметка сохранена");
+                app.say(t!("Заметка сохранена"));
             }
-            Err(e) => app.say(format!("Не сохранилось: {e}")),
+            Err(e) => app.say(t!("Не сохранилось: {}", e)),
         }
     }));
     g.on_note_new(|t| act(|app, u| new_note(app, u, &t)));
@@ -1543,7 +1547,7 @@ pub(super) fn save_draft(app: &mut App, u: &mut Ui) {
     }
     match app.notes.save(&u.note_path, &u.note_draft) {
         Ok(()) => u.note_dirty = false,
-        Err(e) => app.say(format!("Не сохранилось: {e}")),
+        Err(e) => app.say(t!("Не сохранилось: {}", e)),
     }
 }
 
@@ -1557,7 +1561,7 @@ fn set_notes_root(app: &mut App, u: &mut Ui, p: Option<String>) {
     u.note_tabs.clear();
     u.note_path.clear();
     u.note_dirty = false;
-    app.say(format!("Заметок в папке: {}", app.notes.notes.len()));
+    app.say(t!("Заметок в папке: {}", app.notes.notes.len()));
 }
 
 /// Открыть заметку вкладкой: запоминает в списке открытых и делает активной.
@@ -1603,7 +1607,7 @@ pub(super) fn new_note_with(app: &mut App, u: &mut Ui, title: &str, body: &str) 
         Ok(()) => {
             open_note_tab(app, u, &path);
         }
-        Err(e) => app.say(format!("Заметка не создалась: {e}")),
+        Err(e) => app.say(t!("Заметка не создалась: {}", e)),
     }
 }
 
@@ -1642,7 +1646,7 @@ fn add_habit(app: &mut App, t: &str) {
         f["goal"] = h["goal"].clone();
     }
     app.add_habit(name.clone(), f, "");
-    app.say(format!("Привычка «{name}» заведена"));
+    app.say(t!("Привычка «{}» заведена", name));
 }
 
 /// Создать по виду окна. false — не получилось (окно остаётся).
@@ -1652,26 +1656,26 @@ fn submit(app: &mut App, c: &Create) -> bool {
         let h = cr::parse_habit(&c.text, &c.m.off_json());
         let name = text(&h["name"]);
         if name.trim().is_empty() {
-            app.say("Напиши название");
+            app.say(t!("Напиши название"));
             return false;
         }
         let win = c.hwin.clone().map(|(a, b)| json!({ "s": a, "e": b })).unwrap_or(Value::Null);
         let f = cr::habit_fields(&h, &c.hfreq, &c.hpart, &win, &c.hicon);
         app.add_habit(name.clone(), f, c.notes.trim());
-        app.say(format!("Привычка «{name}» заведена"));
+        app.say(t!("Привычка «{}» заведена", name));
         return true;
     }
     let x = super::dialogs::resolved(c);
     let title = text(&x["title"]);
     if title.trim().is_empty() {
-        app.say(if c.kind == 3 { "Нужно имя: «Мама 12 марта»" } else { "Напиши название" });
+        app.say(if c.kind == 3 { t!("Нужно имя: «Мама 12 марта»") } else { t!("Напиши название") });
         return false;
     }
     let slot = x["slot"]["s"].as_str().map(|st| (st.to_string(), x["slot"]["e"].as_str().unwrap_or(st).to_string()));
     match c.kind {
         3 => {
             let Some(day) = x["day"].as_str() else {
-                app.say("Нужна дата: «Мама 12 марта» или кнопка «Выбрать…»");
+                app.say(t!("Нужна дата: «Мама 12 марта» или кнопка «Выбрать…»"));
                 return false;
             };
             let cal = cal_of(app, c);
@@ -1688,7 +1692,7 @@ fn submit(app: &mut App, c: &Create) -> bool {
         _ => {
             let (dest, _) = dest_of(app, c);
             if dest.is_empty() {
-                app.say("Сначала создай список на «Доске»");
+                app.say(t!("Сначала создай список на «Доске»"));
                 return false;
             }
             let p = &x["parsed"];
@@ -1717,7 +1721,7 @@ fn submit(app: &mut App, c: &Create) -> bool {
                 app.learn_route(&title, &dest, &Value::Null);
             }
             let (l, id) = (dest.clone(), text(&t0["id"]));
-            app.say_act(format!("Создано в «{}»", app.list_name(&dest)), "Открыть", Some(Box::new(move |_app: &mut App| {
+            app.say_act(t!("Создано в «{}»", app.list_name(&dest)), t!("Открыть"), Some(Box::new(move |_app: &mut App| {
                 ui_now(|u| u.task = Some((l, id)));
             })));
             true
@@ -1787,7 +1791,7 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     } else {
         out.extend(notes);
     }
-    for (i, name) in ["Сегодня", "Календарь", "Доска", "Привычки", "Знания", "Настройки"].iter().enumerate() {
+    for (i, name) in [t!("Сегодня"), t!("Календарь"), t!("Доска"), t!("Привычки"), t!("Знания"), t!("Настройки")].iter().enumerate() {
         if search::norm(name).starts_with(&nq) {
             out.push((Found { kind: ss("раздел"), title: ss(*name), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(name, q), hue: color("accent"), due: ss(""), smark: Default::default() }, Box::new(move |_, u| if i == 5 { u.set_open = true } else { u.tab = i as i32 })));
         }
@@ -1795,7 +1799,7 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     for l in app.board_lists() {
         if search::norm(s(&l["title"])).contains(&nq) {
             let id = text(&l["id"]);
-            out.push((Found { kind: ss("раздел"), title: ss(format!("Доска · {}", text(&l["title"]))), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss(""), mark: mark(&format!("Доска · {}", text(&l["title"])), q), hue: super::list_hue(app, &id), due: ss(""), smark: Default::default() },
+            out.push((Found { kind: ss("раздел"), title: ss(t!("Доска · {}", text(&l["title"]))), sub: ss(""), list_id: ss(id.clone()), id: ss(""), head: ss(""), mark: mark(&t!("Доска · {}", text(&l["title"])), q), hue: super::list_hue(app, &id), due: ss(""), smark: Default::default() },
                 Box::new(move |_, u| { u.tab = 2; u.board = id.clone(); })));
         }
     }
@@ -1803,10 +1807,10 @@ pub fn find(app: &App, q: &str, notes_first: bool) -> Vec<(Found, Box<dyn Fn(&mu
     // действие: новая заметка с этим названием (Ctrl+Enter)
     let t = q.trim().to_string();
     if !app.notes.notes.iter().any(|n| search::norm(&n.title) == search::norm(&t)) {
-        out.push((Found { kind: ss("действие"), title: ss(format!("Новая заметка «{t}»")), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&format!("Новая заметка «{t}»"), ""), hue: color("accent"), due: ss(""), smark: Default::default() },
+        out.push((Found { kind: ss("действие"), title: ss(t!("Новая заметка «{}»", t)), sub: ss(""), list_id: ss(""), id: ss(""), head: ss(""), mark: mark(&t!("Новая заметка «{}»", t), ""), hue: color("accent"), due: ss(""), smark: Default::default() },
             Box::new(move |app, u| { u.tab = 4; u.note_graph = false; new_note(app, u, &t); })));
     }
-    let names = [("задача", "Задачи"), ("заметка", "Заметки"), ("раздел", "Разделы и списки"), ("действие", "Действия")];
+    let names = [("задача", t!("Задачи")), ("заметка", t!("Заметки")), ("раздел", t!("Разделы и списки")), ("действие", t!("Действия"))];
     for (kind, label) in names {
         let n = out.iter().filter(|(f, _)| f.kind.as_str() == kind).count();
         if let Some((f, _)) = out.iter_mut().find(|(f, _)| f.kind.as_str() == kind) {
@@ -1851,7 +1855,7 @@ pub fn add_on_day(app: &mut App, day: &str, slot: Option<(String, String)>, titl
             patch["remind"] = rr;
         }
         app.add_task(&dest, title, Some(day), patch, None, "");
-        app.say(format!("Задача на {} → {}", sputnik_core::calendar::when_label(day), app.list_name(&dest)));
+        app.say(t!("Задача на {} → {}", sputnik_core::calendar::when_label(day), app.list_name(&dest)));
     }
 }
 

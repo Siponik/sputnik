@@ -193,8 +193,8 @@ impl Doc {
         if text.trim().is_empty() {
             return Ok(Doc::default());
         }
-        let v: Value = serde_json::from_str(text).map_err(|e| format!("Холст не читается: {e}"))?;
-        let Value::Object(mut m) = v else { return Err("Холст — не объект JSON".into()) };
+        let v: Value = serde_json::from_str(text).map_err(|e| crate::t!("Холст не читается: {}", e))?;
+        let Value::Object(mut m) = v else { return Err(crate::t!("Холст — не объект JSON").into()) };
         let nodes = match m.remove("nodes") {
             Some(Value::Array(a)) => a.into_iter().filter_map(|n| match n {
                 Value::Object(o) if o.get("id").is_some_and(Value::is_string) => Some(Node(o)),

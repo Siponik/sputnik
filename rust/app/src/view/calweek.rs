@@ -4,7 +4,7 @@
 use super::calendar::{day_items, Item};
 use super::*;
 use crate::{Block, BlockRow, CalTip, Chip, Day, Label, WkBg};
-use sputnik_core::calendar as cal;
+use sputnik_core::{calendar as cal, t};
 use sputnik_core::calweek::{self as cw, WItem, WeekGrid};
 
 const MON3: [&str; 12] = ["ЯНВ", "ФЕВ", "МАР", "АПР", "МАЯ", "ИЮН", "ИЮЛ", "АВГ", "СЕН", "ОКТ", "НОЯ", "ДЕК"];
@@ -52,7 +52,7 @@ fn tip(day: &str, it: &Item) -> CalTip {
     let d = chrono::NaiveDate::parse_from_str(day, "%Y-%m-%d").unwrap_or_default();
     use chrono::Datelike;
     let wd = cal::day_label(day)["short"].as_str().unwrap_or("").to_uppercase();
-    let mut when = format!("{} {} {}", wd, d.day(), MON3[d.month0() as usize]);
+    let mut when = format!("{} {} {}", wd, d.day(), sputnik_core::i18n::month_abbr(d.month0() as usize, &MON3));
     if let Some((s, e)) = it.s {
         when += &format!(" · {}–{} · {}", cal::from_min(s as i64), cal::from_min((e as i64).min(1440)), cw::dur_text(e - s));
     }
@@ -170,7 +170,7 @@ pub fn render_draft(app: &App, u: &Ui, g: &S) {
     g.set_draft_time(ss(format!("{}–{}", cal::from_min(d.s as i64), cal::from_min((d.e as i64).min(1440)))));
     let wd = cal::day_label(&d.day)["short"].as_str().unwrap_or("").to_uppercase();
     let n = cal::day_label(&d.day)["n"].as_u64().unwrap_or(0);
-    g.set_draft_head(ss(format!("ДОБАВИТЬ · {wd} {n}")));
+    g.set_draft_head(ss(t!("ДОБАВИТЬ · {} {}", wd, n)));
     g.set_draft_event(app.setting("calAddKind") == "event");
 }
 

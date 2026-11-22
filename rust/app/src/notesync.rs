@@ -2,6 +2,7 @@
 //! «Синхронизировать сейчас»; работа — в фоне. Что делать, решает `sputnik_core::notesync::plan`.
 //! Бережно: ничего не затирается — при конфликте обе версии остаются (вторая — «… (с другого компьютера).md»),
 //! удалённое уходит в корзину Drive или в `.trash` папки заметок. Прошлая сверка — в папке настроек, не в папке заметок.
+use sputnik_core::t;
 use crate::data::api;
 use crate::state::App;
 use serde_json::{json, Value};
@@ -307,7 +308,7 @@ pub fn sync_now(app: &mut App) {
     }
     let Some(root) = app.notes.root.clone() else { return };
     app.notes_sync.busy = true;
-    app.notes_sync.text = "сверяю…".into();
+    app.notes_sync.text = t!("сверяю…").into();
     crate::state::run(move || run(root), |app, d: Done| {
         app.notes_sync.busy = false;
         let at = chrono::Local::now().format("%H:%M");
@@ -315,17 +316,17 @@ pub fn sync_now(app: &mut App) {
             None => {
                 app.notes_sync.ok = true;
                 app.notes_sync.notes_on_drive = d.files;
-                app.notes_sync.text = format!("всё отправлено · {} на Drive · {at}", sputnik_plural(d.files));
+                app.notes_sync.text = t!("всё отправлено · {} на Drive · {}", sputnik_plural(d.files), at);
             }
             Some(e) => {
                 app.notes_sync.ok = false;
-                app.notes_sync.text = if d.pending > 0 { format!("{e} — изменений ждут: {}, отправлю сам", d.pending) } else { e.clone() };
+                app.notes_sync.text = if d.pending > 0 { t!("{} — изменений ждут: {}, отправлю сам", e, d.pending) } else { e.clone() };
             }
         }
         if !d.copies.is_empty() {
             app.notes_sync.copies += d.copies.len();
             let first = d.copies[0].rsplit('/').next().unwrap_or("").to_string();
-            app.say(format!("Заметку поменяли на двух компьютерах — сохранены обе версии: «{first}»"));
+            app.say(t!("Заметку поменяли на двух компьютерах — сохранены обе версии: «{}»", first));
         }
         if d.changed > 0 && app.notes.root.as_ref().map(|r| r.to_string_lossy().to_string()) == Some(d.folder.clone()) {
             app.notes.rescan();
@@ -335,6 +336,6 @@ pub fn sync_now(app: &mut App) {
 }
 
 fn sputnik_plural(n: usize) -> String {
-    let w = if n % 10 == 1 && n % 100 != 11 { "заметка" } else if (2..=4).contains(&(n % 10)) && !(12..=14).contains(&(n % 100)) { "заметки" } else { "заметок" };
+    let w = sputnik_core::habits::plural(n as i64, ["заметка", "заметки", "заметок"]);
     format!("{n} {w}")
 }

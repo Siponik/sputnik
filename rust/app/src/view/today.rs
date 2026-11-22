@@ -1,17 +1,17 @@
 //! Модели «Сегодня».
 use super::*;
 use crate::{Chip, HabitChip, InboxRow, SrcNode, SrcRow, TaskRow, Wire};
-use sputnik_core::{habits as hb, route, today as td};
+use sputnik_core::{habits as hb, route, t, today as td};
 
 pub fn row(app: &App, list: &str, t: &Value) -> TaskRow {
     let l = app.lt(s(&t["id"]));
     let (when, late) = due_text(t, &l["slot"]);
     let subs = app.subtasks(list, s(&t["id"]));
     let sub = if subs.is_empty() { String::new() } else { format!("{}/{}", subs.iter().filter(|x| App::is_done(x)).count(), subs.len()) };
-    let when = if when == "сегодня" { String::new() } else { when.replace("сегодня, ", "") };
+    let when = if when == t!("сегодня") { String::new() } else { when.replace(t!("сегодня, "), "") };
     // коротко, как в макете: «11:00», «ВЧЕРА», «08.11»
-    let when = match when.strip_prefix("просрочено · ") {
-        Some(w) if w.starts_with("вчера") => "вчера".to_string(),
+    let when = match when.strip_prefix(t!("просрочено · {}", "").as_str()) {
+        Some(w) if w.starts_with(t!("вчера")) => t!("вчера").to_string(),
         Some(_) => { let d = day10(&t["due"]); if d.len() == 10 { format!("{}.{}", &d[8..10], &d[5..7]) } else { d } }
         None => when,
     };
@@ -59,8 +59,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_overdue(model(over));
     g.set_today(model(now));
     let d = sputnik_core::dates::parse_ymd(&tdy).unwrap();
-    let wd = ["ПН", "ВТ", "СР", "ЧТ", "ПТ", "СБ", "ВС"];
-    g.set_today_label(ss(format!("{} {}", wd[chrono::Datelike::weekday(&d).num_days_from_monday() as usize], d.format("%d.%m"))));
+    g.set_today_label(ss(format!("{} {}", sputnik_core::i18n::wd(chrono::Datelike::weekday(&d).num_days_from_monday() as usize).to_uppercase(), d.format("%d.%m"))));
     let _ = d;
 
     // схема дня по макету G_Today: холст 1220 px, источники слева → строки в середине; координаты холста
@@ -115,19 +114,19 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         }
         let empty = app.board_lists().iter().filter(|l| !order.iter().any(|o| o == s(&l["id"]))).count();
         if empty > 0 {
-            srows.push(SrcRow { title: ss(format!("Ещё {} · сегодня пусто", super::spheres::plural(empty, "список", "списка", "списков"))), right: ss(""), done: false, accent: false, fold: true, hue: Color::default() });
+            srows.push(SrcRow { title: ss(t!("Ещё {} · сегодня пусто", super::spheres::plural(empty, "список", "списка", "списков"))), right: ss(""), done: false, accent: false, fold: true, hue: Color::default() });
         }
         let h = node_h(srows.len());
-        src.push(SrcNode { title: ss("СПИСКИ"), label: ss("ОСТАЛОСЬ / ВСЕГО"), hue: color(""), y, h, rows: model(srows), dashed: false });
+        src.push(SrcNode { title: ss(t!("СПИСКИ")), label: ss(t!("ОСТАЛОСЬ / ВСЕГО")), hue: color(""), y, h, rows: model(srows), dashed: false });
         y += h + 20.0;
     }
     for l in order.iter().filter(|_| !many) {
         let idx: Vec<usize> = rows.iter().enumerate().filter(|(_, r)| r.list_id.as_str() == l).map(|(i, _)| i).collect();
         let hue = list_hue(app, l);
-        let label = match board::view_of(app, l).as_str() { "pipe" => "КОНВЕЙЕР", "stickers" => "СТИКЕРЫ", "list" => "СПИСОК", _ => "КАНБАН" };
+        let label = match board::view_of(app, l).as_str() { "pipe" => t!("КОНВЕЙЕР"), "stickers" => t!("СТИКЕРЫ"), "list" => t!("СПИСОК"), _ => t!("КАНБАН") };
         let srows: Vec<SrcRow> = idx.iter().map(|&i| {
             let r = &rows[i];
-            SrcRow { title: r.title.clone(), right: if r.when.is_empty() { ss("ДЕНЬ") } else { r.when.clone() }, done: r.done, accent: Some(i) == next_at, fold: false, hue: Color::default() }
+            SrcRow { title: r.title.clone(), right: if r.when.is_empty() { ss(t!("ДЕНЬ")) } else { r.when.clone() }, done: r.done, accent: Some(i) == next_at, fold: false, hue: Color::default() }
         }).collect();
         for (j, &i) in idx.iter().enumerate() {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + row_y(i), hue: if rows[i].done { color("#7C7E88") } else { hue }, dashed: Some(i) == next_at });
@@ -139,12 +138,12 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     let ib = app.inbox_items();
     let claude_y = rows_end + 2.0 + 19.0;
     if !ib.is_empty() {
-        let srows: Vec<SrcRow> = if many { vec![SrcRow { title: ss(format!("{} без дня", super::spheres::plural(ib.len(), "задача", "задачи", "задач"))), right: ss(""), done: false, accent: false, fold: false, hue: Color::default() }] } else { ib.iter().take(4).map(|x| SrcRow { title: ss(text(&x["task"]["title"])), right: ss(format!("→ {}", short(&app.list_name(&text(&x["listId"])), 8).to_uppercase())), done: false, accent: false, fold: false, hue: Color::default() }).collect() };
+        let srows: Vec<SrcRow> = if many { vec![SrcRow { title: ss(t!("{} без дня", super::spheres::plural(ib.len(), "задача", "задачи", "задач"))), right: ss(""), done: false, accent: false, fold: false, hue: Color::default() }] } else { ib.iter().take(4).map(|x| SrcRow { title: ss(text(&x["task"]["title"])), right: ss(t!("→ {}", short(&app.list_name(&text(&x["listId"])), 8).to_uppercase())), done: false, accent: false, fold: false, hue: Color::default() }).collect() };
         for j in 0..srows.len() {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + claude_y, hue: color("#A3A5AE"), dashed: true });
         }
         let h = node_h(srows.len());
-        src.push(SrcNode { title: ss("ОТ CLAUDE"), label: ss(if many { format!("ЖДУТ {}", ib.len()) } else { "ЖДУТ".into() }), hue: color("#A3A5AE"), y, h, rows: model(srows), dashed: true });
+        src.push(SrcNode { title: ss(t!("ОТ CLAUDE")), label: ss(if many { t!("ЖДУТ {}", ib.len()) } else { t!("ЖДУТ").into() }), hue: color("#A3A5AE"), y, h, rows: model(srows), dashed: true });
         y += h + if many { 20.0 } else { 28.0 };
     }
     let log0 = app.habit_log();
@@ -161,7 +160,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             wires.push(Wire { y1: y + 42.0 + j as f32 * 28.0, y2: 20.0 + habits_y, hue: color("gold"), dashed: false });
         }
         let h = node_h(srows.len());
-        src.push(SrcNode { title: ss("ПРИВЫЧКИ"), label: ss(if many { format!("{hd} / {}", hs0.len()) } else { "СЕГОДНЯ".into() }), hue: color("gold"), y, h, rows: model(srows), dashed: false });
+        src.push(SrcNode { title: ss(t!("ПРИВЫЧКИ")), label: ss(if many { format!("{hd} / {}", hs0.len()) } else { t!("СЕГОДНЯ").into() }), hue: color("gold"), y, h, rows: model(srows), dashed: false });
     }
     g.set_center_h(habits_top + if hs0.is_empty() { 0.0 } else { 92.0 } + 16.0);
     let src_end = src.iter().map(|n| n.y + n.h).fold(0.0f32, f32::max);
@@ -248,7 +247,7 @@ pub fn event_chip(e: &Value) -> Chip {
         kind: if bd { 3 } else { 0 },
         list_id: ss(text(&e["calId"])),
         id: ss(format!("{}|{}", text(&e["calId"]), text(&e["id"]))),
-        time: ss(if time.is_empty() { "весь день".to_string() } else { time }),
+        time: ss(if time.is_empty() { t!("весь день").to_string() } else { time }),
     }
 }
 

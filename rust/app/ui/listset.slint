@@ -58,8 +58,8 @@ component ColEditor inherits VerticalLayout {
     spacing: 0;
     Rectangle {
         height: 40px;
-        Text { x: 0; text: "Колонки"; color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; }
-        Text { x: parent.width - self.preferred-width; text: "ИЗ ШАБЛОНА…"; font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: tpa.has-hover ? G.accent : #8A8C96; vertical-alignment: center; height: parent.height;
+        Text { x: 0; text: @tr("Колонки"); color: G.ink; font-size: 13.5px; vertical-alignment: center; height: parent.height; }
+        Text { x: parent.width - self.preferred-width; text: @tr("ИЗ ШАБЛОНА…"); font-family: G.mono; font-size: 10px; letter-spacing: 1.2px; color: tpa.has-hover ? G.accent : #8A8C96; vertical-alignment: center; height: parent.height;
             tpa := TouchArea { clicked => { S.ls-close(); S.tp-show(); } mouse-cursor: pointer; }
         }
     }
@@ -122,7 +122,7 @@ component ColEditor inherits VerticalLayout {
         HorizontalLayout {
             x: parent.width - 108px; width: 74px; height: parent.height; spacing: 0;
             Rectangle { width: 22px; Text { text: "−"; color: ma.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } ma := TouchArea { clicked => { S.ls-set("col-limit", i + "|-1"); } mouse-cursor: pointer; } }
-            Text { width: 30px; text: c.id == "0" ? "НЕТ" : c.id; font-family: G.mono; font-size: 9.5px; color: c.id == "0" ? #62646E : G.ink; horizontal-alignment: center; vertical-alignment: center; }
+            Text { width: 30px; text: c.id == "0" ? @tr("НЕТ") : c.id; font-family: G.mono; font-size: 9.5px; color: c.id == "0" ? #62646E : G.ink; horizontal-alignment: center; vertical-alignment: center; }
             Rectangle { width: 22px; Text { text: "+"; color: pa.has-hover ? G.ink : #8A8C96; font-size: 14px; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; } pa := TouchArea { clicked => { S.ls-set("col-limit", i + "|1"); } mouse-cursor: pointer; } }
         }
         // корзина
@@ -135,7 +135,7 @@ component ColEditor inherits VerticalLayout {
     }
     Rectangle {
         height: 40px;
-        Text { x: 4px; text: "+ КОЛОНКА"; font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: aa.has-hover ? G.accent : #A3A5AE; vertical-alignment: center; height: parent.height; }
+        Text { x: 4px; text: @tr("+ КОЛОНКА"); font-family: G.mono; font-size: 10.5px; letter-spacing: 1.2px; color: aa.has-hover ? G.accent : #A3A5AE; vertical-alignment: center; height: parent.height; }
         aa := TouchArea { width: 120px; x: 0; clicked => { S.ls-set("col-add", ""); } mouse-cursor: pointer; }
     }
 }
@@ -154,7 +154,7 @@ export component ListSettings inherits Overlay {
         y: max(8px, (parent.height - self.height) / 2);
         width: min(640px, parent.width - 16px);
         height: min(720px, 34px + bl.preferred-height, parent.height - 16px);
-        num: "НАСТРОЙКИ СПИСКА"; title: "CTRL .";
+        num: @tr("НАСТРОЙКИ СПИСКА"); title: "CTRL .";
         aside: S.ls-tpl;
         head: G.accent.darker(0.3);
         border-color: G.accent-line;
@@ -163,11 +163,11 @@ export component ListSettings inherits Overlay {
             viewport-height: bl.preferred-height;
             bl := VerticalLayout {
             padding: 22px; padding-bottom: 14px; spacing: 0;
-            Text { text: "Название"; color: #A3A5AE; font-size: 13px; }
+            Text { text: @tr("Название"); color: #A3A5AE; font-size: 13px; }
             Rectangle { height: 8px; }
             name := Field { height: 38px; font-size: 14px; text: S.ls-name; edited(t) => { root.typed-name = t; } accepted(t) => { S.ls-set("name", t); } }
             Rectangle { height: 6px; }
-            Row { label: "Сфера";
+            Row { label: @tr("Сфера");
                 // выпадающий выбор сферы: текущая на кнопке, список — поверх окна
                 sb := Rectangle {
                     width: 220px; height: 32px;
@@ -192,30 +192,30 @@ export component ListSettings inherits Overlay {
             Rectangle { height: 6px; }
             ColEditor { }
             Rectangle { height: 6px; }
-            Row { label: "Ширина колонок"; hint: "Для вида «Канбан»";
+            Row { label: @tr("Ширина колонок"); hint: @tr("Для вида «Канбан»");
                 Seg3 {
-                    items: [{ id: "200", label: "Узкие", on: S.board-colw < 216px }, { id: "232", label: "Обычные", on: S.board-colw >= 216px && S.board-colw < 260px }, { id: "288", label: "Широкие", on: S.board-colw >= 260px }];
+                    items: [{ id: "200", label: @tr("Узкие"), on: S.board-colw < 216px }, { id: "232", label: @tr("Обычные"), on: S.board-colw >= 216px && S.board-colw < 260px }, { id: "288", label: @tr("Широкие"), on: S.board-colw >= 260px }];
                     picked(id) => { S.board-colw-set(id.to-float() * 1px); }
                 }
             }
             Rectangle { height: 6px; }
-            Row { label: "Порядок задач"; hint: "Как сортировать карточки в колонках";
+            Row { label: @tr("Порядок задач"); hint: @tr("Как сортировать карточки в колонках");
                 Seg3 {
-                    items: [{ id: "own", label: "Свой", on: S.ls-sort == "own" }, { id: "due", label: "По сроку", on: S.ls-sort == "due" }, { id: "prio", label: "По приоритету", on: S.ls-sort == "prio" }];
+                    items: [{ id: "own", label: @tr("Свой"), on: S.ls-sort == "own" }, { id: "due", label: @tr("По сроку"), on: S.ls-sort == "due" }, { id: "prio", label: @tr("По приоритету"), on: S.ls-sort == "prio" }];
                     picked(id) => { S.ls-set("sort", id); }
                 }
             }
-            Row { label: "Показывать в «Сегодня»"; hint: "Задачи с датой попадают на главный экран";
+            Row { label: @tr("Показывать в «Сегодня»"); hint: @tr("Задачи с датой попадают на главный экран");
                 Switch { on: S.ls-today; clicked => { S.ls-set("today", ""); } }
             }
-            Row { label: "В сводке и боте"; hint: "Выключи, если список тихий: доска и напоминания останутся";
+            Row { label: @tr("В сводке и боте"); hint: @tr("Выключи, если список тихий: доска и напоминания останутся");
                 Switch { on: !S.ls-quiet; clicked => { S.ls-set("quiet", ""); } }
             }
             Rectangle { height: 14px; }
             HorizontalLayout {
                 spacing: 8px;
                 Rectangle { }
-                Button { text: "Готово"; primary: true; clicked => { S.ls-set("name", name.text); S.ls-close(); } }
+                Button { text: @tr("Готово"); primary: true; clicked => { S.ls-set("name", name.text); S.ls-close(); } }
             }
             }
         }

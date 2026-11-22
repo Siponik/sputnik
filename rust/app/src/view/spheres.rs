@@ -1,7 +1,7 @@
 //! Сферы (G_Spheres, п.40): обзор сфер, правка выбранной, меню сферы; архив сфер и списков (G_Archive, п.41).
 use super::*;
 use crate::{ArchSph, MItem, SphCard, SphList, SphRow};
-use sputnik_core::spheres as sph;
+use sputnik_core::{spheres as sph, t};
 
 /// Тёмная шапка ноды по цвету сферы (FILL макетов).
 pub fn head(v: &str) -> Color {
@@ -19,17 +19,16 @@ pub fn head(v: &str) -> Color {
 
 /// 1 сфера, 2 сферы, 5 сфер.
 pub fn plural(k: usize, one: &str, few: &str, many: &str) -> String {
-    let w = if k % 10 == 1 && k % 100 != 11 { one } else if (2..=4).contains(&(k % 10)) && !(12..=14).contains(&(k % 100)) { few } else { many };
-    format!("{k} {w}")
+    format!("{k} {}", sputnik_core::habits::plural(k as i64, [one, few, many]))
 }
 
 fn since(rec: &Value) -> String {
     use chrono::TimeZone;
-    n(&rec["archivedAt"]).and_then(|ms| chrono::Local.timestamp_millis_opt(ms as i64).single()).map(|d| d.format("С %d.%m").to_string()).unwrap_or_default()
+    n(&rec["archivedAt"]).and_then(|ms| chrono::Local.timestamp_millis_opt(ms as i64).single()).map(|d| d.format("%d.%m").to_string()).map(|d| t!("С {}", d)).unwrap_or_default()
 }
 
 fn letter(view: &str) -> &'static str {
-    match view { "pipe" => "К", "stickers" => "С", "list" => "Л", _ => "К" }
+    match view { "pipe" => t!("К"), "stickers" => t!("С"), "list" => t!("Л"), _ => t!("К") }
 }
 
 /// Списки сферы (без архивных), что видны на доске.
@@ -57,9 +56,9 @@ fn arch_rows(app: &App, q: &str) -> Vec<ArchSph> {
         let ls = all_lists_of(app, &id);
         let tn: usize = ls.iter().map(|l| app.tasks_of(l).iter().filter(|t| App::top(t)).count()).sum();
         let first = out.is_empty();
-        out.push(ArchSph { kind: ss("sphere"), id: ss(id), name: ss(name), group: ss("Сферы"), first,
-            meta: ss(format!("{} · {}{}", plural(ls.len(), "список", "списка", "списков"), plural(tn, "задача", "задачи", "задач"), if first { " · все внутри вернутся вместе со сферой" } else { "" })),
-            date: ss(since(&x)), head: head(&sph::sphere_color(&x)), letter: ss("СФ") });
+        out.push(ArchSph { kind: ss("sphere"), id: ss(id), name: ss(name), group: ss(t!("Сферы")), first,
+            meta: ss(format!("{} · {}{}", plural(ls.len(), "список", "списка", "списков"), plural(tn, "задача", "задачи", "задач"), if first { t!(" · все внутри вернутся вместе со сферой") } else { "" })),
+            date: ss(since(&x)), head: head(&sph::sphere_color(&x)), letter: ss(t!("СФ")) });
     }
     let mut lf = true;
     for l in &app.lists {
@@ -71,8 +70,8 @@ fn arch_rows(app: &App, q: &str) -> Vec<ArchSph> {
         let sp = s(&ll["sphere"]).to_string();
         let spr = &app.layer["spheres"][&sp];
         let tn = app.tasks_of(&id).iter().filter(|t| App::top(t)).count();
-        let meta = if spr.is_object() { format!("был в сфере «{}» · {}", text(&spr["name"]), plural(tn, "задача", "задачи", "задач")) } else { plural(tn, "задача", "задачи", "задач") };
-        out.push(ArchSph { kind: ss("list"), id: ss(id.clone()), name: ss(name), group: ss("Списки"), first: lf, meta: ss(meta), date: ss(since(ll)),
+        let meta = if spr.is_object() { t!("был в сфере «{}» · {}", text(&spr["name"]), plural(tn, "задача", "задачи", "задач")) } else { plural(tn, "задача", "задачи", "задач") };
+        out.push(ArchSph { kind: ss("list"), id: ss(id.clone()), name: ss(name), group: ss(t!("Списки")), first: lf, meta: ss(meta), date: ss(since(ll)),
             head: head(&if spr.is_object() { sph::sphere_color(spr) } else { String::new() }), letter: ss(letter(&super::board::view_of(app, &id))) });
         lf = false;
     }
@@ -97,13 +96,13 @@ pub fn render(app: &App, u: &Ui, g: &S) {
         let ls = lists_of(app, &id);
         nl += ls.len();
         let cal = sputnik_core::sharedcore::cal_of_sphere(&id).map(String::from);
-        let aside = match &cal { Some(c) => format!("ВМЕСТЕ · {}", app.shared.people(c).len().max(1)), None => format!("{} СП.", ls.len()) };
+        let aside = match &cal { Some(c) => t!("ВМЕСТЕ · {}", app.shared.people(c).len().max(1)), None => t!("{} СП.", ls.len()) };
         cards.push(SphCard { id: ss(id.clone()), name: ss(text(&x["name"]).to_uppercase()), head: head(&sph::sphere_color(x)), aside: ss(aside),
             sel: u.sph.as_deref() == Some(id.as_str()),
             lists: model(ls.iter().map(|l| { let lid = text(&l["id"]); SphList { name: ss(text(&l["title"])), letter: ss(letter(&super::board::view_of(app, &lid))), count: open_n(app, &lid) as i32, id: ss(lid) } }).collect()) });
     }
     let na = sph::archived_spheres(&app.layer).len();
-    g.set_sph_info(ss(format!("{} · {}{}", plural(sps.len(), "СФЕРА", "СФЕРЫ", "СФЕР"), plural(nl, "СПИСОК", "СПИСКА", "СПИСКОВ"), if na > 0 { format!(" · {na} В АРХИВЕ") } else { String::new() })));
+    g.set_sph_info(ss(format!("{} · {}{}", plural(sps.len(), "СФЕРА", "СФЕРЫ", "СФЕР"), plural(nl, "СПИСОК", "СПИСКА", "СПИСКОВ"), if na > 0 { t!(" · {} В АРХИВЕ", na) } else { String::new() })));
     let (l, r): (Vec<_>, Vec<_>) = cards.into_iter().enumerate().partition(|(i, _)| i % 2 == 0);
     g.set_sph_cards_l(model(l.into_iter().map(|x| x.1).collect()));
     g.set_sph_cards_r(model(r.into_iter().map(|x| x.1).collect()));
@@ -134,9 +133,9 @@ pub fn render(app: &App, u: &Ui, g: &S) {
     g.set_sph_people(ss(match &cal {
         Some(c) => {
             let names: Vec<String> = app.shared.people(c).iter().map(sputnik_core::sharedcore::name_of).filter(|x| !x.is_empty()).collect();
-            if names.is_empty() { "Общая сфера.".into() } else { format!("С тобой работают {}.", names.join(", ")) }
+            if names.is_empty() { t!("Общая сфера.").into() } else { t!("С тобой работают {}.", names.join(", ")) }
         }
-        None => "Пока только ты.".into(),
+        None => t!("Пока только ты.").into(),
     }));
 }
 
@@ -146,17 +145,17 @@ pub fn menu_items(app: &App, id: &str) -> (String, Vec<MItem>) {
     let shared = sputnik_core::sharedcore::cal_of_sphere(id).is_some();
     let it = |id: &str, label: &str, icon: &str, key: &str| MItem { id: ss(id), label: ss(label), icon: ss(icon), key: ss(key), ..Default::default() };
     (name, vec![
-        it("sph-edit", "Править сферу", "settings", "Enter"),
-        it("sph-list", "Новый список в сфере", "plus", ""),
-        MItem { off: !shared, ..it("sph-share", if shared { "Участники" } else { "Поделиться" }, "share", "") },
-        MItem { sep: true, off: shared, ..it("sph-arch", "В архив", "archive", "Ctrl E") },
-        MItem { red: true, ..it("sph-del", "Удалить сферу", "close", "") },
+        it("sph-edit", t!("Править сферу"), "settings", "Enter"),
+        it("sph-list", t!("Новый список в сфере"), "plus", ""),
+        MItem { off: !shared, ..it("sph-share", if shared { t!("Участники") } else { t!("Поделиться") }, "share", "") },
+        MItem { sep: true, off: shared, ..it("sph-arch", t!("В архив"), "archive", "Ctrl E") },
+        MItem { red: true, ..it("sph-del", t!("Удалить сферу"), "close", "") },
     ])
 }
 
 pub fn ask_delete(app: &App, u: &mut Ui, id: String) {
     let name = app.spheres().iter().chain(sph::archived_spheres(&app.layer).iter()).find(|x| x["id"] == id.as_str()).map(|x| text(&x["name"])).unwrap_or_default();
-    super::wire::ask(u, format!("Удалить сферу «{name}»? Её списки и задачи останутся — просто без сферы."), "Удалить", move |app, u| {
+    super::wire::ask(u, t!("Удалить сферу «{}»? Её списки и задачи останутся — просто без сферы.", name), t!("Удалить"), move |app, u| {
         app.delete_sphere(&id);
         if u.sph.as_deref() == Some(id.as_str()) { u.sph = Some(String::new()); }
     });
@@ -165,5 +164,5 @@ pub fn ask_delete(app: &App, u: &mut Ui, id: String) {
 pub fn archive(app: &mut App, u: &mut Ui, kind: &str, id: &str, on: bool) {
     app.set_archived(kind, id, on);
     if on && u.sph.as_deref() == Some(id) { u.sph = Some(String::new()); }
-    app.say(if on { "Убрано в архив — вернуть можно в «Архив → Сферы и списки»" } else { "Возвращено из архива" });
+    app.say(if on { t!("Убрано в архив — вернуть можно в «Архив → Сферы и списки»") } else { t!("Возвращено из архива") });
 }

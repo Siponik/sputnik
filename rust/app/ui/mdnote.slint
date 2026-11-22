@@ -13,7 +13,7 @@ export component MdNote inherits Rectangle {
     // какая заметка открыта (список|задача): смена — правка заканчивается, свой журнал Ctrl+Z
     in property <string> key;
     in property <float> zoom: 0.93;
-    in property <string> hint: "Заметка… **жирный**, - список, - [ ] дело, [[ — ссылка на «Знания»";
+    in property <string> hint: @tr("Заметка… **жирный**, - список, - [ ] дело, [[ — ссылка на «Знания»");
     out property <bool> focused: root.edit-i >= 0;
     callback edited(string);
     // открыта заметка «Знаний» — окно можно закрыть
