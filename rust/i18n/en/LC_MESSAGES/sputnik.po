@@ -4006,3 +4006,105 @@ msgstr "I'm inviting you to a shared sphere “{}” in Sputnik.\n1) Open the li
 
 msgid "→ {}"
 msgstr "→ {}"
+
+msgid "Работа"
+msgstr "Work"
+
+msgid "Заказы клиентов"
+msgstr "Client orders"
+
+msgid "Заказы"
+msgstr "Orders"
+
+msgid "3D-ассеты"
+msgstr "3D assets"
+
+msgid "3D-проекты"
+msgstr "3D projects"
+
+msgid "Личное"
+msgstr "Personal"
+
+msgid "Учёба"
+msgstr "Study"
+
+msgid "Задачи: входящие → в работе → ревью → готово"
+msgstr "Tasks: inbox → in progress → review → done"
+
+msgid "Заявка → смета → работа → правки → сдано → оплачено"
+msgstr "Request → estimate → work → revisions → delivered → paid"
+
+msgid "Каждая строка — модель, этапы пайплайна по порядку"
+msgstr "Each row is a model, pipeline stages in order"
+
+msgid "Простые дела стикерами: по темам или по срокам"
+msgstr "Simple to-dos as stickers: by topic or by due date"
+
+msgid "Курсы и уроки: в планах → прохожу → пройдено"
+msgstr "Courses and lessons: planned → in progress → completed"
+
+msgid "В работе"
+msgstr "In progress"
+
+msgid "На ревью"
+msgstr "Review"
+
+msgid "Заявка"
+msgstr "Request"
+
+msgid "Смета"
+msgstr "Estimate"
+
+msgid "Правки"
+msgstr "Revisions"
+
+msgid "Сдано"
+msgstr "Delivered"
+
+msgid "Оплачено"
+msgstr "Paid"
+
+msgid "Референсы"
+msgstr "References"
+
+msgid "Блокаут"
+msgstr "Blockout"
+
+msgid "Скульпт"
+msgstr "Sculpt"
+
+msgid "Ретопология"
+msgstr "Retopology"
+
+msgid "Текстуры"
+msgstr "Textures"
+
+msgid "Рендер"
+msgstr "Render"
+
+msgid "Надо сделать"
+msgstr "To do"
+
+msgid "Делаю"
+msgstr "Doing"
+
+msgid "В планах"
+msgstr "Planned"
+
+msgid "Прохожу"
+msgstr "In progress"
+
+msgid "Пройдено"
+msgstr "Completed"
+
+msgid "Документы"
+msgstr "Documents"
+
+msgid "Покупки"
+msgstr "Shopping"
+
+msgid "Звонки"
+msgstr "Calls"
+
+msgid "Здоровье"
+msgstr "Health"

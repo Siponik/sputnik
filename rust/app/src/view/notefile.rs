@@ -174,12 +174,7 @@ pub fn peek(app: &App, link: &str) -> (String, String, Vec<crate::MdRow>) {
     let rows = crate::notes::line_rows(&n.body).into_iter()
         .filter(|r| r.kind != "empty" && !(r.kind == "h1" && r.plain.trim() == n.title.trim()))
         .take(7)
-        .map(|r| crate::MdRow {
-            kind: ss(r.kind),
-            md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-            raw: ss(r.raw),
-            plain: ss(r.plain),
-        }).collect();
+        .map(super::md_row).collect();
     (n.title.clone(), dir, rows)
 }
 

@@ -14,6 +14,7 @@ export component GBtn inherits Rectangle {
     width: bt.preferred-width + 24px;
     border-radius: 6px;
     background: kind == "acc" ? (ba.has-hover ? G.accent-ink : G.accent) : (ba.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     border-width: kind == "sec" ? 1px : 0;
     border-color: G.line-strong;
     bt := Text { text: root.text; font-size: sm ? 12.5px : 13px; font-weight: kind == "acc" ? 600 : 500;
@@ -56,6 +57,7 @@ component SphNode inherits Rectangle {
             for l in root.lists: Rectangle {
                 height: 32px; border-radius: 6px;
                 background: la.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Kind { x: 6px; y: 8px; t: l.letter; }
                 Text { x: 30px; width: parent.width - 70px; text: l.name; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; overflow: elide; }
                 Text { x: parent.width - self.width - 6px; text: l.count; font-family: G.mono; font-size: 10.5px; color: G.muted; vertical-alignment: center; height: parent.height; }
@@ -123,6 +125,7 @@ component SphEditor inherits Rectangle {
                     if row.last && !root.adding: Rectangle {
                         width: at.preferred-width + 24px; border-radius: 8px; border-width: 1px; border-color: G.line;
                         background: aa.has-hover ? G.node-hover : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         at := Text { text: @tr("＋ Добавить"); font-size: 13px; color: #C9CAD0; horizontal-alignment: center; vertical-alignment: center; }
                         aa := TouchArea { clicked => { root.adding = true; } mouse-cursor: pointer; }
                     }

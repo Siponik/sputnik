@@ -174,6 +174,11 @@ pub struct LineRow {
     pub plain: String,
     /// С какого байта `raw` начинается видимое (после «# », «- [ ] »…).
     pub pre: usize,
+    /// Строка таблицы: номер первой строки таблицы и сколько в ней строк файла; не таблица — -1 и 0.
+    pub top: i32,
+    pub tn: i32,
+    /// У первой строки таблицы — вся таблица (строки файла через «\n»): окно рисует её одним блоком.
+    pub block: String,
 }
 
 /// То же, что `line_blocks`, плюс видимый текст и где он начинается в строке.
@@ -226,7 +231,7 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
         let pre = (rest.as_ptr() as usize).checked_sub(l.as_ptr() as usize).filter(|p| *p <= l.len()).unwrap_or(l.len());
         let plain = if kind == "code" { rest.to_string() } else { sputnik_core::mdline::plain(rest).text };
         in_table = matches!(kind, "table" | "tsep");
-        out.push(LineRow { kind: kind.to_string(), raw: l.to_string(), md, plain, pre });
+        out.push(LineRow { kind: kind.to_string(), raw: l.to_string(), md, plain, pre, top: -1, ..Default::default() });
     }
     // строка таблицы прямо над разделителем — заголовок
     for i in 1..out.len() {
@@ -234,27 +239,28 @@ pub fn line_rows(body: &str) -> Vec<LineRow> {
             out[i - 1].kind = "th".into();
         }
     }
+    // таблица целиком: подряд идущие строки таблицы
+    let is_t = |k: &str| matches!(k, "table" | "th" | "tsep");
+    let mut i = 0;
+    while i < out.len() {
+        if !is_t(&out[i].kind) { i += 1; continue; }
+        let mut j = i;
+        while j < out.len() && is_t(&out[j].kind) { j += 1; }
+        out[i].block = out[i..j].iter().map(|r| r.raw.as_str()).collect::<Vec<_>>().join("\n");
+        for r in &mut out[i..j] {
+            r.top = i as i32;
+            r.tn = (j - i) as i32;
+        }
+        i = j;
+    }
     out
 }
 
-/// Ячейки строки таблицы «| a | b |» — по отдельности (с «\|» внутри ячейки не путаемся).
-pub fn table_cells(raw: &str) -> Vec<String> {
-    let t = raw.trim();
-    let t = t.strip_prefix('|').unwrap_or(t);
-    let t = t.strip_suffix('|').unwrap_or(t);
-    let mut out = vec![];
-    let mut cur = String::new();
-    let mut esc = false;
-    for c in t.chars() {
-        if esc { cur.push(c); esc = false; continue; }
-        match c {
-            '\\' => { esc = true; cur.push(c); }
-            '|' => { out.push(cur.trim().to_string()); cur.clear(); }
-            _ => cur.push(c),
-        }
-    }
-    out.push(cur.trim().to_string());
-    out
+/// Строки таблицы, где строка `i`: (первая строка, сколько строк).
+pub fn table_at(body: &str, i: usize) -> Option<(usize, usize)> {
+    let rows = line_rows(body);
+    let r = rows.get(i)?;
+    (r.top >= 0).then_some((r.top as usize, r.tn as usize))
 }
 
 /// Клик по видимому тексту строки `i` (байт `at`): Ok(курсор в строке файла) или Err(ссылка).

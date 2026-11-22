@@ -73,6 +73,7 @@ component Check2 inherits Rectangle {
     height: 14px;
     border-radius: 4px;
     background: done ? #45464D : transparent;
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     border-width: done ? 0 : 1px;
     border-color: hot ? G.accent : #8A8C96;
     if done: Icon { name: "check"; width: 9px; x: 2.5px; y: 2.5px; c: G.ink; stroke-width: 2.2px; }
@@ -86,6 +87,7 @@ component DayRow inherits Rectangle {
     height: next ? 86px : 40px;
     border-radius: next ? 8px : 0;
     background: next ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     border-width: next ? 1px : 0;
     border-color: G.accent;
     ta := TouchArea { clicked => { S.open-task(item.list-id, item.id); } mouse-cursor: pointer; }
@@ -261,6 +263,7 @@ export component TodayPage inherits Rectangle {
             if S.more-y >= 0: Rectangle {
                 x: 12px; y: S.more-y * 1px; width: parent.width - 24px; height: 41px;
                 background: ma.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Text { x: 10px; text: S.more-n > 0 ? "+" + S.more-n : "−"; font-family: G.mono; font-size: 10.5px; color: #62646E; vertical-alignment: center; height: parent.height; }
                 if S.more-n > 0: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
                 if S.more-n == 0: Chev { x: 34px; y: 15px; up: true; }
@@ -271,6 +274,7 @@ export component TodayPage inherits Rectangle {
             if S.fold-y >= 0: Rectangle {
                 x: 12px; y: S.fold-y * 1px; width: parent.width - 24px; height: 41px;
                 background: fa.has-hover ? G.node-hover : transparent;
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Icon { name: "check"; x: 10px; width: 10px; y: 15.5px; c: #62646E; }
                 if !S.fold-open: Icon { x: 36px; y: 15px; width: 10px; name: "next"; c: #62646E; }
                 if S.fold-open: Chev { x: 34px; y: 15px; up: true; }
@@ -308,6 +312,7 @@ export component TodayPage inherits Rectangle {
                         width: ht.preferred-width + 24px;
                         border-radius: 16px;
                         background: h.done ? G.gold : (hp.has-hover ? G.node-hover : transparent);
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: h.done ? 0 : 1px;
                         border-color: #8A7424;
                         ht := Text {

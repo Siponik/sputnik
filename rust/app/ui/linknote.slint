@@ -2,83 +2,7 @@
 // ниже — плашки ссылок, клик открывает заметку. Одна на все окна с заметкой.
 // Пока поле не в фокусе, текст показан как markdown (заголовки, списки, жирный, ссылки); клик — правка.
 
-// Строка таблицы markdown: ячейки поровну по ширине, рамки как у нод; заголовок — жирнее и на подложке.
-export component TableRow inherits Rectangle {
-    in property <string> raw;
-    in property <bool> head;
-    in property <length> fs: 13.5px;
-    // в заметке ячейки правятся по клику
-    in property <bool> editable;
-    in-out property <int> edit-c: -1;
-    callback set(int, string);
-    callback add-row();
-    callback add-col();
-    property <[MdRow]> cells: S.table-cells(raw);
-    // все ячейки одной ширины; текст переносится, строка растёт по самой высокой ячейке
-    property <length> cw: root.width / max(1, root.cells.length);
-    out property <length> row-h: hl.preferred-height;
-    background: head ? G.bg : transparent;
-    border-width: 1px; border-color: G.line;
-    hl := HorizontalLayout {
-        spacing: 0; padding: 0;
-        for c[i] in root.cells: Rectangle {
-            width: root.cw;
-            min-height: root.fs * 1.4 + 10px;
-            if i > 0: Rectangle { x: 0; width: 1px; background: G.line; }
-            if i == root.edit-c: Rectangle { x: 1px; y: 1px; width: parent.width - 2px; height: parent.height - 2px; border-width: 1px; border-color: G.accent; border-radius: 2px; }
-            VerticalLayout {
-                padding-left: 9px; padding-right: 9px; padding-top: 5px; padding-bottom: 5px;
-                if i != root.edit-c: StyledText { width: root.cw - 18px; text: c.md; default-font-size: root.fs; default-color: root.head ? G.ink : #D4D5DA; link-color: G.accent; }
-                // правка ячейки прямо в таблице: Enter — готово (Shift+Enter — перенос), Tab — следующая ячейка,
-                // Ctrl+Enter — новая строка таблицы ниже, Esc — выйти
-                if i == root.edit-c: fs := FocusScope {
-                    height: ci.preferred-height;
-                    capture-key-pressed(e) => {
-                        if (e.text == Key.Return && e.modifiers.control) { root.done(i, ci.text, 0); root.add-row(); return accept; }
-                        if (e.text == Key.Return && !e.modifiers.shift) { root.done(i, ci.text, -1); return accept; }
-                        if (e.text == Key.Tab) { root.done(i, ci.text, e.modifiers.shift ? max(0, i - 1) : (i + 1 < root.cells.length ? i + 1 : 0)); return accept; }
-                        if (e.text == Key.Escape) { root.done(i, ci.text, -1); return accept; }
-                        reject
-                    }
-                    // раскладка: в прокрутке (ячейка растёт вместе со строкой таблицы, заметка прокручивается)
-                    ci := TextInput {
-                        width: root.cw - 18px; text: c.plain; single-line: false; wrap: word-wrap;
-                        font-size: root.fs; font-weight: root.head ? 600 : 400; color: G.ink;
-                        selection-background-color: G.accent.with-alpha(0.4);
-                        init => { self.focus(); self.set-selection-offsets(999999, 999999); }
-                        changed has-focus => { if (!self.has-focus && root.edit-c == i) { root.done(i, self.text, -1); } }
-                    }
-                }
-            }
-            // поверх текста: оформленный текст сам глотает клики
-            if root.editable && i != root.edit-c: TouchArea { mouse-cursor: MouseCursor.text; clicked => { root.edit-c = i; }
-                changed has-hover => { root.hovn = max(0, root.hovn + (self.has-hover ? 1 : -1)); } }
-        }
-    }
-    // наведение на строку: «+» справа — колонка, «+» снизу слева — строка ниже
-    property <int> hovn;
-    property <bool> show-plus: root.editable && (root.hovn > 0 || root.edit-c >= 0);
-    Rectangle {
-        visible: root.show-plus;
-        x: root.width - 9px; y: (root.height - 18px) / 2; width: 18px; height: 18px; border-radius: 9px;
-        background: pc.has-hover ? G.accent : G.node; border-width: 1px; border-color: pc.has-hover ? G.accent : G.line;
-        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pc.has-hover ? #1C1D21 : G.muted; }
-        pc := TouchArea { mouse-cursor: pointer; clicked => { root.add-col(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
-        Tip { text: @tr("Добавить колонку"); on: pc.has-hover; }
-    }
-    Rectangle {
-        visible: root.show-plus;
-        x: -9px; y: root.height - 9px; width: 18px; height: 18px; border-radius: 9px;
-        background: pr.has-hover ? G.accent : G.node; border-width: 1px; border-color: pr.has-hover ? G.accent : G.line;
-        Icon { name: "plus"; width: 10px; x: 4px; y: 4px; c: pr.has-hover ? #1C1D21 : G.muted; }
-        pr := TouchArea { mouse-cursor: pointer; clicked => { root.add-row(); } changed has-hover => { root.hovn += self.has-hover ? 1 : -1; } }
-        Tip { text: @tr("Добавить строку ниже"); on: pr.has-hover; }
-    }
-    function done(i: int, t: string, next: int) {
-        root.edit-c = next;
-        if (t != root.cells[i].plain) { root.set(i, t); }
-    }
-}
+import { TableBlock } from "mdtable.slint";
 
 export component MdLine inherits Rectangle {
     in property <MdRow> line;
@@ -86,8 +10,10 @@ export component MdLine inherits Rectangle {
     property <bool> h: line.kind == "h1" || line.kind == "h2" || line.kind == "h3";
     property <length> size: line.kind == "h1" ? fs * 1.45 : line.kind == "h2" ? fs * 1.25 : line.kind == "h3" ? fs * 1.1 : fs;
     property <length> ind: line.kind == "quote" ? 12px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 16px : 0);
-    height: line.kind == "empty" ? fs * 0.8 : (line.kind == "hr" ? 12px : (line.kind == "fence" || line.kind == "tsep" ? (line.kind == "tsep" ? 0 : 2px) : (line.kind == "table" || line.kind == "th" ? tr.row-h - 1px : st.preferred-height + (h ? 4px : 2px))));
-    tr := TableRow { visible: line.kind == "table" || line.kind == "th"; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; }
+    // таблицу целиком рисует её первая строка, остальные строки таблицы — нулевой высоты
+    property <bool> tbl: line.top >= 0;
+    height: root.tbl ? (line.block != "" ? tr.full-h + 4px : 0px) : (line.kind == "empty" ? fs * 0.8 : (line.kind == "hr" ? 12px : (line.kind == "fence" ? 2px : st.preferred-height + (h ? 4px : 2px))));
+    tr := TableBlock { visible: line.block != ""; y: 2px; block: line.block; line: line.top; fs: root.fs * 0.95; avail: root.width; }
     if line.kind == "hr": Rectangle { y: 6px; height: 1px; background: G.line; }
     if line.kind == "quote": Rectangle { x: 0; width: 3px; border-radius: 1.5px; background: G.accent; }
     if line.kind == "li": Rectangle { x: 4px; y: size * 0.6 - 2px; width: 5px; height: 5px; border-radius: 2.5px; background: G.muted; }
@@ -97,7 +23,7 @@ export component MdLine inherits Rectangle {
     }
     if line.kind == "code": Rectangle { background: G.bg; border-radius: 4px; }
     st := StyledText {
-        visible: line.kind != "empty" && line.kind != "hr" && line.kind != "fence" && line.kind != "table" && line.kind != "th" && line.kind != "tsep";
+        visible: line.kind != "empty" && line.kind != "hr" && line.kind != "fence" && !root.tbl;
         x: root.ind + (line.kind == "code" ? 6px : 0); y: h ? 2px : 1px; width: parent.width - self.x;
         text: line.md;
         default-font-size: root.size;

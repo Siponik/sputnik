@@ -156,12 +156,7 @@ pub fn render(app: &App, u: &Ui, g: &S) {
             rows.remove(i);
         }
     }
-    let rows: Vec<crate::MdRow> = rows.into_iter().skip_while(|r| r.kind == "empty").filter(|r| r.kind != "fence").take(80).map(|r| crate::MdRow {
-        kind: ss(r.kind),
-        raw: ss(r.raw),
-        md: slint::StyledText::from_markdown(&r.md).unwrap_or_else(|_| slint::StyledText::from_plain_text(&r.md)),
-        plain: ss(r.plain),
-    }).collect();
+    let rows: Vec<crate::MdRow> = rows.into_iter().skip_while(|r| r.kind == "empty").filter(|r| r.kind != "fence").take(80).map(super::md_row).collect();
     g.set_graph_sel_more(ss(""));
     g.set_graph_sel_lines(model(rows));
     let all: Vec<usize> = near.iter().copied().filter(|&j| !ns[j].tag && !ns[j].file).collect();

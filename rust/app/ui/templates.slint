@@ -14,6 +14,7 @@ component Chip inherits Rectangle {
     border-radius: 6px; border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent.transparentize(0.88) : (ta.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     ct := Text { text: root.text; color: on ? G.ink : #A3A5AE; font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
     ta := TouchArea { clicked => { root.clicked(); } mouse-cursor: pointer; }
 }
@@ -46,6 +47,7 @@ export component Templates inherits Overlay {
                 height: 52px; border-radius: 8px;
                 border-width: t.on ? 1px : 0; border-color: G.accent;
                 background: t.on ? G.accent-wash : (la.has-hover ? G.node-hover : transparent);
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 Rectangle { x: 12px; y: 15px; width: 6px; height: 6px; border-radius: 3px; background: t.hue; }
                 Text { x: 24px; y: 8px; width: parent.width - 32px; text: t.label; color: G.ink; font-size: 13px; font-weight: 600; overflow: elide; }
                 Text { x: 12px; y: 30px; width: parent.width - 20px; text: t.hint.to-uppercase(); font-family: G.mono; font-size: 9px; letter-spacing: 1.2px; color: #7A7C86; overflow: elide; }

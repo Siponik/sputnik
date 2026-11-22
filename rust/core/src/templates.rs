@@ -104,7 +104,7 @@ pub fn templates_from(lay: &Value) -> Vec<Value> {
         } else {
             m.insert("changed".into(), json!(false));
         }
-        out.push(Value::Object(m));
+        out.push(shown(Value::Object(m)));
     }
     for (k, tt) in o(&lay["templates"]) {
         if !tt.is_object() || t(&tt["removed"]) || a(&tt["cols"]).is_empty() {
@@ -116,9 +116,38 @@ pub fn templates_from(lay: &Value) -> Vec<Value> {
         m.insert("hint".into(), json!(a(&tt["cols"]).iter().map(|c| text(&c["name"])).collect::<Vec<_>>().join(" → ")));
         extend(&mut m, &pick(&spread(&[&json!({"view": "kanban", "fields": []}), tt])));
         m.insert("mine".into(), json!(true));
-        out.push(Value::Object(m));
+        out.push(shown(Value::Object(m)));
     }
     out
+}
+
+/// Названия встроенных шаблонов и колонок — на языке интерфейса. Переводятся только точные
+/// стандартные названия («Входящие», «В работе»…); свои, переименованные — как есть. В слой не пишется.
+fn shown(mut t0: Value) -> Value {
+    if let Some(m) = t0.as_object_mut() {
+        for k in ["name", "title", "hint"] {
+            if let Some(x) = m.get(k).and_then(|x| x.as_str()) {
+                let v = crate::i18n::tr(x).to_string();
+                m.insert(k.into(), json!(v));
+            }
+        }
+        if let Some(c) = m.get("cols").cloned() {
+            m.insert("cols".into(), shown_cols(c));
+        }
+    }
+    t0
+}
+
+fn shown_cols(mut cols: Value) -> Value {
+    if let Some(v) = cols.as_array_mut() {
+        for c in v.iter_mut() {
+            if let Some(n) = c.get("name").and_then(|x| x.as_str()) {
+                let t1 = crate::i18n::tr(n).to_string();
+                c["name"] = json!(t1);
+            }
+        }
+    }
+    cols
 }
 
 /// Шаблон по id; неизвестный — «Работа».
@@ -156,7 +185,7 @@ pub fn board_of(list_id: &str, lay: &Value) -> Value {
     let view = if !l["view"].is_null() { l["view"].clone() } else if !base["view"].is_null() { base["view"].clone() } else { json!("kanban") };
     let mut m = o(&base).clone();
     m.insert("view".into(), view);
-    m.insert("cols".into(), cols);
+    m.insert("cols".into(), shown_cols(cols));
     m.insert("fields".into(), fields);
     m.insert("own".into(), json!(is_own(l)));
     m.insert("base".into(), base);

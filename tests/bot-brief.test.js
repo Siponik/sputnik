@@ -19,22 +19,32 @@ function store(users) {
 const tgLog = () => { const calls = []; return { calls, tg: async (method, body) => { calls.push({ method, ...body }); return { ok: true }; } }; };
 // 27.10.2026 — вторник; время по Москве (UTC+3).
 const msk = (hhmm, day = '2026-10-27') => Date.parse(`${day}T${hhmm}:00+03:00`);
-const NEWS = { date: '2026-10-27', count: 12, top: [{ title: 'Blender 5.0', url: 'https://x/1' }, { title: 'Steam <осень>', url: 'https://x/2' }], dota: { stage: 'big', title: 'Патч 7.42', url: 'https://d' } };
+const NEWS = { date: '2026-10-27', count: 12, top: [{ title: 'Blender 5.0', url: 'https://x/1', sec: 'cg' }, { title: 'Steam <осень>', url: 'https://x/2' }], dota: { stage: 'big', title: 'Патч 7.42', url: 'https://d', points: ['Новый герой'] } };
 const state = { at: msk('07:00'), today: [{ title: 'Отправить рендер', due: '2026-10-27', time: '11:00' }, { title: 'Купить корм', due: '2026-10-28' }] };
 
 test('сводка: задачи дня, новости со ссылками, кнопка; HTML экранируется', () => {
   const { text, markup } = briefMessage(state, NEWS, 'Europe/Moscow', msk('08:00'));
-  assert.match(text, /Спутник · утро<\/b> · 27\.10/);
-  assert.match(text, /11:00 Отправить рендер/);
+  assert.match(text, /СПУТНИК · УТРО<\/b>\n<code>ВТ · 27 ОКТЯБРЯ<\/code>/);
+  assert.match(text, /<code>11:00<\/code>  Отправить рендер/);
+  assert.match(text, /01 · СЕГОДНЯ<\/b> <code>1<\/code>/);
   assert.doesNotMatch(text, /Купить корм/);
-  assert.match(text, /Новости · 12/);
-  assert.match(text, /Dota 2: Патч 7\.42/);
+  assert.match(text, /02 · НОВОСТИ<\/b> <code>12<\/code>/);
+  assert.match(text, /DOTA 2 · БОЛЬШОЕ ОБНОВЛЕНИЕ[\s\S]*<b>Патч 7\.42<\/b>\n— Новый герой\n<a href="https:\/\/d">Открыть патчноут/);
   assert.match(text, /Steam &lt;осень&gt;/);
-  assert.equal(markup.inline_keyboard[0][0].text, 'Открыть новости');
+  assert.equal(markup.inline_keyboard[0][0].text, '📰 Все новости');
+  assert.equal(markup.inline_keyboard[0][1].url, 'https://d');
+  assert.match(text, /<code>CG   <\/code> <a href="https:\/\/x\/1">Blender 5\.0<\/a>/);
+  // Dota «со звездой» (дни 3–4) — строкой в новостях, без ноды и кнопки
+  const star = briefMessage(state, { ...NEWS, dota: { ...NEWS.dota, stage: 'star' } }, 'Europe/Moscow', msk('08:00'));
+  assert.doesNotMatch(star.text, /БОЛЬШОЕ ОБНОВЛЕНИЕ/);
+  assert.match(star.text, /<code>DOTA ✦<\/code> <a href="https:\/\/d">Патч 7\.42/);
+  assert.equal(star.markup.inline_keyboard[0].length, 1);
+  // пустой день
+  assert.match(briefMessage({ today: [] }, null, 'Europe/Moscow', msk('08:00')).text, /Задач на сегодня нет/);
   // вчерашние — с пометкой, старше двух дней — без новостей
   assert.match(newsLines({ ...NEWS, date: '2026-10-26' }, '2026-10-27'), /вчерашние/);
   const old = briefMessage(state, { ...NEWS, date: '2026-10-20' }, 'Europe/Moscow', msk('08:00'));
-  assert.doesNotMatch(old.text, /Новости/);
+  assert.doesNotMatch(old.text, /НОВОСТИ|DOTA/);
   assert.equal(old.markup, null);
 });
 
@@ -81,7 +91,7 @@ test('/brief: сейчас, время, будни, пауза', async () => {
   const msg = (text) => ({ message: { chat: { id: 5, type: 'private' }, from: { first_name: 'Аня' }, text } });
   const ctx = { store: s, tg, news: async () => NEWS, now: msk('12:00') };
   await onUpdate(msg('/brief'), ctx);
-  assert.match(calls.at(-1).text, /Спутник · утро/);
+  assert.match(calls.at(-1).text, /СПУТНИК · УТРО/);
   await onUpdate(msg('/brief 7:30'), ctx);
   assert.match(calls.at(-1).text, /каждый день в 7:30/);
   assert.equal(s.briefMap.get('5').at, 450);

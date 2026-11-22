@@ -4,7 +4,8 @@ import { G } from "theme.slint";
 import { Node, Mono, Button, Field, Empty, IconBtn, Link, Seg, Brackets, Icon, Sat, ScrollView, Tip, Pop } from "kit.slint";
 import { S, NoteRow, TreeRow, MdRow, GDot, GLine } from "store.slint";
 import { CanvasView, CvCam } from "canvas.slint";
-import { MdLine, TableRow } from "linknote.slint";
+import { MdLine } from "linknote.slint";
+import { TableBlock } from "mdtable.slint";
 import { GraphPage, ModeSwitch } from "graph.slint";
 
 // Строка заметки: оформлена сразу; строка с курсором показывает разметку и правится.
@@ -14,6 +15,8 @@ export component LiveLine inherits Rectangle {
     in property <int> caret: -1;
     in property <float> zoom: 1;
     in property <bool> has-link;
+    // в заметке правят какую-то строку
+    in property <bool> line-edit;
     callback pick();
     callback commit(string);
     callback split(string, int);
@@ -24,7 +27,6 @@ export component LiveLine inherits Rectangle {
     callback pick-at(int);
     callback toggle();
     callback focus-mode();
-    callback add-col();
     // набор в строке (заметка задачи сохраняет сразу) и клик по ссылке в оформленном тексте
     callback typed(string);
     callback linked(string);
@@ -45,14 +47,16 @@ export component LiveLine inherits Rectangle {
     property <length> fs: (line.kind == "h1" ? 22px : line.kind == "h2" ? 17.5px : line.kind == "h3" ? 15.5px : 14.5px) * zoom;
     property <length> pad: line.kind == "h1" ? 14px : line.kind == "h2" ? 10px : line.kind == "h3" ? 6px : 3px;
     property <length> ind: line.kind == "quote" ? 14px : (line.kind == "li" || line.kind == "todo" || line.kind == "done" ? 18px : (line.kind == "code" ? 12px : 0));
-    property <bool> tbl: !editing && (line.kind == "table" || line.kind == "th");
-    height: line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (line.kind == "tsep" && !editing ? 0px : (root.tbl ? tbr.row-h - 1px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px))));
-    tbr := TableRow { visible: root.tbl; y: 0; height: self.row-h; raw: line.raw; head: line.kind == "th"; fs: root.fs * 0.95; editable: true;
-        set(c, t) => { root.commit(S.table-set(line.raw, c, t)); }
-        add-row => { root.commit(line.raw + "\n" + S.table-blank(line.raw)); }
-        add-col => { root.add-col(); }
+    // строка таблицы: таблицу целиком рисует её первая строка, остальные — нулевой высоты
+    // таблицы правятся ячейками только в «Знаниях»; в заметке задачи строка таблицы правится как текст
+    in property <bool> table-edit;
+    property <bool> tbl: line.top >= 0 && (root.table-edit || !editing);
+    property <bool> thead: line.block != "";
+    height: root.tbl ? (root.thead ? tb.full-h : 0px) : (line.kind == "empty" && !editing ? 12px * zoom : (line.kind == "fence" && !editing ? 6px : (line.kind == "hr" && !editing ? 18px : (editing ? ed.preferred-height : st.preferred-height) + pad + 5px)));
+    tb := TableBlock { visible: root.thead; x: -20px; y: 0; block: root.thead ? line.block : ""; line: line.top; fs: root.fs * 0.95; avail: root.width; editable: root.table-edit; line-edit: root.line-edit;
+        exit(d) => { root.move(line.raw, d < 0 ? -1 : line.tn, 0); }
     }
-    ta := TouchArea { enabled: !root.tbl || S.ctrl-held; mouse-cursor: MouseCursor.text; clicked => {
+    ta := TouchArea { enabled: !root.tbl || (!root.table-edit && root.thead); mouse-cursor: MouseCursor.text; clicked => {
         if ((line.kind == "todo" || line.kind == "done") && self.mouse-x < root.ind) { root.toggle(); } else { root.pick(); }
     }
         // правый клик — меню правки (G-стиль): строка становится редактируемой, выделение сохраняется
@@ -79,7 +83,7 @@ export component LiveLine inherits Rectangle {
         y: pad; height: parent.height - pad - 5px; border-radius: 6px; border-width: 1px; border-color: G.line; background: G.bg;
     }
     st := StyledText {
-        visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "tsep" && !root.tbl;
+        visible: !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && !root.tbl;
         x: ind; y: pad; width: root.has-link ? min(self.preferred-width, parent.width - ind) : parent.width - ind;
         text: line.md;
         default-font-size: fs;
@@ -92,7 +96,7 @@ export component LiveLine inherits Rectangle {
     // Клик по оформленному тексту: невидимое поле с тем же видимым текстом поверх — оно знает, в какую букву попали;
     // Rust переводит это место в место в строке файла (или открывает ссылку). StyledText сам клики глотает.
     // в строке со ссылками сверху оформленный текст: ссылка — рука и переход по клику; Ctrl+клик или клик правее текста — правка
-    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img" && line.kind != "tsep" && !root.tbl && (!root.has-link || S.ctrl-held): hit := TextInput {
+    if !editing && line.kind != "empty" && line.kind != "fence" && line.kind != "hr" && line.kind != "img" && !root.tbl && (!root.has-link || S.ctrl-held): hit := TextInput {
         x: ind; y: pad; width: parent.width - ind;
         text: line.plain;
         read-only: true;
@@ -212,8 +216,10 @@ export component LiveLine inherits Rectangle {
         ed.focus();
         if (caret >= 0) { ed.set-selection-offsets(caret, caret); } else { ed.set-selection-offsets(999999, 999999); }
     }
-    changed editing => { if (editing) { start(); } }
-    init => { if (editing) { start(); } }
+    // таблица правится ячейками: строку таблицы как текст не открываем
+    function to-table() { S.tk-line = line.top; S.tk-r = 0; S.tk-n += 1; root.leave(line.raw); }
+    changed editing => { if (editing && root.tbl && root.table-edit) { root.to-table(); } else if (editing) { start(); } }
+    init => { if (editing && root.tbl && root.table-edit) { root.to-table(); } else if (editing) { start(); } }
 }
 
 // Строка дерева G_Notes: 28 px, отступ 8 + 14 на уровень, стрелка ▾/▸ у папок, у корневой папки — цветная точка,
@@ -226,6 +232,7 @@ component TreeLine inherits Rectangle {
     Rectangle {
         x: 6px; width: parent.width - 12px; border-radius: 6px; clip: true;
         background: root.on ? G.accent-wash : (ta.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         if root.on: Rectangle { x: 0; width: 2px; background: G.accent; }
         HorizontalLayout {
             padding-left: 8px + r.depth * 14px; padding-right: 10px; spacing: 7px;
@@ -258,6 +265,7 @@ component NoteList inherits VerticalLayout {
     for r in rows: Rectangle {
         height: r.path == "" ? 30px : 30px;
         background: r.path != "" && r.path == cur ? G.accent-wash : (r.path != "" && na.has-hover ? G.node-hover : transparent);
+        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
         if r.path != "" && r.path == cur: Rectangle { x: 0; width: 2px; background: G.accent; }
         if r.path == "": Rectangle { x: 14px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: #7C7E88; }
         if r.path == "": Text { x: 28px; y: 6px; height: 22px; text: r.title; font-family: G.mono; font-size: 10px; letter-spacing: 1.4px; color: #8A8C96; vertical-alignment: center; overflow: elide; width: parent.width - 60px; }
@@ -318,6 +326,7 @@ export component NotesPage inherits Rectangle {
         Rectangle {
             x: parent.width - 42px; y: 55px; width: 32px; height: 32px; border-radius: 8px;
             background: pa.has-hover ? G.accent.brighter(0.1) : G.accent;
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             Text { text: "＋"; color: G.on-accent; font-size: 16px; font-weight: 600; horizontal-alignment: center; vertical-alignment: center; }
             pa := TouchArea { mouse-cursor: pointer; clicked => { S.menu-ctx("newnote", root.q != "" ? root.q : "Новая заметка", self.absolute-position.x, self.absolute-position.y + self.height + 4px); } }
             Tip { text: @tr("Новая заметка, холст или папка"); on: pa.has-hover; }
@@ -383,6 +392,7 @@ export component NotesPage inherits Rectangle {
                             height: 30px; width: min(tt.preferred-width + 50px, 220px);
                             border-radius: 7px;
                             background: t.cur ? #FFFFFFEB : (ta.has-hover ? #FFFFFF1A : transparent);
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             tt := Text { x: 12px; width: parent.width - 38px; text: t.title; font-size: 13px; font-weight: t.cur ? 500 : 400;
                                 color: t.cur ? G.head-main.darker(0.4) : #FFFFFFD1; vertical-alignment: center; overflow: elide; }
                             if t.cur && S.note-dirty: Text { x: parent.width - 26px; width: 18px; text: "●"; font-size: 9px; color: G.head-main; vertical-alignment: center; horizontal-alignment: center; }
@@ -466,6 +476,7 @@ export component NotesPage inherits Rectangle {
                         for p in S.note-props: Rectangle {
                             width: pt.preferred-width + 18px; height: 22px; border-radius: 11px;
                             background: p.cur ? G.accent-wash : G.bg;
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             border-width: 1px; border-color: p.cur ? G.accent-line : G.line;
                             pt := Text { text: p.title; font-size: 11.5px; color: p.cur ? G.accent-ink : (p.path == "tag" ? G.accent : G.muted); horizontal-alignment: center; vertical-alignment: center; }
                         }
@@ -477,20 +488,34 @@ export component NotesPage inherits Rectangle {
                     has-link: i < S.note-line-links.length && S.note-line-links[i];
                     zoom: root.zen ? 1.12 : 1;
                     editing: i == root.edit-i;
+                    line-edit: root.edit-i >= 0;
+                    table-edit: true;
                     caret: root.caret;
                     pick => { root.caret = -1; root.edit-i = i; }
                     leave(t) => { if (t != b.raw) { S.note-line-set(i, t); } if (root.edit-i == i) { root.edit-i = -1; } S.note-commit(); }
                     undo(r) => { S.note-undo(r); }
                     commit(t) => { if (t != b.raw) { S.note-line-set(i, t); } S.note-commit(); }
                     split(t, at) => { root.caret = S.note-line-split(i, t, at); root.edit-i = i + 1; }
-                    join(t) => { if (i > 0) { if (t != b.raw) { S.note-line-set(i, t); } root.caret = S.note-line-join(i); root.edit-i = i - 1; } }
+                    join(t) => {
+                        if (i > 0 && S.note-lines[i - 1].top >= 0) {
+                            // над строкой таблица: Backspace в начале строки — в последнюю ячейку таблицы
+                            if (t != b.raw) { S.note-line-set(i, t); }
+                            root.edit-i = -1; S.tk-line = S.note-lines[i - 1].top; S.tk-r = 999; S.tk-n += 1;
+                        } else if (i > 0) { if (t != b.raw) { S.note-line-set(i, t); } root.caret = S.note-line-join(i); root.edit-i = i - 1; }
+                    }
                     move(t, d, at) => {
                         if (t != b.raw) { S.note-line-set(i, t); }
-                        if (i + d >= 0 && i + d < S.note-lines.length) { root.caret = S.note-col(i, t, at, i + d); root.edit-i = i + d; }
+                        if (i + d >= 0 && i + d < S.note-lines.length && S.note-lines[i + d].top >= 0 && S.note-lines[i + d].top != b.top) {
+                            // стрелкой в таблицу: сверху — в первую строку, снизу — в последнюю
+                            root.edit-i = -1; S.tk-line = S.note-lines[i + d].top; S.tk-r = d > 0 ? 0 : 999; S.tk-n += 1;
+                        } else if (i + d >= 0 && i + d < S.note-lines.length) { root.caret = S.note-col(i, t, at, i + d); root.edit-i = i + d; }
+                        else if (d > 0 && b.top >= 0) {
+                            // из таблицы в самом конце заметки — новая пустая строка под ней
+                            S.note-line-set(S.note-lines.length, ""); root.caret = -1; root.edit-i = S.note-lines.length - 1;
+                        }
                     }
                     pick-at(at) => { root.caret = S.note-hit(i, at, S.ctrl-held); if (root.caret >= 0) { root.edit-i = i; } else { root.edit-i = -1; } }
                     toggle => { S.note-todo(i); }
-                    add-col => { S.note-table-col(i); }
                     focus-mode => { root.zen = !root.zen; }
                     linked(l) => { S.note-link(l); }
                 }
@@ -585,6 +610,7 @@ export component NotesPage inherits Rectangle {
                     Rectangle {
                         x: parent.width - self.width - 6px; y: 5px; width: lk.preferred-width + 18px; height: 22px; border-radius: 5px;
                         background: la2.has-hover ? G.accent-line : transparent; border-width: 1px; border-color: G.accent-line;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         lk := Text { text: @tr("Связать"); font-size: 11.5px; color: G.accent; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
                         la2 := TouchArea { mouse-cursor: pointer; clicked => { S.note-mention-link(l.path); } }
                     }

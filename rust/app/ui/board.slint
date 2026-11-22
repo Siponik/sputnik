@@ -1,7 +1,7 @@
 // «Доска»: слева списки по сферам, справа доска выбранного списка в одном из четырёх видов:
 // канбан (колонки, перетаскивание), конвейер (строка = ассет, дорожка этапов), стикеры (темы), список.
 import { G } from "theme.slint";
-import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire, Pop } from "kit.slint";
+import { Sat, Node, Mono, Button, Pill, Check, Field, Empty, IconBtn, Seg, Link, Brackets, Icon, Chev, ScrollView, Socket, Wire, Pop, GSeg } from "kit.slint";
 import { S, Card, Column, PipeRow, SideRow } from "store.slint";
 import { Pipe } from "pipe.slint";
 import { SpheresPage, ArchSpheres } from "spheres.slint";
@@ -42,6 +42,7 @@ component SideCol inherits Rectangle {
                     height: !self.visible ? 0 : r.header ? 26px : 30px;
                     border-radius: 6px;
                     background: r.active && !S.sph-open && !S.arch-open ? G.accent-wash : (sa.has-hover && !r.header ? G.node-hover : transparent);
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     border-width: r.active && !S.sph-open && !S.arch-open ? 1px : 0;
                     border-color: G.accent;
                     if r.header: Rectangle {
@@ -49,6 +50,7 @@ component SideCol inherits Rectangle {
                         property <bool> on: S.sph-open && S.sph-edit == r.id;
                         border-radius: 6px;
                         background: ha.has-hover || self.on ? G.accent-wash : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: ha.has-hover || self.on ? 1px : 0; border-color: G.accent;
                         ha := TouchArea { clicked => { S.sph-show(r.id); } mouse-cursor: pointer;
                             pointer-event(e) => { if (e.button == PointerEventButton.right && e.kind == PointerEventKind.down) { S.menu-ctx("sphere", r.id, self.absolute-position.x + self.mouse-x, self.absolute-position.y + self.mouse-y); } } }
@@ -217,6 +219,7 @@ component Kanban inherits Rectangle {
                                 changed ins-after => { if (self.ins-after && self.visible) { root.drop-i = k + 1; } }
                                 border-radius: 8px;
                                 background: lead ? G.accent-wash : (ca.has-hover ? G.node-hover : #2A2B30);
+                                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                                 border-width: 1px;
                                 border-color: root.dragging && root.drag-id == c.id ? G.accent : c.sel ? G.accent : lead ? G.accent : G.line;
                                 opacity: root.dragging && root.drag-id == c.id ? 0.4 : (c.sel && root.fly-on ? 0 : 1);
@@ -468,6 +471,7 @@ component Stickers inherits Rectangle {
                             x: 14px; y: parent.height - 32px; width: 18px; height: 18px; border-radius: 9px;
                             border-width: 1.5px; border-color: ink;
                             background: it.card.done ? ink : transparent;
+                            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                             Icon { name: "check"; width: 10px; x: 4px; y: 4px; visible: it.card.done; c: tone; stroke-width: 2.2px; }
                             TouchArea { clicked => { S.toggle(S.board-id, it.card.id); } mouse-cursor: pointer; }
                         }
@@ -555,6 +559,7 @@ component ListView inherits Rectangle {
                     for c in sec.cards: Rectangle {
                         height: 45px;
                         background: ra.has-hover ? G.node-hover : transparent;
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         ra := TouchArea { clicked => { S.open-task(S.board-id, c.id); } mouse-cursor: pointer; }
                         Rectangle {
                             x: 12px; y: 15px; width: 14px; height: 14px; border-radius: 3px;
@@ -605,30 +610,6 @@ component ListView inherits Rectangle {
     Brackets { x: lv.x; y: lv.y; width: lv.width; height: lv.height; }
 }
 
-// Переключатель «Системы G»: активный — светлая заливка.
-component GSeg inherits Rectangle {
-    in property <[string]> items;
-    in property <int> current;
-    callback picked(int);
-    y: 7px; height: 34px;
-    width: gl.preferred-width + 8px;
-    border-radius: 8px;
-    border-width: 1px;
-    border-color: G.line;
-    gl := HorizontalLayout {
-        x: 4px;
-        padding-top: 3px; padding-bottom: 3px;
-        spacing: 2px;
-        for v[i] in root.items: Rectangle {
-            width: t.preferred-width + 20px;
-            border-radius: 5px;
-            background: i == root.current ? G.ink : (a.has-hover ? G.node-hover : transparent);
-            t := Text { text: v; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.2px; color: i == root.current ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
-            a := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
-        }
-    }
-}
-
 component Gallery inherits Rectangle {
     ScrollView {
         VerticalLayout {
@@ -653,6 +634,7 @@ component Gallery inherits Rectangle {
                     border-width: 1px;
                     border-color: S.pipe-stage == i ? G.accent : G.line;
                     background: S.pipe-stage == i ? G.accent-wash : (ba.has-hover ? G.node-hover : transparent);
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     bt := Text { text: st; font-size: 13px; color: G.ink; horizontal-alignment: center; vertical-alignment: center; }
                     ba := TouchArea { clicked => { S.pipe-stage-set(i); } mouse-cursor: pointer; }
                 }
@@ -718,7 +700,7 @@ component Archive inherits Rectangle {
         HorizontalLayout {
             x: 16px; y: 46px; height: 32px; width: parent.width - 32px;
             spacing: 8px;
-            GSeg { items: [@tr("ЗАДАЧИ · {}", S.arch-tn), @tr("СФЕРЫ И СПИСКИ · {}", S.arch-n)]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
+            GSeg { y: 7px; items: [@tr("ЗАДАЧИ · {}", S.arch-tn), @tr("СФЕРЫ И СПИСКИ · {}", S.arch-n)]; current: S.arch-tab; picked(i) => { S.arch-tab-set(i); } }
             Field { width: 260px; font-size: 13px; placeholder: @tr("Найти в архиве"); edited(t) => { S.arch-q-set(t); } }
             for o in S.arch-spheres: Rectangle {
                 width: ot.preferred-width + (o.id == "" ? 26px : 40px);
@@ -726,6 +708,7 @@ component Archive inherits Rectangle {
                 border-width: 1px;
                 border-color: o.on ? G.accent : G.line;
                 background: o.on ? G.accent-wash : (oa.has-hover ? G.node-hover : transparent);
+                animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                 if o.id != "": Rectangle { x: 12px; y: 13px; width: 6px; height: 6px; border-radius: 2px; background: o.hue; }
                 ot := Text { x: o.id == "" ? 13px : 25px; text: o.label; font-size: 13px; color: G.ink; vertical-alignment: center; height: parent.height; }
                 oa := TouchArea { clicked => { S.arch-sphere-set(o.id); } mouse-cursor: pointer; }
@@ -771,8 +754,9 @@ export component BoardPage inherits Rectangle {
     property <bool> menu;
     property <bool> renaming;
     SideCol { x: 8px; y: 8px; height: parent.height - 16px; }
-    if S.arch-open: Archive { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; }
-    if S.sph-open && !S.arch-open: SpheresPage { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; }
+    // архив и сферы открываются поверх доски — проявляются и чуть вырастают (Pop)
+    if S.arch-open: Pop { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; Archive { } }
+    if S.sph-open && !S.arch-open: Pop { x: 236px; y: 8px; width: parent.width - 244px; height: parent.height - 16px; SpheresPage { } }
     area := Rectangle {
         visible: !S.arch-open && !S.sph-open;
         x: 236px;
@@ -815,30 +799,16 @@ export component BoardPage inherits Rectangle {
                 if S.board-view != "pipe" && S.board-view != "stickers": Text { text: S.board-tpl; font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; color: #8A8C96; vertical-alignment: center; }
                 if S.board-view == "pipe": Text { text: S.pipe-info; font-size: 12.5px; color: #A3A5AE; vertical-alignment: center; }
                 if S.board-view == "pipe": Rectangle { width: 1px; height: 20px; y: 14px; background: G.line; }
-                if S.board-view == "stickers": GSeg { items: [@tr("ПО ТЕМАМ"), @tr("ПО СРОКАМ")]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
-                if S.board-view == "pipe": GSeg { items: [@tr("СТРОКИ"), @tr("ГАЛЕРЕЯ")]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
-                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { items: [@tr("ПО ПРОЕКТАМ"), @tr("ПО ЭТАПАМ")]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
+                if S.board-view == "stickers": GSeg { y: 7px; items: [@tr("ПО ТЕМАМ"), @tr("ПО СРОКАМ")]; current: S.stk-by == "due" ? 1 : 0; picked(i) => { S.stk-by-set(i == 1 ? "due" : "topic"); } }
+                if S.board-view == "pipe": GSeg { y: 7px; items: [@tr("СТРОКИ"), @tr("ГАЛЕРЕЯ")]; current: S.pipe-gallery ? 1 : 0; picked(i) => { S.pipe-gallery-set(i == 1); } }
+                if S.board-view == "pipe" && !S.pipe-gallery: GSeg { y: 7px; items: [@tr("ПО ПРОЕКТАМ"), @tr("ПО ЭТАПАМ")]; current: S.pipe-by == "stage" ? 1 : 0; picked(i) => { S.pipe-by-set(i == 1 ? "stage" : "project"); } }
                 Rectangle { }
                 if S.archived > 0: Text { text: @tr("В АРХИВЕ · {}", S.archived); font-family: G.mono; font-size: 9.5px; letter-spacing: 1.3px; vertical-alignment: center; color: #62646E; }
-                Rectangle {
-                    y: 7px; height: 34px;
-                    width: vs.preferred-width + 8px;
-                    border-radius: 8px;
-                    border-width: 1px;
-                    border-color: G.line;
-                    vs := HorizontalLayout {
-                        x: 4px;
-                        padding-top: 3px; padding-bottom: 3px;
-                        spacing: 2px;
-                        for v[i] in [@tr("КАНБАН"), @tr("КОНВЕЙЕР"), @tr("СТИКЕРЫ"), @tr("СПИСОК")]: Rectangle {
-                            property <bool> on: (S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0) == i;
-                            width: vt.preferred-width + 20px;
-                            border-radius: 5px;
-                            background: on ? G.ink : (va.has-hover ? G.node-hover : transparent);
-                            vt := Text { text: v; font-family: G.mono; font-size: 10.5px; font-weight: 500; letter-spacing: 1.2px; color: on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; }
-                            va := TouchArea { clicked => { S.set-view(i == 1 ? "pipe" : i == 2 ? "stickers" : i == 3 ? "list" : "kanban"); } mouse-cursor: pointer; }
-                        }
-                    }
+                GSeg {
+                    y: 7px;
+                    items: [@tr("КАНБАН"), @tr("КОНВЕЙЕР"), @tr("СТИКЕРЫ"), @tr("СПИСОК")];
+                    current: S.board-view == "pipe" ? 1 : S.board-view == "stickers" ? 2 : S.board-view == "list" ? 3 : 0;
+                    picked(i) => { S.set-view(i == 1 ? "pipe" : i == 2 ? "stickers" : i == 3 ? "list" : "kanban"); }
                 }
             }
         }
@@ -880,6 +850,7 @@ export component BoardPage inherits Rectangle {
                     height: 32px;
                     border-radius: 4px;
                     background: ma.has-hover ? G.node-hover : transparent;
+                    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                     HorizontalLayout {
                         padding-left: 10px; spacing: 8px;
                         Icon { name: i == 0 ? "settings" : i == 1 ? "edit" : "trash"; c: i == 2 ? G.red : G.muted; width: 14px; y: (parent.height - 14px) / 2; }

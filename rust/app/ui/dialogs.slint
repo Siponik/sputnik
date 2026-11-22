@@ -704,7 +704,7 @@ export component CreateDialog inherits Overlay {
             Rectangle {
                 x: 12px + S.c-kind * (root.W - 66px) / 4; y: 7px;
                 width: (root.W - 66px) / 4 - 4px; height: 32px; border-radius: 6px; background: G.ink;
-                animate x { duration: 220ms; easing: ease-out; }
+                animate x { duration: G.motion == 0 ? 200ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
             }
             for k[i] in [@tr("Задача"), @tr("Событие"), @tr("Привычка"), @tr("День рождения")]: Rectangle {
                 x: 12px + i * (root.W - 66px) / 4;
@@ -834,7 +834,8 @@ export component SearchDialog inherits Overlay {
     property <string> q-text;
     // открытие (каталог G_Motion): поле растёт до 400 px 180 мс, список выпадает на 6 px + fade 160 мс;
     // закрытие быстрее — 120 мс. «Минимум» — только затухания, «выкл» — сразу.
-    property <bool> shown;
+    // shown ставит Overlay через кадр после открытия; у поиска своё появление
+    win-pop: false;
     property <bool> closing;
     property <bool> open: root.shown && !root.closing;
     property <bool> has-res: root.open && root.q-text != "";
@@ -848,8 +849,7 @@ export component SearchDialog inherits Overlay {
     function shut() { if (G.motion == 2) { S.search-open-set(false); } else { root.closing = true; } }
     function up() { root.cur = max(0, root.cur - 1); }
     function down() { root.cur = max(0, min(root.last, root.cur + 1)); }
-    // первый кадр — свёрнутое поле, потом оно раскрывается
-    Timer { interval: 1ms; running: !root.shown; triggered => { root.shown = true; } }
+    // первый кадр — свёрнутое поле (shown из Overlay ещё false), потом оно раскрывается
     Timer { interval: max(1ms, root.t-out); running: root.closing; triggered => { S.search-open-set(false); } }
     property <length> fw: root.open || !root.moves ? 400px : root.from-w;
     animate fw { duration: root.moves ? (root.closing ? root.t-out : root.t-in) : 0ms; easing: root.closing ? cubic-bezier(0.4, 0, 1, 1) : cubic-bezier(0.2, 0.8, 0.2, 1); }

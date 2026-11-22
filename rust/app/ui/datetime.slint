@@ -15,6 +15,7 @@ component Chip inherits Rectangle {
     border-width: 1px;
     border-color: on ? G.accent : G.line;
     background: on ? G.accent.transparentize(0.85) : (ta.has-hover ? G.node-hover : transparent);
+    animate background { duration: G.motion == 2 ? 0ms : G.fast; }
     if busy && !on: Rectangle { x: 3px; y: parent.height - 5px; width: parent.width - 6px; height: 2px; background: #55575F; }
     ct := Text { visible: root.icon == ""; text: root.text; font-family: G.mono; font-size: 11px; font-weight: 600; color: on ? G.accent-ink : #A3A5AE; horizontal-alignment: center; vertical-alignment: center; width: parent.width; height: parent.height; }
     if root.icon != "": Icon { name: root.icon; width: 12px; x: (parent.width - 12px) / 2; y: (parent.height - 12px) / 2; c: on ? G.accent-ink : #A3A5AE; }
@@ -83,6 +84,7 @@ export component DatePicker inherits Node {
                         width: 45px; height: 30px;
                         border-radius: 4px;
                         background: c.sel ? G.accent : (da.has-hover ? G.node-hover : transparent);
+                        animate background { duration: G.motion == 2 ? 0ms : G.fast; }
                         border-width: c.today && !c.sel ? 1px : 0;
                         border-color: G.accent;
                         Text { text: c.n; color: c.sel ? G.on-accent : (c.other ? G.dim : G.ink); font-size: 13px; horizontal-alignment: center; vertical-alignment: center; }
@@ -154,6 +156,7 @@ export component DueDrop inherits Rectangle {
         for c[i] in S.dp-cells: Rectangle {
             x: 10px + mod(i, 7) * 35px; y: 64px + floor(i / 7) * 32px; width: 33px; height: 30px; border-radius: 5px;
             background: c.sel ? G.accent : (ca.has-hover ? G.node-hover : transparent);
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             border-width: c.today && !c.sel ? 1px : 0; border-color: G.accent;
             Text { text: c.n; font-size: 13px; color: c.sel ? G.on-accent : (c.other ? #5A5C66 : G.ink); horizontal-alignment: center; vertical-alignment: center; }
             ca := TouchArea { clicked => { S.dp-day(c.day); S.dp-done(); } mouse-cursor: pointer; }
@@ -171,6 +174,7 @@ export component DueDrop inherits Rectangle {
         if root.clearable: Rectangle {
             x: 10px; y: parent.height - 42px; width: parent.width - 20px; height: 30px; border-radius: 5px;
             background: na.has-hover ? G.node-hover : transparent;
+            animate background { duration: G.motion == 2 ? 0ms : G.fast; }
             Text { x: 10px; text: @tr("Без срока"); font-size: 12px; color: #A3A5AE; vertical-alignment: center; height: parent.height; }
             na := TouchArea { clicked => { S.dp-quick-set("none"); S.dp-done(); } mouse-cursor: pointer; }
         }

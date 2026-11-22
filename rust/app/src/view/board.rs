@@ -243,7 +243,7 @@ fn stickers(app: &App, id: &str, sel: &str) -> Vec<Column> {
         }
     }
     let mut out: Vec<Column> = lanes.into_iter().filter(|x| !x.1.is_empty()).map(|(tp, ts)| Column {
-        id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: ts.len() as i32, limit: 0, over: false, done: false,
+        id: ss(text(&tp["id"])), name: ss(sputnik_core::i18n::tr(&text(&tp["name"])).to_string()), count: ts.len() as i32, limit: 0, over: false, done: false,
         hue: color(&stk::topic_color(&tp)), cards: model(ts.iter().map(|t| card(app, id, t, sel)).collect()),
     }).collect();
     out.push(Column { id: ss(""), name: ss(t!("Разное")), count: misc.len() as i32, limit: 0, over: false, done: false, hue: color(""),
@@ -251,7 +251,7 @@ fn stickers(app: &App, id: &str, sel: &str) -> Vec<Column> {
     // пустые темы — тоже колонкой, чтобы было куда добавить
     for tp in &topics {
         if !out.iter().any(|c| c.id.as_str() == s(&tp["id"])) {
-            out.push(Column { id: ss(text(&tp["id"])), name: ss(text(&tp["name"])), count: 0, limit: 0, over: false, done: false,
+            out.push(Column { id: ss(text(&tp["id"])), name: ss(sputnik_core::i18n::tr(&text(&tp["name"])).to_string()), count: 0, limit: 0, over: false, done: false,
                 hue: color(&stk::topic_color(tp)), cards: model(vec![]) });
         }
     }

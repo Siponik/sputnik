@@ -283,13 +283,28 @@ export component Field inherits Rectangle {
 // время понятно…); нельзя — просто закрывается, ничего не создав. Esc и ✕ — close: закрыть без сохранения.
 // Окну, где всё и так сохраняется сразу, dismiss задавать не нужно — он сам зовёт close.
 // Выпадашки внутри окон делают так же: ловушка «клик мимо» — Catch.
+// Окно поверх: фон темнеет 180 мс, окно проявляется и вырастает 0.96 → 1 за 220 мс (каталог G_Motion,
+// «Окно «Создать», окно задачи»). «Минимум» — только проявление 120 мс, «выкл» — сразу.
+// win-pop: false — у окна своя анимация (поиск, настройки).
 export component Overlay inherits Rectangle {
     callback close;
     callback dismiss;
+    in property <bool> win-pop: true;
+    out property <bool> shown;
     dismiss => { root.close(); }
-    background: #0009;
+    background: root.shown || G.motion == 2 ? #0009 : #0000;
+    animate background { duration: G.motion == 2 ? 0ms : 180ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    Timer { interval: 1ms; running: !root.shown; triggered => { root.shown = true; } }
     TouchArea { clicked => { root.dismiss(); } }
-    @children
+    Rectangle {
+        opacity: !root.win-pop || root.shown || G.motion == 2 ? 1 : 0;
+        transform-origin: { x: self.width / 2, y: self.height / 2 };
+        transform-scale-x: !root.win-pop || root.shown || G.motion != 0 ? 1 : 0.96;
+        transform-scale-y: !root.win-pop || root.shown || G.motion != 0 ? 1 : 0.96;
+        animate opacity { duration: G.motion == 2 ? 0ms : G.motion == 1 ? 120ms : 220ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        animate transform-scale-x, transform-scale-y { duration: G.motion == 0 ? 220ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+        @children
+    }
 }
 
 // Выпадающий список, меню, выбор месяца: раскрывается от кнопки (каталог G_Motion — «Меню, выпадающие
@@ -403,6 +418,60 @@ export component CSeg inherits Rectangle {
     }
 }
 
+
+// Переключатель «Системы G» с пунктами разной ширины (КАНБАН | КОНВЕЙЕР | СТИКЕРЫ | СПИСОК и т.п.):
+// выбранное — одна светлая плашка, она переезжает к новому пункту и меняет ширину, 200 мс.
+// «Минимум» и «выкл» — сразу. Пункт сам сообщает плашке своё место (put), когда он выбран или сдвинулся.
+export component GSeg inherits Rectangle {
+    in property <[string]> items;
+    in property <int> current;
+    in property <length> fs: 10.5px;
+    in property <int> weight: 500;
+    in property <length> pad: 3px;       // поля вокруг пунктов
+    in property <length> ir: 5px;        // скругление плашки
+    in property <length> min-item: 0px;
+    callback picked(int);
+    property <length> px;
+    property <length> pw;
+    property <bool> ready;
+    height: 34px;
+    width: gl.preferred-width;
+    border-radius: 8px;
+    border-width: 1px;
+    border-color: G.line;
+    // первое место плашки — без анимации
+    Timer { interval: 60ms; running: !root.ready; triggered => { root.ready = true; } }
+    Rectangle {
+        x: root.px; y: root.pad; width: root.pw; height: root.height - 2 * root.pad;
+        border-radius: root.ir;
+        background: G.ink;
+        visible: root.pw > 0 && root.current >= 0 && root.current < root.items.length;
+        animate x, width { duration: root.ready && G.motion == 0 ? 200ms : 0ms; easing: cubic-bezier(0.2, 0.8, 0.2, 1); }
+    }
+    gl := HorizontalLayout {
+        padding: root.pad;
+        padding-left: root.pad + 1px; padding-right: root.pad + 1px;
+        spacing: 2px;
+        for v[i] in root.items: Rectangle {
+            property <bool> on: i == root.current;
+            function put() { if (self.on) { root.px = self.x; root.pw = self.width; } }
+            init => { self.put(); }
+            changed on => { self.put(); }
+            changed x => { self.put(); }
+            changed width => { self.put(); }
+            width: max(root.min-item, t.preferred-width + 20px);
+            border-radius: root.ir;
+            // пока плашка не нашла место — подсвечен сам пункт
+            background: self.on ? (root.pw > 0 ? transparent : G.ink) : (a.has-hover ? G.node-hover : transparent);
+            t := Text {
+                text: v; font-family: G.mono; font-size: root.fs; font-weight: root.weight; letter-spacing: 1.2px;
+                color: parent.on ? #1C1D21 : #A3A5AE; horizontal-alignment: center; vertical-alignment: center;
+                animate color { duration: G.motion == 2 ? 0ms : 120ms; }
+            }
+            a := TouchArea { clicked => { root.picked(i); } mouse-cursor: pointer; }
+        }
+    }
+}
 
 // Стрелка выпадающего списка (символ ▾ есть не во всех шрифтах Windows).
 export component Chev inherits Path {
